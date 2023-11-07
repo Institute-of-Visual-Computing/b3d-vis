@@ -1,4 +1,4 @@
-﻿---
+---
 BasedOnStyle: Microsoft
 KeepEmptyLinesAtTheStartOfBlocks: 'true'
 Language: Cpp
@@ -10,5 +10,5 @@ SpacesInParentheses: 'false'
 SpacesInSquareBrackets: 'false'
 Standard: Auto
 UseTab: ForIndentation
-
+SpaceBeforeParens: Never
 ...
