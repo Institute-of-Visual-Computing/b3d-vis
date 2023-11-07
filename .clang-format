@@ -1,0 +1,14 @@
+﻿---
+BasedOnStyle: Microsoft
+KeepEmptyLinesAtTheStartOfBlocks: 'true'
+Language: Cpp
+NamespaceIndentation: All
+PointerAlignment: Left
+SortIncludes: 'true'
+SpacesInAngles: 'false'
+SpacesInParentheses: 'false'
+SpacesInSquareBrackets: 'false'
+Standard: Auto
+UseTab: ForIndentation
+
+...
