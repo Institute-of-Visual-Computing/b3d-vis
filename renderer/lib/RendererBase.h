@@ -3,7 +3,7 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include <owl/owl.h>
+#include <owl/common.h>
 
 namespace b3d
 {
