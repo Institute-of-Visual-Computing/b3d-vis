@@ -14,4 +14,5 @@ OPTION(OWL_BUILD_SAMPLES OFF)
 add_subdirectory(${owl_dir} EXCLUDE_FROM_ALL)
 add_subdirectory(${owl_dir}/samples/common)
 
+add_subdirectory(renderer)
 add_subdirectory(viewer)

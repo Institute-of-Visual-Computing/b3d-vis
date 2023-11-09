@@ -10,4 +10,6 @@ target_link_libraries(viewer
 	owl::owl
 	glfw
 	imgui::imgui
+	b3d::null
+	b3d::lib
 )

@@ -11,4 +11,5 @@ SpacesInSquareBrackets: 'false'
 Standard: Auto
 UseTab: ForIndentation
 SpaceBeforeParens: Never
+Cpp11BracedListStyle: 'false'
 ...
