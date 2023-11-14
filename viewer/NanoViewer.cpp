@@ -55,6 +55,8 @@ namespace
 			gw->mouseButton(button, action, mods);
 		}
 	}
+
+	ImFont* defaultFont;
 } // namespace
 
 void NanoViewer::gui()
@@ -74,6 +76,22 @@ void NanoViewer::initializeGui()
 
 	ImGui::StyleColorsDark();
 
+	auto monitor = glfwGetPrimaryMonitor();
+
+	float scaleX;
+	float scaleY;
+	glfwGetMonitorContentScale(monitor, &scaleX, &scaleY);
+
+	const auto dpiScale = scaleX;
+	float baseFontSize = 18.0f;
+	
+	ImFontConfig config;
+
+	config.OversampleH = 1;
+	config.OversampleV = 1;
+	config.SizePixels = dpiScale * baseFontSize;
+	defaultFont = io.Fonts->AddFontDefault(&config);
+
 	ImGui_ImplGlfw_InitForOpenGL(handle, true);
 	ImGui_ImplOpenGL3_Init();
 }
@@ -82,6 +100,8 @@ void NanoViewer::deinitializeGui()
 {
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
+
+
 	ImGui::DestroyContext();
 }
 
@@ -103,9 +123,10 @@ void NanoViewer::showAndRunWithGui(std::function<bool()> keepgoing)
 	glfwSetCursorPosCallback(handle, ::mouseMotion);
 
 	initializeGui();
-
+	
 	while(!glfwWindowShouldClose(handle) && keepgoing())
 	{
+		onFrameBegin();
 		static double lastCameraUpdate = -1.f;
 		if(camera.lastModified != lastCameraUpdate)
 		{
@@ -116,7 +137,9 @@ void NanoViewer::showAndRunWithGui(std::function<bool()> keepgoing)
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
+		ImGui::PushFont(defaultFont);
 		gui();
+		ImGui::PopFont();
 		ImGui::EndFrame();
 
 		render();
@@ -127,6 +150,7 @@ void NanoViewer::showAndRunWithGui(std::function<bool()> keepgoing)
 
 		glfwSwapBuffers(handle);
 		glfwPollEvents();
+		onFrameEnd();
 	}
 
 	deinitializeGui();

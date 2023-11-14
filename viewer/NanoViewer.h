@@ -3,11 +3,23 @@
 
 struct NanoViewer : public owl::viewer::OWLViewer
 {
-    virtual void gui();
+	NanoViewer(const std::string& title = "Sample Viewer", const int initWindowWidth = 1980,
+	           const int initWindowHeight = 1080)
+	    : owl::viewer::OWLViewer(title, owl::vec2i(initWindowWidth, initWindowHeight))
+	{
+	}
 
-    void showAndRunWithGui();
-    void showAndRunWithGui(std::function<bool()> keepgoing);
-private:
-    void initializeGui();
-    void deinitializeGui();
+	virtual void gui();
+	virtual void onFrameBegin()
+	{
+	}
+	virtual void onFrameEnd()
+	{
+	}
+	void showAndRunWithGui();
+	void showAndRunWithGui(std::function<bool()> keepgoing);
+
+  private:
+	void initializeGui();
+	void deinitializeGui();
 };

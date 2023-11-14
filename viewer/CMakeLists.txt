@@ -1,4 +1,7 @@
 find_package(imgui CONFIG REQUIRED)
+find_package(OpenGL REQUIRED)
+find_package(GLEW REQUIRED)
+find_package(glad CONFIG REQUIRED)
 
 add_executable(viewer main.cpp NanoViewer.cpp)
 target_compile_features(viewer PUBLIC cxx_std_20)
@@ -10,4 +13,6 @@ target_link_libraries(viewer
 	imgui::imgui
 	b3d::null
 	b3d::lib
+	OpenGL::GL
+	glad::glad
 )
