@@ -1,4 +1,3 @@
-
 #define GLFW_INCLUDE_GLEXT
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -8,15 +7,54 @@
 #include <imgui.h>
 
 #include <owl/owl.h>
-#include <cuda.h>
 #include <driver_types.h>
 
 
+enum class RenderMode
+{
+	mono,
+	stereo 
+};
+
+enum class SemaphoreState
+{
+	signaled,
+	unsignaled
+};
+
+struct TestSemaphore final
+{
+	void signal()
+	{
+		ReleaseSemaphore(handle, 1, nullptr);
+	}
+	void wait()
+	{
+		WaitForSingleObject(handle, INFINITE);
+	}
+
+	TestSemaphore(SemaphoreState initialState = SemaphoreState::unsignaled)
+	{
+		handle = CreateSemaphore(NULL, initialState == SemaphoreState::signaled ? 1 : 0, 1, NULL);
+	}
+
+	~TestSemaphore()
+	{
+		CloseHandle(handle);
+	}
+
+	HANDLE handle;
+};
 
 struct RendererInitializationInfo
 {
+	// on stereo we expect that those resources are of a array type in native API
 	cudaGraphicsResource_t colorRT;
 	cudaGraphicsResource_t minMaxRT;
+	RenderMode mode{ RenderMode::mono };
+
+	cudaExternalSemaphore_t waitSemaphore;
+	cudaExternalSemaphore_t signalSemaphore;
 };
 
 
@@ -48,14 +86,6 @@ struct Viewer : public NanoViewer
 		selectedRendererIndex = index;
 		currentRenderer = b3d::registry[selectedRendererIndex].rendererInstance;
 
-		GLuint colorTexture;
-		GLuint minMaxTexture;
-
-		glGenTextures(1, &colorTexture);
-		//glBindTexture(GL_TEXTURE_2D_ARRAY, colorTexture);
-		// Allocate the storage.
-		//glTextureStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_RGBA8, 2, 3, 4);
-
 		currentRenderer->initialize();
 	}
 	std::shared_ptr<b3d::RendererBase> currentRenderer{ nullptr };
@@ -65,6 +95,15 @@ struct Viewer : public NanoViewer
 
 	std::vector<std::string> registeredRendererNames{};
 
+	TestSemaphore waitSemaphore{};
+	TestSemaphore signalSemaphore{};
+
+	GLuint colorTexture;
+	GLuint minMaxTexture;
+
+	RendererInitializationInfo rendererInfo{};
+
+	RenderMode mode{ RenderMode::mono };
 };
 
 void Viewer::onFrameBegin()
@@ -119,6 +158,36 @@ Viewer::Viewer(const std::string& title, const int initWindowWidth,
 {
 	gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 	gladLoadGL();
+
+	auto semaphoreHandleInfo = cudaExternalSemaphoreHandleDesc{};
+	semaphoreHandleInfo.flags = 0;
+	semaphoreHandleInfo.type = cudaExternalSemaphoreHandleTypeOpaqueWin32;
+	semaphoreHandleInfo.handle.win32.handle = waitSemaphore.handle;
+	cudaImportExternalSemaphore(&rendererInfo.waitSemaphore, &semaphoreHandleInfo);
+
+	semaphoreHandleInfo.handle.win32.handle = signalSemaphore.handle;
+	cudaImportExternalSemaphore(&rendererInfo.signalSemaphore, &semaphoreHandleInfo);
+
+	glGenTextures(1, &colorTexture);
+	glBindTexture(GL_TEXTURE_2D_ARRAY, colorTexture);
+	glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_RGBA8, 64, 64, 2);
+
+	glGenTextures(1, &minMaxTexture);
+	glBindTexture(GL_TEXTURE_2D_ARRAY, minMaxTexture);
+	glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_RG32F, 64, 64, 2);
+
+	cudaGraphicsGLRegisterImage(&rendererInfo.colorRT, colorTexture,
+	                            mode == RenderMode::mono ? GL_TEXTURE_2D : GL_TEXTURE_2D_ARRAY,
+	                            cudaGraphicsRegisterFlagsWriteDiscard);
+
+	cudaGraphicsGLRegisterImage(&rendererInfo.minMaxRT, colorTexture,
+	                            mode == RenderMode::mono ? GL_TEXTURE_2D : GL_TEXTURE_2D_ARRAY,
+	                            cudaGraphicsRegisterFlagsWriteDiscard);
+
+	rendererInfo.mode = mode;
+
+	//NOTE: rendererInfo will be feeded into renderer initialization
+
 
 	selectRenderer(0);
 	newSelectedRendererIndex = selectedRendererIndex;
