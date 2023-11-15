@@ -24,6 +24,11 @@
 		},
 		"tbb",
 		"opengl",
-		"glad"
+		{
+			"name": "glad",
+			"features": [ "extensions" ]
+		},
+		"vulkan",
+		"vulkan-headers"
 	]
 }

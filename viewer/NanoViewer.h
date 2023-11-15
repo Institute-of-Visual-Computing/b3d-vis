@@ -8,7 +8,7 @@ struct NanoViewer : public owl::viewer::OWLViewer
 	    : owl::viewer::OWLViewer(title, owl::vec2i(initWindowWidth, initWindowHeight))
 	{
 	}
-
+	virtual ~NanoViewer(){};
 	virtual void gui();
 	virtual void onFrameBegin()
 	{
