@@ -1,1 +1,2 @@
-add_subdirectory(unityPluginAPI)
+add_subdirectory(actionRuntime)
+add_subdirectory(actions)

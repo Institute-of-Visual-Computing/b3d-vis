@@ -7,6 +7,7 @@ project(b3d_visualisation
 
 #it a hack, otherwise it will be included by owl package with wrong settings
 find_package(glfw3 CONFIG REQUIRED)
+find_package(CUDAToolkit)
 
 #TODO: move owl stuff to its own cmakelists file
 set(owl_dir ${PROJECT_SOURCE_DIR}/thirdParty/owl)
@@ -16,3 +17,4 @@ add_subdirectory(${owl_dir}/samples/common)
 
 add_subdirectory(renderer)
 add_subdirectory(viewer)
+add_subdirectory(unityCUDAInterop)
