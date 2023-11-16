@@ -1,2 +1,3 @@
 add_subdirectory(lib)
-add_subdirectory(nullRenderer)
+add_subdirectory(null)
+add_subdirectory(fastVoxelTraversal)

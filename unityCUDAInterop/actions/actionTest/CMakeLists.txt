@@ -4,7 +4,7 @@ add_library(ActionTest SHARED
 
 target_link_libraries(ActionTest
 	PRIVATE
-		UnityCUDAInterop::Action
+		B3D::UnityCUDAInterop::ActionInterface
 )
 
 set_target_properties(ActionTest PROPERTIES CXX_STANDARD 20)

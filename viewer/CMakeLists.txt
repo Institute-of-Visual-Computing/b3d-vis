@@ -13,8 +13,9 @@ target_link_libraries(viewer
 	owl::owl
 	glfw
 	imgui::imgui
-	b3d::null
-	b3d::lib
+	B3D::Renderer::Library
+	B3D::Renderer::Null
+	B3D::Renderer::FastVoxelTraversal
 	OpenGL::GL
 	glad::glad
 	Vulkan::Vulkan

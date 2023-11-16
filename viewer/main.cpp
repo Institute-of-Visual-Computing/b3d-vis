@@ -4,6 +4,8 @@
 #include "NanoViewer.h"
 #include <NullRenderer.h>
 #include <RendererBase.h>
+#include "FastVoxelTraversalRenderer.h"
+
 #include <imgui.h>
 
 #include <owl/owl.h>
@@ -370,8 +372,10 @@ void Viewer::render()
 
 int main(int argc, char** argv)
 {
-
+	
 	b3d::registerRenderer<b3d::NullRenderer>("nullRenderer");
+	b3d::registerRenderer<b3d::FastVoxelTraversalRenderer>("FastVoxelTraversalRenderer");
+
 
 	std::cout << b3d::registry.front().name << std::endl;
 	using namespace std::string_literals;
