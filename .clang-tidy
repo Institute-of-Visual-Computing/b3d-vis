@@ -1,8 +1,0 @@
-Checks: >
-	readability-identifier-naming
-
-CheckOptions:
-	- { key: readability-identifier-naming.PrivateMemberSuffix, value: _ }
-	- { key: readability-identifier-naming.MemberCase, value: camelBack }
-	- { key: readability-identifier-naming.PrivateMemberCase, value: camelBack }
-	- { key: readability-identifier-naming.VariableCase, value: camelBack }
