@@ -61,7 +61,6 @@ protected:
 	int renderEventIDOffset_{ 0 };
 	int renderEventIDCount_{ 0 };
 	int aboveValidRenderEventID_{ 0 };
-	int test123_aalal{ 0 };
 
 	PluginLogger* logger_{ nullptr };
 	RenderAPI* renderAPI_{ nullptr };
