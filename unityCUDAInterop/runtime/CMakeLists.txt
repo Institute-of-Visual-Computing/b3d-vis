@@ -18,9 +18,9 @@ target_include_directories(UnityCUDAInteropRuntime
 
 target_link_libraries(UnityCUDAInteropRuntime
 	PRIVATE
-		UnityCUDAInterop::Action
-		UnityCUDAInterop::UnityPluginAPI
-		UnityCUDAInterop::Logger
+		B3D::UnityCUDAInterop::ActionInterface
+		B3D::UnityCUDAInterop::PluginAPI
+		B3D::UnityCUDAInterop::Logger
 		d3d11.lib
 	PUBLIC
         CUDA::cudart
@@ -28,6 +28,6 @@ target_link_libraries(UnityCUDAInteropRuntime
 
 set_target_properties(UnityCUDAInteropRuntime PROPERTIES CXX_STANDARD 20)
 
-add_library(UnityCUDAInterop::Runtime ALIAS UnityCUDAInteropRuntime)
+add_library(B3D::UnityCUDAInterop::Runtime ALIAS UnityCUDAInteropRuntime)
 
 # install(TARGETS UnityCUDAInteropRuntime DESTINATION ${UNITY_PROJECT_ROOT_DIR}/Assets/${UNITY_ASSETS_SUBDIRECTORY_RUNTIME})

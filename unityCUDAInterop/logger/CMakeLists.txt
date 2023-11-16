@@ -7,7 +7,7 @@ target_include_directories(UnityCUDAInteropLogger
 
 target_link_libraries(UnityCUDAInteropLogger
 	INTERFACE
-		UnityCUDAInterop::UnityPluginAPI
+		B3D::UnityCUDAInterop::PluginAPI
 )
 
-add_library(UnityCUDAInterop::Logger ALIAS UnityCUDAInteropLogger)
+add_library(B3D::UnityCUDAInterop::Logger ALIAS UnityCUDAInteropLogger)
