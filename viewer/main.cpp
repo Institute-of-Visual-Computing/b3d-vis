@@ -1,6 +1,5 @@
 #define GLFW_INCLUDE_GLEXT
 #include <glad/glad.h>
-
 #include <GLFW/glfw3.h>
 
 #include <NullRenderer.h>
@@ -10,19 +9,12 @@
 
 #include <imgui.h>
 
+#include <cuda_runtime.h>
 #include <driver_types.h>
 #include <owl/owl.h>
 
-#define VULKAN_HPP_NO_EXCEPTIONS
-#define VULKAN_HPP_NO_CONSTRUCTORS
-#define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
-#define VK_USE_PLATFORM_WIN32_KHR
-#include <vulkan/vulkan.hpp>
-#include <vulkan/vulkan_win32.h>
+#include "Vulkan.h"
 
-#include <cuda_runtime.h>
-
-VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 enum class RenderMode
 {
@@ -94,6 +86,7 @@ private:
 	RendererInitializationInfo rendererInfo_{};
 	RenderMode mode_{ RenderMode::mono };
 
+public:
 	// NOTICE: OpenGL <-> CUDA synchronization:
 	// https://github.com/nvpro-samples/gl_cuda_simple_interop/blob/master/README.md
 	struct VulkanContext
@@ -102,7 +95,6 @@ private:
 		vk::PhysicalDevice physicalDevice;
 		vk::Instance instance;
 	} vulkanContext_{};
-
 	struct SynchronizationResources
 	{
 		vk::Semaphore vkWaitSemaphore;
@@ -126,8 +118,6 @@ Viewer::~Viewer()
 {
 	vulkanContext_.device.destroySemaphore(synchronizationResources_.vkSignalSemaphore);
 	vulkanContext_.device.destroySemaphore(synchronizationResources_.vkWaitSemaphore);
-
-	// TODO: Wired error happens here
 	vulkanContext_.device.destroy();
 }
 
@@ -177,7 +167,7 @@ Viewer::Viewer(const std::string& title, const int initWindowWidth, const int in
 	gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
 	gladLoadGL();
 
-	vk::DynamicLoader dl;
+	static vk::DynamicLoader dl;
 	auto vkGetInstanceProcAddr = dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
 
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
@@ -264,9 +254,9 @@ Viewer::Viewer(const std::string& title, const int initWindowWidth, const int in
 		const auto priority = 1.0f;
 		const auto queueCreateInfo = vk::DeviceQueueCreateInfo{ .queueCount = 1, .pQueuePriorities = &priority };
 		const auto deviceCreateInfo = vk::DeviceCreateInfo{ .queueCreateInfoCount = 1,
-																.pQueueCreateInfos = &queueCreateInfo,
-																.enabledExtensionCount = deviceExtensions.size(),
-																.ppEnabledExtensionNames = deviceExtensions.data() };
+															.pQueueCreateInfos = &queueCreateInfo,
+															.enabledExtensionCount = deviceExtensions.size(),
+															.ppEnabledExtensionNames = deviceExtensions.data() };
 		const auto result = vulkanContext_.physicalDevice.createDevice(deviceCreateInfo);
 		assert(result.result == vk::Result::eSuccess);
 		vulkanContext_.device = result.value;
@@ -368,12 +358,11 @@ auto Viewer::render() -> void
 {
 
 	const auto view = b3d::renderer::View{ .camera1 = b3d::renderer::Camera{
-									 .origin = camera.getFrom(),
-									 .at = camera.getAt(),
-									 .up = camera.getUp(),
-									 .cosFoV = camera.getCosFovy(),
-								 } };
-
+											   .origin = camera.getFrom(),
+											   .at = camera.getAt(),
+											   .up = camera.getUp(),
+											   .cosFoV = camera.getCosFovy(),
+										   } };
 	currentRenderer_->render(view);
 }
 
