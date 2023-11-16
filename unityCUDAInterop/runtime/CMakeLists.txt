@@ -1,4 +1,6 @@
-add_library(UnityCUDAInteropRuntime SHARED
+set(MODULE_NAME UnityCUDAInteropRuntime)
+
+add_library(${MODULE_NAME} SHARED
 	"src/PluginHandler.cpp"
 	"src/unity_plugin.cpp"
 	"src/RenderAPI/RenderAPI.cpp"
@@ -6,7 +8,7 @@ add_library(UnityCUDAInteropRuntime SHARED
 	"src/PluginLogger.cpp"
 	"src/Texture/Texture_D3D11.cpp" "src/Texture/Texture.cpp")
 
-target_include_directories(UnityCUDAInteropRuntime 
+target_include_directories(${MODULE_NAME} 
 	PUBLIC
 		"include"
 	PRIVATE
@@ -16,7 +18,7 @@ target_include_directories(UnityCUDAInteropRuntime
 		"interface"
 )
 
-target_link_libraries(UnityCUDAInteropRuntime
+target_link_libraries(${MODULE_NAME}
 	PRIVATE
 		B3D::UnityCUDAInterop::ActionInterface
 		B3D::UnityCUDAInterop::PluginAPI
@@ -26,8 +28,9 @@ target_link_libraries(UnityCUDAInteropRuntime
         CUDA::cudart
 )
 
-set_target_properties(UnityCUDAInteropRuntime PROPERTIES CXX_STANDARD 20)
+set_target_properties(${MODULE_NAME} PROPERTIES CXX_STANDARD 20)
 
-add_library(B3D::UnityCUDAInterop::Runtime ALIAS UnityCUDAInteropRuntime)
+add_library(B3D::UnityCUDAInterop::Runtime ALIAS ${MODULE_NAME})
 
-# install(TARGETS UnityCUDAInteropRuntime DESTINATION ${UNITY_PROJECT_ROOT_DIR}/Assets/${UNITY_ASSETS_SUBDIRECTORY_RUNTIME})
+set_property(TARGET ${MODULE_NAME} PROPERTY FOLDER "UnityCudaInterop")
+# install(TARGETS ${MODULE_NAME} DESTINATION ${UNITY_PROJECT_ROOT_DIR}/Assets/${UNITY_ASSETS_SUBDIRECTORY_RUNTIME})
