@@ -2,22 +2,22 @@
 #include <Logging.h>
 using namespace b3d;
 
-void b3d::NullRenderer::onRender(const b3d::View& view)
+auto b3d::NullRenderer::onRender(const b3d::View& view) -> void
 {
 	log("[NullRenderer] onRender!");
 }
 
-void b3d::NullRenderer::onInitialize()
+auto b3d::NullRenderer::onInitialize() -> void
 {
 	log("[NullRenderer] onInitialize!");
 }
 
-void b3d::NullRenderer::onDeinitialize()
+auto b3d::NullRenderer::onDeinitialize() -> void
 {
 	log("[NullRenderer] onDeinitialize!");
 }
 
-void b3d::NullRenderer::onGui()
+auto b3d::NullRenderer::onGui() -> void
 {
 	log("[NullRenderer] onGui!");
 }

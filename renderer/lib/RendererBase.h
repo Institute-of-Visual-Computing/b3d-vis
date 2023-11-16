@@ -1,14 +1,13 @@
 #pragma once
 
 #include <memory>
+#include <owl/common.h>
+
 #include <string>
 #include <vector>
-#include <owl/common.h>
 
 namespace b3d
 {
-
-
 	struct Camera
 	{
 		owl::vec3f origin;
@@ -23,35 +22,23 @@ namespace b3d
 
 	class RendererBase
 	{
-	  public:
-		inline void initialize()
-		{
-			onInitialize();
-		}
-		inline void deinitialize()
-		{
-			onDeinitialize();
-		}
+	public:
+		virtual ~RendererBase() = default;
 
-		inline void gui()
-		{
-			onGui();
-		}
+		auto initialize() -> void;
+		auto deinitialize() -> void;
+		auto gui() -> void;
+		auto render(const View& view) -> void;
 
-		inline void render(const View& view)
-		{
-			onRender(view);
-		}
+	protected:
+		virtual auto onInitialize() -> void{};
+		virtual auto onDeinitialize() -> void{};
 
-	  protected:
-		virtual void onInitialize(){};
-		virtual void onDeinitialize(){};
-
-		virtual void onGui(){};
-		virtual void onRender(const View& view) = 0;
+		virtual auto onGui() -> void{};
+		virtual auto onRender(const View& view) -> void = 0;
 	};
 
-	void addRenderer(std::shared_ptr<RendererBase> renderer, const std::string& name);
+	auto addRenderer(std::shared_ptr<RendererBase> renderer, const std::string& name) -> void;
 
 	struct RendererRegistryEntry
 	{
@@ -61,9 +48,10 @@ namespace b3d
 
 	extern std::vector<RendererRegistryEntry> registry;
 
-	template <typename T> void registerRenderer(const std::string& name)
+	template <typename T>
+	auto registerRenderer(const std::string& name) -> void
 	{
-		registry.push_back({std::make_shared<T>(), name});
+		registry.push_back({ std::make_shared<T>(), name });
 	}
 
 } // namespace b3d
