@@ -1,5 +1,7 @@
 #define GLFW_INCLUDE_GLEXT
+
 #include <glad/glad.h>
+
 #include <GLFW/glfw3.h>
 
 #include <NullRenderer.h>
@@ -13,7 +15,9 @@
 #include <driver_types.h>
 #include <owl/owl.h>
 
+#include "Logging.h"
 #include "Vulkan.h"
+#include "owlViewer/cuda_helper.h"
 
 
 enum class RenderMode
@@ -300,11 +304,19 @@ Viewer::Viewer(const std::string& title, const int initWindowWidth, const int in
 
 	// TODO: error checks for gl functions
 	glGenSemaphoresEXT(1, &synchronizationResources_.glSignalSemaphore);
+	auto error = glGetError();
+	b3d::renderer::log(std::format("{}", error));
 	glGenSemaphoresEXT(1, &synchronizationResources_.glWaitSemaphore);
+	error = glGetError();
+	b3d::renderer::log(std::format("{}", error));
 	glImportSemaphoreWin32HandleEXT(synchronizationResources_.glSignalSemaphore, GL_HANDLE_TYPE_OPAQUE_WIN32_EXT,
 									synchronizationResources_.signalSemaphoreHandle);
+	error = glGetError();
+	b3d::renderer::log(std::format("{}", error));
 	glImportSemaphoreWin32HandleEXT(synchronizationResources_.glWaitSemaphore, GL_HANDLE_TYPE_OPAQUE_WIN32_EXT,
 									synchronizationResources_.waitSemaphoreHandle);
+	error = glGetError();
+	b3d::renderer::log(std::format("{}", error));
 
 	auto externalSemaphoreHandleDesc = cudaExternalSemaphoreHandleDesc{};
 	externalSemaphoreHandleDesc.type = cudaExternalSemaphoreHandleTypeOpaqueWin32;
@@ -357,6 +369,8 @@ Viewer::Viewer(const std::string& title, const int initWindowWidth, const int in
 auto Viewer::render() -> void
 {
 
+constexpr auto layout = static_cast<GLuint>(GL_LAYOUT_GENERAL_EXT);
+	
 	const auto view = b3d::renderer::View{ .camera1 = b3d::renderer::Camera{
 											   .origin = camera.getFrom(),
 											   .at = camera.getAt(),
@@ -364,6 +378,20 @@ auto Viewer::render() -> void
 											   .cosFoV = camera.getCosFovy(),
 										   } };
 	currentRenderer_->render(view);
+
+	glSignalSemaphoreEXT(synchronizationResources_.glSignalSemaphore, 0, nullptr, 0, nullptr, &layout);
+	auto error = glGetError();
+	b3d::renderer::log(std::format("{}", error));
+	constexpr auto extSemaphoreWaitParams = cudaExternalSemaphoreWaitParams{};
+	cudaWaitExternalSemaphoresAsync(&rendererInfo_.signalSemaphore, &extSemaphoreWaitParams, 1);
+
+	constexpr auto extSemaphoreSignalParams = cudaExternalSemaphoreSignalParams{};
+	cudaSignalExternalSemaphoresAsync(&rendererInfo_.waitSemaphore, &extSemaphoreSignalParams, 1);
+
+	glWaitSemaphoreEXT(synchronizationResources_.glWaitSemaphore, 0, nullptr, 0, nullptr, nullptr);
+	error = glGetError();
+
+	b3d::renderer::log(std::format("{}", error));
 }
 
 auto main(int argc, char** argv) -> int
