@@ -4,67 +4,72 @@
 #include "PluginLogger.h"
 #include "RenderAPI.h"
 
-class PluginHandler;
-
-class Action
+namespace b3d::unity_::actionInterface
 {
-public:
-	Action() = default;
-	virtual ~Action() = default;
-
-	void renderEventAndData(int eventID, void* data)
+	class Action
 	{
-		if (eventID - renderEventIDOffset_ == 0)
+	public:
+		Action() = default;
+		virtual ~Action() = default;
+
+		void renderEventAndData(int eventID, void* data)
 		{
-			initialize(data);
+			if (eventID - renderEventIDOffset_ == 0)
+			{
+				initialize(data);
+			}
+			else if (eventID - renderEventIDOffset_ == 1)
+			{
+				teardown();
+			}
+			else
+			{
+				customRenderEvent(eventID, data);
+			}
 		}
-		else if (eventID - renderEventIDOffset_ == 1)
+
+		virtual int getRenderEventIDCount() { return renderEventIDCount_; }
+		virtual int getRenderEventIDOffset() { return renderEventIDOffset_; }
+		virtual int getAboveValidRenderEventID() { return aboveValidRenderEventID_; }
+
+		virtual bool isValidEventID(int eventID) { return eventID < aboveValidRenderEventID_ && eventID >= renderEventIDOffset_; }
+
+		void runtimeInitialize(int renderEventIdOffset, PluginLogger* logger, RenderAPI* renderAPI)
 		{
-			teardown();
+			renderEventIDOffset_ = renderEventIdOffset;
+			aboveValidRenderEventID_ = renderEventIdOffset + renderEventIDCount_;
+			logger_ = logger;
+			renderAPI_ = renderAPI;
+			isRegistered_ = true;
 		}
-		else
+
+		void runtimeTearDown()
 		{
-			customRenderEvent(eventID, data);
+
+			logger_ = nullptr;
+			renderAPI_ = nullptr;
+			isRegistered_ = false;
 		}
-	}
 
-	virtual int getRenderEventIDCount() { return renderEventIDCount_; }
-	virtual int getRenderEventIDOffset() { return renderEventIDOffset_; }
-	virtual int getAboveValidRenderEventID() { return aboveValidRenderEventID_; }
+	protected:
+		virtual void initialize(void* data) = 0;
+		virtual void teardown() = 0;
+		virtual void customRenderEvent(int eventId, void* data) = 0;
 
-	virtual bool isValidEventID(int eventID) { return eventID < aboveValidRenderEventID_ && eventID >= renderEventIDOffset_; }
+		bool isRegistered_{ false };
 
-	void runtimeInitialize(int renderEventIdOffset, PluginLogger* logger, RenderAPI* renderAPI)
-	{
-		renderEventIDOffset_ = renderEventIdOffset;
-		aboveValidRenderEventID_ = renderEventIdOffset + renderEventIDCount_;
-		logger_ = logger;
-		renderAPI_ = renderAPI;
-		isRegistered_ = true;
-	}
+		int renderEventIDOffset_{ 0 };
+		int renderEventIDCount_{ 0 };
+		int aboveValidRenderEventID_{ 0 };
 
-	void runtimeTearDown()
-	{
+		PluginLogger* logger_{ nullptr };
+		RenderAPI* renderAPI_{ nullptr };
 
-		logger_ = nullptr;
-		renderAPI_ = nullptr;
-		isRegistered_ = false;
-	}
+	  private:
+		int lala;
+	};
 
-protected:
-	virtual void initialize(void* data) = 0;
-	virtual void teardown() = 0;
-	virtual void customRenderEvent(int eventId, void* data) = 0;
-
-	bool isRegistered_{ false };
-
-	int renderEventIDOffset_{ 0 };
-	int renderEventIDCount_{ 0 };
-	int aboveValidRenderEventID_{ 0 };
-
-	PluginLogger* logger_{ nullptr };
-	RenderAPI* renderAPI_{ nullptr };
-};
+} // namespace b3d::unityCUDAInterop
 
 extern "C"
 {
