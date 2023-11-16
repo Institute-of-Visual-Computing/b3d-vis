@@ -3,28 +3,37 @@
 
 #include "Texture.h"
 
-class PluginLogger;
-
 enum UnityGfxRenderer : int;
 struct IUnityInterfaces;
 
-class RenderAPI
+namespace b3d::unity_cuda_interop
 {
-	public:
-		static std::unique_ptr<RenderAPI> createRenderAPI(UnityGfxRenderer unityGfxRenderer, IUnityInterfaces* unityInterfaces, PluginLogger *logger);
+	class PluginLogger;
 
-		RenderAPI() = delete;
+	namespace runtime
+	{
+		class RenderAPI
+		{
+		public:
+			static auto createRenderAPI(UnityGfxRenderer unityGfxRenderer, IUnityInterfaces* unityInterfaces,
+										PluginLogger* logger) -> std::unique_ptr<RenderAPI>;
 
-		virtual ~RenderAPI();
+			RenderAPI() = delete;
 
-		// Use this only on the renderThread
-		virtual void initialize() = 0;
+			virtual ~RenderAPI();
 
-		virtual std::unique_ptr<Texture> createTexture(void *unityNativeTexturePointer) = 0;
+			// Use this only on the renderThread
+			virtual auto initialize() -> void = 0;
 
-	protected:
-		RenderAPI(PluginLogger* logger) : logger_(logger) {}
+			virtual auto createTexture(void* unityNativeTexturePointer) -> std::unique_ptr<Texture> = 0;
 
-		PluginLogger* logger_;
-		UnityGfxRenderer unityGfxRendererType_;
-};
+		protected:
+			RenderAPI(PluginLogger* logger) : logger_(logger)
+			{
+			}
+
+			PluginLogger* logger_;
+			UnityGfxRenderer unityGfxRendererType_;
+		};
+	} // namespace runtime
+} // namespace b3d::unity_cuda_interop

@@ -3,7 +3,11 @@
 
 #include "RenderAPI/RenderAPI_D3D11.h"
 
-std::unique_ptr<RenderAPI> RenderAPI::createRenderAPI(UnityGfxRenderer unityGfxRenderer, IUnityInterfaces* unityInterfaces, PluginLogger *logger)
+using namespace b3d::unity_cuda_interop;
+using namespace b3d::unity_cuda_interop::runtime;
+
+auto RenderAPI::createRenderAPI(UnityGfxRenderer unityGfxRenderer, IUnityInterfaces* unityInterfaces,
+								PluginLogger* logger) -> std::unique_ptr<RenderAPI>
 {
 	switch( unityGfxRenderer )
 	{

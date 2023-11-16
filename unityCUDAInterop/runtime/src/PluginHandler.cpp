@@ -1,17 +1,22 @@
-#include "PluginHandler.h"
+#include <algorithm>
+#include <cassert>
 #include <iostream>
 #include <string>
-#include <cassert>
-#include <algorithm>
+
 #include "IUnityInterface.h"
 #include "IUnityLog.h"
-#include "Action.h"
 
-#include "RenderAPI.h"
-#include "PluginRenderEventTypes.h"
+#include "Action.h"
 #include "PluginLogger.h"
 
-void PluginHandler::onGraphicsDeviceEvent(UnityGfxDeviceEventType eventType)
+#include "PluginHandler.h"
+#include "PluginRenderEventTypes.h"
+#include "RenderAPI.h"
+
+using namespace b3d::unity_cuda_interop;
+using namespace b3d::unity_cuda_interop::runtime;
+
+auto PluginHandler::onGraphicsDeviceEvent(const UnityGfxDeviceEventType eventType) -> void
 {
     switch (eventType)
     {
@@ -48,7 +53,7 @@ void PluginHandler::onGraphicsDeviceEvent(UnityGfxDeviceEventType eventType)
 }
 
 // Happens on gfx thread
-void PluginHandler::onRenderEventAndData(int eventID, void* data)
+auto PluginHandler::onRenderEventAndData(const int eventID, void* data) -> void
 {
     if(eventID < renderEventIDOffset_)
     {
@@ -57,19 +62,20 @@ void PluginHandler::onRenderEventAndData(int eventID, void* data)
     assert(eventID >= renderEventIDOffset_);
     if (eventID < renderEventIDOffset_ + renderEventIDCount_)
     {
-        const auto eventType = static_cast<PluginRenderEventTypes>(eventID - renderEventIDOffset_);
+		// ReSharper disable once CppTooWideScope
+		const auto eventType = static_cast<PluginRenderEventTypes>(eventID - renderEventIDOffset_);
         switch (eventType) // NOLINT(clang-diagnostic-switch-enum)
         {
-        case(PluginRenderEventTypes::RTE_INITIALIZE):
+        case PluginRenderEventTypes::rteInitialize:
             renderAPI_->initialize();
             break;
-        case(PluginRenderEventTypes::RTE_TEARDOWN):
+        case PluginRenderEventTypes::rteTeardown:
             tearDown();
             break;
-        case(PluginRenderEventTypes::ACTION_REGISTER):
+        case PluginRenderEventTypes::actionRegister:
             registerAction(static_cast<Action*>(data));
             break;
-        case(PluginRenderEventTypes::ACTION_UNREGISTER):
+        case PluginRenderEventTypes::actionUnregister:
             unregisterAction(static_cast<Action*>(data));
             break;
         default:
@@ -90,7 +96,9 @@ void PluginHandler::onRenderEventAndData(int eventID, void* data)
     
 }
 
-void PluginHandler::registerGraphicsDeviceEvent(IUnityGraphicsDeviceEventCallback graphicsDeviceEventCallback)
+auto PluginHandler::registerGraphicsDeviceEvent(
+	const IUnityGraphicsDeviceEventCallback graphicsDeviceEventCallback) const
+	-> void
 {
     if (unityGraphics_ != nullptr)
     {
@@ -103,7 +111,9 @@ void PluginHandler::registerGraphicsDeviceEvent(IUnityGraphicsDeviceEventCallbac
     }
 }
 
-void PluginHandler::unregisterGraphicsDeviceEvent(IUnityGraphicsDeviceEventCallback graphicsDeviceEventCallback)
+auto PluginHandler::unregisterGraphicsDeviceEvent(
+	const IUnityGraphicsDeviceEventCallback graphicsDeviceEventCallback) const
+	-> void
 {
     if (unityGraphics_ != nullptr)
     {
@@ -112,7 +122,7 @@ void PluginHandler::unregisterGraphicsDeviceEvent(IUnityGraphicsDeviceEventCallb
 }
 
 // Happens on gfx thread
-void PluginHandler::registerAction(Action* action)
+auto PluginHandler::registerAction(Action* action) -> void
 {
     // Check if RTE is running or not
     if(std::ranges::find(registeredActions_, action) != registeredActions_.end())
@@ -127,9 +137,10 @@ void PluginHandler::registerAction(Action* action)
 }
 
 // Happens on gfx thread
-void PluginHandler::unregisterAction(Action* action)
+auto PluginHandler::unregisterAction(Action* action) -> void
 {
-    auto [removeBegin, removeEnd] = std::ranges::remove(registeredActions_, action);
+	// ReSharper disable once CppTooWideScopeInitStatement
+	auto [removeBegin, removeEnd] = std::ranges::remove(registeredActions_, action);
     if (removeBegin != registeredActions_.end() && *removeBegin != nullptr)
     {
         (*removeBegin)->runtimeTearDown();
@@ -138,7 +149,7 @@ void PluginHandler::unregisterAction(Action* action)
 }
 
 // Happens on gfx thread
-void PluginHandler::tearDown()
+auto PluginHandler::tearDown() -> void
 {
     for (const auto nativeAction : registeredActions_)
     {
@@ -147,11 +158,11 @@ void PluginHandler::tearDown()
     registeredActions_.clear();
 }
 
-PluginHandler::PluginHandler() : renderEventIDCount_(static_cast<int>(PluginRenderEventTypes::ActionRenderEventTypes_MAX))
+PluginHandler::PluginHandler() : renderEventIDCount_(static_cast<int>(PluginRenderEventTypes::actionRenderEventTypesMax))
 {
 }
 
-void PluginHandler::unityPluginLoad(IUnityInterfaces* unityInterfaces)
+auto PluginHandler::unityPluginLoad(IUnityInterfaces* unityInterfaces) -> void
 {
     if (unityInterfaces_ != nullptr)
     {
@@ -180,7 +191,7 @@ void PluginHandler::unityPluginLoad(IUnityInterfaces* unityInterfaces)
     unityGraphics_ = unityInterfaces_->Get<IUnityGraphics>();
 }
 
-void PluginHandler::unityPluginUnload()
+auto PluginHandler::unityPluginUnload() -> void
 {
     if (unityInterfaces_ == nullptr)
     {

@@ -4,17 +4,24 @@
 
 struct ID3D11Texture2D;
 
-class TextureD3D11 final : public Texture
+namespace b3d::unity_cuda_interop 
 {
-public:
-	TextureD3D11(void* unityNativeTexturePointer);
+	class Texture;
+}
 
-	~TextureD3D11() override;
+namespace b3d::unity_cuda_interop::runtime
+{
+	class TextureD3D11 final : public Texture
+	{
+	public:
+		TextureD3D11(void* unityNativeTexturePointer);
 
-	void registerCUDA() override;
-	
-protected:
+		~TextureD3D11() override;
 
-private:
-	ID3D11Texture2D* d3d11GraphicsResource_{ nullptr };
-};
+		auto registerCUDA() -> void override;
+		
+
+	private:
+		ID3D11Texture2D* d3d11GraphicsResource_{ nullptr };
+	};
+} // namespace b3d::unity_cuda_interop::runtime
