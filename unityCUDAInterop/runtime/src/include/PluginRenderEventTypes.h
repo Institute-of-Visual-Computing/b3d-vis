@@ -1,11 +1,14 @@
 #pragma once
 
-enum class PluginRenderEventTypes :int
+namespace b3d::unity_cuda_interop::runtime
 {
-	RTE_INITIALIZE = 0,
-	RTE_TEARDOWN,
-	ACTION_REGISTER,
-	ACTION_UNREGISTER,
+	enum class PluginRenderEventTypes : int
+	{
+		rteInitialize = 0,
+		rteTeardown,
+		actionRegister,
+		actionUnregister,
 
-	ActionRenderEventTypes_MAX
-};
+		actionRenderEventTypesMax
+	};
+} // namespace b3d::unity_cuda_interop::runtime

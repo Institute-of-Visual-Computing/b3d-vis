@@ -2,46 +2,74 @@
 
 #include "cuda_runtime.h"
 
-class RenderAPI;
+namespace b3d::unity_cuda_interop::runtime
+{
+	class RenderAPI;
+}
+
+// ReSharper disable once CppInconsistentNaming
 struct cudaGraphicsResource;
 
-class Texture
+namespace b3d::unity_cuda_interop
 {
-public:
-	Texture() = delete;
-
-	virtual ~Texture()
+	class Texture
 	{
-		if(cudaGraphicsResource_ != nullptr)
+	public:
+		Texture() = delete;
+
+		virtual ~Texture()
 		{
-			cudaGraphicsResource_ = nullptr;
+			if (cudaGraphicsResource_ != nullptr)
+			{
+				cudaGraphicsResource_ = nullptr;
+			}
+			unityNativeTexturePointer_ = nullptr;
+			isValid_ = false;
 		}
-		unityNativeTexturePointer_ = nullptr;
-		isValid_ = false;
-	}
 
-	int getWidth() const { return width_;  }
-	int getHeight() const { return height_;  }
-	int getDepth() const { return depth_;  }
-	bool isValid() const { return isValid_; }
+		auto getWidth() const -> int
+		{
+			return width_;
+		}
+		auto getHeight() const -> int
+		{
+			return height_;
+		}
+		auto getDepth() const -> int
+		{
+			return depth_;
+		}
+		auto isValid() const -> bool
+		{
+			return isValid_;
+		}
 
-	virtual void registerCUDA() = 0;
-	virtual void unregisterCUDA();
+		virtual auto registerCUDA() -> void = 0;
+		virtual auto unregisterCUDA() -> void;
 
-	void* getUnityNativeTexturePointer() const { return unityNativeTexturePointer_; }
-	cudaGraphicsResource_t getCudaGraphicsResource() const { return cudaGraphicsResource_; }
+		auto getUnityNativeTexturePointer() const -> void*
+		{
+			return unityNativeTexturePointer_;
+		}
+		auto getCudaGraphicsResource() const -> cudaGraphicsResource_t
+		{
+			return cudaGraphicsResource_;
+		}
 
-private:
-	void *unityNativeTexturePointer_{ nullptr };
+	private:
+		void* unityNativeTexturePointer_{ nullptr };
 
-protected:
-	Texture(void* unityNativeTexturePointer) : unityNativeTexturePointer_(unityNativeTexturePointer) {}
+	protected:
+		Texture(void* unityNativeTexturePointer) : unityNativeTexturePointer_(unityNativeTexturePointer)
+		{
+		}
 
-	int width_{ 0 };
-	int height_{ 0 };
-	int depth_{ 0 };
+		int width_{ 0 };
+		int height_{ 0 };
+		int depth_{ 0 };
 
-	bool isValid_{ false };
+		bool isValid_{ false };
 
-	cudaGraphicsResource_t cudaGraphicsResource_{ nullptr };
-};
+		cudaGraphicsResource_t cudaGraphicsResource_{ nullptr };
+	};
+} // namespace b3d::unity_cuda_interop
