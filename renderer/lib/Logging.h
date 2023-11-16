@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace b3d
+namespace b3d::renderer
 {
 	enum class LogLevel
 	{

@@ -1,11 +1,12 @@
 #pragma once
 #include <RendererBase.h>
 
-namespace b3d
+namespace b3d::renderer
 {
-	class NullRenderer final : RendererBase
+	class NullRenderer final : public RendererBase
 	{
-		auto onRender(const b3d::View& view) -> void override;
+	protected:
+		auto onRender(const View& view) -> void override;
 		auto onInitialize() -> void override;
 		auto onDeinitialize() -> void override;
 		auto onGui() -> void override;

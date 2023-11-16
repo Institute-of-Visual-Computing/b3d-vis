@@ -1,17 +1,19 @@
 #include "Logging.h"
 #include <iostream>
 
-auto b3d::log(const std::string& message, const LogLevel level) -> void
+using namespace b3d::renderer;
+
+auto b3d::renderer::log(const std::string& message, const LogLevel level) -> void
 {
 	switch (level)
 	{
-	case b3d::LogLevel::info:
+	case LogLevel::info:
 		std::cout << "[INFO]: ";
 		break;
-	case b3d::LogLevel::warning:
+	case LogLevel::warning:
 		std::cout << "[WARNING]: ";
 		break;
-	case b3d::LogLevel::error:
+	case LogLevel::error:
 		std::cout << "[ERROR]: ";
 		break;
 	}

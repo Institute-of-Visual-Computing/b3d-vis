@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-namespace b3d
+namespace b3d::renderer
 {
 	struct Camera
 	{
@@ -15,6 +15,7 @@ namespace b3d
 		owl::vec3f up;
 		float cosFoV;
 	};
+
 	struct View
 	{
 		Camera camera1;
@@ -54,4 +55,4 @@ namespace b3d
 		registry.push_back({ std::make_shared<T>(), name });
 	}
 
-} // namespace b3d
+} // namespace b3d::renderer

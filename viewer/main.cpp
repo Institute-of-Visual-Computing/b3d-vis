@@ -73,14 +73,14 @@ private:
 			currentRenderer_->deinitialize();
 		}
 
-		assert(index < b3d::registry.size());
+		assert(index < b3d::renderer::registry.size());
 		selectedRendererIndex_ = index;
-		currentRenderer_ = b3d::registry[selectedRendererIndex_].rendererInstance;
+		currentRenderer_ = b3d::renderer::registry[selectedRendererIndex_].rendererInstance;
 
 		currentRenderer_->initialize();
 	}
 
-	std::shared_ptr<b3d::RendererBase> currentRenderer_{ nullptr };
+	std::shared_ptr<b3d::renderer::RendererBase> currentRenderer_{ nullptr };
 	std::int32_t selectedRendererIndex_{ -1 };
 	std::int32_t newSelectedRendererIndex_{ -1 };
 	std::vector<std::string> registeredRendererNames_{};
@@ -358,16 +358,16 @@ Viewer::Viewer(const std::string& title, const int initWindowWidth, const int in
 	selectRenderer(0);
 	newSelectedRendererIndex_ = selectedRendererIndex_;
 
-	for (auto i = 0; i < b3d::registry.size(); i++)
+	for (auto i = 0; i < b3d::renderer::registry.size(); i++)
 	{
-		registeredRendererNames_.push_back(b3d::registry[i].name);
+		registeredRendererNames_.push_back(b3d::renderer::registry[i].name);
 	}
 }
 
 auto Viewer::render() -> void
 {
 
-	const auto view = b3d::View{ .camera1 = b3d::Camera{
+	const auto view = b3d::renderer::View{ .camera1 = b3d::renderer::Camera{
 									 .origin = camera.getFrom(),
 									 .at = camera.getAt(),
 									 .up = camera.getUp(),
@@ -380,11 +380,11 @@ auto Viewer::render() -> void
 auto main(int argc, char** argv) -> int
 {
 
-	b3d::registerRenderer<b3d::NullRenderer>("nullRenderer");
-	b3d::registerRenderer<b3d::FastVoxelTraversalRenderer>("FastVoxelTraversalRenderer");
+	b3d::renderer::registerRenderer<b3d::renderer::NullRenderer>("nullRenderer");
+	b3d::renderer::registerRenderer<b3d::renderer::FastVoxelTraversalRenderer>("FastVoxelTraversalRenderer");
 
 
-	std::cout << b3d::registry.front().name << std::endl;
+	std::cout << b3d::renderer::registry.front().name << std::endl;
 	using namespace std::string_literals;
 	Viewer viewer("Default Viewer"s);
 

@@ -1,9 +1,9 @@
 #include "RendererBase.h"
 #include <vector>
 
-using namespace b3d;
+using namespace b3d::renderer;
 
-std::vector<RendererRegistryEntry> b3d::registry;
+std::vector<RendererRegistryEntry> b3d::renderer::registry;
 
 auto RendererBase::initialize() -> void
 {

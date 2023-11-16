@@ -1,23 +1,23 @@
 #include "FastVoxelTraversalRenderer.h"
 #include "Logging.h"
 
-using namespace b3d;
+using namespace b3d::renderer;
 
-void b3d::FastVoxelTraversalRenderer::onRender(const b3d::View& view)
+auto FastVoxelTraversalRenderer::onRender(const View& view) -> void
 {
 }
 
-void b3d::FastVoxelTraversalRenderer::onInitialize()
+auto FastVoxelTraversalRenderer::onInitialize() -> void
 {
 	log("[FastVoxelTraversalRenderer] onInitialize!");
 }
 
-void b3d::FastVoxelTraversalRenderer::onDeinitialize()
+auto FastVoxelTraversalRenderer::onDeinitialize() -> void
 {
 	log("[FastVoxelTraversalRenderer] onDeinitialize!");
 }
 
-void b3d::FastVoxelTraversalRenderer::onGui()
+auto FastVoxelTraversalRenderer::onGui() -> void
 {
 	log("[FastVoxelTraversalRenderer] onGui!");
 }
