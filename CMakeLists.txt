@@ -5,6 +5,7 @@ project(b3d_visualisation
     LANGUAGES CXX CUDA
 )
 
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 #it a hack, otherwise it will be included by owl package with wrong settings
 find_package(glfw3 CONFIG REQUIRED)

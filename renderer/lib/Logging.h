@@ -2,7 +2,7 @@
 
 #include <string>
 
-namespace b3d
+namespace b3d::renderer
 {
 	enum class LogLevel
 	{
@@ -11,5 +11,5 @@ namespace b3d
 		error
 	};
 
-	void log(const std::string& message, LogLevel level = LogLevel::info);
-}
+	auto log(const std::string& message, LogLevel level = LogLevel::info) -> void;
+} // namespace b3d

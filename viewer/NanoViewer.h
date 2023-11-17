@@ -1,25 +1,24 @@
 #pragma once
 #include <owlViewer/OWLViewer.h>
 
-struct NanoViewer : public owl::viewer::OWLViewer
+class NanoViewer : public owl::viewer::OWLViewer
 {
-	NanoViewer(const std::string& title = "Sample Viewer", const int initWindowWidth = 1980,
-	           const int initWindowHeight = 1080)
-	    : owl::viewer::OWLViewer(title, owl::vec2i(initWindowWidth, initWindowHeight))
+public:
+	explicit NanoViewer(const std::string& title = "Sample Viewer", const int initWindowWidth = 1980,
+						const int initWindowHeight = 1080)
+		: owl::viewer::OWLViewer(title, owl::vec2i(initWindowWidth, initWindowHeight))
 	{
 	}
-	virtual ~NanoViewer(){};
-	virtual void gui();
-	virtual void onFrameBegin()
-	{
-	}
-	virtual void onFrameEnd()
-	{
-	}
-	void showAndRunWithGui();
-	void showAndRunWithGui(std::function<bool()> keepgoing);
+	auto showAndRunWithGui() -> void;
+	auto showAndRunWithGui(const std::function<bool()>& keepgoing) -> void;
 
-  private:
-	void initializeGui();
-	void deinitializeGui();
+protected:
+	virtual ~NanoViewer(){};
+	virtual auto gui() -> void;
+	virtual auto onFrameBegin() -> void
+	{
+	}
+	virtual auto onFrameEnd() -> void
+	{
+	}
 };

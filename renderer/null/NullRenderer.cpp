@@ -1,23 +1,24 @@
 #include "NullRenderer.h"
 #include <Logging.h>
-using namespace b3d;
 
-void b3d::NullRenderer::onRender(const b3d::View& view)
+using namespace b3d::renderer;
+
+auto NullRenderer::onRender(const View& view) -> void
 {
 	log("[NullRenderer] onRender!");
 }
 
-void b3d::NullRenderer::onInitialize()
+auto NullRenderer::onInitialize() -> void
 {
 	log("[NullRenderer] onInitialize!");
 }
 
-void b3d::NullRenderer::onDeinitialize()
+auto NullRenderer::onDeinitialize() -> void
 {
 	log("[NullRenderer] onDeinitialize!");
 }
 
-void b3d::NullRenderer::onGui()
+auto NullRenderer::onGui() -> void
 {
 	log("[NullRenderer] onGui!");
 }

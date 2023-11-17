@@ -3,7 +3,9 @@
 #include <cassert>
 #include <cstring>
 
-void Texture::unregisterCUDA()
+using namespace b3d::unity_cuda_interop;
+
+auto Texture::unregisterCUDA() -> void
 {
 	assert(cudaGraphicsResource_ != nullptr);
 	cudaGraphicsUnregisterResource(cudaGraphicsResource_);

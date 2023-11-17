@@ -6,17 +6,17 @@ using namespace owl::viewer;
 
 namespace
 {
-	void reshape(GLFWwindow* window, int width, int height)
+	auto reshape(GLFWwindow* window, const int width, const int height) -> void
 	{
 		auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
 		assert(gw);
 		gw->resize(vec2i(width, height));
 	}
 
-	void keyboardKey(GLFWwindow* window, unsigned int key)
+	auto keyboardKey(GLFWwindow* window, const unsigned int key) -> void
 	{
 		auto& io = ImGui::GetIO();
-		if(io.WantCaptureKeyboard)
+		if (io.WantCaptureKeyboard)
 		{
 			auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
 			assert(gw);
@@ -24,93 +24,93 @@ namespace
 		}
 	}
 
-	void keyboardSpecialKey(GLFWwindow* window, int key, int scancode, int action, int mods)
+	auto keyboardSpecialKey(GLFWwindow* window, const int key, [[maybe_unused]] int scancode, const int action,
+							const int mods) -> void
 	{
-		auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
+		const auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
 		assert(gw);
-		if(action == GLFW_PRESS)
+		if (action == GLFW_PRESS)
 		{
 			gw->special(key, mods, gw->getMousePos());
 		}
 	}
 
-	void mouseMotion(GLFWwindow* window, double x, double y)
+	auto mouseMotion(GLFWwindow* window, const double x, const double y) -> void
 	{
-		auto& io = ImGui::GetIO();
-		if(io.WantCaptureMouse)
+		const auto& io = ImGui::GetIO();
+		if (io.WantCaptureMouse)
 		{
-			auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
+			const auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
 			assert(gw);
-			gw->mouseMotion(vec2i((int)x, (int)y));
+			gw->mouseMotion(vec2i(static_cast<int>(x), static_cast<int>(y)));
 		}
 	}
 
-	void mouseButton(GLFWwindow* window, int button, int action, int mods)
+	auto mouseButton(GLFWwindow* window, const int button, const int action, const int mods) -> void
 	{
-		auto& io = ImGui::GetIO();
-		if(io.WantCaptureMouse)
+		const auto& io = ImGui::GetIO();
+		if (io.WantCaptureMouse)
 		{
-			auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
+			const auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
 			assert(gw);
 			gw->mouseButton(button, action, mods);
 		}
 	}
 
 	ImFont* defaultFont;
+
+	auto initializeGui(GLFWwindow* window) -> void
+	{
+		IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+		auto& io = ImGui::GetIO();
+		(void)io;
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad; // Enable Gamepad Controls
+
+		ImGui::StyleColorsDark();
+
+		const auto monitor = glfwGetPrimaryMonitor();
+
+		float scaleX;
+		float scaleY;
+		glfwGetMonitorContentScale(monitor, &scaleX, &scaleY);
+
+		const auto dpiScale = scaleX;
+		constexpr auto baseFontSize = 18.0f;
+
+		ImFontConfig config;
+
+		config.OversampleH = 1;
+		config.OversampleV = 1;
+		config.SizePixels = dpiScale * baseFontSize;
+		defaultFont = io.Fonts->AddFontDefault(&config);
+
+		ImGui_ImplGlfw_InitForOpenGL(window, true);
+		ImGui_ImplOpenGL3_Init();
+	}
+
+	auto deinitializeGui() -> void
+	{
+		ImGui_ImplOpenGL3_Shutdown();
+		ImGui_ImplGlfw_Shutdown();
+		ImGui::DestroyContext();
+	}
 } // namespace
 
-void NanoViewer::gui()
+auto NanoViewer::gui() -> void
 {
-	static bool show_demo_window = true;
+	static auto show_demo_window = true;
 	ImGui::ShowDemoWindow(&show_demo_window);
 }
 
-void NanoViewer::initializeGui()
-{
-	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
-	ImGuiIO& io = ImGui::GetIO();
-	(void)io;
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
-	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
 
-	ImGui::StyleColorsDark();
-
-	auto monitor = glfwGetPrimaryMonitor();
-
-	float scaleX;
-	float scaleY;
-	glfwGetMonitorContentScale(monitor, &scaleX, &scaleY);
-
-	const auto dpiScale = scaleX;
-	float baseFontSize = 18.0f;
-	
-	ImFontConfig config;
-
-	config.OversampleH = 1;
-	config.OversampleV = 1;
-	config.SizePixels = dpiScale * baseFontSize;
-	defaultFont = io.Fonts->AddFontDefault(&config);
-
-	ImGui_ImplGlfw_InitForOpenGL(handle, true);
-	ImGui_ImplOpenGL3_Init();
-}
-
-void NanoViewer::deinitializeGui()
-{
-	ImGui_ImplOpenGL3_Shutdown();
-	ImGui_ImplGlfw_Shutdown();
-
-
-	ImGui::DestroyContext();
-}
-
-void NanoViewer::showAndRunWithGui()
+auto NanoViewer::showAndRunWithGui() -> void
 {
 	showAndRunWithGui([]() { return true; });
 }
 
-void NanoViewer::showAndRunWithGui(std::function<bool()> keepgoing)
+auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> void
 {
 	int width, height;
 	glfwGetFramebufferSize(handle, &width, &height);
@@ -122,13 +122,13 @@ void NanoViewer::showAndRunWithGui(std::function<bool()> keepgoing)
 	glfwSetCharCallback(handle, keyboardKey);
 	glfwSetCursorPosCallback(handle, ::mouseMotion);
 
-	initializeGui();
-	
-	while(!glfwWindowShouldClose(handle) && keepgoing())
+	initializeGui(handle);
+
+	while (!glfwWindowShouldClose(handle) && keepgoing())
 	{
 		onFrameBegin();
 		static double lastCameraUpdate = -1.f;
-		if(camera.lastModified != lastCameraUpdate)
+		if (camera.lastModified != lastCameraUpdate)
 		{
 			cameraChanged();
 			lastCameraUpdate = camera.lastModified;

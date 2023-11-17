@@ -2,13 +2,14 @@
 
 #include <RendererBase.h>
 
-namespace b3d
+namespace b3d::renderer
 {
-	struct FastVoxelTraversalRenderer final : public RendererBase
+	class FastVoxelTraversalRenderer final : public RendererBase
 	{
-		void onRender(const b3d::View& view) override;
-		void onInitialize() override;
-		void onDeinitialize() override;
-		void onGui() override;
+	protected:
+		auto onRender(const View& view) -> void override;
+		auto onInitialize() -> void override;
+		auto onDeinitialize() -> void override;
+		auto onGui() -> void override;
 	};
-} // namespace b3d
+} // namespace b3d::renderer
