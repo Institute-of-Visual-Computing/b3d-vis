@@ -286,8 +286,9 @@ auto Viewer::render() -> void
 
 	const auto view = b3d::renderer::View{ .cameras = { cam, cam },
 										   .mode = b3d::renderer::RenderMode::mono,
-										   .colorRt = cuDisplayTexture,
-										   .minMaxRt = cuDisplayTexture };
+		.colorRt = { cuDisplayTexture, { static_cast<uint32_t>(fbSize.x), static_cast<uint32_t>(fbSize.y), 1 } },
+		.minMaxRt = { cuDisplayTexture, { static_cast<uint32_t>(fbSize.x), static_cast<uint32_t>(fbSize.y), 1 } },
+	};
 
 	glSignalSemaphoreEXT(synchronizationResources_.glSignalSemaphore, 0, nullptr, 0, nullptr, &layout);
 	auto error = glGetError();
