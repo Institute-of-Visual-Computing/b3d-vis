@@ -208,8 +208,8 @@ Viewer::Viewer(const std::string& title, const int initWindowWidth, const int in
 		assert(result.result == vk::Result::eSuccess);
 		synchronizationResources_.waitSemaphoreHandle = result.value;
 	}
-	//TODO: add cuda and gl error checks
-	// TODO: error checks for gl functions
+	// TODO: add cuda and gl error checks
+	//  TODO: error checks for gl functions
 	glGenSemaphoresEXT(1, &synchronizationResources_.glSignalSemaphore);
 	auto error = glGetError();
 	b3d::renderer::log(std::format("{}", error));
@@ -239,28 +239,27 @@ Viewer::Viewer(const std::string& title, const int initWindowWidth, const int in
 		assert(result == cudaError::cudaSuccess);
 	}
 
-	glGenTextures(1, &resources_.colorTexture);
+	/*glGenTextures(1, &resources_.colorTexture);
 	glBindTexture(GL_TEXTURE_2D_ARRAY, resources_.colorTexture);
 	glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_RGBA8, 64, 64, 2);
 
 	glGenTextures(1, &resources_.minMaxTexture);
 	glBindTexture(GL_TEXTURE_2D_ARRAY, resources_.minMaxTexture);
-	glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_RG32F, 64, 64, 2);
+	glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_RG32F, 64, 64, 2);*/
 
-	{
+
+	/*{
 		const auto error = cudaGraphicsGLRegisterImage(&rendererInfo_.colorRt, resources_.colorTexture,
-													   mode_ == b3d::renderer::RenderMode::mono ? GL_TEXTURE_2D : GL_TEXTURE_2D_ARRAY,
-													   cudaGraphicsRegisterFlagsWriteDiscard);
-		assert(error == cudaError::cudaSuccess);
+													   mode_ == b3d::renderer::RenderMode::mono ? GL_TEXTURE_2D :
+	GL_TEXTURE_2D_ARRAY, cudaGraphicsRegisterFlagsWriteDiscard); assert(error == cudaError::cudaSuccess);
 	}
 	{
 		const auto error = cudaGraphicsGLRegisterImage(&rendererInfo_.minMaxRt, resources_.minMaxTexture,
-													   mode_ == b3d::renderer::RenderMode::mono ? GL_TEXTURE_2D : GL_TEXTURE_2D_ARRAY,
-													   cudaGraphicsRegisterFlagsWriteDiscard);
-		assert(error == cudaError::cudaSuccess);
-	}
+													   mode_ == b3d::renderer::RenderMode::mono ? GL_TEXTURE_2D :
+	GL_TEXTURE_2D_ARRAY, cudaGraphicsRegisterFlagsWriteDiscard); assert(error == cudaError::cudaSuccess);
+	}*/
 
-	rendererInfo_.mode = mode_;
+	// rendererInfo_.mode = mode_;
 
 	// NOTE: rendererInfo will be fed into renderer initialization
 
@@ -276,26 +275,30 @@ Viewer::Viewer(const std::string& title, const int initWindowWidth, const int in
 auto Viewer::render() -> void
 {
 
-constexpr auto layout = static_cast<GLuint>(GL_LAYOUT_GENERAL_EXT);
-	
-	const auto view = b3d::renderer::View{ .camera1 = b3d::renderer::Camera{
-											   .origin = camera.getFrom(),
-											   .at = camera.getAt(),
-											   .up = camera.getUp(),
-											   .cosFoV = camera.getCosFovy(),
-										   } };
-	
+	constexpr auto layout = static_cast<GLuint>(GL_LAYOUT_GENERAL_EXT);
+
+	const auto cam = b3d::renderer::Camera{
+		.origin = camera.getFrom(),
+		.at = camera.getAt(),
+		.up = camera.getUp(),
+		.cosFoV = camera.getCosFovy(),
+	};
+
+	const auto view = b3d::renderer::View{ .cameras = { cam, cam },
+										   .mode = b3d::renderer::RenderMode::mono,
+										   .colorRt = cuDisplayTexture,
+										   .minMaxRt = cuDisplayTexture };
+
 	glSignalSemaphoreEXT(synchronizationResources_.glSignalSemaphore, 0, nullptr, 0, nullptr, &layout);
 	auto error = glGetError();
 	b3d::renderer::log(std::format("{}", error));
 
 
-
 	currentRenderer_->render(view);
 
-	
 
-	//NOTE: this function call return error, when the semaphore wasn't used before (or it could be in the wrong initial state)
+	// NOTE: this function call return error, when the semaphore wasn't used before (or it could be in the wrong initial
+	// state)
 	glWaitSemaphoreEXT(synchronizationResources_.glWaitSemaphore, 0, nullptr, 0, nullptr, nullptr);
 	error = glGetError();
 

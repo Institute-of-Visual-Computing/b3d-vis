@@ -3,6 +3,7 @@
 #include <memory>
 #include <owl/common.h>
 
+#include <array>
 #include <string>
 #include <vector>
 #include "cuda_runtime.h"
@@ -17,29 +18,39 @@ namespace b3d::renderer
 		float cosFoV;
 	};
 
-	struct View
+	struct Extent
 	{
-		Camera camera1;
+		uint32_t width;
+		uint32_t height;
+		uint32_t depth;
+	};
+	struct ExternalRenderTarget
+	{
+		cudaGraphicsResource_t target;
+		Extent extent;
 	};
 
-	enum class RenderMode
-{
-	mono,
-	stereo
-};
+	enum class RenderMode : int
+	{
+		mono = 0,
+		stereo
+	};
 
-struct RendererInitializationInfo
-{
-	// on stereo we expect that those resources are of a array type in native API
-	cudaGraphicsResource_t colorRt;
-	cudaGraphicsResource_t minMaxRt;
-	RenderMode mode{ RenderMode::mono };
+	struct View
+	{
+		std::array<Camera, 2> cameras;
+		RenderMode mode;
+		ExternalRenderTarget colorRt;
+		ExternalRenderTarget minMaxRt;
+	};
 
-	cudaExternalSemaphore_t waitSemaphore;
-	cudaExternalSemaphore_t signalSemaphore;
 
-	cudaUUID_t deviceUuid;
-};
+	struct RendererInitializationInfo
+	{
+		cudaExternalSemaphore_t waitSemaphore;
+		cudaExternalSemaphore_t signalSemaphore;
+		cudaUUID_t deviceUuid;
+	};
 
 	class RendererBase
 	{

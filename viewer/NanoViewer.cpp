@@ -104,7 +104,7 @@ namespace
 
 auto NanoViewer::draw1() -> void
 {
-      resourceSharingSuccessful = false;
+      //resourceSharingSuccessful = false;
       if (resourceSharingSuccessful) {
         OWL_CUDA_CHECK(cudaGraphicsMapResources(1, &cuDisplayTexture));
 
