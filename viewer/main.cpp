@@ -1,9 +1,16 @@
 #include "App.h"
 
-auto main(int argc, char** argv) -> int
+auto main(const int argc, char** argv) -> int
 {
-	std::vector<Param> params;
+	auto params = std::vector<Param>(argc);
+	for (auto i = 0; i < argc; i++)
+	{
+		params[i].value = argv[i];
+	}
 
 	Application app;
-	app.run(params);
+	app.initialization(params);
+	app.run();
+
+	return EXIT_SUCCESS;
 }
