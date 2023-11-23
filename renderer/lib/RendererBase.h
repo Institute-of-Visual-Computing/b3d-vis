@@ -5,6 +5,7 @@
 
 #include <string>
 #include <vector>
+#include "cuda_runtime.h"
 
 namespace b3d::renderer
 {
@@ -21,12 +22,31 @@ namespace b3d::renderer
 		Camera camera1;
 	};
 
+	enum class RenderMode
+{
+	mono,
+	stereo
+};
+
+struct RendererInitializationInfo
+{
+	// on stereo we expect that those resources are of a array type in native API
+	cudaGraphicsResource_t colorRt;
+	cudaGraphicsResource_t minMaxRt;
+	RenderMode mode{ RenderMode::mono };
+
+	cudaExternalSemaphore_t waitSemaphore;
+	cudaExternalSemaphore_t signalSemaphore;
+
+	cudaUUID_t deviceUuid;
+};
+
 	class RendererBase
 	{
 	public:
 		virtual ~RendererBase() = default;
 
-		auto initialize() -> void;
+		auto initialize(const RendererInitializationInfo& initializationInfo) -> void;
 		auto deinitialize() -> void;
 		auto gui() -> void;
 		auto render(const View& view) -> void;
@@ -37,6 +57,8 @@ namespace b3d::renderer
 
 		virtual auto onGui() -> void{};
 		virtual auto onRender(const View& view) -> void = 0;
+
+		RendererInitializationInfo initializationInfo_{};
 	};
 
 	auto addRenderer(std::shared_ptr<RendererBase> renderer, const std::string& name) -> void;

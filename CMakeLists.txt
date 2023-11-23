@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.26)
 
 project(b3d_visualisation
     VERSION 0.1
-    LANGUAGES CXX CUDA
+    LANGUAGES CXX C CUDA
 )
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
