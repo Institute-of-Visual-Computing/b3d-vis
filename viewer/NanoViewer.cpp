@@ -106,6 +106,7 @@ auto NanoViewer::draw1() -> void
 {
       //resourceSharingSuccessful = false;
       if (resourceSharingSuccessful) {
+		/* 
         OWL_CUDA_CHECK(cudaGraphicsMapResources(1, &cuDisplayTexture));
 
         cudaArray_t array;
@@ -119,7 +120,9 @@ auto NanoViewer::draw1() -> void
                               fbSize.x * sizeof(uint32_t),
                               fbSize.y,
                               cudaMemcpyDeviceToDevice);
+
         }
+        */
       } else {
         glBindTexture(GL_TEXTURE_2D, fbTexture);
         glEnable(GL_TEXTURE_2D);
@@ -164,7 +167,7 @@ auto NanoViewer::draw1() -> void
       }
       glEnd();
       if (resourceSharingSuccessful) {
-        OWL_CUDA_CHECK(cudaGraphicsUnmapResources(1, &cuDisplayTexture));
+        // OWL_CUDA_CHECK(cudaGraphicsUnmapResources(1, &cuDisplayTexture));
       }
     }
 
