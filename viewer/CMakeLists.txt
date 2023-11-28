@@ -27,6 +27,7 @@ target_link_libraries(viewer
 	B3D::Renderer::Library
 	B3D::Renderer::Null
 	B3D::Renderer::CudaSurfaceObjectWriteTest
+	B3D::Renderer::Nano
 	OpenGL::GL
 	glad::glad
 	Vulkan::Vulkan

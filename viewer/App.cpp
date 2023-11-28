@@ -2,6 +2,7 @@
 
 // #include "FastVoxelTraversalRenderer.h"
 #include "CudaSurfaceObjectWriteTestRenderer.h"
+#include "NanoRenderer.h"
 #include "NullRenderer.h"
 #include "Viewer.h"
 
@@ -12,6 +13,7 @@ auto Application::run() -> void
 	registerRenderer<NullRenderer>("nullRenderer");
 	// registerRenderer<FastVoxelTraversalRenderer>("FastVoxelTraversalRenderer");
 	registerRenderer<CudaSurfaceObjectWriteTestRenderer>("CudaSurfaceObjectWriteTestRenderer");
+	registerRenderer<NanoRenderer>("NanoRenderer");
 
 	std::cout << registry.front().name << std::endl;
 	using namespace std::string_literals;
