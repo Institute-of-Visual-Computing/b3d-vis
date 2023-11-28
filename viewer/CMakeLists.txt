@@ -26,7 +26,7 @@ target_link_libraries(viewer
 	imgui::imgui
 	B3D::Renderer::Library
 	B3D::Renderer::Null
-	B3D::Renderer::FastVoxelTraversal
+	B3D::Renderer::CudaSurfaceObjectWriteTest
 	OpenGL::GL
 	glad::glad
 	Vulkan::Vulkan

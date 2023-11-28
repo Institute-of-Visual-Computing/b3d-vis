@@ -29,6 +29,7 @@
 			"features": [ "extensions" ]
 		},
 		"vulkan",
-		"vulkan-headers"
+		"vulkan-headers",
+		"stb"
 	]
 }

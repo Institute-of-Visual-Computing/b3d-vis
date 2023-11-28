@@ -1,6 +1,7 @@
 #include "App.h"
 
-#include "FastVoxelTraversalRenderer.h"
+// #include "FastVoxelTraversalRenderer.h"
+#include "CudaSurfaceObjectWriteTestRenderer.h"
 #include "NullRenderer.h"
 #include "Viewer.h"
 
@@ -9,8 +10,8 @@ using namespace b3d::renderer;;
 auto Application::run() -> void
 {
 	registerRenderer<NullRenderer>("nullRenderer");
-	registerRenderer<FastVoxelTraversalRenderer>("FastVoxelTraversalRenderer");
-
+	// registerRenderer<FastVoxelTraversalRenderer>("FastVoxelTraversalRenderer");
+	registerRenderer<CudaSurfaceObjectWriteTestRenderer>("CudaSurfaceObjectWriteTestRenderer");
 
 	std::cout << registry.front().name << std::endl;
 	using namespace std::string_literals;
