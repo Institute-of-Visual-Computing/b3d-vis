@@ -21,4 +21,7 @@ protected:
 	virtual auto onFrameEnd() -> void
 	{
 	}
+
+private:
+	auto draw1() -> void;
 };

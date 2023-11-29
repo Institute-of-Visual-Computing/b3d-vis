@@ -1,13 +1,13 @@
-#include "NullRenderer.h"
+#include "NanoRenderer.h"
 #include <Logging.h>
 #include "cuda_runtime.h"
 
 using namespace b3d::renderer;
 
 
-auto NullRenderer::onRender(const View& view) -> void
+auto NanoRenderer::onRender(const View& view) -> void
 {
-	log("[NullRenderer] onRender!");
+	
 	auto waitParams = cudaExternalSemaphoreWaitParams{ };
 	waitParams.flags = 0;
     waitParams.params.fence.value = 0;
@@ -19,17 +19,17 @@ auto NullRenderer::onRender(const View& view) -> void
 	cudaSignalExternalSemaphoresAsync(&initializationInfo_.waitSemaphore, &signalParams, 1);
 }
 
-auto NullRenderer::onInitialize() -> void
+auto NanoRenderer::onInitialize() -> void
 {
-	log("[NullRenderer] onInitialize!");
+	log("[NanoRenderer] onInitialize!");
 }
 
-auto NullRenderer::onDeinitialize() -> void
+auto NanoRenderer::onDeinitialize() -> void
 {
-	log("[NullRenderer] onDeinitialize!");
+	log("[NanoRenderer] onDeinitialize!");
 }
 
-auto NullRenderer::onGui() -> void
+auto NanoRenderer::onGui() -> void
 {
-	log("[NullRenderer] onGui!");
+	
 }

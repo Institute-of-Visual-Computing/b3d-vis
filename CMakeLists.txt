@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.26)
 
 project(b3d_visualisation
     VERSION 0.1
-    LANGUAGES CXX CUDA
+    LANGUAGES CXX C CUDA
 )
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
@@ -17,6 +17,44 @@ OPTION(OWL_BUILD_SAMPLES OFF)
 add_subdirectory(${owl_dir} EXCLUDE_FROM_ALL)
 add_subdirectory(${owl_dir}/samples/common)
 
+
+function(add_b3d_renderer)
+
+	set(options)
+	set(oneValueArgs NAME)
+	set(multiValueArgs SOURCES HEADERS LIBRARIES)
+	cmake_parse_arguments(TARGET "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+
+	if(NOT TARGET_NAME)
+		message(FATAL_ERROR "NAME must be defined")
+	endif()
+
+	set(MODULE_NAME ${TARGET_NAME})
+	set(SRC ${TARGET_SOURCES})
+
+	add_library(${MODULE_NAME} ${SRC})
+	target_compile_features(${MODULE_NAME} PUBLIC cxx_std_17)
+	target_include_directories(${MODULE_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+	target_link_libraries(${MODULE_NAME}
+		PRIVATE
+			B3D::Renderer::Library
+			"${TARGET_LIBRARIES}"
+	)
+	set_property(TARGET ${MODULE_NAME} PROPERTY CUDA_STANDARD 17)
+
+
+
+	add_library(B3D::Renderer::${MODULE_NAME} ALIAS ${MODULE_NAME})
+
+
+	set_property(TARGET ${MODULE_NAME} PROPERTY FOLDER "Renderer")
+
+endfunction()
+
+
 add_subdirectory(renderer)
 add_subdirectory(viewer)
 add_subdirectory(unityCUDAInterop)
+
+

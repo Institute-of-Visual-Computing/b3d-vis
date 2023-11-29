@@ -3,8 +3,10 @@
 #include <memory>
 #include <owl/common.h>
 
+#include <array>
 #include <string>
 #include <vector>
+#include "cuda_runtime.h"
 
 namespace b3d::renderer
 {
@@ -16,9 +18,38 @@ namespace b3d::renderer
 		float cosFoV;
 	};
 
+	struct Extent
+	{
+		uint32_t width;
+		uint32_t height;
+		uint32_t depth;
+	};
+	struct ExternalRenderTarget
+	{
+		cudaGraphicsResource_t target;
+		Extent extent;
+	};
+
+	enum class RenderMode : int
+	{
+		mono = 0,
+		stereo
+	};
+
 	struct View
 	{
-		Camera camera1;
+		std::array<Camera, 2> cameras;
+		RenderMode mode;
+		ExternalRenderTarget colorRt;
+		ExternalRenderTarget minMaxRt;
+	};
+
+
+	struct RendererInitializationInfo
+	{
+		cudaExternalSemaphore_t waitSemaphore;
+		cudaExternalSemaphore_t signalSemaphore;
+		cudaUUID_t deviceUuid;
 	};
 
 	class RendererBase
@@ -26,7 +57,7 @@ namespace b3d::renderer
 	public:
 		virtual ~RendererBase() = default;
 
-		auto initialize() -> void;
+		auto initialize(const RendererInitializationInfo& initializationInfo) -> void;
 		auto deinitialize() -> void;
 		auto gui() -> void;
 		auto render(const View& view) -> void;
@@ -37,6 +68,8 @@ namespace b3d::renderer
 
 		virtual auto onGui() -> void{};
 		virtual auto onRender(const View& view) -> void = 0;
+
+		RendererInitializationInfo initializationInfo_{};
 	};
 
 	auto addRenderer(std::shared_ptr<RendererBase> renderer, const std::string& name) -> void;
