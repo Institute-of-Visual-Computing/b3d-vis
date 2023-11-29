@@ -4,7 +4,8 @@ project(b3d_visualisation
     VERSION 0.1
     LANGUAGES CXX C CUDA
 )
-
+#set(Boost_NO_WARN_NEW_VERSIONS 1)
+#set(VCPKG_LOAD_VCVARS_ENV OFF)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 #it a hack, otherwise it will be included by owl package with wrong settings
