@@ -39,7 +39,7 @@ namespace
 											   map.mMatF[5], map.mMatF[6], map.mMatF[7], map.mMatF[8] };
 
 		{
-			const auto box = gridVolume.gridMetaData()->worldBBox();
+			const auto& box = gridVolume.gridMetaData()->worldBBox();
 			const auto min = owl::vec3f{ static_cast<float>(box.min()[0]), static_cast<float>(box.min()[1]),
 										 static_cast<float>(box.min()[2]) };
 			const auto max = owl::vec3f{ static_cast<float>(box.max()[0]), static_cast<float>(box.max()[1]),

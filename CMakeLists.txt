@@ -23,7 +23,7 @@ function(add_b3d_renderer)
 
 	set(options)
 	set(oneValueArgs NAME)
-	set(multiValueArgs SOURCES HEADERS LIBRARIES)
+	set(multiValueArgs SOURCES HEADERS LIBRARIES SHARED_LIBRARIES)
 	cmake_parse_arguments(TARGET "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
 	if(NOT TARGET_NAME)
@@ -33,7 +33,8 @@ function(add_b3d_renderer)
 	set(MODULE_NAME ${TARGET_NAME})
 	set(SRC ${TARGET_SOURCES})
 
-	add_library(${MODULE_NAME} ${SRC})
+	#TODO: Move static/dynamic to optianal parameter
+	add_library(${MODULE_NAME} STATIC ${SRC} ${HEADERS})
 	target_compile_features(${MODULE_NAME} PUBLIC cxx_std_17)
 	target_include_directories(${MODULE_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
