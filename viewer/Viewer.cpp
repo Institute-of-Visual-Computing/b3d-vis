@@ -292,7 +292,7 @@ auto Viewer::render() -> void
 
 	glSignalSemaphoreEXT(synchronizationResources_.glSignalSemaphore, 0, nullptr, 0, nullptr, &layout);
 	auto error = glGetError();
-	b3d::renderer::log(std::format("{}", error));
+	//b3d::renderer::log(std::format("{}", error));
 
 
 	currentRenderer_->render(view);
@@ -303,5 +303,5 @@ auto Viewer::render() -> void
 	glWaitSemaphoreEXT(synchronizationResources_.glWaitSemaphore, 0, nullptr, 0, nullptr, nullptr);
 	error = glGetError();
 
-	b3d::renderer::log(std::format("{}", error));
+	//b3d::renderer::log(std::format("{}", error));
 }

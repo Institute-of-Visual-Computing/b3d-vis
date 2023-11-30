@@ -1,4 +1,7 @@
 {
+	"vcpkg-configuration": {
+		"overlay-triplets": [ "./triplets" ]
+	},
 	"dependencies": [
 		"args",
 		"glfw3",

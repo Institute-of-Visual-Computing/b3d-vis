@@ -7,6 +7,8 @@ embed_ptx(
     NanoRenderer.cu
 )
 
+find_package(OpenVDB CONFIG REQUIRED COMPONENTS nanovdb)
+
 add_b3d_renderer(
 	NAME
 		Nano
@@ -16,4 +18,5 @@ add_b3d_renderer(
 		NanoRenderer.h
 	LIBRARIES
 		nano-ptx
+		OpenVDB::nanovdb
 )
