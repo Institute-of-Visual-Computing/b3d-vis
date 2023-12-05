@@ -35,6 +35,3 @@ OPTIX_RAYGEN_PROGRAM(rayGeneration)()
 	color.w = 1.0;
 	surf2Dwrite(owl::make_rgba(color),self.frameBufferPtr[0]/* self.outputSurfaceArray[eyeIdx]*/, sizeof(uint32_t) * pixelId.x, pixelId.y);
 }
-
-
-

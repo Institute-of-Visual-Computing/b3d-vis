@@ -120,7 +120,7 @@ namespace
 
 
 		owlGeomTypeSetBoundsProg(volumeType, module, "volumeBounds");
-		owlBuildProgramsDebug(context);
+		owlBuildPrograms(context);
 
 		owlGeomSetPrimCount(geometry, 1);
 
