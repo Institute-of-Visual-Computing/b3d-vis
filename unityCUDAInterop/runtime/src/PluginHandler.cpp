@@ -28,10 +28,15 @@ auto PluginHandler::onGraphicsDeviceEvent(const UnityGfxDeviceEventType eventTyp
             logger_->log("Try to initialize RenderAPI.");
             renderAPI_ = RenderAPI::createRenderAPI(unityGraphics_->GetRenderer(), unityInterfaces_, logger_.get());
             renderEventIDOffset_ = unityGraphics_->ReserveEventIDRange(renderEventIDCount_);
+			logger_->log((("renderEventIDOffset for action is: ") + std::to_string(renderEventIDOffset_)).c_str());
             if(renderAPI_ == nullptr)
             {
                 logger_->log("Could not initialize.");
             }
+			else
+			{
+				logger_->log(("RenderAPI created with renderIDOffset: " + std::to_string(renderEventIDOffset_)).c_str());
+			}
         }
         else
         {
@@ -132,6 +137,7 @@ auto PluginHandler::registerAction(Action* action) -> void
     }
 
     const auto renderEventIDOffset = unityGraphics_->ReserveEventIDRange(action->getRenderEventIDCount());
+	logger_->log((("renderEventIDOffset for action is: ") + std::to_string(renderEventIDOffset)).c_str());
     action->runtimeInitialize(renderEventIDOffset,logger_.get(), renderAPI_.get());
     registeredActions_.push_back(action);
 }

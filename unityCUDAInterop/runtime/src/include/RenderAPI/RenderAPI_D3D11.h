@@ -22,6 +22,18 @@ class RenderAPI_D3D11 final : public RenderAPI
 
 		auto createTexture(void* unityNativeTexturePointer) -> std::unique_ptr<Texture> override;
 
+		auto createSynchronizationPrimitive() -> std::unique_ptr<SyncPrimitive> override;
+
+		auto createRenderingContext() -> std::unique_ptr<RenderingContext> override;
+
+		auto getD3D11Device() const -> ID3D11Device*
+		{
+			return device_;
+		};
+
+protected:
+		auto getCudaDevice() -> void override;
+
 private:
 	IUnityGraphicsD3D11 *unityGraphics_ { nullptr };
 	ID3D11Device *device_ { nullptr };

@@ -1,8 +1,14 @@
 #include <vector>
 
+#include <format>
 #include "Action.h"
 #include "PluginLogger.h"
-#include <format>
+
+#include "d3d11_4.h"
+
+#include "../../../runtime/src/include/RenderAPI/RenderAPI_D3D11.h"
+#include "../../../runtime/src/include/SyncPrimitive/SyncPrimitive_D3D11.h"
+#include "IUnityGraphicsD3D11.h"
 
 using namespace b3d::unity_cuda_interop;
 using namespace b3d::unity_cuda_interop::runtime;
