@@ -10,10 +10,11 @@ using namespace b3d::renderer;;
 
 auto Application::run() -> void
 {
+	registerRenderer<NanoRenderer>("NanoRenderer");
+
 	registerRenderer<NullRenderer>("nullRenderer");
 	// registerRenderer<FastVoxelTraversalRenderer>("FastVoxelTraversalRenderer");
 	registerRenderer<CudaSurfaceObjectWriteTestRenderer>("CudaSurfaceObjectWriteTestRenderer");
-	registerRenderer<NanoRenderer>("NanoRenderer");
 
 	std::cout << registry.front().name << std::endl;
 	using namespace std::string_literals;

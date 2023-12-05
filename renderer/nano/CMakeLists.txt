@@ -1,10 +1,11 @@
 embed_ptx(
-  OUTPUT_TARGET
-    nano-ptx
-  PTX_LINK_LIBRARIES
-    owl::owl
-  SOURCES
-    NanoRenderer.cu
+	OUTPUT_TARGET
+		nano-ptx
+	PTX_LINK_LIBRARIES
+		owl::owl
+	SOURCES
+		NanoRenderer.cu
+	#DEVICE_DEBUG
 )
 
 find_package(OpenVDB CONFIG REQUIRED COMPONENTS nanovdb)
