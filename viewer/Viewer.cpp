@@ -46,6 +46,7 @@ auto Viewer::gui() -> void
 }
 auto Viewer::selectRenderer(const std::uint32_t index) -> void
 {
+	assert(index < b3d::renderer::registry.size());
 	if (selectedRendererIndex_ == index)
 	{
 		return;
@@ -55,7 +56,7 @@ auto Viewer::selectRenderer(const std::uint32_t index) -> void
 		currentRenderer_->deinitialize();
 	}
 
-	assert(index < b3d::renderer::registry.size());
+	
 	selectedRendererIndex_ = index;
 	currentRenderer_ = b3d::renderer::registry[selectedRendererIndex_].rendererInstance;
 
@@ -72,7 +73,7 @@ auto Viewer::cameraChanged() -> void
 {
 }
 
-Viewer::Viewer(const std::string& title, const int initWindowWidth, const int initWindowHeight)
+Viewer::Viewer(const std::string& title, const int initWindowWidth, const int initWindowHeight, const int rendererIndex)
 	: NanoViewer(title, initWindowWidth, initWindowHeight)
 {
 	gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
@@ -263,7 +264,7 @@ Viewer::Viewer(const std::string& title, const int initWindowWidth, const int in
 
 	// NOTE: rendererInfo will be fed into renderer initialization
 
-	selectRenderer(0);
+	selectRenderer(rendererIndex);
 	newSelectedRendererIndex_ = selectedRendererIndex_;
 
 	for (auto i = 0; i < b3d::renderer::registry.size(); i++)

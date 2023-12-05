@@ -88,4 +88,18 @@ namespace b3d::renderer
 		registry.push_back({ std::make_shared<T>(), name });
 	}
 
+	inline auto getRendererIndex(const std::string& name) -> int
+	{
+		auto index = -1;
+		for(int i = 0; i < registry.size(); i++ )
+		{
+			if(registry[i].name == name)
+			{
+				index = i;
+				break;
+			}
+		}
+		return index;
+	}
+
 } // namespace b3d::renderer

@@ -25,10 +25,10 @@ class Viewer final : public NanoViewer
 {
 public:
 	explicit Viewer(const std::string& title = "Sample Viewer", int initWindowWidth = 1980,
-					int initWindowHeight = 1080);
+					int initWindowHeight = 1080, const int rendererIndex = 0);
 
 	~Viewer() override;
-
+	
 protected:
 	auto render() -> void override;
 	auto resize(const owl::vec2i& newSize) -> void override;
@@ -39,9 +39,9 @@ protected:
 
 	auto gui() -> void override;
 
+	
 private:
 	auto selectRenderer(const std::uint32_t index) -> void;
-
 	std::shared_ptr<b3d::renderer::RendererBase> currentRenderer_{ nullptr };
 	std::int32_t selectedRendererIndex_{ -1 };
 	std::int32_t newSelectedRendererIndex_{ -1 };
