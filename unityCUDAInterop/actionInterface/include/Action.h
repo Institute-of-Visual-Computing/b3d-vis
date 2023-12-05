@@ -16,17 +16,18 @@ namespace b3d::unity_cuda_interop
 
 		auto renderEventAndData(const int eventID, void* data) -> void
 		{
-			if (eventID - renderEventIDOffset_ == 0)
+			const auto actionRenderId = eventID - renderEventIDOffset_;
+			if (actionRenderId > 1)
 			{
-				initialize(data);
+				customRenderEvent(actionRenderId, data);
 			}
-			else if (eventID - renderEventIDOffset_ == 1)
+			else if (actionRenderId == 1)
 			{
 				teardown();
 			}
 			else
 			{
-				customRenderEvent(eventID, data);
+				initialize(data);
 			}
 		}
 

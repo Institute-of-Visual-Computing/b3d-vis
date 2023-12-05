@@ -1,1 +1,2 @@
 add_subdirectory(actionTest)
+add_subdirectory(actionSyncPrimitiveSample)

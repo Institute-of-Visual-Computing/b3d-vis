@@ -3,6 +3,7 @@
 #include <source_location>
 
 #include "IUnityInterface.h"
+
 struct IUnityLog;
 
 namespace b3d::unity_cuda_interop

@@ -6,7 +6,10 @@ add_library(${MODULE_NAME} SHARED
 	"src/RenderAPI/RenderAPI.cpp"
 	"src/RenderAPI/RenderAPI_D3D11.cpp"
 	"src/PluginLogger.cpp"
-	"src/Texture/Texture_D3D11.cpp" "src/Texture/Texture.cpp")
+	"src/Texture/Texture_D3D11.cpp"
+	"src/Texture/Texture.cpp"
+	"src/SyncPrimitive/SyncPrimitive_D3D11.cpp"
+    "src/RenderingContext/RenderingContext_D3D11.cpp" )
 
 target_include_directories(${MODULE_NAME} 
 	PUBLIC
@@ -33,4 +36,4 @@ set_target_properties(${MODULE_NAME} PROPERTIES CXX_STANDARD 20)
 add_library(B3D::UnityCUDAInterop::Runtime ALIAS ${MODULE_NAME})
 
 set_property(TARGET ${MODULE_NAME} PROPERTY FOLDER "UnityCudaInterop")
-# install(TARGETS ${MODULE_NAME} DESTINATION ${UNITY_PROJECT_ROOT_DIR}/Assets/${UNITY_ASSETS_SUBDIRECTORY_RUNTIME})
+install(TARGETS ${MODULE_NAME} DESTINATION ${UNITY_PROJECT_ROOT_DIR}/Assets/${UNITY_ASSETS_SUBDIRECTORY_RUNTIME})
