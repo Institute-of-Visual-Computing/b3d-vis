@@ -25,7 +25,7 @@ class Viewer final : public NanoViewer
 {
 public:
 	explicit Viewer(const std::string& title = "Sample Viewer", int initWindowWidth = 1980,
-					int initWindowHeight = 1080, const int rendererIndex = 0);
+					int initWindowHeight = 1080, bool enableVsync = false, const int rendererIndex = 0);
 
 	~Viewer() override;
 	

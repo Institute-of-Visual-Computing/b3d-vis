@@ -73,8 +73,8 @@ auto Viewer::cameraChanged() -> void
 {
 }
 
-Viewer::Viewer(const std::string& title, const int initWindowWidth, const int initWindowHeight, const int rendererIndex)
-	: NanoViewer(title, initWindowWidth, initWindowHeight)
+Viewer::Viewer(const std::string& title, const int initWindowWidth, const int initWindowHeight, bool enableVsync, const int rendererIndex)
+	: NanoViewer(title, initWindowWidth, initWindowHeight, enableVsync)
 {
 	gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
 	gladLoadGL();

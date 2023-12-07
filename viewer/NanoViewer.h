@@ -5,8 +5,8 @@ class NanoViewer : public owl::viewer::OWLViewer
 {
 public:
 	explicit NanoViewer(const std::string& title = "Sample Viewer", const int initWindowWidth = 1980,
-						const int initWindowHeight = 1080)
-		: owl::viewer::OWLViewer(title, owl::vec2i(initWindowWidth, initWindowHeight))
+						const int initWindowHeight = 1080, bool enableVsync = false)
+		: owl::viewer::OWLViewer(title, owl::vec2i(initWindowWidth, initWindowHeight), true, enableVsync)
 	{
 	}
 	auto showAndRunWithGui() -> void;
