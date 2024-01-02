@@ -17,7 +17,7 @@ namespace
 	auto keyboardKey(GLFWwindow* window, const unsigned int key) -> void
 	{
 		auto& io = ImGui::GetIO();
-		if (io.WantCaptureKeyboard)
+		if (!io.WantCaptureKeyboard)
 		{
 			auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
 			assert(gw);
@@ -39,7 +39,7 @@ namespace
 	auto mouseMotion(GLFWwindow* window, const double x, const double y) -> void
 	{
 		const auto& io = ImGui::GetIO();
-		if (io.WantCaptureMouse)
+		if (!io.WantCaptureMouse)
 		{
 			const auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
 			assert(gw);
@@ -50,7 +50,7 @@ namespace
 	auto mouseButton(GLFWwindow* window, const int button, const int action, const int mods) -> void
 	{
 		const auto& io = ImGui::GetIO();
-		if (io.WantCaptureMouse)
+		if (!io.WantCaptureMouse)
 		{
 			const auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
 			assert(gw);

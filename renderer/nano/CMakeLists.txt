@@ -1,11 +1,14 @@
 embed_ptx(
-  OUTPUT_TARGET
-    nano-ptx
-  PTX_LINK_LIBRARIES
-    owl::owl
-  SOURCES
-    NanoRenderer.cu
+	OUTPUT_TARGET
+		nano-ptx
+	PTX_LINK_LIBRARIES
+		owl::owl
+	SOURCES
+		NanoRenderer.cu
+	#DEVICE_DEBUG
 )
+
+find_package(OpenVDB CONFIG REQUIRED COMPONENTS nanovdb)
 
 add_b3d_renderer(
 	NAME
@@ -16,4 +19,5 @@ add_b3d_renderer(
 		NanoRenderer.h
 	LIBRARIES
 		nano-ptx
+		OpenVDB::nanovdb
 )
