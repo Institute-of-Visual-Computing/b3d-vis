@@ -46,7 +46,7 @@ namespace
 	{
 		// owlInstanceGroupSetTransform
 		auto volume = NanoVdbVolume{};
-		const auto gridVolume = nanovdb::createLevelSetTorus<float, float>(100.0f, 50.0f);
+		const auto gridVolume = nanovdb::createLevelSetTorus(100.0f, 50.0f);
 		OWL_CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&volume.grid), gridVolume.size()));
 		OWL_CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(volume.grid), gridVolume.data(), gridVolume.size(),
 								  cudaMemcpyHostToDevice));

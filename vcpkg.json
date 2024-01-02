@@ -1,38 +1,43 @@
 {
-	"vcpkg-configuration": {
-		"overlay-triplets": [ "./triplets" ]
-	},
-	"dependencies": [
-		"args",
-		"glfw3",
-		"tinyxml2",
-		"cfitsio",
-		"glew",
-		"glm",
-		{
-			"name": "openvdb",
-			"default-features": false,
-			"features": [
-				"nanovdb",
-				"tools"
-			]
-		},
-		{
-			"name": "imgui",
-			"default-features": false,
-			"features": [
-				"opengl3-binding",
-				"glfw-binding"
-			]
-		},
-		"tbb",
-		"opengl",
-		{
-			"name": "glad",
-			"features": [ "extensions" ]
-		},
-		"vulkan",
-		"vulkan-headers",
-		"stb"
-	]
+  "vcpkg-configuration": {
+    "overlay-triplets": [
+      "./triplets"
+    ]
+  },
+  "dependencies": [
+    "args",
+    "glfw3",
+    "tinyxml2",
+    "cfitsio",
+    "glew",
+    "glm",
+    {
+      "name": "openvdb",
+      "default-features": false,
+      "features": [
+        "nanovdb",
+        "tools"
+      ]
+    },
+    {
+      "name": "imgui",
+      "default-features": false,
+      "features": [
+        "opengl3-binding",
+        "glfw-binding"
+      ]
+    },
+    "tbb",
+    "opengl",
+    {
+      "name": "glad",
+      "features": [
+        "extensions"
+      ]
+    },
+    "vulkan",
+    "vulkan-headers",
+    "stb"
+  ],
+  "builtin-baseline": "83972272512ce4ede5fc3b2ba98f6468b179f192"
 }
