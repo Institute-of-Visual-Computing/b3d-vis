@@ -35,7 +35,10 @@ function(add_b3d_renderer)
 
 	#TODO: Move static/dynamic to optianal parameter
 	add_library(${MODULE_NAME} STATIC ${SRC} ${HEADERS})
-	target_compile_features(${MODULE_NAME} PUBLIC cxx_std_17)
+	target_compile_features(${MODULE_NAME} PUBLIC cxx_std_20)
+	if(MSVC)
+		target_compile_options(${MODULE_NAME} PUBLIC /Zc:__cplusplus)
+	endif()
 	target_include_directories(${MODULE_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 	target_link_libraries(${MODULE_NAME}
@@ -43,15 +46,10 @@ function(add_b3d_renderer)
 			B3D::Renderer::Library
 			"${TARGET_LIBRARIES}"
 	)
-	set_property(TARGET ${MODULE_NAME} PROPERTY CUDA_STANDARD 17)
-
-
+	set_property(TARGET ${MODULE_NAME} PROPERTY CUDA_STANDARD 20)
 
 	add_library(B3D::Renderer::${MODULE_NAME} ALIAS ${MODULE_NAME})
-
-
 	set_property(TARGET ${MODULE_NAME} PROPERTY FOLDER "Renderer")
-
 endfunction()
 
 
