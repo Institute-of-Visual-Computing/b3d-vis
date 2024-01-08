@@ -1,14 +1,12 @@
 #include "App.h"
 
-// #include "FastVoxelTraversalRenderer.h"
 #include "CudaSurfaceObjectWriteTestRenderer.h"
 #include "NanoRenderer.h"
+#include "NanoViewer.h"
 #include "NullRenderer.h"
 #include "SimpleTrianglesRenderer.h"
-#include "Viewer.h"
 
 using namespace b3d::renderer;
-;
 
 namespace
 {
@@ -89,11 +87,13 @@ auto Application::run() -> void
 	}
 	std::cout << registry.front().name << std::endl;
 	using namespace std::string_literals;
-	auto viewer = Viewer{ "Default Viewer"s, 1980, 1080, !disableVsync, rendererIndex };
+	auto viewer = NanoViewer{ "Default Viewer"s, 1980, 1080, !disableVsync, rendererIndex };
 	//viewer.enableFlyMode();
 	viewer.enableInspectMode();
+	viewer.setCameraOrientation(owl::vec3f(1.0,1.0,1.0), owl::vec3f(0.0,0.0,0.0), viewer.camera.getUp(), viewer.camera.getFovyInDegrees());
 	viewer.showAndRunWithGui();
 }
+
 auto Application::initialization(const std::vector<Param>& params) -> void
 {
 	registerRenderer<NullRenderer>("nullRenderer");
