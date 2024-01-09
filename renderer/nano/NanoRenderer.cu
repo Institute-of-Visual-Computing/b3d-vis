@@ -17,8 +17,7 @@ extern "C" __constant__ LaunchParams optixLaunchParams;
 
 struct PerRayData
 {
-	float t1;
-	float result;
+	vec3f color;
 };
 
 inline __device__ void confine(const nanovdb::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& iVec)
@@ -65,6 +64,8 @@ OPTIX_BOUNDS_PROGRAM(volumeBounds)
 {
 	const auto& self = *static_cast<const GeometryData*>(geometryData);
 
+	//box3f f = box3f{vec3f{-1.7,-0.7,-1.7}, vec3f{1.8,0.8,1.8}};
+
 	primitiveBounds = self.volume.worldAabb;
 }
 
@@ -76,17 +77,16 @@ OPTIX_RAYGEN_PROGRAM(rayGeneration)()
 	const auto& camera = self.camera;
 	const auto pixelId = owl::getLaunchIndex();
 
-	const auto screen = (vec2f(pixelId) + vec2f(.5f)) / vec2f(self.frameBufferSize);//*2.0f -1.0f;
+	const auto screen = (vec2f(pixelId) + vec2f(.5f)) / vec2f(self.frameBufferSize)*2.0f -1.0f;
 
 	owl::Ray ray;
 	ray.origin = camera.position;
-	ray.direction = normalize(camera.dir00 + screen.u * camera.dirDu + screen.v * camera.dirDv);
+	ray.direction = normalize(camera.dir00 + screen.x * camera.dirDu + screen.y * camera.dirDv);
 
 	PerRayData prd;
 	owl::traceRay(self.world, ray, prd);
 
-	vec3f color = { 0.2f, 0.1f, 0.0f };
-	color *= prd.result;
+	const auto color = prd.color;
 	/*auto color = vec4f{};
 	color.x = screen.x;
 	color.y = screen.y;
@@ -102,9 +102,9 @@ OPTIX_MISS_PROGRAM(miss)()
 
 	const auto& self = owl::getProgramData<MissProgramData>();
 
-	auto& prd = owl::getPRD<vec3f>();
+	auto& prd = owl::getPRD<PerRayData>();
 	const auto pattern = (pixelId.x / 8) ^ (pixelId.y / 8);
-	prd = (pattern & 1) ? self.color1 : self.color0;
+	prd.color = (pattern & 1) ? self.color1 : self.color0;
 }
 
 OPTIX_CLOSEST_HIT_PROGRAM(nano_closesthit)()
@@ -115,13 +115,12 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closesthit)()
 	const auto& tree = grid->tree();
 	const auto& accessor = tree.getAccessor();
 
-	auto& prd = owl::getPRD<PerRayData>();
 
 	const auto rayOrigin = optixGetWorldRayOrigin();
 	const auto rayDirection = optixGetWorldRayDirection();
 
-	const auto t0 = optixGetRayTmax();
-	const auto t1 = prd.t1;
+	const auto t0 = optixGetRayTmin();
+	const auto t1 = optixGetRayTmax();
 
 	const auto rayWorld = nanovdb::Ray<float>(reinterpret_cast<const nanovdb::Vec3f&>(rayOrigin),
 											  reinterpret_cast<const nanovdb::Vec3f&>(rayDirection));
@@ -155,8 +154,9 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closesthit)()
 		hdda.update(ray, accessor.getDim(ijk, ray));
 	}
 
+	auto& prd = owl::getPRD<PerRayData>();
 
-	prd.result = transmittance;
+	prd.color = vec3f(0.8,0.3,0.2) * transmittance;
 }
 
 OPTIX_INTERSECT_PROGRAM(nano_intersection)()
@@ -176,8 +176,6 @@ OPTIX_INTERSECT_PROGRAM(nano_intersection)()
 
 	if (ray.intersects(bbox, t0, t1))
 	{
-		auto& prd = owl::getPRD<PerRayData>();
-		prd.t1 = t1;
 		optixReportIntersection(fmaxf(t0, optixGetRayTmin()), 0);
 	}
 }

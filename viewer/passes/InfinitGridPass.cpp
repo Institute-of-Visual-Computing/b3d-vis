@@ -24,6 +24,7 @@ InfinitGridPass::InfinitGridPass() : viewProjection_{}
 		"#version 400\n"
 		"in vec2 uv;\n"
 		"in float t;"
+		"uniform vec3 gridColor;"
 		"layout (location = 0) out vec4 outColor;\n"
 		"const float N = 100.0;\n"
 		"float gridTextureGradBox( in vec2 p, in vec2 ddx, in vec2 ddy )\n"
@@ -45,7 +46,7 @@ InfinitGridPass::InfinitGridPass() : viewProjection_{}
 		"    float alpha_l1 = 1.0f-gridTextureGradBox(uv_l1, dFdx( uv_l1 ), dFdy( uv_l1 ));\n"
 		"    float alpha = mix(alpha_l1, alpha_l0, a);\n"
 		"    alpha = mix( alpha_l0, 0.9f, 1.0f-exp( 0.001*t*t ) );\n"
-		"    outColor = vec4(vec3(0.7f,0.80f,0.7f), alpha);\n"
+		"    outColor = vec4(gridColor, alpha);\n"
 		"}\n"s;
 
 	const auto vertexShaderHandle = glCreateShader(GL_VERTEX_SHADER);
@@ -73,6 +74,7 @@ InfinitGridPass::InfinitGridPass() : viewProjection_{}
 	glDeleteShader(fragmentShaderHandle);
 
 	viewProjectionUniformLocation_ = glGetUniformLocation(program_, "viewProjection");
+	gridColorUniformLocation_ = glGetUniformLocation(program_, "gridColor");
 }
 InfinitGridPass::~InfinitGridPass()
 {
@@ -87,12 +89,17 @@ auto InfinitGridPass::execute() const -> void
 	glViewport(0, 0, width_, height_);
 	glUseProgram(program_);
 	glUniformMatrix4fv(viewProjectionUniformLocation_, 1, GL_FALSE, glm::value_ptr(viewProjection_));
+	glUniform3f(gridColorUniformLocation_, gridColor_.x, gridColor_.y, gridColor_.z);
 	glDrawArrays(GL_QUADS, 0, 4);
 	glUseProgram(0);
 	if (lastIsEnabledDepthTest)
 	{
 		glEnable(GL_DEPTH_TEST);
 	}
+}
+auto InfinitGridPass::setGridColor(const glm::vec3& color) -> void
+{
+	gridColor_ = color;
 }
 auto InfinitGridPass::setViewport(const int width, const int height) -> void
 {

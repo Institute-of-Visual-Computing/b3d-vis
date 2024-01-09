@@ -17,6 +17,8 @@
 
 #include "DebugDrawListBase.h"
 
+#include <imgui.h>
+
 extern "C" char NanoRenderer_ptx[];
 
 
@@ -34,10 +36,25 @@ namespace
 		OWLRayGen rayGen;
 		OWLLaunchParams lp;
 
+		OWLMissProg missProgram;
+
 		OWLBuffer surfaceBuffer;
 	};
 
 	NanoContext nanoContext{};
+
+	struct GuiData
+	{
+		struct BackgroundColorPalette
+		{
+			std::array<float, 3> color1{ 0.572f, 0.100f, 0.750f };
+			std::array<float, 3> color2{ 0.0f, 0.3f, 0.3f };
+		};
+		BackgroundColorPalette rtBackgroundColorPalette;
+		float FoV;
+	};
+
+	GuiData guiData{};
 
 	struct NanoVdbVolumeDeleter
 	{
@@ -56,7 +73,7 @@ namespace
 	{
 		// owlInstanceGroupSetTransform
 		auto volume = NanoVdbVolume{};
-		const auto gridVolume = nanovdb::createLevelSetTorus(1.0f, 0.5f, nanovdb::Vec3d(), 0.1);
+		const auto gridVolume = nanovdb::createFogVolumeTorus(2.0f, 1.8);
 		// nanovdb::build::Grid<float>
 		OWL_CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&volume.grid), gridVolume.size()));
 		OWL_CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(volume.grid), gridVolume.data(), gridVolume.size(),
@@ -171,12 +188,12 @@ namespace
 						OWLVarDecl{ "color1", OWL_FLOAT3, OWL_OFFSETOF(MissProgramData, color1) } };
 
 		// ----------- create object  ----------------------------
-		const auto missProgram = owlMissProgCreate(context, module, "miss", sizeof(MissProgramData),
-												   missProgramVars.data(), missProgramVars.size());
+		nanoContext.missProgram = owlMissProgCreate(context, module, "miss", sizeof(MissProgramData),
+													missProgramVars.data(), missProgramVars.size());
 
 		// ----------- set variables  ----------------------------
-		owlMissProgSet3f(missProgram, "color0", owl3f{ .8f, 0.f, 0.f });
-		owlMissProgSet3f(missProgram, "color1", owl3f{ .8f, .8f, .8f });
+		owlMissProgSet3f(nanoContext.missProgram, "color0", owl3f{ .8f, 0.f, 0.f });
+		owlMissProgSet3f(nanoContext.missProgram, "color1", owl3f{ .8f, .8f, .8f });
 
 
 		// owlBuildProgramsDebug(context);
@@ -191,7 +208,6 @@ namespace
 
 auto NanoRenderer::onRender(const View& view) -> void
 {
-
 
 	// const auto& camera = view.cameras.front();
 	// const auto aspect = view.colorRt.extent.width / static_cast<float>(view.colorRt.extent.height);
@@ -210,7 +226,7 @@ auto NanoRenderer::onRender(const View& view) -> void
 
 
 	debugDraw().drawBox(nanoVdbVolume->worldAabb.center(), nanoVdbVolume->worldAabb.size() * 0.5f,
-					   owl::vec3f(0.1f, 0.82f, 0.15f));
+						owl::vec3f(0.1f, 0.82f, 0.15f));
 
 	auto waitParams = cudaExternalSemaphoreWaitParams{};
 	waitParams.flags = 0;
@@ -238,6 +254,15 @@ auto NanoRenderer::onRender(const View& view) -> void
 	owlBufferUpload(nanoContext.surfaceBuffer, cudaSurfaceObjects.data(), 0, 1);
 	owlRayGenSetBuffer(nanoContext.rayGen, "frameBufferPtr", nanoContext.surfaceBuffer);
 
+
+	owlMissProgSet3f(nanoContext.missProgram, "color0",
+					 owl3f{ guiData.rtBackgroundColorPalette.color1[0], guiData.rtBackgroundColorPalette.color1[1],
+							guiData.rtBackgroundColorPalette.color1[2] });
+	owlMissProgSet3f(nanoContext.missProgram, "color1",
+					 owl3f{ guiData.rtBackgroundColorPalette.color2[0], guiData.rtBackgroundColorPalette.color2[1],
+							guiData.rtBackgroundColorPalette.color2[2] });
+
+
 	const auto fbSize =
 		owl2i{ static_cast<int32_t>(view.colorRt.extent.width), static_cast<int32_t>(view.colorRt.extent.height) };
 	owlRayGenSet2i(nanoContext.rayGen, "frameBufferSize", fbSize);
@@ -245,13 +270,15 @@ auto NanoRenderer::onRender(const View& view) -> void
 
 	const auto& camera = view.cameras.front();
 	const auto origin = vec3f{ camera.origin.x, camera.origin.y, camera.origin.z };
-	auto camera_d00 = normalize(camera.at - origin);
+	auto camera_d00 = camera.at - origin;
+	const auto wlen = length(camera_d00);
 	owlRayGenSet3f(nanoContext.rayGen, "camera.position", reinterpret_cast<const owl3f&>(origin));
 	const auto aspect = view.colorRt.extent.width / static_cast<float>(view.colorRt.extent.height);
-	const auto camera_ddu = camera.cosFoV * aspect * normalize(cross(camera_d00, camera.up));
-	const auto camera_ddv = camera.cosFoV * normalize(cross(camera_ddu, camera_d00));
-	camera_d00 -= 0.5f * camera_ddu;
-	camera_d00 -= 0.5f * camera_ddv;
+	const auto vlen = wlen * std::tanf(0.5f * camera.FoV);
+	const auto camera_ddu = vlen * aspect * normalize(cross(camera_d00, camera.up));
+	const auto camera_ddv = vlen * normalize(cross(camera_ddu, camera_d00));
+	/*camera_d00 -= 0.5f * camera_ddu;
+	camera_d00 -= 0.5f * camera_ddv;*/
 	owlRayGenSet3f(nanoContext.rayGen, "camera.dir00", reinterpret_cast<const owl3f&>(camera_d00));
 	owlRayGenSet3f(nanoContext.rayGen, "camera.dirDu", reinterpret_cast<const owl3f&>(camera_ddu));
 	owlRayGenSet3f(nanoContext.rayGen, "camera.dirDv", reinterpret_cast<const owl3f&>(camera_ddv));
@@ -294,4 +321,11 @@ auto NanoRenderer::onDeinitialize() -> void
 
 auto NanoRenderer::onGui() -> void
 {
+	ImGui::Begin("RT Settings");
+	ImGui::SeparatorText("Background Color Palette");
+	ImGui::ColorEdit3("Color 1", guiData.rtBackgroundColorPalette.color1.data());
+	ImGui::ColorEdit3("Color 2", guiData.rtBackgroundColorPalette.color2.data());
+	ImGui::Separator();
+	ImGui::SliderFloat("FoV", &guiData.FoV, 0.0f, 180.0f);
+	ImGui::End();
 }

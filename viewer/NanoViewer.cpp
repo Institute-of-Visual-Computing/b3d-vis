@@ -79,10 +79,11 @@ namespace
 
 		const auto aspect = width / static_cast<float>(height);
 
-		const auto projectionMatrix = glm::perspective(glm::radians(camera.getFovyInDegrees()), aspect, 0.001f, 100.0f);
-		const auto viewMatrix = glm::lookAt(glm::vec3{ camera.position.x, camera.position.y, camera.position.z },
-											glm::vec3{ camera.getAt().x, camera.getAt().y, camera.getAt().z },
-											glm::vec3{ camera.getUp().x, camera.getUp().y, camera.getUp().z });
+		const auto projectionMatrix = glm::perspective(glm::radians(camera.getFovyInDegrees()), aspect, 0.01f, 100.0f);
+		const auto viewMatrix =
+			glm::lookAt(glm::vec3{ camera.position.x, camera.position.y, camera.position.z },
+						glm::normalize(glm::vec3{ camera.getAt().x, camera.getAt().y, camera.getAt().z }),
+						glm::normalize(glm::vec3{ camera.getUp().x, camera.getUp().y, camera.getUp().z }));
 		const auto viewProjection = projectionMatrix * viewMatrix;
 		return viewProjection;
 	}
@@ -137,6 +138,7 @@ namespace
 	struct ViewerSettings
 	{
 		float lineWidth{ 4.0 };
+		std::array<float, 3> gridColor{ 0.95f, 0.9f, 0.92f };
 		bool enableDebugDraw{ true };
 		bool enableGridFloor{ true };
 	};
@@ -203,6 +205,13 @@ auto NanoViewer::gui() -> void
 	}
 
 	ImGui::Checkbox("Enable Grid Floor", &viewerSettings.enableGridFloor);
+
+	if (viewerSettings.enableGridFloor)
+	{
+		ImGui::SeparatorText("Grid Settings");
+		ImGui::ColorEdit3("Color", viewerSettings.gridColor.data());
+	}
+
 	ImGui::Checkbox("Enable Debug Draw", &viewerSettings.enableDebugDraw);
 
 	if (viewerSettings.enableDebugDraw)
@@ -513,6 +522,8 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 		{
 			igPass->setViewProjectionMatrix(viewProjectionMatrix);
 			igPass->setViewport(fbSize.x, fbSize.y);
+			igPass->setGridColor(
+				glm::vec3{ viewerSettings.gridColor[0], viewerSettings.gridColor[1], viewerSettings.gridColor[2] });
 			igPass->execute();
 		}
 
@@ -557,7 +568,7 @@ auto NanoViewer::selectRenderer(const std::uint32_t index) -> void
 	selectedRendererIndex_ = index;
 	currentRenderer_ = b3d::renderer::registry[selectedRendererIndex_].rendererInstance;
 
-	auto debugInfo = b3d::renderer::DebugInitializationInfo{ debugDrawList_ };
+	const auto debugInfo = b3d::renderer::DebugInitializationInfo{ debugDrawList_ };
 
 	currentRenderer_->initialize(rendererInfo_, debugInfo);
 }

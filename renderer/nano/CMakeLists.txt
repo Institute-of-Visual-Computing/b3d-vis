@@ -9,6 +9,7 @@ embed_ptx(
 )
 
 find_package(OpenVDB CONFIG REQUIRED COMPONENTS nanovdb)
+find_package(imgui CONFIG REQUIRED)
 
 add_b3d_renderer(
 	NAME
@@ -20,4 +21,5 @@ add_b3d_renderer(
 	LIBRARIES
 		nano-ptx
 		OpenVDB::nanovdb
+		imgui::imgui
 )
