@@ -6,14 +6,16 @@
 
 #include <nanovdb/util/CudaDeviceBuffer.h>
 #include <nanovdb/util/GridBuilder.h>
-#include <nanovdb/util/OpenToNanoVDB.h>
 #include <nanovdb/util/Primitives.h>
 
 #include <cuda.h>
 
-
 #include "SharedStructs.h"
 #include "owl/owl_host.h"
+
+#include <format>
+
+#include "DebugDrawListBase.h"
 
 extern "C" char NanoRenderer_ptx[];
 
@@ -37,26 +39,36 @@ namespace
 
 	NanoContext nanoContext{};
 
-	auto deleteVolume(NanoVdbVolume& volume) -> void
+	struct NanoVdbVolumeDeleter
 	{
-		OWL_CUDA_CHECK(cudaFree(reinterpret_cast<void*>(volume.grid)));
-	}
+		auto operator()(const NanoVdbVolume* volume) const noexcept -> void
+		{
+			OWL_CUDA_CHECK(cudaFree(reinterpret_cast<void*>(volume->grid)));
+			delete volume;
+		}
+	};
+
+	using unique_volume_ptr = std::unique_ptr<NanoVdbVolume, NanoVdbVolumeDeleter>;
+
+	unique_volume_ptr nanoVdbVolume;
 
 	auto createVolume() -> NanoVdbVolume
 	{
 		// owlInstanceGroupSetTransform
 		auto volume = NanoVdbVolume{};
-		const auto gridVolume = nanovdb::createLevelSetTorus(100.0f, 50.0f);
+		const auto gridVolume = nanovdb::createLevelSetTorus(1.0f, 0.5f, nanovdb::Vec3d(), 0.1);
+		// nanovdb::build::Grid<float>
 		OWL_CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&volume.grid), gridVolume.size()));
 		OWL_CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(volume.grid), gridVolume.data(), gridVolume.size(),
 								  cudaMemcpyHostToDevice));
 
 		const auto gridHandle = gridVolume.grid<float>();
 		const auto& map = gridHandle->map();
-		const auto orientation = owl::LinearSpace3f{ map.mMatF[0], map.mMatF[1], map.mMatF[2], map.mMatF[3], map.mMatF[4],
-											   map.mMatF[5], map.mMatF[6], map.mMatF[7], map.mMatF[8] };
+		const auto orientation =
+			owl::LinearSpace3f{ map.mMatF[0], map.mMatF[1], map.mMatF[2], map.mMatF[3], map.mMatF[4],
+								map.mMatF[5], map.mMatF[6], map.mMatF[7], map.mMatF[8] };
 		const auto position = vec3f{};
-		volume.transform = AffineSpace3f{orientation, position};
+		volume.transform = AffineSpace3f{ orientation, position };
 
 		{
 			const auto& box = gridVolume.gridMetaData()->worldBBox();
@@ -98,13 +110,11 @@ namespace
 						OWLVarDecl{ "indexBox", OWL_AFFINE3F, OWL_OFFSETOF(NanoVdbVolume, transform) },
 						OWLVarDecl{ "grid", OWL_BUFFER_POINTER, OWL_OFFSETOF(NanoVdbVolume, grid) } };
 
-		const auto geometryVars = std::array
-		{
-			OWLVarDecl{ "volume", OWL_USER_TYPE(NanoVdbVolume), OWL_OFFSETOF(GeometryData, volume) } 
-		};
+		const auto geometryVars =
+			std::array{ OWLVarDecl{ "volume", OWL_USER_TYPE(NanoVdbVolume), OWL_OFFSETOF(GeometryData, volume) } };
 
-		const auto geometryType = owlGeomTypeCreate(context, OWL_GEOM_USER, sizeof(GeometryData),
-												  geometryVars.data(), geometryVars.size());
+		const auto geometryType =
+			owlGeomTypeCreate(context, OWL_GEOM_USER, sizeof(GeometryData), geometryVars.data(), geometryVars.size());
 
 		const auto rayGenerationVars =
 			std::array{ OWLVarDecl{ "frameBufferPtr", OWL_BUFPTR, OWL_OFFSETOF(RayGenerationData, frameBufferPtr) },
@@ -129,18 +139,18 @@ namespace
 
 		auto geometry = owlGeomCreate(context, geometryType);
 
-		const auto volume =  createVolume();
+		// const auto volume = createVolume();
 
-
+		nanoVdbVolume = unique_volume_ptr(new NanoVdbVolume());
+		*nanoVdbVolume.get() = createVolume();
 
 		const auto geometryGroup = owlUserGeomGroupCreate(context, 1, &geometry);
-		const auto world = owlInstanceGroupCreate(context, 1, &geometryGroup,
-			nullptr, nullptr, OWL_MATRIX_FORMAT_OWL, OPTIX_BUILD_FLAG_ALLOW_UPDATE);
-		//owlInstanceGroupSetTransform(world, 0, (const float*)&volume.transform); 
+		const auto world = owlInstanceGroupCreate(context, 1, &geometryGroup, nullptr, nullptr, OWL_MATRIX_FORMAT_OWL,
+												  OPTIX_BUILD_FLAG_ALLOW_UPDATE);
+		// owlInstanceGroupSetTransform(world, 0, (const float*)&volume.transform);
 
-		
 
-		owlGeomSetRaw(geometry, "volume", &volume);
+		owlGeomSetRaw(geometry, "volume", nanoVdbVolume.get());
 
 		owlGeomTypeSetBoundsProg(geometryType, module, "volumeBounds");
 		owlBuildPrograms(context);
@@ -154,7 +164,7 @@ namespace
 
 		owlGeomTypeSetIntersectProg(geometryType, 0, module, "nano_intersection");
 		owlGeomTypeSetClosestHit(geometryType, 0, module, "nano_closesthit");
-		
+
 
 		const auto missProgramVars =
 			std::array{ OWLVarDecl{ "color0", OWL_FLOAT3, OWL_OFFSETOF(MissProgramData, color0) },
@@ -168,7 +178,7 @@ namespace
 		owlMissProgSet3f(missProgram, "color0", owl3f{ .8f, 0.f, 0.f });
 		owlMissProgSet3f(missProgram, "color1", owl3f{ .8f, .8f, .8f });
 
-		
+
 		// owlBuildProgramsDebug(context);
 		owlBuildPrograms(context);
 		owlBuildPipeline(context);
@@ -181,6 +191,26 @@ namespace
 
 auto NanoRenderer::onRender(const View& view) -> void
 {
+
+
+	// const auto& camera = view.cameras.front();
+	// const auto aspect = view.colorRt.extent.width / static_cast<float>(view.colorRt.extent.height);
+
+	// const auto projectionMatrix = glm::perspective(camera.FoV, aspect, 0.001f, 100.0f);
+	// const auto viewMatrix = glm::lookAt(glm::vec3{ camera.origin.x, camera.origin.y, camera.origin.z },
+	//									glm::vec3{ camera.at.x, camera.at.y, camera.at.z },
+	//									glm::vec3{ camera.up.x, camera.up.y, camera.up.z });
+
+	// const auto c00 = camera.at;
+	// const auto origin = camera.origin;
+	// float as = projectionMatrix[1][1]/projectionMatrix[0][0];
+	// float tan = 1.0f/projectionMatrix[1][1];
+	// vec3f cxx = tan * as * vec3f{  viewMatrix[0].x, viewMatrix[0].y, viewMatrix[0].z} ;
+	// vec3f cyy = tan * vec3f{  viewMatrix[1].x, viewMatrix[1].y, viewMatrix[1].z};
+
+
+	debugDraw().drawBox(nanoVdbVolume->worldAabb.center(), nanoVdbVolume->worldAabb.size() * 0.5f,
+					   owl::vec3f(0.1f, 0.82f, 0.15f));
 
 	auto waitParams = cudaExternalSemaphoreWaitParams{};
 	waitParams.flags = 0;
@@ -212,11 +242,11 @@ auto NanoRenderer::onRender(const View& view) -> void
 		owl2i{ static_cast<int32_t>(view.colorRt.extent.width), static_cast<int32_t>(view.colorRt.extent.height) };
 	owlRayGenSet2i(nanoContext.rayGen, "frameBufferSize", fbSize);
 
-	owlRayGenSet3f(nanoContext.rayGen, "camera.position", reinterpret_cast<const owl3f&>(view.cameras[0].origin));
 
 	const auto& camera = view.cameras.front();
-
-	auto camera_d00 = normalize(camera.at - camera.origin);
+	const auto origin = vec3f{ camera.origin.x, camera.origin.y, camera.origin.z };
+	auto camera_d00 = normalize(camera.at - origin);
+	owlRayGenSet3f(nanoContext.rayGen, "camera.position", reinterpret_cast<const owl3f&>(origin));
 	const auto aspect = view.colorRt.extent.width / static_cast<float>(view.colorRt.extent.height);
 	const auto camera_ddu = camera.cosFoV * aspect * normalize(cross(camera_d00, camera.up));
 	const auto camera_ddv = camera.cosFoV * normalize(cross(camera_ddu, camera_d00));
@@ -226,10 +256,15 @@ auto NanoRenderer::onRender(const View& view) -> void
 	owlRayGenSet3f(nanoContext.rayGen, "camera.dirDu", reinterpret_cast<const owl3f&>(camera_ddu));
 	owlRayGenSet3f(nanoContext.rayGen, "camera.dirDv", reinterpret_cast<const owl3f&>(camera_ddv));
 
-	owlBuildSBT(nanoContext.context);
+	// owlRayGenSet3f(nanoContext.rayGen, "camera.dir00", reinterpret_cast<const owl3f&>(c00));
+	// owlRayGenSet3f(nanoContext.rayGen, "camera.dirDu", reinterpret_cast<const owl3f&>(cxx));
+	// owlRayGenSet3f(nanoContext.rayGen, "camera.dirDv", reinterpret_cast<const owl3f&>(cyy));
+	// owlRayGenSet3f(nanoContext.rayGen, "camera.position", reinterpret_cast<const owl3f&>(origin));
 
-	owlLaunch2D(nanoContext.rayGen, view.colorRt.extent.width, view.colorRt.extent.height, nanoContext.lp);
-	// owlRayGenLaunch2D(nanoContext.rayGen, view.colorRt.extent.width, view.colorRt.extent.height);
+	owlBuildSBT(nanoContext.context);
+	owlAsyncLaunch2D(nanoContext.rayGen, view.colorRt.extent.width, view.colorRt.extent.height, nanoContext.lp);
+	// owlLaunch2D(nanoContext.rayGen, view.colorRt.extent.width, view.colorRt.extent.height, nanoContext.lp);
+	//  owlRayGenLaunch2D(nanoContext.rayGen, view.colorRt.extent.width, view.colorRt.extent.height);
 
 	{
 		for (auto i = 0; i < view.colorRt.extent.depth; i++)

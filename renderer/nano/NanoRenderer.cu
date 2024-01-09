@@ -76,7 +76,7 @@ OPTIX_RAYGEN_PROGRAM(rayGeneration)()
 	const auto& camera = self.camera;
 	const auto pixelId = owl::getLaunchIndex();
 
-	const auto screen = (vec2f(pixelId) + vec2f(.5f)) / vec2f(self.frameBufferSize);
+	const auto screen = (vec2f(pixelId) + vec2f(.5f)) / vec2f(self.frameBufferSize);//*2.0f -1.0f;
 
 	owl::Ray ray;
 	ray.origin = camera.position;
@@ -140,7 +140,7 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closesthit)()
 
 	auto hdda = nanovdb::HDDA<nanovdb::Ray<float>>(ray, accessor.getDim(ijk, ray));
 
-	const auto opacity = 0.1f;
+	const auto opacity = 1.0f;
 	auto transmittance = 1.0f;
 	auto t = 0.0f;
 	auto density = accessor.getValue(ijk) * opacity;

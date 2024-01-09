@@ -56,5 +56,6 @@ endfunction()
 add_subdirectory(renderer)
 add_subdirectory(viewer)
 add_subdirectory(unityCUDAInterop)
+add_subdirectory(tools)
 
 
