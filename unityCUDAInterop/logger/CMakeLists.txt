@@ -1,13 +1,14 @@
-add_library(UnityCUDAInteropLogger INTERFACE)
+set(MODULE_NAME UnityCUDAInteropLoggerInterface)
+add_library(UnityCUDAInteropLoggerInterface INTERFACE)
 
-target_include_directories(UnityCUDAInteropLogger
+target_include_directories(${MODULE_NAME}
 	INTERFACE
 		"include"
 )	
 
-target_link_libraries(UnityCUDAInteropLogger
+target_link_libraries(${MODULE_NAME}
 	INTERFACE
 		B3D::UnityCUDAInterop::PluginAPI
 )
 
-add_library(B3D::UnityCUDAInterop::Logger ALIAS UnityCUDAInteropLogger)
+add_library(B3D::UnityCUDAInterop::LoggerInterface ALIAS ${MODULE_NAME})

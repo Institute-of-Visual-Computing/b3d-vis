@@ -1,73 +1,88 @@
 #pragma once
 
 #include "IUnityInterface.h"
-#include "RenderAPI.h"
+#pragma once
+
+#include "PluginHandler.h"
+
+extern b3d::unity_cuda_interop::PluginHandler sPluginHandler;
 
 namespace b3d::unity_cuda_interop
 {
-	
-
 	class PluginLogger;
 	class Action
 	{
 	public:
+		static constexpr int eventIdCount = 10;
+
+
 		Action() = default;
-		virtual ~Action() = default;
+
+		virtual ~Action()
+		{
+			isRegistered_ = false;
+			logger_ = nullptr;
+			renderAPI_ = nullptr;
+			renderEventIDOffset_ = -1;
+		}
 
 		auto renderEventAndData(const int eventID, void* data) -> void
 		{
 			const auto actionRenderId = eventID - renderEventIDOffset_;
-			if (actionRenderId > 1)
-			{
-				customRenderEvent(actionRenderId, data);
-			}
-			else if (actionRenderId == 1)
-			{
-				teardown();
-			}
-			else
-			{
-				initialize(data);
-			}
+			customRenderEvent(actionRenderId, data);
 		}
 
-		virtual auto getRenderEventIDCount() -> int { return renderEventIDCount_; }
-		virtual auto getRenderEventIDOffset() const -> int { return renderEventIDOffset_; }
-		virtual auto getAboveValidRenderEventID() -> int { return aboveValidRenderEventID_; }
-
-		virtual auto isValidEventID(const int eventID) -> bool
-		{ return eventID < aboveValidRenderEventID_ && eventID >= renderEventIDOffset_; }
-
-		auto runtimeInitialize(const int renderEventIdOffset, PluginLogger* logger, runtime::RenderAPI* renderAPI) -> void
+		virtual auto getRenderEventIDOffset() const -> int
 		{
+			return renderEventIDOffset_;
+		}
+
+		auto registerAction(const int renderEventIdOffset, PluginLogger* logger, RenderAPI* renderAPI)
+		{
+			if (isRegistered_)
+			{
+				return;
+			}
+			
 			renderEventIDOffset_ = renderEventIdOffset;
-			aboveValidRenderEventID_ = renderEventIdOffset + renderEventIDCount_;
 			logger_ = logger;
 			renderAPI_ = renderAPI;
+
 			isRegistered_ = true;
 		}
 
-		auto runtimeTearDown() -> void
+		auto containsEventId(const int eventId) -> bool
 		{
+			return renderEventIDOffset_ <= eventId && eventId < renderEventIDOffset_ + Action::eventIdCount;
+		}
+
+		auto unregisterAction()
+		{
+			if (!isRegistered_)
+			{
+				return;
+			}
+
+			isRegistered_ = false;
 
 			logger_ = nullptr;
 			renderAPI_ = nullptr;
-			isRegistered_ = false;
+			renderEventIDOffset_ = 0;
 		}
 
-	protected:
+
 		virtual auto initialize(void* data) -> void = 0;
 		virtual auto teardown() -> void = 0;
+
+	protected:
 		virtual auto customRenderEvent(int eventId, void* data) -> void = 0;
-
-		bool isRegistered_{ false };
-
-		int renderEventIDOffset_{ 0 };
-		int renderEventIDCount_{ 0 };
-		int aboveValidRenderEventID_{ 0 };
-
+		
 		PluginLogger* logger_{ nullptr };
-		runtime::RenderAPI* renderAPI_{ nullptr };
+		RenderAPI* renderAPI_{ nullptr };
+
+		int renderEventIDOffset_{ -1 };
+		bool isRegistered_{ false };
+		bool isInitialized_{ false };
 	};
 
 } // namespace b3d::unity_cuda_interop
@@ -75,6 +90,12 @@ namespace b3d::unity_cuda_interop
 extern "C"
 {
 	UNITY_INTERFACE_EXPORT auto UNITY_INTERFACE_API createAction() -> b3d::unity_cuda_interop::Action*;
-	UNITY_INTERFACE_EXPORT auto UNITY_INTERFACE_API getRenderEventIDOffset(const b3d::unity_cuda_interop::Action* nativeAction) -> int;
-	UNITY_INTERFACE_EXPORT auto UNITY_INTERFACE_API destroyAction(b3d::unity_cuda_interop::Action* nativeAction) -> void;
+
+	UNITY_INTERFACE_EXPORT auto UNITY_INTERFACE_API destroyAction(b3d::unity_cuda_interop::Action* action) -> void;
+
+	UNITY_INTERFACE_EXPORT auto UNITY_INTERFACE_API initializeAction(b3d::unity_cuda_interop::Action* action, void* data) -> void;
+
+	UNITY_INTERFACE_EXPORT auto UNITY_INTERFACE_API teardownAction(b3d::unity_cuda_interop::Action* action) -> void;
+
+	UNITY_INTERFACE_EXPORT auto UNITY_INTERFACE_API getRenderEventIDOffset(const b3d::unity_cuda_interop::Action* action) -> int;
 }

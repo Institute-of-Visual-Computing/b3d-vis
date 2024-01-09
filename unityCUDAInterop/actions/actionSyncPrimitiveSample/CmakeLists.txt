@@ -5,11 +5,12 @@ add_library(${MODULE_NAME} SHARED
 
 target_link_libraries(${MODULE_NAME}
 	PRIVATE
+		B3D::UnityCUDAInterop::PluginInterface
 		B3D::UnityCUDAInterop::ActionInterface
 		B3D::Renderer::Library
 		B3D::Renderer::SyncPrimitiveSample
-		
 )
+
 
 set_target_properties(${MODULE_NAME} PROPERTIES CXX_STANDARD 20)
 

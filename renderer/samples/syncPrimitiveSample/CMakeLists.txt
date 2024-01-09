@@ -6,3 +6,5 @@ add_b3d_renderer(
 	HEADERS
 		SyncPrimitiveSampleRenderer.h
 )
+
+set_target_properties(SyncPrimitiveSample PROPERTIES CUDA_ARCHITECTURES "72")
