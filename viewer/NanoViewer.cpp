@@ -81,7 +81,7 @@ namespace
 
 		const auto aspect = width / static_cast<float>(height);
 
-		const auto projectionMatrix = glm::perspective(glm::radians(camera.getFovyInDegrees()), aspect, 0.01f, 100.0f);
+		const auto projectionMatrix = glm::perspective(glm::radians(camera.getFovyInDegrees()), aspect, 0.01f, 10000.0f);
 		const auto viewMatrix =
 			glm::lookAt(glm::vec3{ camera.position.x, camera.position.y, camera.position.z },
 						glm::vec3{ camera.getAt().x, camera.getAt().y, camera.getAt().z },
