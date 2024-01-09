@@ -18,6 +18,8 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include "owl/helper/cuda.h"
+
+
 using namespace owl;
 using namespace owl::viewer;
 
@@ -74,6 +76,8 @@ namespace
 		}
 	}
 
+	
+
 	auto computeViewProjectionMatrixFromCamera(const Camera& camera, const int width, const int height)
 	{
 
@@ -88,8 +92,16 @@ namespace
 		return viewProjection;
 	}
 
-	ImFont* defaultFont;
+	std::vector<ImFont*> defaultFonts;
+	std::unordered_map<float, int> scaleToFont{};
+	int currentFontIndex{0};
 
+	auto windowContentScaleCallback(GLFWwindow* window, float scaleX, float scaleY)
+	{
+		currentFontIndex = scaleToFont[scaleX];
+		const auto dpiScale = scaleX;// / 96;
+		ImGui::GetStyle().ScaleAllSizes(dpiScale);
+	}
 
 	auto initializeGui(GLFWwindow* window) -> void
 	{
@@ -102,21 +114,33 @@ namespace
 
 		ImGui::StyleColorsDark();
 
-		const auto monitor = glfwGetPrimaryMonitor();
 
-		float scaleX;
-		float scaleY;
-		glfwGetMonitorContentScale(monitor, &scaleX, &scaleY);
-
-		const auto dpiScale = scaleX;
-		constexpr auto baseFontSize = 18.0f;
+		constexpr auto baseFontSize = 16.0f;
 
 		ImFontConfig config;
 
-		config.OversampleH = 1;
-		config.OversampleV = 1;
-		config.SizePixels = dpiScale * baseFontSize;
-		defaultFont = io.Fonts->AddFontDefault(&config);
+		config.OversampleH = 8;
+		config.OversampleV = 8;
+
+		auto monitorCount = 0;
+		const auto monitors = glfwGetMonitors(&monitorCount);
+
+		for (auto i = 0; i < monitorCount; i++)
+		{
+			const auto monitor = monitors[i];
+			auto scaleX = 0.0f;
+			auto scaleY = 0.0f;
+			glfwGetMonitorContentScale(monitor, &scaleX, &scaleY);
+			const auto dpiScale = scaleX;// / 96;
+			config.SizePixels = dpiScale * baseFontSize;
+			auto font = io.Fonts->AddFontFromFileTTF("resources/fonts/Roboto-Medium.ttf", dpiScale * baseFontSize, &config);
+			defaultFonts.push_back(font);
+
+			scaleToFont[scaleX] = i;
+		}
+
+
+		//defaultFont = io.Fonts->AddFontDefault(&config);
 
 		ImGui_ImplGlfw_InitForOpenGL(window, true);
 		ImGui_ImplOpenGL3_Init();
@@ -482,11 +506,13 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 	glfwGetFramebufferSize(handle, &width, &height);
 	resize(vec2i(width, height));
 
+	glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
 	glfwSetFramebufferSizeCallback(handle, reshape);
 	glfwSetMouseButtonCallback(handle, ::mouseButton);
 	glfwSetKeyCallback(handle, keyboardSpecialKey);
 	glfwSetCharCallback(handle, keyboardKey);
 	glfwSetCursorPosCallback(handle, ::mouseMotion);
+	glfwSetWindowContentScaleCallback(handle, windowContentScaleCallback);
 
 	initializeGui(handle);
 	glfwMakeContextCurrent(handle);
@@ -505,7 +531,7 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
-		ImGui::PushFont(defaultFont);
+		ImGui::PushFont(defaultFonts[currentFontIndex]);
 		gui();
 		ImGui::PopFont();
 		ImGui::EndFrame();
