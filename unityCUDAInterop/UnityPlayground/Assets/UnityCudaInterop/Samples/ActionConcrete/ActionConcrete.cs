@@ -1,12 +1,11 @@
 using System;
 using System.Runtime.InteropServices;
 
-public class ActionSyncPrimitiveSample : AbstractAction
+public class ActionConcrete : AbstractAction
 {
 	#region dll function signatures
-
-	const string dllName = "ActionSyncPrimitiveSample";
-
+	const string dllName = "ActionConcrete";
+	
 	[DllImport(dllName, EntryPoint = dllFuncNameCreateAction)]
 	private static extern IntPtr createActionExtern();
 
@@ -26,13 +25,13 @@ public class ActionSyncPrimitiveSample : AbstractAction
 	[DllImport(dllName, EntryPoint = dllFuncNameTeardownAction)]
 	private static extern void teardownActionExtern(IntPtr nativeAction);
 
-
 	[DllImport(dllName, EntryPoint = dllFuncNameGetRenderEventAndDataFunc)]
 	private static extern IntPtr getRenderEventAndDataFuncExtern();
 
 	#endregion dll function signatures
 
 	#region dll function calls
+
 	protected override IntPtr createAction()
 	{
 		return createActionExtern();
@@ -41,22 +40,23 @@ public class ActionSyncPrimitiveSample : AbstractAction
 	public override void destroyAction()
 	{
 		destroyActionExtern(ActionPointer);
-		ActionPointer = IntPtr.Zero; 
-	}
-
-	public override void initializeAction(IntPtr data)
-	{
-		initializeActionExtern(ActionPointer, data);
-	}
-	
-	public override void teardownAction()
-	{
-		teardownActionExtern(ActionPointer); 
+		ActionPointer = IntPtr.Zero;
 	}
 
 	protected override int getRenderEventIdOffset()
 	{
 		return getRenderEventIDOffsetExtern(ActionPointer);
+	}
+
+
+	public override void initializeAction(IntPtr data)
+	{
+		initializeActionExtern(ActionPointer, data);
+	}
+
+	public override void teardownAction()
+	{
+		teardownActionExtern(ActionPointer);
 	}
 
 	protected override IntPtr getRenderEventAndDataFunc()
@@ -66,10 +66,15 @@ public class ActionSyncPrimitiveSample : AbstractAction
 
 	#endregion dll function calls
 
-	public ActionSyncPrimitiveSample() : base()
+
+	public ActionConcrete() : base()
 	{
-		
+
 	}
 
+	public void initialize(IntPtr data)
+	{
+		initialize(data);
+	}
 
 }

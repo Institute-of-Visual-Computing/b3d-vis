@@ -18,7 +18,7 @@ __global__ auto writeVertexBuffer(cudaSurfaceObject_t surface, unsigned int widt
 	const auto y = min(blockIdx.y * blockDim.y + threadIdx.y, height - 1);
 
 	auto val = uint32_t{ 0xFFFFFFFF };
-
+	val = uint32_t{ 0xFF0000FF };
 	if (x + y == 0)
 	{
 		printf("Hello from global thread 0");
@@ -26,6 +26,15 @@ __global__ auto writeVertexBuffer(cudaSurfaceObject_t surface, unsigned int widt
 	surf2Dwrite(val, surface, x * sizeof(uint32_t), y);
 }
 
+__global__ void kernel()
+{
+#if __CUDA_ARCH__ >= 700
+	for (int i = 0; i < 1000; i++)
+		__nanosleep(1000000U); // ls
+#else
+	printf(">>> __CUDA_ARCH__ !\n");
+#endif
+}
 
 void b3d::renderer::SyncPrimitiveSampleRenderer::onRender(const View& view)
 {
@@ -33,7 +42,6 @@ void b3d::renderer::SyncPrimitiveSampleRenderer::onRender(const View& view)
 	waitParams.flags = 0;
 	waitParams.params.fence.value = 1;
 	cudaWaitExternalSemaphoresAsync(&initializationInfo_.signalSemaphore, &waitParams, 1);
-
 
 	// TODO: class members
 	std::array<cudaArray_t, 2> cudaArrays{};
@@ -46,7 +54,7 @@ void b3d::renderer::SyncPrimitiveSampleRenderer::onRender(const View& view)
 		for (auto i = 0; i < view.colorRt.extent.depth; i++)
 		{
 			cudaRet = cudaGraphicsSubResourceGetMappedArray(&cudaArrays[i], view.colorRt.target, i, 0);
-
+			 
 			cudaResourceDesc resDesc{};
 			resDesc.resType = cudaResourceTypeArray;
 			resDesc.res.array.array = cudaArrays[i];
@@ -61,10 +69,10 @@ void b3d::renderer::SyncPrimitiveSampleRenderer::onRender(const View& view)
 		auto gridDim =
 			dim3{ view.colorRt.extent.width / 32 + gridDimXAdd, view.colorRt.extent.height / 32 + gridDimYAdd };
 		auto blockDim = dim3{ 32, 32 };
-		writeVertexBuffer<<<gridDim, blockDim>>>(cudaSurfaceObjects[0], view.colorRt.extent.width,
-												 view.colorRt.extent.height);
-		cudaDeviceSynchronize();
-		cudaRet = cudaGetLastError();
+		writeVertexBuffer<<<gridDim, blockDim>>>(cudaSurfaceObjects[0], view.colorRt.extent.width, view.colorRt.extent.height);
+		kernel<<<1, 1>>>();
+		
+		//cudaRet = cudaGetLastError();
 	}
 
 	// test Copy - Uncomment to test
@@ -75,7 +83,6 @@ void b3d::renderer::SyncPrimitiveSampleRenderer::onRender(const View& view)
 		cudaMemcpy2DFromArray(hostMem.data(), view.colorRt.extent.width * sizeof(uint32_t), cudaArrays[0], 0, 0,
 							  view.colorRt.extent.width * sizeof(uint32_t), view.colorRt.extent.height,
 							  cudaMemcpyDeviceToHost);
-		cudaDeviceSynchronize();
 		cudaDeviceSynchronize();
 	}
 
@@ -93,6 +100,8 @@ void b3d::renderer::SyncPrimitiveSampleRenderer::onRender(const View& view)
 	signalParams.flags = 0;
 	signalParams.params.fence.value = 1;
 	cudaSignalExternalSemaphoresAsync(&initializationInfo_.waitSemaphore, &signalParams, 1);
+	signalParams.params.fence.value = 0;
+	cudaSignalExternalSemaphoresAsync(&initializationInfo_.signalSemaphore, &signalParams, 1);
 }
 
 auto b3d::renderer::SyncPrimitiveSampleRenderer::onInitialize() -> void

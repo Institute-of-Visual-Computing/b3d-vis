@@ -1,18 +1,14 @@
-set(MODULE_NAME "ActionSyncPrimitiveSample")
+set(MODULE_NAME ActionConcrete)
 add_library(${MODULE_NAME} SHARED
-	"src/ActionSyncPrimitiveSample.cpp"
+	ActionConcrete.cpp
 )
 
+set_target_properties(${MODULE_NAME} PROPERTIES CXX_STANDARD 20)
 target_link_libraries(${MODULE_NAME}
 	PRIVATE
 		B3D::UnityCUDAInterop::PluginInterface
 		B3D::UnityCUDAInterop::ActionInterface
-		B3D::Renderer::Library
-		B3D::Renderer::SyncPrimitiveSample
 )
-
-
-set_target_properties(${MODULE_NAME} PROPERTIES CXX_STANDARD 20)
 
 set_property(TARGET ${MODULE_NAME} PROPERTY FOLDER "UnityCudaInterop/Actions")
 

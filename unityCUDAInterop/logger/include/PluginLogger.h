@@ -2,20 +2,18 @@
 
 #include <source_location>
 
-#include "IUnityInterface.h"
-
-struct IUnityLog;
+#include "IUnityLog.h"
 
 namespace b3d::unity_cuda_interop
 {
 	class PluginLogger
 	{
 	  public:
-		PluginLogger(IUnityLog* unityLog);
+		explicit PluginLogger(IUnityLog* unityLog);
 
-		// ReSharper disable once CppEnforceFunctionDeclarationStyle
-		UNITY_INTERFACE_EXPORT void log(const char* message,
-		                                std::source_location location = std::source_location::current()) const;
+		~PluginLogger() = default;
+
+		void log(const char* message, std::source_location location = std::source_location::current()) const;
 
 	  private:
 		IUnityLog* unityLog_{ nullptr };
