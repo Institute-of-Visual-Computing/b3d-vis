@@ -76,8 +76,6 @@ namespace
 		}
 	}
 
-	
-
 	auto computeViewProjectionMatrixFromCamera(const Camera& camera, const int width, const int height)
 	{
 
@@ -86,7 +84,7 @@ namespace
 		const auto projectionMatrix = glm::perspective(glm::radians(camera.getFovyInDegrees()), aspect, 0.01f, 100.0f);
 		const auto viewMatrix =
 			glm::lookAt(glm::vec3{ camera.position.x, camera.position.y, camera.position.z },
-						glm::normalize(glm::vec3{ camera.getAt().x, camera.getAt().y, camera.getAt().z }),
+						glm::vec3{ camera.getAt().x, camera.getAt().y, camera.getAt().z },
 						glm::normalize(glm::vec3{ camera.getUp().x, camera.getUp().y, camera.getUp().z }));
 		const auto viewProjection = projectionMatrix * viewMatrix;
 		return viewProjection;

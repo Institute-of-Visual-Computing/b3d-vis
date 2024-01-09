@@ -74,7 +74,6 @@ namespace
 		// owlInstanceGroupSetTransform
 		auto volume = NanoVdbVolume{};
 		const auto gridVolume = nanovdb::createFogVolumeTorus(2.0f, 1.8);
-		// nanovdb::build::Grid<float>
 		OWL_CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&volume.grid), gridVolume.size()));
 		OWL_CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(volume.grid), gridVolume.data(), gridVolume.size(),
 								  cudaMemcpyHostToDevice));
@@ -85,7 +84,8 @@ namespace
 			owl::LinearSpace3f{ map.mMatF[0], map.mMatF[1], map.mMatF[2], map.mMatF[3], map.mMatF[4],
 								map.mMatF[5], map.mMatF[6], map.mMatF[7], map.mMatF[8] };
 		const auto position = vec3f{};
-		volume.transform = AffineSpace3f{ orientation, position };
+		
+		volume.transform = AffineSpace3f{LinearSpace3f{}, position};//AffineSpace3f{ orientation, position };
 
 		{
 			const auto& box = gridVolume.gridMetaData()->worldBBox();
@@ -204,6 +204,18 @@ namespace
 
 		nanoContext.surfaceBuffer = owlDeviceBufferCreate(context, OWL_USER_TYPE(cudaSurfaceObject_t), 1, nullptr);
 	}
+
+	float computeStableEpsilon(float f)
+    {
+      return abs(f) * float(1./(1<<21));
+    }
+
+	float computeStableEpsilon(const vec3f v)
+    {
+      return max(max(computeStableEpsilon(v.x),
+                     computeStableEpsilon(v.y)),
+                 computeStableEpsilon(v.z));
+    }
 } // namespace
 
 auto NanoRenderer::onRender(const View& view) -> void
@@ -274,14 +286,40 @@ auto NanoRenderer::onRender(const View& view) -> void
 	const auto wlen = length(camera_d00);
 	owlRayGenSet3f(nanoContext.rayGen, "camera.position", reinterpret_cast<const owl3f&>(origin));
 	const auto aspect = view.colorRt.extent.width / static_cast<float>(view.colorRt.extent.height);
-	const auto vlen = wlen * std::tanf(0.5f * camera.FoV);
+	const auto vlen = wlen * std::cosf(0.5f *guiData.FoV* camera.FoV);
 	const auto camera_ddu = vlen * aspect * normalize(cross(camera_d00, camera.up));
 	const auto camera_ddv = vlen * normalize(cross(camera_ddu, camera_d00));
 	/*camera_d00 -= 0.5f * camera_ddu;
 	camera_d00 -= 0.5f * camera_ddv;*/
-	owlRayGenSet3f(nanoContext.rayGen, "camera.dir00", reinterpret_cast<const owl3f&>(camera_d00));
-	owlRayGenSet3f(nanoContext.rayGen, "camera.dirDu", reinterpret_cast<const owl3f&>(camera_ddu));
-	owlRayGenSet3f(nanoContext.rayGen, "camera.dirDv", reinterpret_cast<const owl3f&>(camera_ddv));
+
+	const auto vz = - normalize(camera.at - origin);
+	const auto vx = normalize(cross(camera.up,vz));
+    const auto vy = normalize(cross(vz,vx));
+	const auto focalDistance = length(camera.at - origin);
+	const float minFocalDistance
+        = max(computeStableEpsilon(origin),
+              computeStableEpsilon(vx));
+
+      /*
+        tan(fov/2) = (height/2) / dist
+        -> height = 2*tan(fov/2)*dist
+      */
+      float screen_height
+        = 2.f*tanf(camera.FoV/2.f)
+        * max(minFocalDistance,focalDistance);
+      const auto vertical   = screen_height * vy;
+      const auto horizontal = screen_height * aspect * vx;
+      const auto lower_left
+        = - max(minFocalDistance,focalDistance) * vz
+        - 0.5f * vertical
+        - 0.5f * horizontal;
+
+
+
+
+	owlRayGenSet3f(nanoContext.rayGen, "camera.dir00", reinterpret_cast<const owl3f&>(lower_left));
+	owlRayGenSet3f(nanoContext.rayGen, "camera.dirDu", reinterpret_cast<const owl3f&>(horizontal));
+	owlRayGenSet3f(nanoContext.rayGen, "camera.dirDv", reinterpret_cast<const owl3f&>(vertical));
 
 	// owlRayGenSet3f(nanoContext.rayGen, "camera.dir00", reinterpret_cast<const owl3f&>(c00));
 	// owlRayGenSet3f(nanoContext.rayGen, "camera.dirDu", reinterpret_cast<const owl3f&>(cxx));
@@ -326,6 +364,6 @@ auto NanoRenderer::onGui() -> void
 	ImGui::ColorEdit3("Color 1", guiData.rtBackgroundColorPalette.color1.data());
 	ImGui::ColorEdit3("Color 2", guiData.rtBackgroundColorPalette.color2.data());
 	ImGui::Separator();
-	ImGui::SliderFloat("FoV", &guiData.FoV, 0.0f, 180.0f);
+	ImGui::SliderFloat("FoV", &guiData.FoV, 0.0f, 10.0f);
 	ImGui::End();
 }
