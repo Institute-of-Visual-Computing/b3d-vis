@@ -6,6 +6,8 @@
 #include <array>
 #include <string>
 #include <vector>
+#include "DebugDrawListBase.h"
+
 #include "cuda_runtime.h"
 
 namespace b3d::renderer
@@ -16,6 +18,7 @@ namespace b3d::renderer
 		owl::vec3f at;
 		owl::vec3f up;
 		float cosFoV;
+		float FoV;//in radians
 	};
 
 	struct Extent
@@ -52,15 +55,25 @@ namespace b3d::renderer
 		cudaUUID_t deviceUuid;
 	};
 
+	struct DebugInitializationInfo
+	{
+		std::shared_ptr<DebugDrawListBase> debugDrawList{};
+	};
+
 	class RendererBase
 	{
 	public:
 		virtual ~RendererBase() = default;
 
-		auto initialize(const RendererInitializationInfo& initializationInfo) -> void;
+		auto initialize(const RendererInitializationInfo& initializationInfo, const DebugInitializationInfo& debugInitializationInfo) -> void;
 		auto deinitialize() -> void;
 		auto gui() -> void;
 		auto render(const View& view) -> void;
+
+		[[nodiscard]] auto debugDraw() const -> DebugDrawListBase&
+		{
+			return *debugInfo_.debugDrawList;
+		}
 
 	protected:
 		virtual auto onInitialize() -> void{};
@@ -70,6 +83,7 @@ namespace b3d::renderer
 		virtual auto onRender(const View& view) -> void = 0;
 
 		RendererInitializationInfo initializationInfo_{};
+		DebugInitializationInfo debugInfo_{};
 	};
 
 	auto addRenderer(std::shared_ptr<RendererBase> renderer, const std::string& name) -> void;
@@ -91,7 +105,7 @@ namespace b3d::renderer
 	inline auto getRendererIndex(const std::string& name) -> int
 	{
 		auto index = -1;
-		for(int i = 0; i < registry.size(); i++ )
+		for(auto i = 0; i < registry.size(); i++ )
 		{
 			if(registry[i].name == name)
 			{

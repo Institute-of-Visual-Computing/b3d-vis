@@ -1,6 +1,15 @@
 set(MODULE_NAME "B3DRendererLibrary")
-set(SRC Logging.cpp RendererBase.cpp)
-set(SHARED_HEADERS Logging.h RendererBase.h)
+
+set(SRC
+	Logging.cpp
+	RendererBase.cpp
+)
+
+set(SHARED_HEADERS
+	Logging.h
+	RendererBase.h
+	DebugDrawListBase.h
+)
 
 add_library(${MODULE_NAME} ${SRC} ${SHARED_HEADERS})
 target_include_directories(${MODULE_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
