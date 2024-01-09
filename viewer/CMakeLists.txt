@@ -42,3 +42,14 @@ target_link_libraries(viewer
 	Vulkan::Vulkan
 	Vulkan::Headers
 )
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/resources")
+	foreach(RESOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/resources")
+		list(APPEND commands
+			COMMAND ${CMAKE_COMMAND} -E copy_directory 
+                ${RESOURCE_DIR}
+                "${CMAKE_CURRENT_BINARY_DIR}/resources")
+	endforeach()
+endif()
+
+add_custom_target(copy_viewer_resources ALL COMMAND ${commands})

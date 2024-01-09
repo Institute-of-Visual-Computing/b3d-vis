@@ -7,6 +7,7 @@
 #include "SharedStructs.h"
 #include "nanovdb/NanoVDB.h"
 #include "owl/common/math/vec.h"
+
 #include "owl/owl_device.h"
 
 using namespace b3d::renderer::nano;
@@ -63,9 +64,6 @@ OPTIX_BOUNDS_PROGRAM(volumeBounds)
 (const void* geometryData, owl::box3f& primitiveBounds, const int primitiveID)
 {
 	const auto& self = *static_cast<const GeometryData*>(geometryData);
-
-	//box3f f = box3f{vec3f{-1.7,-0.7,-1.7}, vec3f{1.8,0.8,1.8}};
-
 	primitiveBounds = self.volume.worldAabb;
 }
 
@@ -77,7 +75,7 @@ OPTIX_RAYGEN_PROGRAM(rayGeneration)()
 	const auto& camera = self.camera;
 	const auto pixelId = owl::getLaunchIndex();
 
-	const auto screen = (vec2f(pixelId) + vec2f(.5f)) / vec2f(self.frameBufferSize)*2.0f -1.0f;
+	const auto screen = (vec2f(pixelId) + vec2f(.5f)) / vec2f(self.frameBufferSize);//*2.0f -1.0f;
 
 	owl::Ray ray;
 	ray.origin = camera.position;
@@ -87,12 +85,7 @@ OPTIX_RAYGEN_PROGRAM(rayGeneration)()
 	owl::traceRay(self.world, ray, prd);
 
 	const auto color = prd.color;
-	/*auto color = vec4f{};
-	color.x = screen.x;
-	color.y = screen.y;
-	color.z = 0.0f;
-	color.w = 1.0;*/
-	surf2Dwrite(owl::make_rgba(color), self.frameBufferPtr[0] /* self.outputSurfaceArray[eyeIdx]*/,
+	surf2Dwrite(owl::make_rgba(color), self.frameBufferPtr[0],
 				sizeof(uint32_t) * pixelId.x, pixelId.y);
 }
 
@@ -109,18 +102,23 @@ OPTIX_MISS_PROGRAM(miss)()
 
 OPTIX_CLOSEST_HIT_PROGRAM(nano_closesthit)()
 {
+	/*{
+		auto& prd = owl::getPRD<PerRayData>();
+		prd.color = vec3f(0.8,0.3,0.2);
+		return;
+	}*/
+	
 	const auto& geometry = owl::getProgramData<GeometryData>();
 	const auto* grid = reinterpret_cast<const nanovdb::FloatGrid*>(geometry.volume.grid);
 
 	const auto& tree = grid->tree();
 	const auto& accessor = tree.getAccessor();
 
-
 	const auto rayOrigin = optixGetWorldRayOrigin();
 	const auto rayDirection = optixGetWorldRayDirection();
 
-	const auto t0 = optixGetRayTmin();
-	const auto t1 = optixGetRayTmax();
+	const auto t0 = optixGetRayTmax();
+	const auto t1 = getPRD<float>();
 
 	const auto rayWorld = nanovdb::Ray<float>(reinterpret_cast<const nanovdb::Vec3f&>(rayOrigin),
 											  reinterpret_cast<const nanovdb::Vec3f&>(rayDirection));
@@ -139,7 +137,7 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closesthit)()
 
 	auto hdda = nanovdb::HDDA<nanovdb::Ray<float>>(ray, accessor.getDim(ijk, ray));
 
-	const auto opacity = 1.0f;
+	const auto opacity = 0.01f;
 	auto transmittance = 1.0f;
 	auto t = 0.0f;
 	auto density = accessor.getValue(ijk) * opacity;
@@ -176,6 +174,9 @@ OPTIX_INTERSECT_PROGRAM(nano_intersection)()
 
 	if (ray.intersects(bbox, t0, t1))
 	{
+		auto& t =getPRD<float>();
+		t = t1;
+
 		optixReportIntersection(fmaxf(t0, optixGetRayTmin()), 0);
 	}
 }
