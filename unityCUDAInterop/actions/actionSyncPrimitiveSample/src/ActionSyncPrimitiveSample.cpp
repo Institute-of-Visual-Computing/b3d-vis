@@ -10,6 +10,9 @@
 #include "create_action.h"
 #include "oneapi/tbb/profiling.h"
 
+#include "NullDebugDrawList.h"
+
+
 using namespace b3d::renderer;
 using namespace b3d::unity_cuda_interop;
 
@@ -63,7 +66,7 @@ auto ActionSyncPrimitiveSample::initialize(void* data) -> void
 	initializationInfo_.signalSemaphore = signalPrimitive_->getCudaSemaphore();
 	initializationInfo_.deviceUuid = renderAPI_->getCudaUUID();
 
-	renderer_->initialize(initializationInfo_);
+	renderer_->initialize(initializationInfo_, DebugInitializationInfo{ std::make_shared<NullDebugDrawList>() });
 	isInitialized_ = true;
 }
 
