@@ -138,8 +138,6 @@ namespace
 		}
 
 
-		//defaultFont = io.Fonts->AddFontDefault(&config);
-
 		ImGui_ImplGlfw_InitForOpenGL(window, true);
 		ImGui_ImplOpenGL3_Init();
 	}
@@ -199,7 +197,7 @@ auto NanoViewer::gui() -> void
 	}
 
 	static auto selectedCameraControlIndex = 0;
-	const static auto controls = std::array{ "POI", "Fly" };
+	static constexpr auto controls = std::array{ "POI", "Fly" };
 
 	if (ImGui::BeginCombo("Camera Control", controls[selectedCameraControlIndex]))
 	{
@@ -225,6 +223,7 @@ auto NanoViewer::gui() -> void
 		}
 		ImGui::EndCombo();
 	}
+	ImGui::Separator();
 
 	ImGui::Checkbox("Enable Grid Floor", &viewerSettings.enableGridFloor);
 
@@ -232,6 +231,7 @@ auto NanoViewer::gui() -> void
 	{
 		ImGui::SeparatorText("Grid Settings");
 		ImGui::ColorEdit3("Color", viewerSettings.gridColor.data());
+		ImGui::Separator();
 	}
 
 	ImGui::Checkbox("Enable Debug Draw", &viewerSettings.enableDebugDraw);
@@ -240,6 +240,7 @@ auto NanoViewer::gui() -> void
 	{
 		ImGui::SeparatorText("Debug Draw Settings");
 		ImGui::SliderFloat("Line Width", &viewerSettings.lineWidth, 1.0f, 10.0f);
+		ImGui::Separator();
 	}
 
 
