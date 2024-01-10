@@ -95,13 +95,9 @@ void b3d::renderer::SyncPrimitiveSampleRenderer::onRender(const View& view)
 		cudaRet = cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&view.colorRt.target));
 	}
 
-
-	auto signalParams = cudaExternalSemaphoreSignalParams{};
-	signalParams.flags = 0;
-	signalParams.params.fence.value = 1;
-	cudaSignalExternalSemaphoresAsync(&initializationInfo_.waitSemaphore, &signalParams, 1);
-	signalParams.params.fence.value = 0;
-	cudaSignalExternalSemaphoresAsync(&initializationInfo_.signalSemaphore, &signalParams, 1);
+	constexpr std::array signalParams = { cudaExternalSemaphoreSignalParams{ { { 1 } }, 0 },
+										  cudaExternalSemaphoreSignalParams{ { { 0 } }, 0 } };
+	cudaSignalExternalSemaphoresAsync(&initializationInfo_.waitSemaphore, signalParams.data(), 2);
 }
 
 auto b3d::renderer::SyncPrimitiveSampleRenderer::onInitialize() -> void

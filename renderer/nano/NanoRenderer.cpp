@@ -267,7 +267,7 @@ auto NanoRenderer::onRender(const View& view) -> void
 
 	auto waitParams = cudaExternalSemaphoreWaitParams{};
 	waitParams.flags = 0;
-	waitParams.params.fence.value = 0;
+	waitParams.params.fence.value = 1;
 	cudaWaitExternalSemaphoresAsync(&initializationInfo_.signalSemaphore, &waitParams, 1);
 
 	std::array<cudaArray_t, 2> cudaArrays{};
@@ -356,10 +356,9 @@ auto NanoRenderer::onRender(const View& view) -> void
 	}
 
 
-	auto signalParams = cudaExternalSemaphoreSignalParams{};
-	signalParams.flags = 0;
-	signalParams.params.fence.value = 0;
-	cudaSignalExternalSemaphoresAsync(&initializationInfo_.waitSemaphore, &signalParams, 1);
+	constexpr std::array signalParams = { cudaExternalSemaphoreSignalParams{ { { 1 } }, 0 },
+										  cudaExternalSemaphoreSignalParams{ { { 0 } }, 0 } };
+	cudaSignalExternalSemaphoresAsync(&initializationInfo_.waitSemaphore, signalParams.data(), 2);
 }
 
 auto NanoRenderer::onInitialize() -> void

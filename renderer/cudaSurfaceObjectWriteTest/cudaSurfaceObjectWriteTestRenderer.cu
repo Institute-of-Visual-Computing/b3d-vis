@@ -23,7 +23,7 @@ __global__ auto writeVertexBuffer(cudaSurfaceObject_t surface, unsigned int widt
 	
 	if (x + y == 0)
 	{
-		printf("Hello from global thread 0");
+		// printf("Hello from global thread 0\n");
 	}
 	surf2Dwrite(val, surface, x * sizeof(uint32_t), y);
 }
@@ -33,7 +33,7 @@ auto CudaSurfaceObjectWriteTestRenderer::onRender(const View& view) -> void
 {
 	auto waitParams = cudaExternalSemaphoreWaitParams{};
 	waitParams.flags = 0;
-	waitParams.params.fence.value = 0;
+	waitParams.params.fence.value = 1;
 	cudaWaitExternalSemaphoresAsync(&initializationInfo_.signalSemaphore, &waitParams, 1);
 	
 	// TODO: class members
@@ -57,8 +57,8 @@ auto CudaSurfaceObjectWriteTestRenderer::onRender(const View& view) -> void
 
 	// Execute Kernel
 	{
-		const auto gridDimXAdd = view.colorRt.extent.width % 2 == 0 ? 0 : 1; 
-		const auto gridDimYAdd= view.colorRt.extent.height % 2 == 0 ? 0 : 1; 
+		const auto gridDimXAdd = view.colorRt.extent.width % 32 == 0 ? 0 : 1; 
+		const auto gridDimYAdd= view.colorRt.extent.height % 32 == 0 ? 0 : 1; 
 		auto gridDim = dim3{ view.colorRt.extent.width / 32 + gridDimXAdd, view.colorRt.extent.height / 32 + gridDimYAdd};
 		auto blockDim = dim3{ 32, 32 };
 		writeVertexBuffer<<<gridDim, blockDim>>>(cudaSurfaceObjects[0], view.colorRt.extent.width,
@@ -88,10 +88,11 @@ auto CudaSurfaceObjectWriteTestRenderer::onRender(const View& view) -> void
 		cudaRet = cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&view.colorRt.target));
 	}
 
-	auto signalParams = cudaExternalSemaphoreSignalParams{};
-	signalParams.flags = 0;
-	signalParams.params.fence.value = 0;
-	cudaSignalExternalSemaphoresAsync(&initializationInfo_.waitSemaphore, &signalParams, 1);
+	constexpr std::array signalParams = {
+		cudaExternalSemaphoreSignalParams{ { { 1 } }, 0 },
+		cudaExternalSemaphoreSignalParams{ { { 0 } }, 0 }
+	};
+	cudaSignalExternalSemaphoresAsync(&initializationInfo_.waitSemaphore, signalParams.data(), 2);
 }
 
 auto CudaSurfaceObjectWriteTestRenderer::onInitialize() -> void

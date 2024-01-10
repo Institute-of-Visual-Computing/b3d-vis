@@ -10,6 +10,19 @@ using namespace b3d::renderer;
 
 extern "C" char SimpleTrianglesDeviceCode_ptx[];
 
+namespace
+{
+	float computeStableEpsilon(float f)
+	{
+		return abs(f) * float(1. / (1 << 21));
+	}
+
+	float computeStableEpsilon(const vec3f v)
+	{
+		return max(max(computeStableEpsilon(v.x), computeStableEpsilon(v.y)), computeStableEpsilon(v.z));
+	}
+}
+
 const int NUM_VERTICES = 8;
 vec3f vertices[NUM_VERTICES] = {
 	{ -1.f, -1.f, -1.f }, { +1.f, -1.f, -1.f }, { -1.f, +1.f, -1.f }, { +1.f, +1.f, -1.f },
@@ -33,7 +46,7 @@ auto SimpleTrianglesRenderer::onRender(const View& view) -> void
 {
 	auto waitParams = cudaExternalSemaphoreWaitParams{};
 	waitParams.flags = 0;
-	waitParams.params.fence.value = 0;
+	waitParams.params.fence.value = 1;
 	cudaWaitExternalSemaphoresAsync(&initializationInfo_.signalSemaphore, &waitParams, 1);
 
 
@@ -71,22 +84,39 @@ auto SimpleTrianglesRenderer::onRender(const View& view) -> void
 	owlRayGenSet3f(rayGen, "camera.pos", (const owl3f&)view.cameras[0].origin);
 	
 
-	const vec3f lookFrom = view.cameras[0].origin;
-	const vec3f lookAt = view.cameras[0].at;
-	const vec3f lookUp = view.cameras[0].up;
-	const float cosFovy = view.cameras[0].cosFoV;
 
 	// ----------- compute variable values  ------------------
-	vec3f camera_pos = lookFrom;
-	vec3f camera_d00 = normalize(lookAt - lookFrom);
-	float aspect = view.colorRt.extent.width / float(view.colorRt.extent.height);
-	vec3f camera_ddu = cosFovy * aspect * normalize(cross(camera_d00, lookUp));
-	vec3f camera_ddv = cosFovy * normalize(cross(camera_ddu, camera_d00));
-	camera_d00 -= 0.5f * camera_ddu;
-	camera_d00 -= 0.5f * camera_ddv;
-	owlRayGenSet3f(rayGen, "camera.dir_00", (const owl3f&)camera_d00);
-	owlRayGenSet3f(rayGen, "camera.dir_du", (const owl3f&)camera_ddu);
-	owlRayGenSet3f(rayGen, "camera.dir_dv", (const owl3f&)camera_ddv);
+	const auto& camera = view.cameras.front();
+	const auto origin = vec3f{ camera.origin.x, camera.origin.y, camera.origin.z };
+	auto camera_d00 = camera.at - origin;
+	const auto wlen = length(camera_d00);
+	owlRayGenSet3f(rayGen, "camera.pos", reinterpret_cast<const owl3f&>(origin));
+	const auto aspect = view.colorRt.extent.width / static_cast<float>(view.colorRt.extent.height);
+	const auto vlen = wlen * std::cosf(0.5f * camera.FoV);
+	const auto camera_ddu = vlen * aspect * normalize(cross(camera_d00, camera.up));
+	const auto camera_ddv = vlen * normalize(cross(camera_ddu, camera_d00));
+	/*camera_d00 -= 0.5f * camera_ddu;
+	camera_d00 -= 0.5f * camera_ddv;*/
+
+	const auto vz = -normalize(camera.at - origin);
+	const auto vx = normalize(cross(camera.up, vz));
+	const auto vy = normalize(cross(vz, vx));
+	const auto focalDistance = length(camera.at - origin);
+	const float minFocalDistance = max(computeStableEpsilon(origin), computeStableEpsilon(vx));
+
+	/*
+	  tan(fov/2) = (height/2) / dist
+	  -> height = 2*tan(fov/2)*dist
+	*/
+	float screen_height = 2.f * tanf(camera.FoV / 2.f) * max(minFocalDistance, focalDistance);
+	const auto vertical = screen_height * vy;
+	const auto horizontal = screen_height * aspect * vx;
+	const auto lower_left = -max(minFocalDistance, focalDistance) * vz - 0.5f * vertical - 0.5f * horizontal;
+
+
+	owlRayGenSet3f(rayGen, "camera.dir_00", reinterpret_cast<const owl3f&>(lower_left));
+	owlRayGenSet3f(rayGen, "camera.dir_du", reinterpret_cast<const owl3f&>(horizontal));
+	owlRayGenSet3f(rayGen, "camera.dir_dv", reinterpret_cast<const owl3f&>(vertical));
 
 	owlBuildSBT(context);
 	sbtDirty = true;
@@ -101,11 +131,9 @@ auto SimpleTrianglesRenderer::onRender(const View& view) -> void
 		cudaRet = cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&view.colorRt.target));
 	}
 
-	
-	auto signalParams = cudaExternalSemaphoreSignalParams{};
-	signalParams.flags = 0;
-	signalParams.params.fence.value = 0;
-	cudaSignalExternalSemaphoresAsync(&initializationInfo_.waitSemaphore, &signalParams, 1);
+	constexpr std::array signalParams = { cudaExternalSemaphoreSignalParams{ { { 1 } }, 0 },
+										  cudaExternalSemaphoreSignalParams{ { { 0 } }, 0 } };
+	cudaSignalExternalSemaphoresAsync(&initializationInfo_.waitSemaphore, signalParams.data(), 2);
 }
 
 auto SimpleTrianglesRenderer::onInitialize() -> void
