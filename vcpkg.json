@@ -4,40 +4,42 @@
       "./triplets"
     ]
   },
-  "dependencies": [
-    "args",
-    "glfw3",
-    "tinyxml2",
-    "cfitsio",
-    "glew",
-    "glm",
-    {
-      "name": "openvdb",
-      "default-features": false,
-      "features": [
-        "nanovdb",
-        "tools"
-      ]
-    },
-    {
-      "name": "imgui",
-      "default-features": false,
-      "features": [
-        "opengl3-binding",
-        "glfw-binding"
-      ]
-    },
-    "tbb",
-    "opengl",
-    {
-      "name": "glad",
-      "features": [
-        "extensions"
-      ]
-    },
-    "vulkan",
-    "vulkan-headers",
-    "stb"
-  ],
-  "builtin-baseline": "83972272512ce4ede5fc3b2ba98f6468b179f192"
+	"dependencies": [
+		"args",
+		"glfw3",
+		"tinyxml2",
+		"cfitsio",
+		"glew",
+		"glm",
+		"nlohmann-json",
+		{
+			"name": "openvdb",
+			"default-features": false,
+			"features": [
+				"nanovdb",
+				"tools"
+			]
+		},
+		{
+			"name": "imgui",
+			"default-features": false,
+			"features": [
+				"opengl3-binding",
+				"glfw-binding"
+			]
+		},
+		"tbb",
+		"opengl",
+		{
+			"name": "glad",
+			"features": [
+				"extensions"
+			]
+		},
+		"vulkan",
+		"vulkan-headers",
+		"stb",
+		"boost-program-options"
+	],
+  "builtin-baseline": "83444c57754d01d584a4a371a070c5147e8a5aae"
 }
