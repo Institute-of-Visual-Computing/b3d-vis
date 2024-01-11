@@ -8,7 +8,11 @@
 #include <nanovdb/util/GridBuilder.h>
 #include <nanovdb/util/Primitives.h>
 
+#include <nanovdb/util/IO.h>
+
 #include <cuda.h>
+
+#include <filesystem>
 
 #include "SharedStructs.h"
 #include "owl/owl_host.h"
@@ -18,6 +22,8 @@
 #include "DebugDrawListBase.h"
 
 #include <imgui.h>
+
+#include <NanoCutterParser.h>
 
 extern "C" char NanoRenderer_ptx[];
 
@@ -67,7 +73,7 @@ namespace
 	using unique_volume_ptr = std::unique_ptr<NanoVdbVolume, NanoVdbVolumeDeleter>;
 
 	unique_volume_ptr nanoVdbVolume;
-	
+
 	void getOptixTransform(const nanovdb::GridHandle<>& grid, float transform[])
 	{
 		// Extract the index-to-world-space affine transform from the Grid and convert
@@ -91,9 +97,12 @@ namespace
 
 	auto createVolume() -> NanoVdbVolume
 	{
+		const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
+		assert(std::filesystem::exists(testFile));
 		// owlInstanceGroupSetTransform
 		auto volume = NanoVdbVolume{};
-		const auto gridVolume = nanovdb::createFogVolumeTorus();
+		// const auto gridVolume = nanovdb::createFogVolumeTorus();
+		const auto gridVolume = nanovdb::io::readGrid(testFile.string());
 		OWL_CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&volume.grid), gridVolume.size()));
 		OWL_CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(volume.grid), gridVolume.data(), gridVolume.size(),
 								  cudaMemcpyHostToDevice));
@@ -241,6 +250,10 @@ namespace
 	{
 		return max(max(computeStableEpsilon(v.x), computeStableEpsilon(v.y)), computeStableEpsilon(v.z));
 	}
+
+
+	std::filesystem::path b3dFilePath{};
+
 } // namespace
 
 auto NanoRenderer::onRender(const View& view) -> void
@@ -375,8 +388,104 @@ auto NanoRenderer::onDeinitialize() -> void
 auto NanoRenderer::onGui() -> void
 {
 	ImGui::Begin("RT Settings");
+	ImGui::SeparatorText("Data File (.b3d)");
+	ImGui::InputText("##source", (char*)b3dFilePath.string().c_str(), b3dFilePath.string().size(), ImGuiInputTextFlags_ReadOnly);
+	ImGui::SameLine();
+	if (ImGui::Button("Select"))
+	{
+		ImGui::OpenPopup("FileSelectDialog");
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Load"))
+	{
+		if (std::filesystem::exists(b3dFilePath))
+		{
+			const auto t = cutterParser::load(b3dFilePath.generic_string());
+
+			const auto nanoFile = t.nanoVdbFile;
+		}
+		else
+		{
+			ImGui::TextColored(ImVec4{ 0.9f, 0.1f, 0.1f, 1.0f }, "Error: Can't load file!");
+		}
+	}
 	ImGui::SeparatorText("Background Color Palette");
 	ImGui::ColorEdit3("Color 1", guiData.rtBackgroundColorPalette.color1.data());
 	ImGui::ColorEdit3("Color 2", guiData.rtBackgroundColorPalette.color2.data());
+
+	static auto currentPath = std::filesystem::current_path();
+	static auto selectedPath = std::filesystem::path{};
+
+	const auto center = ImGui::GetMainViewport()->GetCenter();
+	ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+	// const auto root = std::filesystem::current_path().root_name();
+
+
+	if (ImGui::BeginPopupModal("FileSelectDialog", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		constexpr auto roots = std::array{ "A:/", "B:/", "C:/", "D:/", "E:/", "F:/", "G:/", "H:/", "I:/" };
+
+		for (auto i = 0; i < roots.size(); i++)
+		{
+			const auto root = std::filesystem::path{ roots[i] };
+			if (is_directory(root))
+			{
+				ImGui::SameLine();
+				if (ImGui::Button(roots[i]))
+				{
+					currentPath = root;
+				}
+			}
+		}
+		if (ImGui::BeginListBox("##dirs", ImVec2(800, 400)))
+		{
+			if (ImGui::Selectable("...", false))
+			{
+				currentPath = currentPath.parent_path();
+			}
+
+			auto i = 0;
+
+			for (auto& dir : std::filesystem::directory_iterator{ currentPath })
+			{
+				i++;
+				const auto path = dir.path();
+				if (is_directory(path))
+				{
+					if (ImGui::Selectable(dir.path().string().c_str(), false))
+					{
+						currentPath = path;
+					}
+				}
+				if (path.has_extension() && path.extension() == ".b3d")
+				{
+					if (ImGui::Selectable(dir.path().string().c_str(), dir.path() == selectedPath))
+					{
+						selectedPath = dir.path();
+					}
+				}
+			}
+			ImGui::EndListBox();
+		}
+		if (ImGui::Button("OK", ImVec2(120, 0)))
+		{
+			if(!selectedPath.empty() != 0)
+			{
+				b3dFilePath = selectedPath;
+			}
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::SetItemDefaultFocus();
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel", ImVec2(120, 0)))
+		{
+			selectedPath.clear();
+			ImGui::CloseCurrentPopup();
+		}
+
+		ImGui::EndPopup();
+	}
+
 	ImGui::End();
 }
