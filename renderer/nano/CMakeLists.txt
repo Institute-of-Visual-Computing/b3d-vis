@@ -22,4 +22,5 @@ add_b3d_renderer(
 		nano-ptx
 		OpenVDB::nanovdb
 		imgui::imgui
+		NanoCutterParser
 )

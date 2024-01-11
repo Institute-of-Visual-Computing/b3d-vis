@@ -78,7 +78,6 @@ namespace
 
 	auto computeViewProjectionMatrixFromCamera(const Camera& camera, const int width, const int height)
 	{
-
 		const auto aspect = width / static_cast<float>(height);
 
 		const auto projectionMatrix = glm::perspective(glm::radians(camera.getFovyInDegrees()), aspect, 0.01f, 10000.0f);
@@ -94,24 +93,12 @@ namespace
 	std::unordered_map<float, int> scaleToFont{};
 	int currentFontIndex{0};
 
-	auto windowContentScaleCallback(GLFWwindow* window, float scaleX, float scaleY)
+	auto rebuildFont() -> void
 	{
-		currentFontIndex = scaleToFont[scaleX];
-		const auto dpiScale = scaleX;// / 96;
-		ImGui::GetStyle().ScaleAllSizes(dpiScale);
-	}
-
-	auto initializeGui(GLFWwindow* window) -> void
-	{
-		IMGUI_CHECKVERSION();
-		ImGui::CreateContext();
 		auto& io = ImGui::GetIO();
-		(void)io;
-		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
-		io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad; // Enable Gamepad Controls
 
-		ImGui::StyleColorsDark();
-
+		io.Fonts->ClearFonts();
+		defaultFonts.clear();
 
 		constexpr auto baseFontSize = 16.0f;
 
@@ -131,14 +118,41 @@ namespace
 			glfwGetMonitorContentScale(monitor, &scaleX, &scaleY);
 			const auto dpiScale = scaleX;// / 96;
 			config.SizePixels = dpiScale * baseFontSize;
-			auto font = io.Fonts->AddFontFromFileTTF("resources/fonts/Roboto-Medium.ttf", dpiScale * baseFontSize, &config);
-			defaultFonts.push_back(font);
 
-			scaleToFont[scaleX] = i;
+			if(!scaleToFont.contains(scaleX))
+			{
+				auto font = io.Fonts->AddFontFromFileTTF("resources/fonts/Roboto-Medium.ttf", dpiScale * baseFontSize, &config);
+				defaultFonts.push_back(font);
+				scaleToFont[scaleX] = i;
+			}
+		}
+	}
+
+	auto windowContentScaleCallback(GLFWwindow* window, float scaleX, float scaleY)
+	{
+		if(!scaleToFont.contains(scaleX))
+		{
+			rebuildFont();
 		}
 
+		currentFontIndex = scaleToFont[scaleX];
+		const auto dpiScale = scaleX;// / 96;
+		ImGui::GetStyle().ScaleAllSizes(dpiScale);
+	}
 
-		//defaultFont = io.Fonts->AddFontDefault(&config);
+	
+
+	auto initializeGui(GLFWwindow* window) -> void
+	{
+		IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+		auto& io = ImGui::GetIO();
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad; // Enable Gamepad Controls
+
+		ImGui::StyleColorsDark();
+
+		rebuildFont();
 
 		ImGui_ImplGlfw_InitForOpenGL(window, true);
 		ImGui_ImplOpenGL3_Init();
@@ -199,7 +213,7 @@ auto NanoViewer::gui() -> void
 	}
 
 	static auto selectedCameraControlIndex = 0;
-	const static auto controls = std::array{ "POI", "Fly" };
+	static constexpr auto controls = std::array{ "POI", "Fly" };
 
 	if (ImGui::BeginCombo("Camera Control", controls[selectedCameraControlIndex]))
 	{
@@ -225,6 +239,7 @@ auto NanoViewer::gui() -> void
 		}
 		ImGui::EndCombo();
 	}
+	ImGui::Separator();
 
 	ImGui::Checkbox("Enable Grid Floor", &viewerSettings.enableGridFloor);
 
@@ -232,6 +247,7 @@ auto NanoViewer::gui() -> void
 	{
 		ImGui::SeparatorText("Grid Settings");
 		ImGui::ColorEdit3("Color", viewerSettings.gridColor.data());
+		ImGui::Separator();
 	}
 
 	ImGui::Checkbox("Enable Debug Draw", &viewerSettings.enableDebugDraw);
@@ -240,6 +256,7 @@ auto NanoViewer::gui() -> void
 	{
 		ImGui::SeparatorText("Debug Draw Settings");
 		ImGui::SliderFloat("Line Width", &viewerSettings.lineWidth, 1.0f, 10.0f);
+		ImGui::Separator();
 	}
 
 
