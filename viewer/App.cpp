@@ -44,7 +44,7 @@ namespace
 
 		commands.push_back(Command{ commandName, description });
 
-		auto foundBegin = std::find_if(vector.begin(), vector.end(),
+		auto foundBegin = std::ranges::find_if(vector,
 									   [&](const Param& param)
 									   {
 										   if (param.value == "--" + commandName)
