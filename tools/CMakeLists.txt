@@ -1,1 +1,2 @@
 add_subdirectory(fitsCutterNanoVdbConverter)
+add_subdirectory(nanoCutterParser)
