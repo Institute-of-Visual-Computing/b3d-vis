@@ -4,6 +4,7 @@ find_package(GLEW REQUIRED)
 find_package(glad CONFIG REQUIRED)
 find_package(Vulkan REQUIRED)
 find_package(VulkanHeaders CONFIG)
+find_package(imguizmo CONFIG REQUIRED)
 
 add_executable(viewer)
 target_sources(viewer PRIVATE
@@ -24,6 +25,8 @@ target_sources(viewer PRIVATE
 	DebugDrawList.h
 	DebugDrawList.cpp
 	DebugDrawVertex.h
+	GizmoHelper.h
+	GizmoHelper.cpp
 )
 target_compile_features(viewer PUBLIC cxx_std_20)
 target_link_libraries(viewer
@@ -41,6 +44,7 @@ target_link_libraries(viewer
 	glad::glad
 	Vulkan::Vulkan
 	Vulkan::Headers
+	imguizmo::imguizmo
 )
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/resources")
