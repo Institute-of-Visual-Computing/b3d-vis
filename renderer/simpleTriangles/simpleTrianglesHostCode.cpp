@@ -5,6 +5,7 @@
 #include "owl/owl.h"
 // our device-side data structures
 #include "deviceCode.h"
+#include "imgui.h"
 #include "owl/helper/cuda.h"
 
 using namespace b3d::renderer;
@@ -26,8 +27,8 @@ namespace
 
 const int NUM_VERTICES = 8;
 vec3f vertices[NUM_VERTICES] = {
-	{ -1.f, -1.f, -1.f }, { +1.f, -1.f, -1.f }, { -1.f, +1.f, -1.f }, { +1.f, +1.f, -1.f },
-	{ -1.f, -1.f, +1.f }, { +1.f, -1.f, +1.f }, { -1.f, +1.f, +1.f }, { +1.f, +1.f, +1.f }
+	{ -0.5f, -0.5f, -0.5f }, { +0.5f, -0.5f, -0.5f }, { -0.5f, +0.5f, -0.5f }, { +0.5f, +0.5f, -0.5f },
+	{ -0.5f, -0.5f, +0.5f }, { +0.5f, -0.5f, +0.5f }, { -0.5f, +0.5f, +0.5f }, { +0.5f, +0.5f, +0.5f }
 };
 
 const int NUM_INDICES = 12;
@@ -42,6 +43,15 @@ const vec3f init_lookUp(0.f, 1.f, 0.f);
 const float init_cosFovy = 0.66f;
 
 
+auto SimpleTrianglesRenderer::setCubeVolumeTransform(NativeCube* nativeCube) -> void
+{
+	auto translate = affine3f::translate(nativeCube->position);
+	auto scale = affine3f::scale(nativeCube->scale);
+
+	AffineSpace3f rotate{ nativeCube->rotation };
+	// trs = rotate * translate * scale;
+	trs = translate * rotate * scale;
+}
 
 auto SimpleTrianglesRenderer::onRender(const View& view) -> void
 {
@@ -105,10 +115,11 @@ auto SimpleTrianglesRenderer::onRender(const View& view) -> void
 	owlParamsSetRaw(launchParameters_, "cameraData", &rcd);
 	owlParamsSetRaw(launchParameters_, "surfacePointer", &cudaSurfaceObjects[0]);
 
+	owlInstanceGroupSetTransform(world_, 0, (const float*)&trs);
+	owlGroupRefitAccel(world_);
 	owlBuildSBT(context);
 	
 	sbtDirty = true;
-	owlRayGenLaunch2D(rayGen, view.colorRt.extent.width, view.colorRt.extent.height);
 
 	owlAsyncLaunch2D(rayGen, view.colorRt.extent.width, view.colorRt.extent.height, launchParameters_);
 	
@@ -130,6 +141,7 @@ auto SimpleTrianglesRenderer::onRender(const View& view) -> void
 
 auto SimpleTrianglesRenderer::onInitialize() -> void
 {
+	trs = affine3f::translate({ 0, 0, 0 }).scale({ 1, 1, 1 });
 	RendererBase::onInitialize();
 	// create a context on the first device:
 	context = owlContextCreate(nullptr, 1);
@@ -228,4 +240,57 @@ auto SimpleTrianglesRenderer::onInitialize() -> void
 	owlBuildPrograms(context);
 	owlBuildPipeline(context);
 	owlBuildSBT(context);
+}
+
+namespace
+{
+	struct GuiData
+	{
+		struct BackgroundColorPalette
+		{
+			std::array<float, 4> color1{ 0.572f, 0.100f, 0.750f,1.0f };
+			std::array<float, 4> color2{ 0.0f, 0.3f, 0.3f, 1.0f };
+		};
+		BackgroundColorPalette rtBackgroundColorPalette;
+
+		struct CubeVolumeTransform
+		{
+			std::array<float, 3> position{ 0, 0, 0 };
+			std::array<float, 3> scale{ 1, 1, 1 };
+			std::array<float, 3> rotation{ 0, 0, 0 };
+		};
+		CubeVolumeTransform rtCubeVolumeTransform{};
+	};
+
+	GuiData guiData{};
+}
+
+auto SimpleTrianglesRenderer::onGui() -> void
+{
+	ImGui::Begin("RT Settings");
+	ImGui::SeparatorText("Background Color Palette");
+	ImGui::ColorEdit3("Color 1", guiData.rtBackgroundColorPalette.color1.data());
+	ImGui::ColorEdit3("Color 2", guiData.rtBackgroundColorPalette.color2.data());
+	ImGui::SeparatorText("CubeVolume Transform");
+	ImGui::DragFloat3("Position", guiData.rtCubeVolumeTransform.position.data(), 0.01f, -FLT_MAX, FLT_MAX);
+	ImGui::DragFloat3("Scale", guiData.rtCubeVolumeTransform.scale.data(), 0.01f, 0.01f, 100.0f);
+	ImGui::DragFloat3("Rotation", guiData.rtCubeVolumeTransform.rotation.data(), 0.01f, 0.0f, FLT_MAX);
+	if (ImGui::Button("Reset Transform", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+	{
+		guiData.rtCubeVolumeTransform = {};
+	}
+
+	ImGui::End();
+
+	auto nt = NativeCube{
+		{ guiData.rtCubeVolumeTransform.position[0], guiData.rtCubeVolumeTransform.position[1],
+		  guiData.rtCubeVolumeTransform.position[2] },
+		{ guiData.rtCubeVolumeTransform.scale[0], guiData.rtCubeVolumeTransform.scale[1],
+		  guiData.rtCubeVolumeTransform.scale[2] },
+		Quaternion3f{ guiData.rtCubeVolumeTransform.rotation[0], guiData.rtCubeVolumeTransform.rotation[1],
+					  guiData.rtCubeVolumeTransform.rotation[2] },
+
+	};
+	this->setCubeVolumeTransform(&nt);
+
 }
