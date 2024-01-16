@@ -289,6 +289,45 @@ auto main(int argc, char** argv) -> int
 	long axis[3];
 	fits_get_img_param(fitsFile.get(), 3, &imgType, &axisCount, &axis[0], &fitsError);
 
+	assert(fitsError == 0);
+    assert(axisCount == 3);
+    assert(imgType == FLOAT_IMG);
+
+
+
+	const auto box = nanovdb::CoordBBox(nanovdb::Coord(0,0,0), nanovdb::Coord(axis[0] - 1, axis[1] - 1, axis[2] - 1));
+	float nan = NAN;
+
+
+	auto min_threshold = 0.0f;
+
+	long firstPx[3] ={1,1,1};
+    long lastPx[3] = {axis[0], axis[1], axis[2]};
+	long inc[3] = { 1,1,1 };
+
+	std::vector<float> dataBuffer;
+	dataBuffer.resize(axis[0]*axis[1]*axis[2]);
+
+
+	fits_read_subset(fitsFile.get(), TFLOAT, firstPx, lastPx, inc, &nan, dataBuffer.data(), 0, &fitsError);
+	if(fitsError != 0)
+	{
+		std::array<char,30> txt;
+		fits_get_errstatus(fitsError, txt.data());
+		std::print(std::cout, "CFITSIO error: {}", txt.data());
+	}
+	assert(fitsError == 0);
+
+	auto func = [&](const nanovdb::Coord& ijk)
+	{
+		const auto i = ijk.x();
+		const auto j = ijk.y();
+		const auto k = ijk.z();
+		const auto index = k*axis[0]*axis[1] + j*axis[1]+i;
+		const auto v = dataBuffer[index];
+		return v > min_threshold ? v : min_threshold;
+	};
+
 	// const auto background = 5.0f;
 
 	// const int size = 500;
@@ -301,12 +340,18 @@ auto main(int argc, char** argv) -> int
 	//	v = nanovdb::Max(v, nanovdb::Vec3f(ijk).length() - size); // CSG intersection with a sphere
 	//	return v > background ? background : v < -background ? -background : v; // clamp value
 	//};
-	// nanovdb::build::Grid<float> grid(background, "funny", nanovdb::GridClass::LevelSet);
-	//       grid(func, nanovdb::CoordBBox(nanovdb::Coord(-size), nanovdb::Coord(size)));
 
-	auto g = nanovdb::createFogVolumeSphere(10.0f, nanovdb::Vec3d(-20, 0, 0), 1.0, 3.0, nanovdb::Vec3d(0), "sphere");
 
-	nanovdb::io::writeGrid((cutterConfig.dst / "funny.nvdb").string(), g,
+	nanovdb::build::Grid<float> grid(min_threshold, "funny", nanovdb::GridClass::FogVolume);
+	grid(func, box);
+
+	auto gridHandle = nanovdb::createNanoGrid(grid);
+
+	std::println(std::cout, "NanoVdb buffer size: {}bytes", gridHandle.size());
+
+	/*auto g = nanovdb::createFogVolumeSphere(10.0f, nanovdb::Vec3d(-20, 0, 0), 1.0, 3.0, nanovdb::Vec3d(0), "sphere");*/
+
+	nanovdb::io::writeGrid((cutterConfig.dst / "funny.nvdb").string(), gridHandle,
 						   nanovdb::io::Codec::NONE); // TODO: enable nanovdb::io::Codec::BLOSC
 
 
