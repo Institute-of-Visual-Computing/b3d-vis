@@ -43,8 +43,6 @@ namespace
 		OWLLaunchParams lp;
 
 		OWLMissProg missProgram;
-
-		OWLBuffer surfaceBuffer;
 	};
 
 	NanoContext nanoContext{};
@@ -165,7 +163,7 @@ namespace
 			owlGeomTypeCreate(context, OWL_GEOM_USER, sizeof(GeometryData), geometryVars.data(), geometryVars.size());
 
 		const auto rayGenerationVars =
-			std::array{ OWLVarDecl{ "frameBufferPtr", OWL_BUFPTR, OWL_OFFSETOF(RayGenerationData, frameBufferPtr) },
+			std::array{ OWLVarDecl{ "surfacePointers", OWL_USER_TYPE(cudaSurfaceObject_t[2]),OWL_OFFSETOF(RayGenerationData, surfacePointers) },
 						OWLVarDecl{ "frameBufferSize", OWL_INT2, OWL_OFFSETOF(RayGenerationData, frameBufferSize) },
 						OWLVarDecl{ "world", OWL_GROUP, OWL_OFFSETOF(RayGenerationData, world) },
 						OWLVarDecl{ "camera.position", OWL_FLOAT3, OWL_OFFSETOF(RayGenerationData, camera.position) },
@@ -237,8 +235,6 @@ namespace
 		owlBuildPipeline(context);
 		// owlBuildPrograms(context)
 		owlBuildSBT(context);
-
-		nanoContext.surfaceBuffer = owlDeviceBufferCreate(context, OWL_USER_TYPE(cudaSurfaceObject_t), 1, nullptr);
 	}
 
 	float computeStableEpsilon(float f)
@@ -301,9 +297,8 @@ auto NanoRenderer::onRender(const View& view) -> void
 		}
 	}
 
-	owlBufferUpload(nanoContext.surfaceBuffer, cudaSurfaceObjects.data(), 0, 1);
-	owlRayGenSetBuffer(nanoContext.rayGen, "frameBufferPtr", nanoContext.surfaceBuffer);
-
+	
+	owlRayGenSetRaw(nanoContext.rayGen, "surfacePointers", cudaSurfaceObjects.data());
 
 	owlMissProgSet3f(nanoContext.missProgram, "color0",
 					 owl3f{ guiData.rtBackgroundColorPalette.color1[0], guiData.rtBackgroundColorPalette.color1[1],

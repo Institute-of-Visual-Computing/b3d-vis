@@ -47,11 +47,11 @@ namespace b3d
 
 			struct RayGenerationData
 			{
-				uint32_t* frameBufferPtr;
+				// frameBufferPtr
+				cudaSurfaceObject_t surfacePointers[2];
 				owl::vec2i frameBufferSize;
 				OptixTraversableHandle world;
 				Camera camera;
-				cudaSurfaceObject_t* outputSurfaceArray;
 			};
 
 			struct MissProgramData

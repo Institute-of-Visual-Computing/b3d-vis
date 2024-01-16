@@ -15,7 +15,6 @@ using namespace owl;
 
 extern "C" __constant__ LaunchParams optixLaunchParams;
 
-
 struct PerRayData
 {
 	vec3f color;
@@ -85,7 +84,7 @@ OPTIX_RAYGEN_PROGRAM(rayGeneration)()
 	owl::traceRay(self.world, ray, prd);
 
 	const auto color = prd.color;
-	surf2Dwrite(owl::make_rgba(color), self.frameBufferPtr[0],
+	surf2Dwrite(owl::make_rgba(color), self.surfacePointers[0],
 				sizeof(uint32_t) * pixelId.x, pixelId.y);
 }
 
