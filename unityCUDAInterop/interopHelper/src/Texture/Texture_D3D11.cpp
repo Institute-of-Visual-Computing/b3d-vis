@@ -60,5 +60,9 @@ auto TextureD3D11::registerCUDA() -> void
 {
 	assert(d3d11GraphicsResource_ != nullptr);
 	// TODO: Error handling
-	cudaGraphicsD3D11RegisterResource(&cudaGraphicsResource_, d3d11GraphicsResource_, cudaGraphicsRegisterFlagsNone);
+	const auto cudaErr = cudaGraphicsD3D11RegisterResource(&cudaGraphicsResource_, d3d11GraphicsResource_, cudaGraphicsRegisterFlagsNone);
+	if (cudaErr != cudaSuccess)
+	{
+		this->isValid_ = false;
+	}
 }

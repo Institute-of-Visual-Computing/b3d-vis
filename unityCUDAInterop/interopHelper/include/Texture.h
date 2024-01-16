@@ -15,10 +15,7 @@ namespace b3d::unity_cuda_interop
 
 		virtual ~Texture()
 		{
-			if (cudaGraphicsResource_ != nullptr)
-			{
-				cudaGraphicsResource_ = nullptr;
-			}
+			unregisterCUDA();
 			unityNativeTexturePointer_ = nullptr;
 			isValid_ = false;
 		}

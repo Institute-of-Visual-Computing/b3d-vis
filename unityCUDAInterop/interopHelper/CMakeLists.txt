@@ -31,7 +31,7 @@ target_link_libraries(${MODULE_NAME}
 	PUBLIC
 		B3D::UnityCUDAInterop::PluginAPI
 		B3D::UnityCUDAInterop::LoggerInterface
-        CUDA::cudart
+		CUDA::cudart_static
 )
 
 set_property(TARGET ${MODULE_NAME} PROPERTY FOLDER "UnityCudaInterop")
