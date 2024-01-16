@@ -45,6 +45,7 @@ namespace b3d::renderer
 		RenderMode mode;
 		ExternalRenderTarget colorRt;
 		ExternalRenderTarget minMaxRt;
+		uint64_t fenceValue {0};
 	};
 
 

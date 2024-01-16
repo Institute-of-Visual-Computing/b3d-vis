@@ -38,16 +38,18 @@ __global__ void kernel()
 
 void b3d::renderer::SyncPrimitiveSampleRenderer::onRender(const View& view)
 {
+
+	auto cudaRet = cudaSuccess;
+
 	auto waitParams = cudaExternalSemaphoreWaitParams{};
 	waitParams.flags = 0;
-	waitParams.params.fence.value = 1;
-	cudaWaitExternalSemaphoresAsync(&initializationInfo_.signalSemaphore, &waitParams, 1);
+	waitParams.params.fence.value = view.fenceValue;
+	cudaRet = cudaWaitExternalSemaphoresAsync(&initializationInfo_.signalSemaphore, &waitParams, 1);
 
 	// TODO: class members
 	std::array<cudaArray_t, 2> cudaArrays{};
 	std::array<cudaSurfaceObject_t, 2> cudaSurfaceObjects{};
 
-	auto cudaRet = cudaSuccess;
 	// Map and createSurface
 	{
 		cudaRet = cudaGraphicsMapResources(1, const_cast<cudaGraphicsResource_t*>(&view.colorRt.target));
@@ -83,7 +85,6 @@ void b3d::renderer::SyncPrimitiveSampleRenderer::onRender(const View& view)
 		cudaMemcpy2DFromArray(hostMem.data(), view.colorRt.extent.width * sizeof(uint32_t), cudaArrays[0], 0, 0,
 							  view.colorRt.extent.width * sizeof(uint32_t), view.colorRt.extent.height,
 							  cudaMemcpyDeviceToHost);
-		cudaDeviceSynchronize();
 	}
 
 	// Destroy and unmap
@@ -95,9 +96,17 @@ void b3d::renderer::SyncPrimitiveSampleRenderer::onRender(const View& view)
 		cudaRet = cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&view.colorRt.target));
 	}
 
-	constexpr std::array signalParams = { cudaExternalSemaphoreSignalParams{ { { 1 } }, 0 },
-										  cudaExternalSemaphoreSignalParams{ { { 0 } }, 0 } };
-	cudaSignalExternalSemaphoresAsync(&initializationInfo_.waitSemaphore, signalParams.data(), 2);
+	auto signalParams = cudaExternalSemaphoreSignalParams{};
+	signalParams.flags = 0;
+	signalParams.params.fence.value = view.fenceValue;
+	cudaRet = cudaSignalExternalSemaphoresAsync(&initializationInfo_.waitSemaphore, &signalParams, 1);
+
+	cudaError_t rc = cudaGetLastError();
+	if (rc != cudaSuccess)
+	{
+		fprintf(stderr, "error (%s: line %d): %d:  %s\n", __FILE__, __LINE__, rc, cudaGetErrorString(rc));
+		// OWL_RAISE("fatal cuda error");
+	}
 }
 
 auto b3d::renderer::SyncPrimitiveSampleRenderer::onInitialize() -> void

@@ -46,7 +46,7 @@ auto SimpleTrianglesRenderer::onRender(const View& view) -> void
 {
 	auto waitParams = cudaExternalSemaphoreWaitParams{};
 	waitParams.flags = 0;
-	waitParams.params.fence.value = 1;
+	waitParams.params.fence.value = view.fenceValue;
 	cudaWaitExternalSemaphoresAsync(&initializationInfo_.signalSemaphore, &waitParams, 1);
 
 
@@ -130,10 +130,12 @@ auto SimpleTrianglesRenderer::onRender(const View& view) -> void
 		}
 		cudaRet = cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&view.colorRt.target));
 	}
+	
+	auto signalParams = cudaExternalSemaphoreSignalParams{};
+	signalParams.flags = 0;
+	signalParams.params.fence.value = view.fenceValue;
+	cudaRet = cudaSignalExternalSemaphoresAsync(&initializationInfo_.waitSemaphore, &signalParams, 1);
 
-	constexpr std::array signalParams = { cudaExternalSemaphoreSignalParams{ { { 1 } }, 0 },
-										  cudaExternalSemaphoreSignalParams{ { { 0 } }, 0 } };
-	cudaSignalExternalSemaphoresAsync(&initializationInfo_.waitSemaphore, signalParams.data(), 2);
 }
 
 auto SimpleTrianglesRenderer::onInitialize() -> void
