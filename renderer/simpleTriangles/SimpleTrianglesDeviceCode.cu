@@ -19,6 +19,8 @@
 #include "owl/owl_device.h"
 
 
+__constant__ MyLaunchParams optixLaunchParams;
+
 OPTIX_RAYGEN_PROGRAM(simpleRayGen)()
 {
 	const RayGenData& self = owl::getProgramData<RayGenData>();
@@ -26,21 +28,22 @@ OPTIX_RAYGEN_PROGRAM(simpleRayGen)()
 
 	const vec2f screen = (vec2f(pixelID) + vec2f(.5f)) / vec2f(self.fbSize);
 	owl::Ray ray;
-	ray.origin = self.camera.pos;
-	ray.direction = normalize(self.camera.dir_00 + screen.u * self.camera.dir_du + screen.v * self.camera.dir_dv);
+	ray.origin = optixLaunchParams.cameraData.pos;
+	ray.direction = normalize(optixLaunchParams.cameraData.dir_00 + screen.u * optixLaunchParams.cameraData.dir_du +
+							  screen.v * optixLaunchParams.cameraData.dir_dv);
 
-	vec3f color;
+	vec4f color;
 	owl::traceRay(/*accel to trace against*/ self.world,
 				  /*the ray to trace*/ ray,
 				  /*prd*/ color);
 
 	const int fbOfs = pixelID.x + self.fbSize.x * pixelID.y;
-	surf2Dwrite(owl::make_rgba(color), self.fbPtr[0], sizeof(uint32_t) * pixelID.x, pixelID.y);
+	surf2Dwrite(owl::make_rgba(color), optixLaunchParams.surfacePointer, sizeof(uint32_t) * pixelID.x, pixelID.y);
 }
 
 OPTIX_CLOSEST_HIT_PROGRAM(TriangleMesh)()
 {
-	vec3f& prd = owl::getPRD<vec3f>();
+	vec4f& prd = owl::getPRD<vec4f>();
 
 	const TrianglesGeomData& self = owl::getProgramData<TrianglesGeomData>();
 
@@ -54,6 +57,7 @@ OPTIX_CLOSEST_HIT_PROGRAM(TriangleMesh)()
 
 	const vec3f rayDir = optixGetWorldRayDirection();
 	prd = (.2f + .8f * fabs(dot(rayDir, Ng))) * self.color;
+	prd.w = 1.0f;
 }
 
 OPTIX_MISS_PROGRAM(miss)()
@@ -62,7 +66,8 @@ OPTIX_MISS_PROGRAM(miss)()
 
 	const MissProgData& self = owl::getProgramData<MissProgData>();
 
-	vec3f& prd = owl::getPRD<vec3f>();
+	vec4f& prd = owl::getPRD<vec4f>();
 	int pattern = (pixelID.x / 8) ^ (pixelID.y / 8);
-	prd = (pattern & 1) ? self.color1 : self.color0;
+	prd = 0;
+	
 }

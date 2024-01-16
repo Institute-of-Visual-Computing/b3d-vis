@@ -5,6 +5,7 @@
 #include "owl/owl.h"
 // our device-side data structures
 #include "deviceCode.h"
+#include "owl/helper/cuda.h"
 
 using namespace b3d::renderer;
 
@@ -69,34 +70,24 @@ auto SimpleTrianglesRenderer::onRender(const View& view) -> void
 			cudaRet = cudaCreateSurfaceObject(&cudaSurfaceObjects[i], &resDesc);
 		}
 	}
-
-
-	owlBufferUpload(surfaceBuffer_, cudaSurfaceObjects.data(), 0, 1);
-
-	owlRayGenSetBuffer(rayGen, "fbPtr", surfaceBuffer_);
-
+	
+	// const auto nativeDeviceBufferPtr = owlBufferGetPointer(surfaceBuffer_, 0);
 	owl2i fbSize = {
 		static_cast<int32_t>(view.colorRt.extent.width),
 		static_cast<int32_t>(view.colorRt.extent.height)
 	};
 	owlRayGenSet2i(rayGen, "fbSize", fbSize);
 	
-	owlRayGenSet3f(rayGen, "camera.pos", (const owl3f&)view.cameras[0].origin);
-	
-
-
 	// ----------- compute variable values  ------------------
 	const auto& camera = view.cameras.front();
 	const auto origin = vec3f{ camera.origin.x, camera.origin.y, camera.origin.z };
 	auto camera_d00 = camera.at - origin;
 	const auto wlen = length(camera_d00);
-	owlRayGenSet3f(rayGen, "camera.pos", reinterpret_cast<const owl3f&>(origin));
+	
 	const auto aspect = view.colorRt.extent.width / static_cast<float>(view.colorRt.extent.height);
 	const auto vlen = wlen * std::cosf(0.5f * camera.FoV);
 	const auto camera_ddu = vlen * aspect * normalize(cross(camera_d00, camera.up));
 	const auto camera_ddv = vlen * normalize(cross(camera_ddu, camera_d00));
-	/*camera_d00 -= 0.5f * camera_ddu;
-	camera_d00 -= 0.5f * camera_ddv;*/
 
 	const auto vz = -normalize(camera.at - origin);
 	const auto vx = normalize(cross(camera.up, vz));
@@ -104,24 +95,23 @@ auto SimpleTrianglesRenderer::onRender(const View& view) -> void
 	const auto focalDistance = length(camera.at - origin);
 	const float minFocalDistance = max(computeStableEpsilon(origin), computeStableEpsilon(vx));
 
-	/*
-	  tan(fov/2) = (height/2) / dist
-	  -> height = 2*tan(fov/2)*dist
-	*/
 	float screen_height = 2.f * tanf(camera.FoV / 2.f) * max(minFocalDistance, focalDistance);
 	const auto vertical = screen_height * vy;
 	const auto horizontal = screen_height * aspect * vx;
 	const auto lower_left = -max(minFocalDistance, focalDistance) * vz - 0.5f * vertical - 0.5f * horizontal;
 
+	const RayCameraData rcd = { origin, lower_left, horizontal, vertical };
 
-	owlRayGenSet3f(rayGen, "camera.dir_00", reinterpret_cast<const owl3f&>(lower_left));
-	owlRayGenSet3f(rayGen, "camera.dir_du", reinterpret_cast<const owl3f&>(horizontal));
-	owlRayGenSet3f(rayGen, "camera.dir_dv", reinterpret_cast<const owl3f&>(vertical));
+	owlParamsSetRaw(launchParameters_, "cameraData", &rcd);
+	owlParamsSetRaw(launchParameters_, "surfacePointer", &cudaSurfaceObjects[0]);
 
 	owlBuildSBT(context);
+	
 	sbtDirty = true;
 	owlRayGenLaunch2D(rayGen, view.colorRt.extent.width, view.colorRt.extent.height);
 
+	owlAsyncLaunch2D(rayGen, view.colorRt.extent.width, view.colorRt.extent.height, launchParameters_);
+	
 	// Destroy and unmap
 	{
 		for (auto i = 0; i < view.colorRt.extent.depth; i++)
@@ -154,7 +144,7 @@ auto SimpleTrianglesRenderer::onInitialize() -> void
 	// -------------------------------------------------------
 	OWLVarDecl trianglesGeomVars[] = { { "index", OWL_BUFPTR, OWL_OFFSETOF(TrianglesGeomData, index) },
 									   { "vertex", OWL_BUFPTR, OWL_OFFSETOF(TrianglesGeomData, vertex) },
-									   { "color", OWL_FLOAT3, OWL_OFFSETOF(TrianglesGeomData, color) } };
+									   { "color", OWL_FLOAT4, OWL_OFFSETOF(TrianglesGeomData, color) } };
 	OWLGeomType trianglesGeomType =
 		owlGeomTypeCreate(context, OWL_TRIANGLES, sizeof(TrianglesGeomData), trianglesGeomVars, 3);
 	owlGeomTypeSetClosestHit(trianglesGeomType, 0, module, "TriangleMesh");
@@ -179,16 +169,15 @@ auto SimpleTrianglesRenderer::onInitialize() -> void
 
 	owlGeomSetBuffer(trianglesGeom, "vertex", vertexBuffer);
 	owlGeomSetBuffer(trianglesGeom, "index", indexBuffer);
-	owlGeomSet3f(trianglesGeom, "color", owl3f{ 0, 1, 0 });
+	owlGeomSet4f(trianglesGeom, "color", owl4f{ 0, 1, 0,1 });
 
 	// ------------------------------------------------------------------
 	// the group/accel for that mesh
 	// ------------------------------------------------------------------
 	OWLGroup trianglesGroup = owlTrianglesGeomGroupCreate(context, 1, &trianglesGeom);
 	owlGroupBuildAccel(trianglesGroup);
-	OWLGroup world = owlInstanceGroupCreate(context, 1, &trianglesGroup);
-	owlGroupBuildAccel(world);
-
+	world_ = owlInstanceGroupCreate(context, 1, &trianglesGroup, nullptr, nullptr, OWL_MATRIX_FORMAT_OWL, OPTIX_BUILD_FLAG_ALLOW_UPDATE);
+	owlGroupBuildAccel(world_);
 
 	// ##################################################################
 	// set miss and raygen program required for SBT
@@ -197,29 +186,30 @@ auto SimpleTrianglesRenderer::onInitialize() -> void
 	// -------------------------------------------------------
 	// set up miss prog
 	// -------------------------------------------------------
-	OWLVarDecl missProgVars[] = { { "color0", OWL_FLOAT3, OWL_OFFSETOF(MissProgData, color0) },
-								  { "color1", OWL_FLOAT3, OWL_OFFSETOF(MissProgData, color1) },
+	OWLVarDecl missProgVars[] = { { "color0", OWL_FLOAT4, OWL_OFFSETOF(MissProgData, color0) },
+								  { "color1", OWL_FLOAT4, OWL_OFFSETOF(MissProgData, color1) },
 								  { /* sentinel to mark end of list */ } };
 	// ----------- create object  ----------------------------
 	OWLMissProg missProg = owlMissProgCreate(context, module, "miss", sizeof(MissProgData), missProgVars, -1);
 
 	// ----------- set variables  ----------------------------
-	owlMissProgSet3f(missProg, "color0", owl3f{ .8f, 0.f, 0.f });
-	owlMissProgSet3f(missProg, "color1", owl3f{ .8f, .8f, .8f });
+	owlMissProgSet4f(missProg, "color0", owl4f{ .0f, 0.f, 0.f, 0.0f });
+	owlMissProgSet4f(missProg, "color1", owl4f{ .0f, .0f, .0f, 0.0f });
 
 	// -------------------------------------------------------
 	// set up ray gen program
 	// -------------------------------------------------------
-	OWLVarDecl rayGenVars[] = { { "fbPtr", OWL_BUFPTR, OWL_OFFSETOF(RayGenData, fbPtr) },
-								// { "fbPtr",         OWL_BUFPTR, OWL_OFFSETOF(RayGenData,fbPtr)},
+	OWLVarDecl rayGenVars[] = { 
 								{ "fbSize", OWL_INT2, OWL_OFFSETOF(RayGenData, fbSize) },
 								{ "world", OWL_GROUP, OWL_OFFSETOF(RayGenData, world) },
-								{ "camera.pos", OWL_FLOAT3, OWL_OFFSETOF(RayGenData, camera.pos) },
-								{ "camera.dir_00", OWL_FLOAT3, OWL_OFFSETOF(RayGenData, camera.dir_00) },
-								{ "camera.dir_du", OWL_FLOAT3, OWL_OFFSETOF(RayGenData, camera.dir_du) },
-								{ "camera.dir_dv", OWL_FLOAT3, OWL_OFFSETOF(RayGenData, camera.dir_dv) },
 								{ /* sentinel to mark end of list */ } };
 
+	OWLVarDecl launchParamsVarsWithStruct[] = { { "cameraData", OWL_USER_TYPE(RayCameraData), OWL_OFFSETOF(MyLaunchParams, cameraData) },
+												{ "surfacePointer" ,OWL_USER_TYPE(cudaSurfaceObject_t), OWL_OFFSETOF(MyLaunchParams, surfacePointer) },
+													{}
+	};
+
+	launchParameters_ = owlParamsCreate(context, sizeof(MyLaunchParams), launchParamsVarsWithStruct, -1);
 
 	// Create Buffer for Surfaceobject
 	// TODO: Does not work if we have 2 colorRT in view
@@ -229,7 +219,7 @@ auto SimpleTrianglesRenderer::onInitialize() -> void
 	// ----------- create object  ----------------------------
 	rayGen = owlRayGenCreate(context, module, "simpleRayGen", sizeof(RayGenData), rayGenVars, -1);
 	/* camera and frame buffer get set in resiez() and cameraChanged() */
-	owlRayGenSetGroup(rayGen, "world", world);
+	owlRayGenSetGroup(rayGen, "world", world_);
 
 	// ##################################################################
 	// build *SBT* required to trace the groups

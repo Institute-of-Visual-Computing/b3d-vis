@@ -13,4 +13,6 @@ protected:
 	OWLRayGen rayGen{ 0 };
 	OWLContext context{ 0 };
 	OWLBuffer surfaceBuffer_{ nullptr };
+	OWLParams launchParameters_{ nullptr };
+	OWLGroup world_{ nullptr };
 };
