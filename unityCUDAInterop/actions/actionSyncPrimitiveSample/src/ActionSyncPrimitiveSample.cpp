@@ -42,6 +42,8 @@ protected:
 
 	// explicite. can be generic
 	std::unique_ptr<SyncPrimitiveSampleRenderer> renderer_;
+
+	uint64_t currFenceValue = 0;
 };
 
 ActionSyncPrimitiveSample::ActionSyncPrimitiveSample()
@@ -92,12 +94,14 @@ auto ActionSyncPrimitiveSample::customRenderEvent(int eventId, void* data) -> vo
 						  .extent = { static_cast<uint32_t>(testTexture_->getWidth()),
 									  static_cast<uint32_t>(testTexture_->getHeight()), 1 } };
 
+			currFenceValue += 1;
+			v.fenceValue = currFenceValue;
 
-			renderingContext_->signal(signalPrimitive_.get(), 1);
+			renderingContext_->signal(signalPrimitive_.get(), currFenceValue);
+
 			renderer_->render(v);
 
-			renderingContext_->wait(waitPrimitive_.get(), 1);
-			renderingContext_->signal(waitPrimitive_.get(), 0);
+			renderingContext_->wait(waitPrimitive_.get(), currFenceValue);
 		}
 	}
 	else
