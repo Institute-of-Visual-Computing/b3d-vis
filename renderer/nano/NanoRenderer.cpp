@@ -385,7 +385,7 @@ auto NanoRenderer::onGui() -> void
 {
 	ImGui::Begin("RT Settings");
 	ImGui::SeparatorText("Data File (.b3d)");
-	ImGui::InputText("##source", (char*)b3dFilePath.string().c_str(), b3dFilePath.string().size(), ImGuiInputTextFlags_ReadOnly);
+	ImGui::InputText("##source", const_cast<char*>(b3dFilePath.string().c_str()), b3dFilePath.string().size(), ImGuiInputTextFlags_ReadOnly);
 	ImGui::SameLine();
 	if (ImGui::Button("Select"))
 	{
@@ -418,7 +418,7 @@ auto NanoRenderer::onGui() -> void
 	// const auto root = std::filesystem::current_path().root_name();
 
 
-	if (ImGui::BeginPopupModal("FileSelectDialog", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+	if (ImGui::BeginPopupModal("FileSelectDialog", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 		constexpr auto roots = std::array{ "A:/", "B:/", "C:/", "D:/", "E:/", "F:/", "G:/", "H:/", "I:/" };
 
@@ -434,7 +434,7 @@ auto NanoRenderer::onGui() -> void
 				}
 			}
 		}
-		if (ImGui::BeginListBox("##dirs", ImVec2(800, 400)))
+		if (ImGui::BeginListBox("##dirs", ImVec2(ImGui::GetFontSize()*40, ImGui::GetFontSize()*16)))
 		{
 			if (ImGui::Selectable("...", false))
 			{
@@ -456,10 +456,12 @@ auto NanoRenderer::onGui() -> void
 				}
 				if (path.has_extension() && path.extension() == ".b3d")
 				{
+					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.1f,0.9f,0.1f,1.0f));
 					if (ImGui::Selectable(dir.path().string().c_str(), dir.path() == selectedPath))
 					{
 						selectedPath = dir.path();
 					}
+					ImGui::PopStyleColor();
 				}
 			}
 			ImGui::EndListBox();

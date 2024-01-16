@@ -66,6 +66,11 @@ OPTIX_BOUNDS_PROGRAM(volumeBounds)
 	primitiveBounds = self.volume.worldAabb;
 }
 
+OPTIX_RAYGEN_PROGRAM(hitCountRayGen)()
+{
+	
+}
+
 OPTIX_RAYGEN_PROGRAM(rayGeneration)()
 {
 	const auto& self = owl::getProgramData<RayGenerationData>();
@@ -136,7 +141,7 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closesthit)()
 
 	auto hdda = nanovdb::HDDA<nanovdb::Ray<float>>(ray, accessor.getDim(ijk, ray));
 
-	const auto opacity = 0.01f;
+	const auto opacity = 1.f;
 	auto transmittance = 1.0f;
 	auto t = 0.0f;
 	auto density = accessor.getValue(ijk) * opacity;

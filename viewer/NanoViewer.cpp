@@ -128,7 +128,7 @@ namespace
 		}
 	}
 
-	auto windowContentScaleCallback(GLFWwindow* window, float scaleX, float scaleY)
+	auto windowContentScaleCallback([[maybe_unused]] GLFWwindow* window, const float scaleX, [[maybe_unused]] float scaleY)
 	{
 		if(!scaleToFont.contains(scaleX))
 		{
