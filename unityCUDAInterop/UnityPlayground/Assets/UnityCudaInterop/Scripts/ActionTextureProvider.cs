@@ -1,3 +1,4 @@
+using B3D.UnityCudaInterop.NativeStructs;
 using Oculus.Interaction;
 using System.Collections;
 using System.Collections.Generic;
@@ -7,17 +8,6 @@ using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.XR;
 using UnityEngine.XR.Management;
-
-
-
-[StructLayout(LayoutKind.Sequential)]
-public struct TextureExtent
-{
-	public uint width;
-	public uint height;
-	public uint depth;
-}
-
 
 public class ActionTextureProvider
 {
@@ -70,9 +60,7 @@ public class ActionTextureProvider
 				);
 		
 		t2dArr.Apply();
-		externalTargetTextureExtent_.width = (uint)t2dArr.width;
-		externalTargetTextureExtent_.height = (uint)t2dArr.height;
-		externalTargetTextureExtent_.depth = (uint)t2dArr.depth;
+		externalTargetTextureExtent_ = new((uint)t2dArr.width, (uint)t2dArr.height, (uint)t2dArr.depth);
 		externalTargetTexture_ = t2dArr;
 		if (renderTextureDescriptor_.volumeDepth > 1)
 		{

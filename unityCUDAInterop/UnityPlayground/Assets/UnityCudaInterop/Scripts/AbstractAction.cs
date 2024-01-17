@@ -30,6 +30,8 @@ public abstract class AbstractAction
 	private bool isInitialized_ = false;
 	private int renderEventIdOffset_ = 0;
 
+	private ActionTextureProvider textureProvider_;
+
 	#endregion private members
 
 	#region properties
@@ -39,14 +41,18 @@ public abstract class AbstractAction
 		protected set => isInitialized_ = value;
 	}
 
-	public virtual IntPtr RenderEventAndDataFuncPointer { get => renderEventAndDataFuncPointer_; protected set => renderEventAndDataFuncPointer_ = value;}
+	public virtual IntPtr RenderEventAndDataFuncPointer { get => renderEventAndDataFuncPointer_; protected set => renderEventAndDataFuncPointer_ = value; }
 
 	protected IntPtr ActionPointer { get => actionPointer_; set => actionPointer_ = value; }
 
 	protected int RenderEventIdOffset { get => renderEventIdOffset_; set => renderEventIdOffset_ = value; }
 
+	public ActionTextureProvider TextureProvider { get => textureProvider_; }
+
+
 	#endregion properties
 
+	#region abstract internal dll functions
 
 	protected abstract IntPtr createAction();
 
@@ -60,6 +66,9 @@ public abstract class AbstractAction
 
 	public abstract void teardownAction();
 
+	#endregion abstract internal dll functions
+
+
 	public int mapEventId(int eventId)
 	{
 		return eventId + RenderEventIdOffset;
@@ -67,6 +76,7 @@ public abstract class AbstractAction
 
 	protected AbstractAction()
 	{
+		textureProvider_ = new();
 		ActionPointer = createAction();
 		RenderEventIdOffset = getRenderEventIdOffset();
 		RenderEventAndDataFuncPointer = getRenderEventAndDataFunc();

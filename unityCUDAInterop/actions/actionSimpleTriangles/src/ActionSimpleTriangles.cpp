@@ -8,6 +8,7 @@
 #include "RenderingContext.h"
 #include "SimpleTrianglesRenderer.h"
 #include "Texture.h"
+#include "SharedStructs.h"
 
 #include "create_action.h"
 
@@ -17,37 +18,17 @@ using namespace b3d::unity_cuda_interop;
 
 namespace
 {
-	struct NativeRenderingData
-	{
-		int eyeCount{ 1 };
-		Camera nativeCameradata[2];
-		NativeCube nativeCube{};
-	};
-
-	struct UnityInputTexture
-	{
-		void* pointer{ nullptr };
-		Extent exent{ 0, 0, 0 };
-	};
-
-	struct NativeTextureData
-	{
-		UnityInputTexture colorTexture{};
-		UnityInputTexture depthTexture{};
-	};
-
 	struct NativeInitData
 	{
 		NativeTextureData textureData{};
 	};
-} // namespace
+}
 
 enum class CustomActionRenderEventTypes : int
 {
-	initialize = 0,
-	setTextures,
-	beforeForwardAlpha,
-
+	initializeEvent = 0,
+	setTexturesEvent,
+	renderEvent,
 	customActionRenderEventTypeCount
 };
 
@@ -60,7 +41,6 @@ public:
 
 protected:
 	auto customRenderEvent(int eventId, void* data) -> void override;
-
 	auto setTextures(const NativeTextureData* nativeTextureData) -> void;
 
 	std::unique_ptr<SyncPrimitive> waitPrimitive_;
@@ -110,14 +90,14 @@ auto ActionSimpleTriangles::initialize(void* data) -> void
 
 auto ActionSimpleTriangles::customRenderEvent(int eventId, void* data) -> void
 {
-	if (isInitialized_ && isReady_ && eventId == static_cast<int>(CustomActionRenderEventTypes::beforeForwardAlpha))
+	if (isInitialized_ && isReady_ && eventId == static_cast<int>(CustomActionRenderEventTypes::renderEvent))
 	{
 		if (data == nullptr)
 		{
 			return;
 		}
 
-		const auto nrd = static_cast<NativeRenderingData*>(data);
+		const auto nrd = static_cast<NativeRenderingDataWrapper*>(data);
 
 		logger_->log("Render");
 		View v;
@@ -126,28 +106,40 @@ auto ActionSimpleTriangles::customRenderEvent(int eventId, void* data) -> void
 								  static_cast<uint32_t>(colorTexture_->getHeight()),
 								  static_cast<uint32_t>(colorTexture_->getDepth()) } };
 
-		v.cameras[0] = nrd->nativeCameradata[0];
-		v.cameras[1] = nrd->nativeCameradata[0];
+		v.cameras[0] = nrd->nativeRenderingData.nativeCameradata[0];
+		v.cameras[1] = nrd->nativeRenderingData.nativeCameradata[1];
 
 		v.cameras[0].at.z *= -1.0f;
 		v.cameras[0].origin.z *= -1.0f;
 		v.cameras[0].up.z *= -1.0f;
 
+		v.cameras[0].dir00.z *= -1.0f;
+		v.cameras[0].dirDu.z *= -1.0f;
+		v.cameras[0].dirDv.z *= -1.0f;
+
 		v.cameras[1].at.z *= -1.0f;
 		v.cameras[1].origin.z *= -1.0f;
 		v.cameras[1].up.z *= -1.0f;
 
-		v.mode = static_cast<RenderMode>(nrd->eyeCount - 1);
+		v.cameras[1].dir00.z *= -1.0f;
+		v.cameras[1].dirDu.z *= -1.0f;
+		v.cameras[1].dirDv.z *= -1.0f;
 
-		nrd->nativeCube.position.z *= -1.0f;
 
-		nrd->nativeCube.rotation =
-			owl::Quaternion3f{ nrd->nativeCube.rotation.k,
-							   owl::vec3f{ -nrd->nativeCube.rotation.r, -nrd->nativeCube.rotation.i,
-										   nrd->nativeCube.rotation.j } };
+		v.mode = static_cast<RenderMode>(nrd->nativeRenderingData.eyeCount - 1);
 
-		renderer_->setCubeVolumeTransform(&nrd->nativeCube);
+		SimpleTriangleRendererState strs{ *static_cast<SimpleTriangleRendererState*>(nrd->additionalDataPointer) };
 
+		strs.volumeTransform.position.z *= -1.0f;
+
+		strs.volumeTransform.rotation =
+			owl::Quaternion3f{ strs.volumeTransform.rotation.k,
+							   owl::vec3f{ -strs.volumeTransform.rotation.r, -strs.volumeTransform.rotation.i,
+										   strs.volumeTransform.rotation.j } };
+
+		std::unique_ptr<RendererState> strs_ = std::make_unique<SimpleTriangleRendererState>(strs);
+		renderer_->setRenderState(std::move(strs_));
+		
 		currFenceValue += 1;
 		v.fenceValue = currFenceValue;
 
@@ -156,11 +148,11 @@ auto ActionSimpleTriangles::customRenderEvent(int eventId, void* data) -> void
 
 		renderingContext_->wait(waitPrimitive_.get(), currFenceValue);
 	}
-	else if (eventId == static_cast<int>(CustomActionRenderEventTypes::initialize))
+	else if (eventId == static_cast<int>(CustomActionRenderEventTypes::initializeEvent))
 	{
 		initialize(data);
 	}
-	else if (eventId == static_cast<int>(CustomActionRenderEventTypes::setTextures))
+	else if (eventId == static_cast<int>(CustomActionRenderEventTypes::setTexturesEvent))
 	{
 		setTextures(static_cast<NativeTextureData*>(data));
 	}
@@ -170,7 +162,7 @@ auto ActionSimpleTriangles::setTextures(const NativeTextureData* nativeTextureDa
 {
 	isReady_ = false;
 	const auto ntd = *nativeTextureData;
-	if (ntd.colorTexture.exent.depth > 0)
+	if (ntd.colorTexture.extent.depth > 0)
 	{
 		auto newColorTexture = renderAPI_->createTexture(ntd.colorTexture.pointer);
 		newColorTexture->registerCUDA();
@@ -179,7 +171,7 @@ auto ActionSimpleTriangles::setTextures(const NativeTextureData* nativeTextureDa
 		cudaDeviceSynchronize();
 	}
 
-	if (ntd.depthTexture.exent.depth > 0)
+	if (ntd.depthTexture.extent.depth > 0)
 	{
 	}
 	isReady_ = true;
