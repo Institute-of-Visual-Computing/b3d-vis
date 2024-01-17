@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include "DebugDrawListBase.h"
+#include "GizmoHelperBase.h"
 
 #include "cuda_runtime.h"
 
@@ -59,6 +60,7 @@ namespace b3d::renderer
 	struct DebugInitializationInfo
 	{
 		std::shared_ptr<DebugDrawListBase> debugDrawList{};
+		std::shared_ptr<GizmoHelperBase> gizmoHelper{};
 	};
 
 	class RendererBase

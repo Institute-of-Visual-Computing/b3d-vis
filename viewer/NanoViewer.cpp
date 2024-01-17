@@ -19,12 +19,17 @@
 #include "imgui_impl_opengl3.h"
 #include "owl/helper/cuda.h"
 
+#include <ImGuizmo.h>
+
 
 using namespace owl;
 using namespace owl::viewer;
 
 namespace
 {
+	auto currentGizmoOperation(ImGuizmo::ROTATE);
+	auto currentGizmoMode(ImGuizmo::WORLD);
+
 	auto reshape(GLFWwindow* window, const int width, const int height) -> void
 	{
 		auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
@@ -76,22 +81,32 @@ namespace
 		}
 	}
 
+	struct CameraMatrices
+	{
+		glm::mat4 view;
+		glm::mat4 projection;
+		glm::mat4 viewProjection;
+	};
+
 	auto computeViewProjectionMatrixFromCamera(const Camera& camera, const int width, const int height)
+		-> CameraMatrices
 	{
 		const auto aspect = width / static_cast<float>(height);
 
-		const auto projectionMatrix = glm::perspective(glm::radians(camera.getFovyInDegrees()), aspect, 0.01f, 10000.0f);
-		const auto viewMatrix =
-			glm::lookAt(glm::vec3{ camera.position.x, camera.position.y, camera.position.z },
-						glm::vec3{ camera.getAt().x, camera.getAt().y, camera.getAt().z },
-						glm::normalize(glm::vec3{ camera.getUp().x, camera.getUp().y, camera.getUp().z }));
-		const auto viewProjection = projectionMatrix * viewMatrix;
-		return viewProjection;
+		CameraMatrices mat;
+		mat.projection = glm::perspective(glm::radians(camera.getFovyInDegrees()), aspect, 0.01f, 10000.0f);
+		mat.view = glm::lookAt(glm::vec3{ camera.position.x, camera.position.y, camera.position.z },
+							   glm::vec3{ camera.getAt().x, camera.getAt().y, camera.getAt().z },
+							   glm::normalize(glm::vec3{ camera.getUp().x, camera.getUp().y, camera.getUp().z }));
+
+
+		mat.viewProjection = mat.projection * mat.view;
+		return mat;
 	}
 
 	std::vector<ImFont*> defaultFonts;
 	std::unordered_map<float, int> scaleToFont{};
-	int currentFontIndex{0};
+	int currentFontIndex{ 0 };
 
 	auto rebuildFont() -> void
 	{
@@ -116,31 +131,32 @@ namespace
 			auto scaleX = 0.0f;
 			auto scaleY = 0.0f;
 			glfwGetMonitorContentScale(monitor, &scaleX, &scaleY);
-			const auto dpiScale = scaleX;// / 96;
+			const auto dpiScale = scaleX; // / 96;
 			config.SizePixels = dpiScale * baseFontSize;
 
-			if(!scaleToFont.contains(scaleX))
+			if (!scaleToFont.contains(scaleX))
 			{
-				auto font = io.Fonts->AddFontFromFileTTF("resources/fonts/Roboto-Medium.ttf", dpiScale * baseFontSize, &config);
+				auto font =
+					io.Fonts->AddFontFromFileTTF("resources/fonts/Roboto-Medium.ttf", dpiScale * baseFontSize, &config);
 				defaultFonts.push_back(font);
 				scaleToFont[scaleX] = i;
 			}
 		}
 	}
 
-	auto windowContentScaleCallback(GLFWwindow* window, float scaleX, float scaleY)
+	auto windowContentScaleCallback([[maybe_unused]] GLFWwindow* window, const float scaleX,
+									[[maybe_unused]] float scaleY)
 	{
-		if(!scaleToFont.contains(scaleX))
+		if (!scaleToFont.contains(scaleX))
 		{
 			rebuildFont();
 		}
 
 		currentFontIndex = scaleToFont[scaleX];
-		const auto dpiScale = scaleX;// / 96;
+		const auto dpiScale = scaleX; // / 96;
 		ImGui::GetStyle().ScaleAllSizes(dpiScale);
 	}
 
-	
 
 	auto initializeGui(GLFWwindow* window) -> void
 	{
@@ -257,6 +273,20 @@ auto NanoViewer::gui() -> void
 		ImGui::SeparatorText("Debug Draw Settings");
 		ImGui::SliderFloat("Line Width", &viewerSettings.lineWidth, 1.0f, 10.0f);
 		ImGui::Separator();
+
+
+		if (ImGui::IsKeyPressed(ImGuiKey_T))
+		{
+			currentGizmoOperation = ImGuizmo::TRANSLATE;
+		}
+		if (ImGui::IsKeyPressed(ImGuiKey_R))
+		{
+			currentGizmoOperation = ImGuizmo::ROTATE;
+		}
+		if (ImGui::IsKeyPressed(ImGuiKey_E))
+		{
+			currentGizmoOperation = ImGuizmo::SCALE;
+		}
 	}
 
 
@@ -392,6 +422,7 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 		rendererInfo_.deviceUuid = uuid;
 
 		debugDrawList_ = std::make_unique<DebugDrawList>();
+		gizmoHelper_ = std::make_unique<GizmoHelper>();
 	}
 	{
 
@@ -542,12 +573,70 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 			cameraChanged();
 			lastCameraUpdate = camera.lastModified;
 		}
+		gizmoHelper_->clear();
 
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 		ImGui::PushFont(defaultFonts[currentFontIndex]);
 		gui();
+
+		const auto cameraMatrices = computeViewProjectionMatrixFromCamera(camera, fbSize.x, fbSize.y);
+
+		if (viewerSettings.enableDebugDraw)
+		{
+			ImGui::Begin("##GizmoOverlay", nullptr,
+						 ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoScrollbar |
+							 ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoResize |
+							 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
+							 ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus);
+			{
+				ImGui::SetWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y), 0);
+				ImGui::SetWindowPos(ImVec2(0, 0));
+				ImGuizmo::SetDrawlist();
+				ImGuizmo::SetRect(0, 0, ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y);
+				for (const auto transform : gizmoHelper_->getTransforms())
+				{
+					float mat[16];
+
+					mat[3] = 0.0f;
+					mat[7] = 0.0f;
+					mat[11] = 0.0f;
+
+					mat[12] = transform->p.x;
+					mat[13] = transform->p.y;
+					mat[14] = transform->p.z;
+
+					mat[15] = 1.0f;
+
+					mat[0] = transform->l.vx.x;
+					mat[1] = transform->l.vx.y;
+					mat[2] = transform->l.vx.z;
+
+					mat[4] = transform->l.vy.x;
+					mat[5] = transform->l.vy.y;
+					mat[6] = transform->l.vy.z;
+
+					mat[8] = transform->l.vz.x;
+					mat[9] = transform->l.vz.y;
+					mat[10] = transform->l.vz.z;
+
+					ImGuizmo::Manipulate(reinterpret_cast<const float*>(&cameraMatrices.view),
+										 reinterpret_cast<const float*>(&cameraMatrices.projection),
+										 currentGizmoOperation, currentGizmoMode, mat, nullptr, nullptr);
+
+					transform->p.x = mat[12];
+					transform->p.y = mat[13];
+					transform->p.z = mat[14];
+
+					transform->l.vx = owl::vec3f{ mat[0], mat[1], mat[2] };
+					transform->l.vy = owl::vec3f{ mat[4], mat[5], mat[6] };
+					transform->l.vz = owl::vec3f{ mat[8], mat[9], mat[10] };
+				}
+			}
+			ImGui::End();
+		}
+
 		ImGui::PopFont();
 		ImGui::EndFrame();
 
@@ -557,11 +646,10 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 		fsPass->setSourceTexture(fbTexture);
 		fsPass->execute();
 
-		const auto viewProjectionMatrix = computeViewProjectionMatrixFromCamera(camera, fbSize.x, fbSize.y);
 
 		if (viewerSettings.enableGridFloor)
 		{
-			igPass->setViewProjectionMatrix(viewProjectionMatrix);
+			igPass->setViewProjectionMatrix(cameraMatrices.viewProjection);
 			igPass->setViewport(fbSize.x, fbSize.y);
 			igPass->setGridColor(
 				glm::vec3{ viewerSettings.gridColor[0], viewerSettings.gridColor[1], viewerSettings.gridColor[2] });
@@ -570,7 +658,7 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 
 		if (viewerSettings.enableDebugDraw)
 		{
-			ddPass->setViewProjectionMatrix(viewProjectionMatrix);
+			ddPass->setViewProjectionMatrix(cameraMatrices.viewProjection);
 			ddPass->setViewport(fbSize.x, fbSize.y);
 			ddPass->setLineWidth(viewerSettings.lineWidth);
 			ddPass->execute();
@@ -609,7 +697,7 @@ auto NanoViewer::selectRenderer(const std::uint32_t index) -> void
 	selectedRendererIndex_ = index;
 	currentRenderer_ = b3d::renderer::registry[selectedRendererIndex_].rendererInstance;
 
-	const auto debugInfo = b3d::renderer::DebugInitializationInfo{ debugDrawList_ };
+	const auto debugInfo = b3d::renderer::DebugInitializationInfo{ debugDrawList_, gizmoHelper_ };
 
 	currentRenderer_->initialize(rendererInfo_, debugInfo);
 }

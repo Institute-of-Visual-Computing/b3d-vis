@@ -1,6 +1,7 @@
 #include "Action.h"
 
 #include "NullDebugDrawList.h"
+#include "NullGizmoHelper.h"
 #include "PluginLogger.h"
 #include "RenderAPI.h"
 #include "RendererBase.h"
@@ -101,7 +102,9 @@ auto ActionSimpleTriangles::initialize(void* data) -> void
 	initializationInfo_.signalSemaphore = signalPrimitive_->getCudaSemaphore();
 	initializationInfo_.deviceUuid = renderAPI_->getCudaUUID();
 
-	renderer_->initialize(initializationInfo_, DebugInitializationInfo{ std::make_shared<NullDebugDrawList>() });
+	renderer_->initialize(
+		initializationInfo_,
+		DebugInitializationInfo{ std::make_shared<NullDebugDrawList>(), std::make_shared<NullGizmoHelper>() });
 	isInitialized_ = true;
 }
 

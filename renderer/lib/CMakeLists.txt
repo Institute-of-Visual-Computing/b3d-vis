@@ -9,6 +9,9 @@ set(SHARED_HEADERS
 	Logging.h
 	RendererBase.h
 	DebugDrawListBase.h
+	GizmoHelperBase.h
+	NullDebugDrawList.h
+	NullGizmoHelper.h
 )
 
 add_library(${MODULE_NAME} ${SRC} ${SHARED_HEADERS})

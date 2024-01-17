@@ -3,6 +3,8 @@
 #include "DebugDrawList.h"
 
 #include <RendererBase.h>
+
+#include "GizmoHelper.h"
 #include "Vulkan.h"
 
 class NanoViewer final : public owl::viewer::OWLViewer
@@ -22,6 +24,7 @@ private:
 	auto onFrameBegin() -> void;
 
 	std::shared_ptr<DebugDrawList> debugDrawList_{};
+	std::shared_ptr<GizmoHelper> gizmoHelper_{};
 
 	std::shared_ptr<b3d::renderer::RendererBase> currentRenderer_{ nullptr };
 	std::int32_t selectedRendererIndex_{ -1 };
