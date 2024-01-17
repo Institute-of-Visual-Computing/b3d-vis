@@ -8,12 +8,13 @@
 #include "glm/packing.hpp"
 
 auto DebugDrawList::drawBox(const owl::vec3f& midPoint, const owl::vec3f& extent, owl::vec3f color,
-							const owl::Quaternion3f& orientation) -> void
+							const owl::vec3f& origin, const owl::Quaternion3f& orientation) -> void
 {
 	const auto glmMidPoint = glm::vec3{ midPoint.x, midPoint.y, midPoint.z };
+	const auto glmOrigin = glm::vec3{ origin.x, origin.y, origin.z };
 
-	const auto translate = glm::translate(glm::identity<glm::mat4>(), glmMidPoint);
-	const auto invTranslate = glm::translate(glm::identity<glm::mat4>(), -glmMidPoint);
+	const auto translate = glm::translate(glm::identity<glm::mat4>(), glmOrigin);
+	const auto invTranslate = glm::translate(glm::identity<glm::mat4>(), -glmOrigin);
 	const auto rotate = glm::toMat4(glm::quat{ orientation.r, orientation.i, orientation.j, orientation.k });
 	const auto rotor = translate * rotate * invTranslate;
 
