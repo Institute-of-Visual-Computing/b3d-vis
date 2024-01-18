@@ -83,12 +83,12 @@ namespace
 
 	auto createVolume() -> NanoVdbVolume
 	{
-		const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
-		assert(std::filesystem::exists(testFile));
+		// const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
+		//assert(std::filesystem::exists(testFile));
 		// owlInstanceGroupSetTransform
 		auto volume = NanoVdbVolume{};
-		// const auto gridVolume = nanovdb::createFogVolumeTorus();
-		const auto gridVolume = nanovdb::io::readGrid(testFile.string());
+		const auto gridVolume = nanovdb::createFogVolumeTorus();
+		//const auto gridVolume = nanovdb::io::readGrid(testFile.string());
 		OWL_CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&volume.grid), gridVolume.size()));
 		OWL_CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(volume.grid), gridVolume.data(), gridVolume.size(),
 								  cudaMemcpyHostToDevice));

@@ -20,6 +20,10 @@ namespace b3d::renderer
 		owl::vec3f up;
 		float cosFoV;
 		float FoV;//in radians
+		bool directionsAvailable{ false };
+		owl::vec3f dir00;
+		owl::vec3f dirDu;
+		owl::vec3f dirDv;
 	};
 
 	struct Extent
@@ -49,6 +53,17 @@ namespace b3d::renderer
 		uint64_t fenceValue {0};
 	};
 
+	struct VolumeTransform
+	{
+		owl::vec3f position {0,0,0};
+		owl::vec3f scale { 1, 1, 1};
+		owl::Quaternion3f rotation;
+	};
+
+	struct RendererState
+	{
+		VolumeTransform volumeTransform {};
+	};
 
 	struct RendererInitializationInfo
 	{
@@ -73,6 +88,11 @@ namespace b3d::renderer
 		auto gui() -> void;
 		auto render(const View& view) -> void;
 
+		auto setRenderState(std::unique_ptr<RendererState> newRenderState) -> void
+		{
+			rendererState_ = std::move(newRenderState);
+		}
+
 		[[nodiscard]] auto debugDraw() const -> DebugDrawListBase&
 		{
 			return *debugInfo_.debugDrawList;
@@ -87,6 +107,8 @@ namespace b3d::renderer
 
 		RendererInitializationInfo initializationInfo_{};
 		DebugInitializationInfo debugInfo_{};
+
+		std::unique_ptr<RendererState> rendererState_{ nullptr };
 	};
 
 	auto addRenderer(std::shared_ptr<RendererBase> renderer, const std::string& name) -> void;
