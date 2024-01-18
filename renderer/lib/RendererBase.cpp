@@ -7,6 +7,7 @@ std::vector<RendererRegistryEntry> b3d::renderer::registry;
 
 auto RendererBase::initialize(const RendererInitializationInfo& initializationInfo, const DebugInitializationInfo& debugInitializationInfo) -> void
 {
+	assert(rendererState_.get());
 	initializationInfo_ = initializationInfo;
 	debugInfo_ = debugInitializationInfo;
 	onInitialize();

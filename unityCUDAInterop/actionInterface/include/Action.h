@@ -4,17 +4,33 @@
 #pragma once
 
 #include "PluginHandler.h"
+// 	TODO: Only required if we're an action which is using RendererBase. Introduce RenderAction and leave this Action as generic as possible.
+#include "RendererBase.h"
 
 extern b3d::unity_cuda_interop::PluginHandler sPluginHandler;
 
 namespace b3d::unity_cuda_interop
 {
+
+	// See TODO above
+	struct NativeRenderingData
+	{
+		int eyeCount{ 1 };
+		renderer::Camera nativeCameradata[2];
+	};
+
+	// See TODO above
+	struct NativeRenderingDataWrapper
+	{
+		NativeRenderingData nativeRenderingData{};
+		void* additionalDataPointer{ nullptr };
+	};
+
 	class PluginLogger;
 	class Action
 	{
 	public:
 		static constexpr int eventIdCount = 10;
-
 
 		Action() = default;
 

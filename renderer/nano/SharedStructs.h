@@ -14,9 +14,18 @@ namespace b3d
 	{
 		namespace nano
 		{
+			struct RayCameraData
+			{
+				owl::vec3f pos;
+				owl::vec3f dir_00;
+				owl::vec3f dir_du;
+				owl::vec3f dir_dv;
+			};
+
 			struct LaunchParams
 			{
-				uint32_t outputSurfaceIndex;
+				RayCameraData cameraData;
+				cudaSurfaceObject_t surfacePointer;
 			};
 
 			struct NanoVdbVolume
@@ -25,14 +34,6 @@ namespace b3d
 				owl::box3f worldAabb;
 				owl::AffineSpace3f transform;
 				CUdeviceptr grid = 0;
-			};
-
-			struct Camera
-			{
-				owl::vec3f position;
-				owl::vec3f dir00;
-				owl::vec3f dirDu;
-				owl::vec3f dirDv;
 			};
 
 			struct Volume
@@ -47,11 +48,8 @@ namespace b3d
 
 			struct RayGenerationData
 			{
-				// frameBufferPtr
-				cudaSurfaceObject_t surfacePointers[2];
 				owl::vec2i frameBufferSize;
 				OptixTraversableHandle world;
-				Camera camera;
 			};
 
 			struct MissProgramData

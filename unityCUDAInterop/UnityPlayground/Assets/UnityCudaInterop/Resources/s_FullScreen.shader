@@ -71,8 +71,8 @@ Shader "UnityCudaInterop/Fullscreen_Quad"
 				UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(i);
 				float3 texPos = float3(i.uv, unity_StereoEyeIndex);
 
-				#if UNITY_UV_STARTS_AT_TOP
-                    // texPos.y = 1.0f - texPos.y;
+				#if !UNITY_UV_STARTS_AT_TOP
+                    texPos.y = 1.0f - texPos.y;
                 #endif
 				
                 fixed4 col = UNITY_SAMPLE_TEX2DARRAY(_MainTex, texPos);

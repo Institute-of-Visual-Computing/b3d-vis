@@ -60,7 +60,7 @@ namespace
 
 	unique_volume_ptr nanoVdbVolume;
 
-	void getOptixTransform(const nanovdb::GridHandle<>& grid, float transform[])
+	auto getOptixTransform(const nanovdb::GridHandle<>& grid, float transform[]) -> void
 	{
 		// Extract the index-to-world-space affine transform from the Grid and convert
 		// to 3x4 row-major matrix for Optix.
@@ -83,12 +83,12 @@ namespace
 
 	auto createVolume() -> NanoVdbVolume
 	{
-		const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
-		assert(std::filesystem::exists(testFile));
+		// const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
+		//assert(std::filesystem::exists(testFile));
 		// owlInstanceGroupSetTransform
 		auto volume = NanoVdbVolume{};
-		// const auto gridVolume = nanovdb::createFogVolumeTorus();
-		const auto gridVolume = nanovdb::io::readGrid(testFile.string());
+		const auto gridVolume = nanovdb::createFogVolumeTorus();
+		//const auto gridVolume = nanovdb::io::readGrid(testFile.string());
 		OWL_CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&volume.grid), gridVolume.size()));
 		OWL_CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(volume.grid), gridVolume.data(), gridVolume.size(),
 								  cudaMemcpyHostToDevice));
@@ -140,6 +140,25 @@ namespace
 		return max(max(computeStableEpsilon(v.x), computeStableEpsilon(v.y)), computeStableEpsilon(v.z));
 	}
 
+	RayCameraData createRayCameraData(const Camera& camera, const Extent& textureExtent)
+	{
+		const auto origin = vec3f{ camera.origin.x, camera.origin.y, camera.origin.z };
+		const auto aspect = textureExtent.width / static_cast<float>(textureExtent.height);
+
+		const auto vz = -normalize(camera.at - origin);
+		const auto vx = normalize(cross(camera.up, vz));
+		const auto vy = normalize(cross(vz, vx));
+		const auto focalDistance = length(camera.at - origin);
+		const auto minFocalDistance = max(computeStableEpsilon(origin), computeStableEpsilon(vx));
+
+		const auto screen_height = 2.f * tanf(camera.FoV / 2.f) * max(minFocalDistance, focalDistance);
+		const auto vertical = screen_height * vy;
+		const auto horizontal = screen_height * aspect * vx;
+		const auto lower_left = -max(minFocalDistance, focalDistance) * vz - 0.5f * vertical - 0.5f * horizontal;
+
+		return { origin, lower_left, horizontal, vertical };
+	}
+
 
 	std::filesystem::path b3dFilePath{};
 
@@ -167,25 +186,14 @@ auto NanoRenderer::prepareGeometry() -> void
 		owlGeomTypeCreate(context, OWL_GEOM_USER, sizeof(GeometryData), geometryVars.data(), geometryVars.size());
 
 	const auto rayGenerationVars =
-		std::array{ OWLVarDecl{ "surfacePointers", OWL_USER_TYPE(cudaSurfaceObject_t[2]),
-								OWL_OFFSETOF(RayGenerationData, surfacePointers) },
+		std::array{ 
 					OWLVarDecl{ "frameBufferSize", OWL_INT2, OWL_OFFSETOF(RayGenerationData, frameBufferSize) },
-					OWLVarDecl{ "world", OWL_GROUP, OWL_OFFSETOF(RayGenerationData, world) },
-					OWLVarDecl{ "camera.position", OWL_FLOAT3, OWL_OFFSETOF(RayGenerationData, camera.position) },
-					OWLVarDecl{ "camera.dir00", OWL_FLOAT3, OWL_OFFSETOF(RayGenerationData, camera.dir00) },
-					OWLVarDecl{ "camera.dirDu", OWL_FLOAT3, OWL_OFFSETOF(RayGenerationData, camera.dirDu) },
-					OWLVarDecl{ "camera.dirDv", OWL_FLOAT3, OWL_OFFSETOF(RayGenerationData, camera.dirDv) } };
+					OWLVarDecl{ "world", OWL_GROUP, OWL_OFFSETOF(RayGenerationData, world) } };
 
 	const auto rayGen = owlRayGenCreate(context, module, "rayGeneration", sizeof(RayGenerationData),
 										rayGenerationVars.data(), rayGenerationVars.size());
 
-
-	const auto launchParamsVars =
-		std::array{ OWLVarDecl{ "camera", OWL_INT, OWL_OFFSETOF(LaunchParams, outputSurfaceIndex) } };
-
-	const auto lp = owlParamsCreate(context, sizeof(LaunchParams), launchParamsVars.data(), launchParamsVars.size());
 	nanoContext_.rayGen = rayGen;
-	nanoContext_.lp = lp;
 
 	auto geometry = owlGeomCreate(context, geometryType);
 
@@ -197,6 +205,12 @@ auto NanoRenderer::prepareGeometry() -> void
 	const auto geometryGroup = owlUserGeomGroupCreate(context, 1, &geometry);
 	nanoContext_.worldGeometryGroup = owlInstanceGroupCreate(context, 1, &geometryGroup, nullptr, nullptr,
 															 OWL_MATRIX_FORMAT_OWL, OPTIX_BUILD_FLAG_ALLOW_UPDATE);
+
+	// auto t = owl::affine3f::scale(owl::vec3f(.01f,.01f,.01f));
+	/*float a[12];
+	getOptixTransform(nanoVdbVolume->, a);
+	owlInstanceGroupSetTransform(world, 0, (const float*)&a,
+							   OWL_MATRIX_FORMAT_OWL);*/
 
 
 	owlGeomSetRaw(geometry, "volume", nanoVdbVolume.get());
@@ -226,6 +240,17 @@ auto NanoRenderer::prepareGeometry() -> void
 	// ----------- set variables  ----------------------------
 	owlMissProgSet3f(nanoContext_.missProgram, "color0", owl3f{ .8f, 0.f, 0.f });
 	owlMissProgSet3f(nanoContext_.missProgram, "color1", owl3f{ .8f, .8f, .8f });
+
+	// Create Launch params
+	{
+		OWLVarDecl launchParamsVarsWithStruct[] = {
+			{ "cameraData", OWL_USER_TYPE(RayCameraData), OWL_OFFSETOF(LaunchParams, cameraData) },
+			{ "surfacePointer", OWL_USER_TYPE(cudaSurfaceObject_t), OWL_OFFSETOF(LaunchParams, surfacePointer) },
+			{}
+		};
+
+		nanoContext_.launchParams = owlParamsCreate(nanoContext_.context, sizeof(LaunchParams), launchParamsVarsWithStruct, -1);
+	}
 
 
 	// owlBuildProgramsDebug(context);
@@ -263,9 +288,7 @@ auto NanoRenderer::onRender(const View& view) -> void
 			OWL_CUDA_CHECK(cudaCreateSurfaceObject(&cudaSurfaceObjects[i], &resDesc))
 		}
 	}
-
-	owlRayGenSetRaw(nanoContext_.rayGen, "surfacePointers", cudaSurfaceObjects.data());
-
+	
 	owlMissProgSet3f(nanoContext_.missProgram, "color0",
 					 owl3f{ guiData.rtBackgroundColorPalette.color1[0], guiData.rtBackgroundColorPalette.color1[1],
 							guiData.rtBackgroundColorPalette.color1[2] });
@@ -278,31 +301,22 @@ auto NanoRenderer::onRender(const View& view) -> void
 		owl2i{ static_cast<int32_t>(view.colorRt.extent.width), static_cast<int32_t>(view.colorRt.extent.height) };
 	owlRayGenSet2i(nanoContext_.rayGen, "frameBufferSize", fbSize);
 
-
-	const auto& camera = view.cameras.front();
-	const auto origin = vec3f{ camera.origin.x, camera.origin.y, camera.origin.z };
-	owlRayGenSet3f(nanoContext_.rayGen, "camera.position", reinterpret_cast<const owl3f&>(origin));
-	const auto aspect = view.colorRt.extent.width / static_cast<float>(view.colorRt.extent.height);
-
-
-	const auto vz = -normalize(camera.at - origin);
-	const auto vx = normalize(cross(camera.up, vz));
-	const auto vy = normalize(cross(vz, vx));
-	const auto focalDistance = length(camera.at - origin);
-	const auto minFocalDistance = max(computeStableEpsilon(origin), computeStableEpsilon(vx));
-
-	const auto screen_height = 2.f * tanf(camera.FoV / 2.f) * max(minFocalDistance, focalDistance);
-	const auto vertical = screen_height * vy;
-	const auto horizontal = screen_height * aspect * vx;
-	const auto lower_left = -max(minFocalDistance, focalDistance) * vz - 0.5f * vertical - 0.5f * horizontal;
-
-
-	owlRayGenSet3f(nanoContext_.rayGen, "camera.dir00", reinterpret_cast<const owl3f&>(lower_left));
-	owlRayGenSet3f(nanoContext_.rayGen, "camera.dirDu", reinterpret_cast<const owl3f&>(horizontal));
-	owlRayGenSet3f(nanoContext_.rayGen, "camera.dirDv", reinterpret_cast<const owl3f&>(vertical));
-
 	owlBuildSBT(nanoContext_.context);
-	owlAsyncLaunch2D(nanoContext_.rayGen, view.colorRt.extent.width, view.colorRt.extent.height, nanoContext_.lp);
+
+	RayCameraData rcd;
+	if (view.cameras[0].directionsAvailable)
+	{
+		rcd = { view.cameras[0].origin, view.cameras[0].dir00, view.cameras[0].dirDu, view.cameras[0].dirDv };
+	}
+	else
+	{
+		rcd = createRayCameraData(view.cameras[0], view.colorRt.extent);
+	}
+
+	owlParamsSetRaw(nanoContext_.launchParams, "cameraData", &rcd);
+	owlParamsSetRaw(nanoContext_.launchParams, "surfacePointer", &cudaSurfaceObjects[0]);
+
+	owlAsyncLaunch2D(nanoContext_.rayGen, view.colorRt.extent.width, view.colorRt.extent.height, nanoContext_.launchParams);
 
 	{
 		for (auto i = 0; i < view.colorRt.extent.depth; i++)
@@ -321,7 +335,6 @@ auto NanoRenderer::onRender(const View& view) -> void
 auto NanoRenderer::onInitialize() -> void
 {
 	RendererBase::onInitialize();
-	trs_ = affine3f::translate({ -10, -10, -10 }).scale({ 0.01, 0.01, 0.01 });
 	prepareGeometry();
 	log("[NanoRenderer] onInitialize!");
 }
@@ -360,7 +373,7 @@ auto NanoRenderer::onGui() -> void
 	ImGui::ColorEdit3("Color 1", guiData.rtBackgroundColorPalette.color1.data());
 	ImGui::ColorEdit3("Color 2", guiData.rtBackgroundColorPalette.color2.data());
 
-	debugInfo_.gizmoHelper->drawGizmo(trs_);
+	debugInfo_.gizmoHelper->drawGizmo(rendererState_->worldMatTRS);
 
 	static auto currentPath = std::filesystem::current_path();
 	static auto selectedPath = std::filesystem::path{};

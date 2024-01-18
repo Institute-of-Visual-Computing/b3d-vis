@@ -10,54 +10,23 @@ using static System.Net.Mime.MediaTypeNames;
 using UnityEngine.XR;
 using static UnityEngine.Camera;
 using UnityEditor;
+using B3D.UnityCudaInterop.NativeStructs;
+using JetBrains.Annotations;
+using UnityEngine.XR.Management;
+using Unity.XR.MockHMD;
+using UnityEngine.UIElements;
+using B3D.UnityCudaInterop;
+
+public class AbstractUnityAction : MonoBehaviour
+{
+
+}
+
+
 
 
 public class UnityActionSimpleTriangles : MonoBehaviour
 {
-    private ActionSimpleTriangles action;
-	private ActionTextureProvider actionTextureProvider;
-
-    CommandBuffer commandBuffer;
-
-	public RawImage ri;
-
-	public GameObject volumeCube;
-
-	public Renderer quadRenderer;
-	public Material fullscreenMaterial;
-	Material quadFullscreenMaterial;
-
-	[StructLayout(LayoutKind.Sequential)]
-	struct NativeCameraData
-    {
-		public Vector3 origin;
-		public Vector3 at;
-		public Vector3 up;
-		public float cosFovY;
-		public float fovY;
-    }
-
-	[StructLayout(LayoutKind.Sequential)]
-	struct NativeUnityTexture
-	{
-		public IntPtr texturePointer;
-		public TextureExtent extent;
-	}
-
-	[StructLayout(LayoutKind.Sequential)]
-	struct NativeTextureData
-	{
-		public NativeUnityTexture colorTexture;
-		public NativeUnityTexture depthTexture;
-		public static NativeTextureData CREATE()
-		{
-			NativeTextureData ntd = new();
-			ntd.colorTexture = new NativeUnityTexture();
-			ntd.depthTexture = new NativeUnityTexture();
-			return ntd;
-		}
-	}
-
 	[StructLayout(LayoutKind.Sequential)]
 	struct NativeInitData
 	{
@@ -71,33 +40,31 @@ public class UnityActionSimpleTriangles : MonoBehaviour
 	};
 
 	[StructLayout(LayoutKind.Sequential)]
-	struct NativeCube
+	struct SimpleTriangleNativeRenderingData
 	{
-		public Vector3 position;
-		public Vector3 scale;
-		public Quaternion rotation;
-	};
-
-	[StructLayout(LayoutKind.Sequential)]
-    struct NativeRenderingData
-    {
-        public int eyeCount;
-
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 2)]
-        public NativeCameraData[] nativeCameradata;
-
-		public NativeCube nativeCube;
-		public static NativeRenderingData CREATE()
-		{
-			var nrd = new NativeRenderingData();
-			nrd.nativeCameradata = new NativeCameraData[2];
-			nrd.nativeCube = new();
-			return nrd;
-		}
+		public NativeMatrix4x3 volumeTransform;
 	}
 
-	NativeRenderingData nativeRenderingData = new NativeRenderingData();
-    System.IntPtr nativeRenderingDataPtr;
+	private ActionSimpleTriangles action;
+
+	private CommandBuffer commandBuffer;
+
+	public Camera targetCamera;
+
+	public RawImage ri;
+
+	public GameObject volumeCube;
+
+	public Renderer quadRenderer;
+	public Material fullscreenMaterial;
+	Material quadFullscreenMaterial;
+
+	public Material objectMaterial;
+	Material volumeObjectMaterial;
+	public Renderer objectRenderer;
+
+	SimpleTriangleNativeRenderingData simpleTriangleNativeRenderingData;
+	System.IntPtr simpleTriangleNativeRenderingDataPtr;
 
 	NativeInitData nativeInitData;
 	System.IntPtr nativeInitDataPtr;
@@ -105,122 +72,77 @@ public class UnityActionSimpleTriangles : MonoBehaviour
 	NativeTextureData nativeTextureData;
 	IntPtr nativeTextureDataPtr;
 
-	Texture2D texture2D;
-	Material m;
     // Start is called before the first frame update
     void Start()
     {
 		quadFullscreenMaterial = new Material(fullscreenMaterial);
 		quadRenderer.material = quadFullscreenMaterial;
 
+
+		volumeObjectMaterial = new Material(objectMaterial);
+		objectRenderer.material = volumeObjectMaterial;
+
 		commandBuffer = new ();
 		action = new();
-		actionTextureProvider = new();
-		nativeRenderingData = NativeRenderingData.CREATE();
+		simpleTriangleNativeRenderingData = new();
+		simpleTriangleNativeRenderingData.volumeTransform = NativeMatrix4x3.CREATE();
+		
 		nativeInitData = new();
 		nativeTextureData = new();
 
-		nativeRenderingDataPtr = Marshal.AllocHGlobal(Marshal.SizeOf<NativeRenderingData>());
 		nativeInitDataPtr = Marshal.AllocHGlobal(Marshal.SizeOf<NativeInitData>());
 		nativeTextureDataPtr = Marshal.AllocHGlobal(Marshal.SizeOf<NativeTextureData>());
+		simpleTriangleNativeRenderingDataPtr = Marshal.AllocHGlobal(Marshal.SizeOf<SimpleTriangleNativeRenderingData>());
+		action.setAdditionalDataPointer(simpleTriangleNativeRenderingDataPtr);
+		action.setCamera(targetCamera);
 
 		updateTextures();
-
 		fillNativeRenderingData();
-		nativeRenderingData.nativeCube.position = volumeCube.transform.position;
-		nativeRenderingData.nativeCube.scale = volumeCube.transform.localScale;
-		nativeRenderingData.nativeCube.rotation = volumeCube.transform.rotation;
-		Marshal.StructureToPtr(nativeRenderingData, nativeRenderingDataPtr, true);
 
-		commandBuffer.IssuePluginEventAndData(action.RenderEventAndDataFuncPointer, action.mapEventId(2), nativeRenderingDataPtr);
-		Camera.main.AddCommandBuffer(CameraEvent.BeforeForwardOpaque, commandBuffer);
+		commandBuffer.IssuePluginEventAndData(action.RenderEventAndDataFuncPointer, action.mapEventId(2), action.NativeRenderingDataWrapperPointer);
+
+		targetCamera.AddCommandBuffer(CameraEvent.BeforeForwardOpaque, commandBuffer);
 
 		StartCoroutine(InitPluginAtEndOfFrame());
     }
 
-	struct EyeCamera
-	{
-		public EyeCamera(int eyeIdx, MonoOrStereoscopicEye camEye, XRNode n, InputFeatureUsage<Vector3> feature)
-		{
-			eyeIndex = eyeIdx;
-			cameraEye = camEye;
-			xrNode = n;
-			nodeUsage = feature;
-		}
-		public readonly int eyeIndex;
-		public readonly Camera.MonoOrStereoscopicEye cameraEye;
-		public readonly XRNode xrNode;
-		public readonly InputFeatureUsage<Vector3> nodeUsage;
-	}
-
-	readonly EyeCamera[] eyeCameraMapping = new EyeCamera[]
-	{
-		new( 0, Camera.MonoOrStereoscopicEye.Left, XRNode.LeftEye, CommonUsages.leftEyePosition),
-		new( 1, Camera.MonoOrStereoscopicEye.Right, XRNode.RightHand, CommonUsages.rightEyePosition)
-	};
-
 	void fillNativeRenderingData()
 	{
-		if (XRSettings.isDeviceActive)
-		{
-			nativeRenderingData.eyeCount = 2;
-
-			Vector3 cameraPosition = Camera.main.transform.localPosition;
-			var centerEyeDevice = InputDevices.GetDeviceAtXRNode(XRNode.CenterEye);
-
-			foreach (var nodeUsage in eyeCameraMapping)
-			{
-				Camera.MonoOrStereoscopicEye stereoEye = nodeUsage.cameraEye;
-				Vector3 eyePos = Vector3.zero;
-				if (!centerEyeDevice.TryGetFeatureValue(nodeUsage.nodeUsage, out eyePos))
-				{
-					stereoEye = MonoOrStereoscopicEye.Left;
-					Debug.Log("Could not get position for Node " + nodeUsage.nodeUsage.name);
-				}
-
-				Vector3 eyeWorldPos = Camera.main.transform.TransformPoint(eyePos - Camera.main.transform.position);
-				setNativeRenderingCameraData(eyeWorldPos, Camera.main.transform.forward, Camera.main.transform.up, Camera.main.fieldOfView, nodeUsage.eyeIndex);
-			}
-		}
-		else
-		{
-			nativeRenderingData.eyeCount = 1;
-			setNativeRenderingCameraData(Camera.main.transform.position, Camera.main.transform.forward, Camera.main.transform.up, Camera.main.fieldOfView, 0);
-		}
+		action.fillNativeRenderingDataWrapper();
+		var a = volumeCube.transform.localToWorldMatrix;
+		simpleTriangleNativeRenderingData.volumeTransform.vx = a.GetColumn(0);
+		simpleTriangleNativeRenderingData.volumeTransform.vy = a.GetColumn(1);
+		simpleTriangleNativeRenderingData.volumeTransform.vz = a.GetColumn(2);
+		simpleTriangleNativeRenderingData.volumeTransform.p = a.GetColumn(3);
+		// simpleTriangleNativeRenderingData.nativeCube.position = volumeCube.transform.position;
+		// simpleTriangleNativeRenderingData.nativeCube.scale = volumeCube.transform.localScale;
+		// simpleTriangleNativeRenderingData.nativeCube.rotation = volumeCube.transform.rotation;
+		Marshal.StructureToPtr(simpleTriangleNativeRenderingData, simpleTriangleNativeRenderingDataPtr, true);
 	}
-
-	void setNativeRenderingCameraData(Vector3 eyePos, Vector3 forward, Vector3 up, float fovYDegree, int eyeIndex)
-	{
-		nativeRenderingData.nativeCameradata[eyeIndex].origin = eyePos;
-		nativeRenderingData.nativeCameradata[eyeIndex].at = eyePos + forward;
-		nativeRenderingData.nativeCameradata[eyeIndex].up = up;
-		nativeRenderingData.nativeCameradata[eyeIndex].fovY = Mathf.Deg2Rad* fovYDegree;
-		nativeRenderingData.nativeCameradata[eyeIndex].cosFovY = Mathf.Cos(nativeRenderingData.nativeCameradata[eyeIndex].fovY);
-	}
-
+	
 	void updateTextures()
 	{
 		nativeTextureData = new();
-		actionTextureProvider.createExternalTargetTexture();
+		action.TextureProvider.createExternalTargetTexture();
 
-		quadFullscreenMaterial.SetTexture("_MainTex", actionTextureProvider.ExternalTargetTexture);
+		quadFullscreenMaterial.SetTexture("_MainTex", action.TextureProvider.ExternalTargetTexture);
+		volumeObjectMaterial.SetTexture("_MainTex", action.TextureProvider.ExternalTargetTexture);
 
-		nativeTextureData.depthTexture.extent.depth = 0;
-		nativeTextureData.depthTexture.texturePointer = IntPtr.Zero;
+		nativeTextureData.DepthTexture.Extent.Depth = 0;
+		nativeTextureData.DepthTexture.TexturePointer = IntPtr.Zero;
 
-		nativeTextureData.colorTexture.texturePointer = actionTextureProvider.ExternalTargetTexture.GetNativeTexturePtr();
-		nativeTextureData.colorTexture.extent = actionTextureProvider.ExternalTargetTextureExtent;
+		nativeTextureData.ColorTexture.TexturePointer = action.TextureProvider.ExternalTargetTexture.GetNativeTexturePtr();
+		nativeTextureData.ColorTexture.Extent = action.TextureProvider.ExternalTargetTextureExtent;
 
 		Marshal.StructureToPtr(nativeTextureData, nativeTextureDataPtr, true);
 	}
 
 	private void Update()
 	{
-		if(actionTextureProvider.renderTextureDescriptorChanged())
+		if(action.TextureProvider.renderTextureDescriptorChanged())
 		{
 			updateTextures();
-
-			Camera.main.RemoveCommandBuffer(CameraEvent.BeforeForwardOpaque, commandBuffer);
+			targetCamera.RemoveCommandBuffer(CameraEvent.BeforeForwardOpaque, commandBuffer);
 
 			CommandBuffer cbImmediate = new();
 			cbImmediate.IssuePluginEventAndData(action.RenderEventAndDataFuncPointer, action.mapEventId(1), nativeTextureDataPtr);
@@ -230,10 +152,6 @@ public class UnityActionSimpleTriangles : MonoBehaviour
 		else
 		{
 			fillNativeRenderingData();
-			nativeRenderingData.nativeCube.position = volumeCube.transform.position;
-			nativeRenderingData.nativeCube.scale = volumeCube.transform.localScale;
-			nativeRenderingData.nativeCube.rotation = volumeCube.transform.rotation;
-			Marshal.StructureToPtr(nativeRenderingData, nativeRenderingDataPtr, true);
 		}
 	}
 
@@ -241,7 +159,7 @@ public class UnityActionSimpleTriangles : MonoBehaviour
 	{
 		yield return new WaitForEndOfFrame();
 		yield return new WaitForSeconds(1);
-		Camera.main.AddCommandBuffer(CameraEvent.BeforeForwardOpaque, commandBuffer);
+		targetCamera.AddCommandBuffer(CameraEvent.BeforeForwardOpaque, commandBuffer);
 	}
 
 	IEnumerator InitPluginAtEndOfFrame()
@@ -262,7 +180,7 @@ public class UnityActionSimpleTriangles : MonoBehaviour
 		action.teardownAction();
 		action.destroyAction();
 
-        Marshal.FreeHGlobal(nativeRenderingDataPtr);
+		Marshal.FreeHGlobal(simpleTriangleNativeRenderingDataPtr);
 		Marshal.FreeHGlobal(nativeInitDataPtr);
 		Marshal.FreeHGlobal(nativeTextureDataPtr);
 	}

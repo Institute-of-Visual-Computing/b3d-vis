@@ -76,21 +76,21 @@ OPTIX_RAYGEN_PROGRAM(rayGeneration)()
 {
 	const auto& self = owl::getProgramData<RayGenerationData>();
 
-	const int eyeIdx = optixLaunchParams.outputSurfaceIndex;
-	const auto& camera = self.camera;
+	
+	const auto& camera = optixLaunchParams.cameraData;
 	const auto pixelId = owl::getLaunchIndex();
 
 	const auto screen = (vec2f(pixelId) + vec2f(.5f)) / vec2f(self.frameBufferSize);//*2.0f -1.0f;
 
 	owl::Ray ray;
-	ray.origin = camera.position;
-	ray.direction = normalize(camera.dir00 + screen.x * camera.dirDu + screen.y * camera.dirDv);
+	ray.origin = camera.pos;
+	ray.direction = normalize(camera.dir_00 + screen.x * camera.dir_du + screen.y * camera.dir_dv);
 
 	PerRayData prd;
 	owl::traceRay(self.world, ray, prd);
 
 	const auto color = prd.color;
-	surf2Dwrite(owl::make_rgba(color), self.surfacePointers[0],
+	surf2Dwrite(owl::make_rgba(color), optixLaunchParams.surfacePointer,
 				sizeof(uint32_t) * pixelId.x, pixelId.y);
 }
 

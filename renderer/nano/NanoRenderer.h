@@ -4,19 +4,29 @@
 #include "nanovdb/util/CreateNanoGrid.h"
 #include "owl/owl_host.h"
 
+struct NanoNativeRenderingData : b3d::renderer::RendererState
+{
+	b3d::renderer::VolumeTransform volumeTransform;
+};
+
 namespace b3d::renderer
 {
 	struct NanoContext
 	{
 		OWLContext context;
 		OWLRayGen rayGen;
-		OWLLaunchParams lp;
 		OWLMissProg missProgram;
 		OWLGroup worldGeometryGroup;
+		OWLLaunchParams launchParams;
 	};
 
 	class NanoRenderer final : public RendererBase
 	{
+	public:
+		NanoRenderer()
+		{
+			rendererState_ = std::make_unique<NanoNativeRenderingData>();
+		}
 	protected:
 		auto onRender(const View& view) -> void override;
 		auto onInitialize() -> void override;

@@ -33,13 +33,11 @@ namespace
 		};
 		BackgroundColorPalette rtBackgroundColorPalette;
 
-		struct CubeVolumeTransform
+		struct VolumeTransform
 		{
-			std::array<float, 3> position{ 0, 0, 0 };
-			std::array<float, 3> scale{ 1, 1, 1 };
 			std::array<float, 3> rotation{ 0, 0, 0 };
 		};
-		CubeVolumeTransform rtCubeVolumeTransform{};
+		VolumeTransform rtCubeVolumeTransform{};
 	};
 
 	RayCameraData createRayCameraData(const Camera& camera, const Extent& textureExtent)
@@ -80,17 +78,10 @@ namespace
 
 }
 
-auto SimpleTrianglesRenderer::setCubeVolumeTransform(NativeCube* nativeCube) -> void
-{
-	auto translate = affine3f::translate(nativeCube->position);
-	auto scale = affine3f::scale(nativeCube->scale);
-	AffineSpace3f rotate{ nativeCube->rotation };
-
-	trs_ = translate * rotate * scale;
-}
-
 auto SimpleTrianglesRenderer::onRender(const View& view) -> void
 {
+	const auto simpleTriangleRendererState = static_cast<SimpleTriangleRendererState*>(rendererState_.get());
+
 	auto waitParams = cudaExternalSemaphoreWaitParams{};
 	waitParams.flags = 0;
 	waitParams.params.fence.value = view.fenceValue;
@@ -128,11 +119,24 @@ auto SimpleTrianglesRenderer::onRender(const View& view) -> void
 		sbtDirty = false;
 	}
 
-	owlInstanceGroupSetTransform(world_, 0, (const float*)&trs_);
-	owlGroupRefitAccel(world_);
+	// Instance transform
+	{
+		owlInstanceGroupSetTransform(world_, 0, (const float*)&rendererState_->worldMatTRS);
+		owlGroupRefitAccel(world_);
+	}
 
 	{
-		const auto rcd = createRayCameraData(view.cameras[0], view.colorRt.extent);
+		RayCameraData rcd;
+		if (view.cameras[0].directionsAvailable)
+		{
+			rcd = { view.cameras[0].origin, view.cameras[0].dir00, view.cameras[0].dirDu, view.cameras[0].dirDv };
+		}
+		else
+		{
+			rcd = createRayCameraData(view.cameras[0], view.colorRt.extent);
+			
+		}
+
 		owlParamsSetRaw(launchParameters_, "cameraData", &rcd);
 		owlParamsSetRaw(launchParameters_, "surfacePointer", &cudaSurfaceObjects[0]);
 		owlAsyncLaunch2D(rayGen_, view.colorRt.extent.width, view.colorRt.extent.height, launchParameters_);
@@ -140,7 +144,15 @@ auto SimpleTrianglesRenderer::onRender(const View& view) -> void
 
 	if(view.mode == RenderMode::stereo && view.colorRt.extent.depth > 1)
 	{
-		const auto rcd = createRayCameraData(view.cameras[1], view.colorRt.extent);
+		RayCameraData rcd;
+		if (view.cameras[1].directionsAvailable)
+		{
+			rcd = { view.cameras[1].origin, view.cameras[1].dir00, view.cameras[1].dirDu, view.cameras[1].dirDv };
+		}
+		else
+		{
+			rcd = createRayCameraData(view.cameras[1], view.colorRt.extent);
+		}
 		owlParamsSetRaw(launchParameters_, "cameraData", &rcd);
 		owlParamsSetRaw(launchParameters_, "surfacePointer", &cudaSurfaceObjects[1]);
 		owlAsyncLaunch2D(rayGen_, view.colorRt.extent.width, view.colorRt.extent.height, launchParameters_);
@@ -164,8 +176,6 @@ auto SimpleTrianglesRenderer::onRender(const View& view) -> void
 auto SimpleTrianglesRenderer::onInitialize() -> void
 {
 	RendererBase::onInitialize();
-
-	trs_ = affine3f::translate({ 0, 0, 0 }).scale({ 1, 1, 1 });
 
 	// create a context on the first device:
 	context_ = owlContextCreate(nullptr, 1);
@@ -263,30 +273,12 @@ auto SimpleTrianglesRenderer::onInitialize() -> void
 
 auto SimpleTrianglesRenderer::onGui() -> void
 {
+	auto simpleTriangleRendererState = static_cast<SimpleTriangleRendererState*>(rendererState_.get());
+
 	ImGui::Begin("RT Settings");
 	ImGui::SeparatorText("Background Color Palette");
 	ImGui::ColorEdit3("Color 1", guiData.rtBackgroundColorPalette.color1.data());
 	ImGui::ColorEdit3("Color 2", guiData.rtBackgroundColorPalette.color2.data());
-	ImGui::SeparatorText("CubeVolume Transform");
-	ImGui::DragFloat3("Position", guiData.rtCubeVolumeTransform.position.data(), 0.01f, -FLT_MAX, FLT_MAX);
-	ImGui::DragFloat3("Scale", guiData.rtCubeVolumeTransform.scale.data(), 0.01f, 0.01f, 100.0f);
-	ImGui::DragFloat3("Rotation", guiData.rtCubeVolumeTransform.rotation.data(), 0.01f, -FLT_MAX, FLT_MAX);
-	if (ImGui::Button("Reset Transform", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
-	{
-		guiData.rtCubeVolumeTransform = {};
-	}
 
 	ImGui::End();
-
-	auto nt = NativeCube{
-		{ guiData.rtCubeVolumeTransform.position[0], guiData.rtCubeVolumeTransform.position[1],
-		  guiData.rtCubeVolumeTransform.position[2] },
-		{ guiData.rtCubeVolumeTransform.scale[0], guiData.rtCubeVolumeTransform.scale[1],
-		  guiData.rtCubeVolumeTransform.scale[2] },
-		Quaternion3f{ guiData.rtCubeVolumeTransform.rotation[0], guiData.rtCubeVolumeTransform.rotation[1],
-					  guiData.rtCubeVolumeTransform.rotation[2] },
-
-	};
-	this->setCubeVolumeTransform(&nt);
-
 }
