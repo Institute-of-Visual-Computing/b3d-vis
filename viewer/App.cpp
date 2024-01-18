@@ -6,6 +6,9 @@
 #include "NullRenderer.h"
 #include "SimpleTrianglesRenderer.h"
 
+#include "FastVoxelTraversalRenderer.h"
+
+
 using namespace b3d::renderer;
 
 namespace
@@ -99,8 +102,8 @@ auto Application::initialization(const std::vector<Param>& params) -> void
 	registerRenderer<NullRenderer>("nullRenderer");
 	registerRenderer<NanoRenderer>("NanoRenderer");
 	registerRenderer<SimpleTrianglesRenderer>("SimpleTrianglesRenderer");
-	// registerRenderer<FastVoxelTraversalRenderer>("FastVoxelTraversalRenderer");
 	registerRenderer<CudaSurfaceObjectWriteTestRenderer>("CudaSurfaceObjectWriteTestRenderer");
+	registerRenderer<FastVoxelTraversalRenderer>("FastVoxelTraversalRenderer");
 
 	addParamCommand(params, "renderer", "Sets default renderer.",
 					[&](const std::vector<std::string>& values)
