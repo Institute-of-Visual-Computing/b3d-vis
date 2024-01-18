@@ -42,7 +42,7 @@ public class UnityActionSimpleTriangles : MonoBehaviour
 	[StructLayout(LayoutKind.Sequential)]
 	struct SimpleTriangleNativeRenderingData
 	{
-		public VolumeTransform nativeCube;
+		public NativeMatrix4x3 volumeTransform;
 	}
 
 	private ActionSimpleTriangles action;
@@ -85,6 +85,7 @@ public class UnityActionSimpleTriangles : MonoBehaviour
 		commandBuffer = new ();
 		action = new();
 		simpleTriangleNativeRenderingData = new();
+		simpleTriangleNativeRenderingData.volumeTransform = NativeMatrix4x3.CREATE();
 		
 		nativeInitData = new();
 		nativeTextureData = new();
@@ -108,9 +109,14 @@ public class UnityActionSimpleTriangles : MonoBehaviour
 	void fillNativeRenderingData()
 	{
 		action.fillNativeRenderingDataWrapper();
-		simpleTriangleNativeRenderingData.nativeCube.position = volumeCube.transform.position;
-		simpleTriangleNativeRenderingData.nativeCube.scale = volumeCube.transform.localScale;
-		simpleTriangleNativeRenderingData.nativeCube.rotation = volumeCube.transform.rotation;
+		var a = volumeCube.transform.localToWorldMatrix;
+		simpleTriangleNativeRenderingData.volumeTransform.vx = a.GetColumn(0);
+		simpleTriangleNativeRenderingData.volumeTransform.vy = a.GetColumn(1);
+		simpleTriangleNativeRenderingData.volumeTransform.vz = a.GetColumn(2);
+		simpleTriangleNativeRenderingData.volumeTransform.p = a.GetColumn(3);
+		// simpleTriangleNativeRenderingData.nativeCube.position = volumeCube.transform.position;
+		// simpleTriangleNativeRenderingData.nativeCube.scale = volumeCube.transform.localScale;
+		// simpleTriangleNativeRenderingData.nativeCube.rotation = volumeCube.transform.rotation;
 		Marshal.StructureToPtr(simpleTriangleNativeRenderingData, simpleTriangleNativeRenderingDataPtr, true);
 	}
 	

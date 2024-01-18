@@ -206,6 +206,12 @@ auto NanoRenderer::prepareGeometry() -> void
 	nanoContext_.worldGeometryGroup = owlInstanceGroupCreate(context, 1, &geometryGroup, nullptr, nullptr,
 															 OWL_MATRIX_FORMAT_OWL, OPTIX_BUILD_FLAG_ALLOW_UPDATE);
 
+	// auto t = owl::affine3f::scale(owl::vec3f(.01f,.01f,.01f));
+	/*float a[12];
+	getOptixTransform(nanoVdbVolume->, a);
+	owlInstanceGroupSetTransform(world, 0, (const float*)&a,
+							   OWL_MATRIX_FORMAT_OWL);*/
+
 
 	owlGeomSetRaw(geometry, "volume", nanoVdbVolume.get());
 
@@ -282,9 +288,6 @@ auto NanoRenderer::onRender(const View& view) -> void
 			OWL_CUDA_CHECK(cudaCreateSurfaceObject(&cudaSurfaceObjects[i], &resDesc))
 		}
 	}
-
-
-
 	
 	owlMissProgSet3f(nanoContext_.missProgram, "color0",
 					 owl3f{ guiData.rtBackgroundColorPalette.color1[0], guiData.rtBackgroundColorPalette.color1[1],
@@ -332,7 +335,6 @@ auto NanoRenderer::onRender(const View& view) -> void
 auto NanoRenderer::onInitialize() -> void
 {
 	RendererBase::onInitialize();
-	trs_ = affine3f::translate({ -10, -10, -10 }).scale({ 0.01, 0.01, 0.01 });
 	prepareGeometry();
 	log("[NanoRenderer] onInitialize!");
 }
@@ -371,7 +373,7 @@ auto NanoRenderer::onGui() -> void
 	ImGui::ColorEdit3("Color 1", guiData.rtBackgroundColorPalette.color1.data());
 	ImGui::ColorEdit3("Color 2", guiData.rtBackgroundColorPalette.color2.data());
 
-	debugInfo_.gizmoHelper->drawGizmo(trs_);
+	debugInfo_.gizmoHelper->drawGizmo(rendererState_->worldMatTRS);
 
 	static auto currentPath = std::filesystem::current_path();
 	static auto selectedPath = std::filesystem::path{};

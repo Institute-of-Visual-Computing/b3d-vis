@@ -128,15 +128,15 @@ auto ActionSimpleTriangles::customRenderEvent(int eventId, void* data) -> void
 
 		v.mode = static_cast<RenderMode>(nrd->nativeRenderingData.eyeCount - 1);
 
-		SimpleTriangleRendererState strs{ *static_cast<SimpleTriangleRendererState*>(nrd->additionalDataPointer) };
+		auto strs = *static_cast<SimpleTriangleRendererState*>(nrd->additionalDataPointer);
 
-		strs.volumeTransform.position.z *= -1.0f;
-
+		strs.worldMatTRS.p *= owl::vec3f{ 1, 1, -1 };
+		/*
 		strs.volumeTransform.rotation =
 			owl::Quaternion3f{ strs.volumeTransform.rotation.k,
 							   owl::vec3f{ -strs.volumeTransform.rotation.r, -strs.volumeTransform.rotation.i,
 										   strs.volumeTransform.rotation.j } };
-
+		*/
 		std::unique_ptr<RendererState> strs_ = std::make_unique<SimpleTriangleRendererState>(strs);
 		renderer_->setRenderState(std::move(strs_));
 		

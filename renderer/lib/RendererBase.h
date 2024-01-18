@@ -62,7 +62,7 @@ namespace b3d::renderer
 
 	struct RendererState
 	{
-		VolumeTransform volumeTransform {};
+		owl::affine3f worldMatTRS{};
 	};
 
 	struct RendererInitializationInfo

@@ -121,11 +121,7 @@ auto SimpleTrianglesRenderer::onRender(const View& view) -> void
 
 	// Instance transform
 	{
-		auto translate = affine3f::translate({ simpleTriangleRendererState->volumeTransform.position });
-		auto scale = affine3f::scale(simpleTriangleRendererState->volumeTransform.scale);
-		AffineSpace3f rotate{ simpleTriangleRendererState->volumeTransform.rotation };
-		const auto trs = translate * rotate * scale;
-		owlInstanceGroupSetTransform(world_, 0, (const float*)&trs);
+		owlInstanceGroupSetTransform(world_, 0, (const float*)&rendererState_->worldMatTRS);
 		owlGroupRefitAccel(world_);
 	}
 
@@ -283,24 +279,6 @@ auto SimpleTrianglesRenderer::onGui() -> void
 	ImGui::SeparatorText("Background Color Palette");
 	ImGui::ColorEdit3("Color 1", guiData.rtBackgroundColorPalette.color1.data());
 	ImGui::ColorEdit3("Color 2", guiData.rtBackgroundColorPalette.color2.data());
-	ImGui::SeparatorText("CubeVolume Transform");
-
-	ImGui::DragFloat3("Position", &simpleTriangleRendererState->volumeTransform.position.x, 0.01f, -FLT_MAX, FLT_MAX);
-	ImGui::DragFloat3("Scale", &simpleTriangleRendererState->volumeTransform.scale.x, 0.01f, 0.01f, 100.0f);
-	ImGui::DragFloat3("Rotation", guiData.rtCubeVolumeTransform.rotation.data(), 0.01f, -FLT_MAX, FLT_MAX);
-	
-	if (ImGui::Button("Reset Transform", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
-	{
-		simpleTriangleRendererState->volumeTransform.position = { 0, 0, 0 };
-		simpleTriangleRendererState->volumeTransform.scale = { 1, 1, 1 };
-		guiData.rtCubeVolumeTransform.rotation = { 0, 0, 0 };
-		
-	}
-
-	simpleTriangleRendererState->volumeTransform.rotation =
-		Quaternion3f{ guiData.rtCubeVolumeTransform.rotation[0], guiData.rtCubeVolumeTransform.rotation[1],
-					  guiData.rtCubeVolumeTransform.rotation[2] };
 
 	ImGui::End();
-
 }

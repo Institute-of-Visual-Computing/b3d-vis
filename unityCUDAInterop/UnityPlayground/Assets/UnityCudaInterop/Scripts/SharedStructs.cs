@@ -149,8 +149,33 @@ namespace B3D
 
 			}
 
+			public struct NativeMatrix4x3
+			{
+				/*
+					vx0  vy0 vz0 p0
+					vx1  vy1 vz1 p1
+					vx2  vy2 vz2 p2
+				*/
+				public Vector3 vx;
+				public Vector3 vy;
+				public Vector3 vz;
+				public Vector3 p;
+
+				public static NativeMatrix4x3 CREATE()
+				{
+					var nm43 = new NativeMatrix4x3
+					{
+						vx = Vector3.right,
+						vy = Vector3.up,
+						vz = Vector3.forward,
+						p = Vector3.zero
+					};
+					return nm43;
+				}
+			}
+
 			[StructLayout(LayoutKind.Sequential)]
-			struct VolumeTransform
+			public struct VolumeTransform
 			{
 				public Vector3 position;
 				public Vector3 scale;
