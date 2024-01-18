@@ -437,7 +437,7 @@ auto NanoRenderer::onGui() -> void
 				}
 			}
 		}
-		if (ImGui::BeginListBox("##dirs", ImVec2(ImGui::GetFontSize()*40, ImGui::GetFontSize()*16)))
+		if (ImGui::BeginListBox("##dirs", ImVec2(ImGui::GetFontSize() * 40, ImGui::GetFontSize() * 16)))
 		{
 			if (ImGui::Selectable("...", false))
 			{
@@ -459,7 +459,7 @@ auto NanoRenderer::onGui() -> void
 				}
 				if (path.has_extension() && path.extension() == ".b3d")
 				{
-					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.1f,0.9f,0.1f,1.0f));
+					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.1f, 0.9f, 0.1f, 1.0f));
 					if (ImGui::Selectable(dir.path().string().c_str(), dir.path() == selectedPath))
 					{
 						selectedPath = dir.path();
@@ -471,7 +471,7 @@ auto NanoRenderer::onGui() -> void
 		}
 		if (ImGui::Button("OK", ImVec2(120, 0)))
 		{
-			if(!selectedPath.empty() != 0)
+			if (!selectedPath.empty() != 0)
 			{
 				b3dFilePath = selectedPath;
 			}
