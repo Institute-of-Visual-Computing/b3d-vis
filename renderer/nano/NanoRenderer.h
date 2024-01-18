@@ -2,6 +2,7 @@
 #include <RendererBase.h>
 
 #include "nanovdb/util/CreateNanoGrid.h"
+#include "owl/owl_host.h"
 
 struct NanoNativeRenderingData : b3d::renderer::RendererState
 {
