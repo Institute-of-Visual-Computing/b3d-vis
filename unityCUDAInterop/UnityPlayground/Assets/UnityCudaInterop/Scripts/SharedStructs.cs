@@ -4,12 +4,38 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Unity.VisualScripting;
 using UnityEngine;
+using static UnityEngine.Camera;
+using UnityEngine.XR;
 
 namespace B3D
 {
     namespace UnityCudaInterop
     {
-        namespace NativeStructs
+		struct EyeCamera
+		{
+			public EyeCamera(int eyeIdx, StereoscopicEye camEye, XRNode n, InputFeatureUsage<Vector3> feature)
+			{
+				eyeIndex = eyeIdx;
+				cameraEye = camEye;
+				xrNode = n;
+				nodeUsage = feature;
+			}
+			public readonly int eyeIndex;
+			public readonly Camera.StereoscopicEye cameraEye;
+			public readonly XRNode xrNode;
+			public readonly InputFeatureUsage<Vector3> nodeUsage;
+		}
+
+		class SharedMembers
+		{
+			public static readonly EyeCamera[] eyeCameraMapping = new EyeCamera[]
+			{
+				new( 0, Camera.StereoscopicEye.Left, XRNode.LeftEye, CommonUsages.leftEyePosition),
+				new( 1, Camera.StereoscopicEye.Right, XRNode.RightHand, CommonUsages.rightEyePosition)
+			};
+		}
+
+		namespace NativeStructs
         {
             [StructLayout(LayoutKind.Sequential)]
             public struct TextureExtent
