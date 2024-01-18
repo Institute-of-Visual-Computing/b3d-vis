@@ -12,6 +12,7 @@ set(SHARED_HEADERS
 	GizmoHelperBase.h
 	NullDebugDrawList.h
 	NullGizmoHelper.h
+	CudaGpuTimers.h
 )
 
 add_library(${MODULE_NAME} ${SRC} ${SHARED_HEADERS})
