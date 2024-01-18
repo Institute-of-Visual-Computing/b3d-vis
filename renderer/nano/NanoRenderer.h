@@ -15,9 +15,9 @@ namespace b3d::renderer
 	{
 		OWLContext context;
 		OWLRayGen rayGen;
-		OWLLaunchParams lp;
 		OWLMissProg missProgram;
 		OWLGroup worldGeometryGroup;
+		OWLLaunchParams launchParams;
 	};
 
 	class NanoRenderer final : public RendererBase

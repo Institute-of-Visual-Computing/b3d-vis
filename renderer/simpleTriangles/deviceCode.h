@@ -30,9 +30,6 @@ struct RayCameraData
 	vec3f dir_dv;
 };
 
-
-
-
 struct MyLaunchParams
 {
 	RayCameraData cameraData;
