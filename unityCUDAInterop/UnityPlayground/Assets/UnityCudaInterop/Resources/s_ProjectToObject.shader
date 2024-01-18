@@ -61,16 +61,16 @@ Shader "UnityCudaInterop/ProjectToObject"
 
 				float3 texPos = float3((i.screenPos.xy / i.screenPos.w), unity_StereoEyeIndex);
 
-				#if UNITY_UV_STARTS_AT_TOP
+				#if !UNITY_UV_STARTS_AT_TOP
                     texPos.y = 1.0f - texPos.y;
                 #endif
 				
                 fixed4 col = UNITY_SAMPLE_TEX2DARRAY(_MainTex, texPos);
 				float lineDepth = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, texPos));
-				if(col.z < 0.000001f)
+				if(col.w < 0.000001f)
                 {
                     float abc = lineDepth;
-                    //discard;
+                    discard;
                 }
 
                 return col;
