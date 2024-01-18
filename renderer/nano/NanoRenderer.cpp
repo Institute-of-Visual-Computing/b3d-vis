@@ -265,6 +265,7 @@ auto NanoRenderer::onRender(const View& view) -> void
 
 	debugDraw().drawBox(nanoVdbVolume->worldAabb.center(), nanoVdbVolume->worldAabb.size(),
 						owl::vec3f(0.1f, 0.82f, 0.15f));
+	gpuTimers_.nextFrame();
 
 	auto waitParams = cudaExternalSemaphoreWaitParams{};
 	waitParams.flags = 0;
@@ -316,7 +317,17 @@ auto NanoRenderer::onRender(const View& view) -> void
 	owlParamsSetRaw(nanoContext_.launchParams, "cameraData", &rcd);
 	owlParamsSetRaw(nanoContext_.launchParams, "surfacePointer", &cudaSurfaceObjects[0]);
 
-	owlAsyncLaunch2D(nanoContext_.rayGen, view.colorRt.extent.width, view.colorRt.extent.height, nanoContext_.launchParams);
+
+	constexpr auto deviceId = 0;
+	const auto stream = owlParamsGetCudaStream(nanoContext_.launchParams, deviceId);
+
+	const auto record = gpuTimers_.record("basic owl rt", stream);
+
+	record.start();
+
+	owlAsyncLaunch2D(nanoContext_.rayGen, view.colorRt.extent.width, view.colorRt.extent.height,
+					 nanoContext_.launchParams);
+	record.stop();
 
 	{
 		for (auto i = 0; i < view.colorRt.extent.depth; i++)
@@ -372,6 +383,32 @@ auto NanoRenderer::onGui() -> void
 	ImGui::SeparatorText("Background Color Palette");
 	ImGui::ColorEdit3("Color 1", guiData.rtBackgroundColorPalette.color1.data());
 	ImGui::ColorEdit3("Color 2", guiData.rtBackgroundColorPalette.color2.data());
+
+	ImGui::SeparatorText("Timings");
+
+	const auto timing = gpuTimers_.get("basic owl rt");
+
+	static float values[100] = {};
+	static int values_offset = 0;
+	static double refresh_time = 0.0;
+
+	values[values_offset] = timing;
+	values_offset = (values_offset + 1) % IM_ARRAYSIZE(values);
+
+	// Plots can display overlay texts
+	// (in this example, we will display an average value)
+	{
+		float average = 0.0f;
+		for (int n = 0; n < IM_ARRAYSIZE(values); n++)
+			average += values[n];
+		average /= (float)IM_ARRAYSIZE(values);
+		char overlay[32];
+		sprintf(overlay, "avg %f", average);
+		ImGui::PlotHistogram("##perfGraph", values, IM_ARRAYSIZE(values), values_offset, overlay,0.0f, 16.0f, ImVec2(0, 400.0f));
+	}
+
+
+	ImGui::Text("%1.3f", timing);
 
 	debugInfo_.gizmoHelper->drawGizmo(rendererState_->worldMatTRS);
 
