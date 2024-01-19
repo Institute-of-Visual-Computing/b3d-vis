@@ -10,6 +10,8 @@
 #include "cuda_runtime.h"
 #include "owl/common/math/vec.h"
 
+#include "math_constants.h"
+
 namespace
 {
 	inline __device__ vec3i sign(vec3f v)
@@ -47,34 +49,36 @@ namespace
 			c = vec3f(1.0, 1.0 + 4.0 * (0.75 - x), 0.0);
 		return clamp(c, vec3f(0.0), vec3f(1.0));
 	}
+
+	#define PRINT_VEC3F(name, vec)                                                                                         \
+	{                                                                                                                  \
+		printf("%s: x: %.5f, y: %.5f, z: %.5f\n", name, (float)(vec).x, (float)(vec).y, (float)(vec).z);               \
+	}
+
+	#define PRINT_VEC3I(name, vec)                                                                                         \
+		{                                                                                                                  \
+			printf("%s: x: %d, y: %d, z: %d\n", name, (int)(vec).x, (int)(vec).y, (int)(vec).z);                           \
+		}
+
+	#define PRINT_NEWLINE() printf("\n");
+	#define PRINT_HORIZ_LINE() printf("------------\n");
+
+	struct PerRayData
+	{
+		vec4f color;
+		vec2i fbSize;
+		float hitCount;
+		float maxVal;
+		vec3f invDir;
+		vec2i pxId;
+	};
+
+
 } // namespace
 
 extern "C" __constant__ MyLaunchParams optixLaunchParams;
 
 __constant__ float EPS = .0001f;
-#define PRINT_VEC3F(name, vec)                                                                                         \
-	{                                                                                                                  \
-		printf("%s: x: %.5f, y: %.5f, z: %.5f\n", name, (float)(vec).x, (float)(vec).y, (float)(vec).z);               \
-	}
-
-#define PRINT_VEC3I(name, vec)                                                                                         \
-	{                                                                                                                  \
-		printf("%s: x: %d, y: %d, z: %d\n", name, (int)(vec).x, (int)(vec).y, (int)(vec).z);               \
-	}
-
-#define PRINT_NEWLINE() printf("\n");
-#define PRINT_HORIZ_LINE() printf("------------\n");
-
-struct PerRayData
-{
-	vec4f color;
-	vec2i fbSize;
-	float hitCount;
-	float maxVal;
-	vec3f invDir;
-	vec2i pxId;
-};
-
 
 OPTIX_RAYGEN_PROGRAM(simpleRayGen)()
 {
@@ -124,10 +128,10 @@ OPTIX_MISS_PROGRAM(miss)()
 	else
 	{
 		prd.color = 0;
+		// No checkerboard background
 		//prd.color = (pattern & 1) ? self.color1 : self.color0;
 	}
 }
-
 
 OPTIX_BOUNDS_PROGRAM(AABBGeom)(const void* geomData, box3f& primBounds, const int primID)
 {
@@ -168,13 +172,14 @@ OPTIX_INTERSECT_PROGRAM(AABBGeom)()
 	{
 		float tFarReport = max(tNear, tFar);
 		float tNearReport = max(0.0f, min(tNear, tFar));
-		// Store both points for CH and AH program
+		// Store both points for CH and AH program and report tFar to optix
 		optixReportIntersection(tFar, 0, __float_as_int(tNear));
 	}
 }
 
 OPTIX_CLOSEST_HIT_PROGRAM(AABBGeom)()
 {
+	// Do nothing in Closest hit
 	/*
 	auto& prd = owl::getPRD<PerRayData1>();
 
@@ -268,7 +273,6 @@ OPTIX_ANY_HIT_PROGRAM(AABBGeom)()
 			uint64_t idx = bufferOffset + localGridPosI.x + localGridPosI.y * oaabb.upper.x + localGridPosI.z * oaabb.upper.x * oaabb.upper.y;
 			currVal = self.gridData[idx].x;
 
-
 			float val = tex1D<float4>(optixLaunchParams.transferTexture1D, currVal + optixLaunchParams.transferOffset.x).x;
 			alpha += val * optixLaunchParams.inverseIntegralValue.x;
 
@@ -287,8 +291,6 @@ OPTIX_ANY_HIT_PROGRAM(AABBGeom)()
 	prd.maxVal = max(prd.maxVal, maxVal);
 
 	vec3f bgColor = { .8f, .8f, .8f };
-
-
 	vec3f mainColor = spectral_jet(prd.maxVal / self.minmax.y);
 
 	vec3f contentColor = mix(bgColor, mainColor, prd.maxVal / self.minmax.y);

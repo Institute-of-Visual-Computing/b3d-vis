@@ -21,7 +21,7 @@ using namespace b3d::renderer;
 
 extern "C" char FastVoxelTraversalDeviceCode_ptx[];
 namespace
- {
+{
 	float computeStableEpsilon(float f)
 	{
 		return abs(f) * float(1. / (1 << 21));
@@ -31,38 +31,40 @@ namespace
 	{
 		return max(max(computeStableEpsilon(v.x), computeStableEpsilon(v.y)), computeStableEpsilon(v.z));
 	}
-	 RayCameraData createRayCameraData(const Camera& camera, const Extent& textureExtent)
-	 {
-		 const auto origin = vec3f{ camera.origin.x, camera.origin.y, camera.origin.z };
-		 auto camera_d00 = camera.at - origin;
-		 const auto wlen = length(camera_d00);
 
-		 const auto aspect = textureExtent.width / static_cast<float>(textureExtent.height);
-		 const auto vlen = wlen * std::cosf(0.5f * camera.FoV);
-		 const auto camera_ddu = vlen * aspect * normalize(cross(camera_d00, camera.up));
-		 const auto camera_ddv = vlen * normalize(cross(camera_ddu, camera_d00));
+	RayCameraData createRayCameraData(const Camera& camera, const Extent& textureExtent)
+	{
+		const auto origin = vec3f{ camera.origin.x, camera.origin.y, camera.origin.z };
+		auto camera_d00 = camera.at - origin;
+		const auto wlen = length(camera_d00);
 
-		 const auto vz = -normalize(camera.at - origin);
-		 const auto vx = normalize(cross(camera.up, vz));
-		 const auto vy = normalize(cross(vz, vx));
-		 const auto focalDistance = length(camera.at - origin);
-		 const float minFocalDistance = max(computeStableEpsilon(origin), computeStableEpsilon(vx));
+		const auto aspect = textureExtent.width / static_cast<float>(textureExtent.height);
+		const auto vlen = wlen * std::cosf(0.5f * camera.FoV);
+		const auto camera_ddu = vlen * aspect * normalize(cross(camera_d00, camera.up));
+		const auto camera_ddv = vlen * normalize(cross(camera_ddu, camera_d00));
 
-		 float screen_height = 2.f * tanf(camera.FoV / 2.f) * max(minFocalDistance, focalDistance);
-		 const auto vertical = screen_height * vy;
-		 const auto horizontal = screen_height * aspect * vx;
-		 const auto lower_left = -max(minFocalDistance, focalDistance) * vz - 0.5f * vertical - 0.5f * horizontal;
+		const auto vz = -normalize(camera.at - origin);
+		const auto vx = normalize(cross(camera.up, vz));
+		const auto vy = normalize(cross(vz, vx));
+		const auto focalDistance = length(camera.at - origin);
+		const float minFocalDistance = max(computeStableEpsilon(origin), computeStableEpsilon(vx));
 
-		 return { origin, lower_left, horizontal, vertical };
-	 }
- }
+		float screen_height = 2.f * tanf(camera.FoV / 2.f) * max(minFocalDistance, focalDistance);
+		const auto vertical = screen_height * vy;
+		const auto horizontal = screen_height * aspect * vx;
+		const auto lower_left = -max(minFocalDistance, focalDistance) * vz - 0.5f * vertical - 0.5f * horizontal;
+
+		return { origin, lower_left, horizontal, vertical };
+	}
+} // namespace
 
 void FastVoxelTraversalRenderer::onInitialize()
 {
 	RendererBase::onInitialize();
 
 	const auto fitsFilePathS = std::filesystem::path{ "D:/data/work/b3d_data/datacubes/n4565/n4565_lincube_big.fits" };
-	const auto catalogFilePathS = std::filesystem::path{ "D:/data/work/b3d_data/datacubes/n4565/sofia_output/outname_cat.xml" };
+	const auto catalogFilePathS =
+		std::filesystem::path{ "D:/data/work/b3d_data/datacubes/n4565/sofia_output/outname_cat.xml" };
 	const auto transferFunction1DFilePath = std::filesystem::path{ "resources/transfer1d.png" };
 
 	context_ = owlContextCreate(nullptr, 1);
@@ -100,7 +102,6 @@ void FastVoxelTraversalRenderer::onInitialize()
 
 		launchParameters_ = owlParamsCreate(context_, sizeof(MyLaunchParams), launchParamsVarsWithStruct, -1);
 	}
-	
 
 	// Create Geom Type
 	{
@@ -120,80 +121,80 @@ void FastVoxelTraversalRenderer::onInitialize()
 		concreteAabbGeom_ = owlGeomCreate(context_, aabbGeomType_);
 	}
 
-	
+	// Load transferfunction image
+	{
+		int x, y, n;
 
-	std::vector<SourceRegion> sourceRegions;
-	std::vector<float> sourcesDataBuffer;
+		unsigned char* data = stbi_load(transferFunction1DFilePath.string().c_str(), &x, &y, &n, 0);
 
-	const auto bufferSize =
-		SourceVolumeLoader::extractSourceRegionsFromCatalogueXML(catalogFilePathS.string(), sourceRegions);
-	sourcesDataBuffer.resize(bufferSize);
-	const auto volumeDimension =
-		SourceVolumeLoader::loadDataForSources(fitsFilePathS.string(), sourceRegions, sourcesDataBuffer);
+		integral_ = 0;
+		for (int i = 0; i < x * y; ++i)
+		{
+			integral_ += static_cast<float>(data[i]);
+		}
+		integral_ /= 255.0f;
+		integral_ /= static_cast<float>(x * y);
+		invIntegral_ = 1.0f / integral_;
 
-	std::sort(sourceRegions.begin(), sourceRegions.end(),
-			  [](const SourceRegion& a, const SourceRegion& b)
-			  { return a.gridSourceBox.volume() < b.gridSourceBox.volume(); });
+		transferTexture1D_ =
+			owlTexture2DCreate(context_, OWL_TEXEL_FORMAT_RGBA8, x, y, data, OWL_TEXTURE_LINEAR, OWL_TEXTURE_WRAP);
+	}
+
+	// Load Sources and create geomgroup from aabbgeomtype
+	{
+		std::vector<SourceRegion> sourceRegions;
+		std::vector<float> sourcesDataBuffer;
+
+		const auto bufferSize =
+			SourceVolumeLoader::extractSourceRegionsFromCatalogueXML(catalogFilePathS.string(), sourceRegions);
+		sourcesDataBuffer.resize(bufferSize);
+		const auto volumeDimension =
+			SourceVolumeLoader::loadDataForSources(fitsFilePathS.string(), sourceRegions, sourcesDataBuffer);
+
+		std::sort(sourceRegions.begin(), sourceRegions.end(),
+				  [](const SourceRegion& a, const SourceRegion& b)
+				  { return a.gridSourceBox.volume() < b.gridSourceBox.volume(); });
 
 
-	const owl2f gridDataMinMax = { *std::min_element(sourcesDataBuffer.begin(), sourcesDataBuffer.end()),
-								   *std::max_element(sourcesDataBuffer.begin(), sourcesDataBuffer.end()) };
+		const owl2f gridDataMinMax = { *std::min_element(sourcesDataBuffer.begin(), sourcesDataBuffer.end()),
+									   *std::max_element(sourcesDataBuffer.begin(), sourcesDataBuffer.end()) };
 
 
-	OWLBuffer owlSourcesBuffer =
-		owlDeviceBufferCreate(context_, OWL_USER_TYPE(SourceRegion), sourceRegions.size(), sourceRegions.data());
-	OWLBuffer owlDataBuffer =
-		owlDeviceBufferCreate(context_, OWL_FLOAT, sourcesDataBuffer.size(), sourcesDataBuffer.data());
+		OWLBuffer owlSourcesBuffer =
+			owlDeviceBufferCreate(context_, OWL_USER_TYPE(SourceRegion), sourceRegions.size(), sourceRegions.data());
+		OWLBuffer owlDataBuffer =
+			owlDeviceBufferCreate(context_, OWL_FLOAT, sourcesDataBuffer.size(), sourcesDataBuffer.data());
 
-	
-	
 
-	owlGeomSetBuffer(concreteAabbGeom_, "sourceRegions", owlSourcesBuffer);
-	owlGeomSetBuffer(concreteAabbGeom_, "gridData", owlDataBuffer);
-	owlGeomSet3i(concreteAabbGeom_, "gridDims", owl3i{ volumeDimension.x, volumeDimension.y, volumeDimension.z });
-	owlGeomSet2f(concreteAabbGeom_, "minmax", gridDataMinMax);
-	owlGeomSetPrimCount(concreteAabbGeom_, sourceRegions.size());
+		// Set data to aabgeom
+		owlGeomSetBuffer(concreteAabbGeom_, "sourceRegions", owlSourcesBuffer);
+		owlGeomSetBuffer(concreteAabbGeom_, "gridData", owlDataBuffer);
+		owlGeomSet3i(concreteAabbGeom_, "gridDims", owl3i{ volumeDimension.x, volumeDimension.y, volumeDimension.z });
+		owlGeomSet2f(concreteAabbGeom_, "minmax", gridDataMinMax);
+		owlGeomSetPrimCount(concreteAabbGeom_, sourceRegions.size());
 
-    aabbGroup_ = owlUserGeomGroupCreate(context_, 1, &concreteAabbGeom_);
+		aabbGroup_ = owlUserGeomGroupCreate(context_, 1, &concreteAabbGeom_);
+	}
+
+	// Build everything and set variables
 
 	owlBuildPrograms(context_);
 	owlBuildPipeline(context_);
 	owlGroupBuildAccel(aabbGroup_);
 
 	world_ = owlInstanceGroupCreate(context_, 1, &aabbGroup_, nullptr, nullptr, OWL_MATRIX_FORMAT_OWL,
-										OPTIX_BUILD_FLAG_ALLOW_UPDATE);
-	
-		// ----------- set variables  ----------------------------
-	int x, y, n;
-
-	unsigned char* data = stbi_load(transferFunction1DFilePath.string().c_str(), &x, &y, &n, 0);
-
-	integral_ = 0;
-	for (int i = 0; i < x * y; ++i)
-	{
-		integral_ += static_cast<float>(data[i]);
-	}
-	integral_ /= 255.0f;
-	integral_ /= static_cast<float>(x * y);
-	invIntegral_ = 1.0f / integral_;
-
-	transferTexture1D_ =
-		owlTexture2DCreate(context_, OWL_TEXEL_FORMAT_RGBA8, x, y, data, OWL_TEXTURE_LINEAR, OWL_TEXTURE_WRAP);
+									OPTIX_BUILD_FLAG_ALLOW_UPDATE);
 
 	owlParamsSetTexture(launchParameters_, "transferTexture1D", transferTexture1D_);
 	owlParamsSet1f(launchParameters_, "integralValue", integral_);
 	owlParamsSet1f(launchParameters_, "inverseIntegralValue", invIntegral_);
-	
-
 
 	owlMissProgSet4f(missProg_, "color0", owl4f{ .8f, 0.f, 0.f, 1.0f });
 	owlMissProgSet4f(missProg_, "color1", owl4f{ .8f, .8f, .8f, 1.0f });
-	
-    owlGroupBuildAccel(world_);
 
+	owlGroupBuildAccel(world_);
 	owlRayGenSetGroup(rayGen_, "world", world_);
 	owlBuildSBT(context_);
-
 }
 
 auto FastVoxelTraversalRenderer::onRender(const View& view) -> void
@@ -222,6 +223,7 @@ auto FastVoxelTraversalRenderer::onRender(const View& view) -> void
 		}
 	}
 
+
 	const auto currRenderState = static_cast<FastVoxelTraversalNativeRenderingData*>(rendererState_.get());
 
 	if (fbSize_.x != view.colorRt.extent.width || fbSize_.y != view.colorRt.extent.height)
@@ -230,12 +232,14 @@ auto FastVoxelTraversalRenderer::onRender(const View& view) -> void
 		owlRayGenSet2i(rayGen_, "fbSize", fbSize_);
 		sbtDirty = true;
 	}
+
 	if (sbtDirty)
 	{
 		owlBuildSBT(context_);
 		sbtDirty = false;
 	}
 
+	// Set Launch Params for this run. 
 	{
 		RayCameraData rcd;
 		if (view.cameras[0].directionsAvailable)
@@ -247,15 +251,13 @@ auto FastVoxelTraversalRenderer::onRender(const View& view) -> void
 			rcd = createRayCameraData(view.cameras[0], view.colorRt.extent);
 		}
 
-
-
 		owlParamsSetRaw(launchParameters_, "cameraData", &rcd);
 		owlParamsSetRaw(launchParameters_, "surfacePointer", &cudaSurfaceObjects[0]);
 		owlParamsSet1f(launchParameters_, "transferOffset", currRenderState->transferOffset);
-		owlAsyncLaunch2D(rayGen_, view.colorRt.extent.width, view.colorRt.extent.height, launchParameters_);
-		owlLaunchSync(launchParameters_);
-		cudaDeviceSynchronize();
 	}
+	
+	owlAsyncLaunch2D(rayGen_, view.colorRt.extent.width, view.colorRt.extent.height, launchParameters_);
+
 
 	// Destroy and unmap surface
 	{
@@ -265,19 +267,18 @@ auto FastVoxelTraversalRenderer::onRender(const View& view) -> void
 		}
 		cudaRet = cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&view.colorRt.target));
 	}
-	
+
 	auto signalParams = cudaExternalSemaphoreSignalParams{};
 	signalParams.flags = 0;
 	signalParams.params.fence.value = view.fenceValue;
 	cudaSignalExternalSemaphoresAsync(&initializationInfo_.waitSemaphore, &signalParams, 1);
-
 }
-
 
 void FastVoxelTraversalRenderer::onDeinitialize()
 {
 	RendererBase::onDeinitialize();
 }
+
 void FastVoxelTraversalRenderer::onGui()
 {
 	ImGui::Begin("RT Settings");
@@ -285,7 +286,7 @@ void FastVoxelTraversalRenderer::onGui()
 
 	auto currRenderState = static_cast<FastVoxelTraversalNativeRenderingData*>(rendererState_.get());
 
-	ImGui::DragFloat("drag float", &currRenderState->transferOffset, 0.001f, 0.0f , 1.0f);
+	ImGui::DragFloat("Transfer Offset", &currRenderState->transferOffset, 0.001f, 0.0f, 1.0f);
 
 	ImGui::End();
 }
