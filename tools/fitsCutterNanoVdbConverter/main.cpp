@@ -14,24 +14,9 @@
 
 #include <NanoCutterParser.h>
 
+#include "Common.h"
+#include "MaskHelper.h"
 
-auto fitsDeleter(fitsfile* file) -> void
-{
-	auto status = int{};
-	ffclos(file, &status);
-	assert(status == 0);
-};
-
-using unique_fitsfile = std::unique_ptr<fitsfile, decltype(&fitsDeleter)>;
-
-#define logError(status)                                                                                               \
-	do                                                                                                                 \
-	{                                                                                                                  \
-		std::array<char, 30> errorMsg;                                                                                 \
-		fits_get_errstatus(status, errorMsg.data());                                                                   \
-		std::cout << errorMsg.data() << std::endl;                                                                     \
-	}                                                                                                                  \
-	while (0)
 namespace po = boost::program_options;
 
 enum class CuttingStrategy
@@ -60,7 +45,7 @@ static auto operator>>(std::istream& in, Filter& filter) -> std::istream&
 
 	std::ranges::transform(token, token.begin(), [](unsigned char c) { return std::tolower(c); });
 
-	if (token == "max")
+	if (token == "upper")
 	{
 		filter = Filter::max;
 	}
@@ -150,9 +135,9 @@ auto main(int argc, char** argv) -> int
 	/*
 	 *	program	src		|--source_fits_file file
 	 *			[-r		|	--regions				regions_files...	]
-	 *			[-min	|	--threshold_filter_min	value				] //??? We do not know the stored format upfront
+	 *			[-lower	|	--threshold_filter_min	value				] //??? We do not know the stored format upfront
 	 * //value will be cast to the source format value
-	 *			[-max	|	--threshold_filter_max	value				] //??? same
+	 *			[-upper	|	--threshold_filter_max	value				] //??? same
 	 *			[-c		|	--clamp_to_threshold						] //???
 	 *			[-m		|	--masks					masks_files...		]
 	 *			[-dst	|	--storage_directory		directory			] //same as source directory otherwise
@@ -163,8 +148,8 @@ auto main(int argc, char** argv) -> int
 	 *			=====cutting parameters============
 	 *			[-s		|	--strategy				binary_partition |
 	 *												fit_memory_req		] //binary_partition by default
-	 *			[-f		|	--filter				mean | max			] //mean by default
-	 *			[-mm	|	--max_mem				value_in_bytes		] //max memory per cut volume. required for
+	 *			[-f		|	--filter				mean | upper			] //mean by default
+	 *			[-mm	|	--max_mem				value_in_bytes		] //upper memory per cut volume. required for
 	 *fit_memory_req strategy
 	 *			=====refitting=====================
 	 *			[-rf	|	--refit_region			aabb				] //only recompute data, that touches the aabb
@@ -200,8 +185,8 @@ auto main(int argc, char** argv) -> int
 		"regions, r", po::value<std::vector<std::filesystem::path>>(&cutterConfig.regions)->composing());
 	generalConfigurations.add_options()(
 		"masks, m", po::value<std::vector<std::filesystem::path>>(&cutterConfig.masks)->composing());
-	generalConfigurations.add_options()("threshold_filter_min,min", po::value<double>(&cutterConfig.min));
-	generalConfigurations.add_options()("threshold_filter_max,max", po::value<double>(&cutterConfig.max));
+	generalConfigurations.add_options()("threshold_filter_min,lower", po::value<double>(&cutterConfig.min));
+	generalConfigurations.add_options()("threshold_filter_max,upper", po::value<double>(&cutterConfig.max));
 	generalConfigurations.add_options()("clamp_to_threshold,c",
 										po::value<bool>(&cutterConfig.clamp)->implicit_value(true, "true"));
 	generalConfigurations.add_options()(
@@ -276,13 +261,15 @@ auto main(int argc, char** argv) -> int
 	const auto catalogFilePath = std::filesystem::path{ "D:/datacubes/testDataSet/n4565_catalog.fits" };
 	const auto maskFilePath = std::filesystem::path{ "D:/datacubes/testDataSet/n4565_mask.fits" };
 
+	const auto map = extractPerClusterBox(cutterConfig.masks.front(), Box3I::maxBox(), Vec3I{ 64, 64, 64 } );
 
+	return 0;
 	fitsfile* fitsFilePtr{ nullptr };
 	auto fitsError = int{};
 	ffopen(&fitsFilePtr, fitsFilePath.generic_string().c_str(), READONLY, &fitsError);
 	assert(fitsError == 0);
 
-	auto fitsFile = unique_fitsfile(fitsFilePtr, &fitsDeleter);
+	auto fitsFile = UniqueFitsfile(fitsFilePtr, &fitsDeleter);
 
 	int axisCount;
 	int imgType;
@@ -295,11 +282,11 @@ auto main(int argc, char** argv) -> int
 
 
 
-	const auto box = nanovdb::CoordBBox(nanovdb::Coord(0,0,0), nanovdb::Coord(axis[0] - 1, axis[1] - 1, axis[2] - 1));
-	float nan = NAN;
+	const auto box = nanovdb::CoordBBox(nanovdb::Coord(0, 0, 0), nanovdb::Coord(axis[0] - 1, axis[1] - 1, axis[2] - 1));
+	auto nan = NAN;
 
 
-	auto min_threshold = 0.0f;
+	auto minThreshold = 0.0f;
 
 	long firstPx[3] ={1,1,1};
     long lastPx[3] = {axis[0], axis[1], axis[2]};
@@ -309,7 +296,7 @@ auto main(int argc, char** argv) -> int
 	dataBuffer.resize(axis[0]*axis[1]*axis[2]);
 
 
-	fits_read_subset(fitsFile.get(), TFLOAT, firstPx, lastPx, inc, &nan, dataBuffer.data(), 0, &fitsError);
+	fits_read_subset(fitsFile.get(), TFLOAT, firstPx, lastPx, inc, &nan, dataBuffer.data(), nullptr, &fitsError);
 	if(fitsError != 0)
 	{
 		std::array<char,30> txt;
@@ -325,7 +312,7 @@ auto main(int argc, char** argv) -> int
 		const auto k = ijk.z();
 		const auto index = k*axis[0]*axis[1] + j*axis[1]+i;
 		const auto v = dataBuffer[index];
-		return v > min_threshold ? v : min_threshold;
+		return v > minThreshold ? v : minThreshold;
 	};
 
 	// const auto background = 5.0f;
@@ -342,7 +329,7 @@ auto main(int argc, char** argv) -> int
 	//};
 
 
-	nanovdb::build::Grid<float> grid(min_threshold, "funny", nanovdb::GridClass::FogVolume);
+	nanovdb::build::Grid<float> grid(minThreshold, "funny", nanovdb::GridClass::FogVolume);
 	grid(func, box);
 
 	auto gridHandle = nanovdb::createNanoGrid(grid);
