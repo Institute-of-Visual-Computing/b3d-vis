@@ -4,7 +4,11 @@
 #include <cassert>
 
 
-#include "fitsio.h"
+#include <boost/program_options.hpp>
+
+#include <fitsio.h>
+
+namespace po = boost::program_options;
 
 template <typename T>
 struct Vec3
@@ -19,7 +23,7 @@ struct Vec3
 		y = std::clamp(y, min.y, max.y);
 		z = std::clamp(z, min.z, max.z);
 	}
-	auto operator<=>(const Vec3<T>& other) const -> auto= default;
+	auto operator<=>(const Vec3<T>& other) const -> auto = default;
 };
 
 template <typename T>
@@ -30,7 +34,7 @@ inline auto clamp(const Vec3<T>& value, const Vec3<T>& min, const Vec3<T>& max) 
 	return r;
 }
 
-template<typename T>
+template <typename T>
 [[nodiscard]] auto min(const Vec3<T>& v1, const Vec3<T>& v2) -> Vec3<T>
 {
 	Vec3<T> r;
@@ -40,7 +44,7 @@ template<typename T>
 	return r;
 }
 
-template<typename T>
+template <typename T>
 [[nodiscard]] auto max(const Vec3<T>& v1, const Vec3<T>& v2) -> Vec3<T>
 {
 	Vec3<T> r;
@@ -99,11 +103,11 @@ struct Box3
 		r.z = std::abs(upper.z - lower.z);
 		return r;
 	}
-	auto operator<=>(const Box3<T>& other) const -> auto= default;
+	auto operator<=>(const Box3<T>& other) const -> auto = default;
 };
 
-template<typename T>
-[[nodiscard]] auto operator*(const Vec3<T>& a, const Vec3<T>& b)-> Vec3<T>
+template <typename T>
+[[nodiscard]] auto operator*(const Vec3<T>& a, const Vec3<T>& b) -> Vec3<T>
 {
 	Vec3<T> r;
 	r.x = a.x * b.x;
@@ -112,8 +116,8 @@ template<typename T>
 	return r;
 }
 
-template<typename T>
-[[nodiscard]] auto operator+(const Vec3<T>& a, const Vec3<T>& b)-> Vec3<T>
+template <typename T>
+[[nodiscard]] auto operator+(const Vec3<T>& a, const Vec3<T>& b) -> Vec3<T>
 {
 	Vec3<T> r;
 	r.x = a.x + b.x;
@@ -122,7 +126,7 @@ template<typename T>
 	return r;
 }
 
-template<typename T>
+template <typename T>
 [[nodiscard]] auto clip(const Box3<T>& value, const Box3<T>& clipBox) -> Box3<T>
 {
 	Box3<T> r(value);
@@ -144,6 +148,23 @@ inline auto fitsDeleter(fitsfile* file) -> void
 
 using UniqueFitsfile = std::unique_ptr<fitsfile, decltype(&fitsDeleter)>;
 
+inline auto isFitsFile(const std::filesystem::path& file) -> bool
+{
+	fitsfile* fitsFilePtr{ nullptr };
+	auto fitsError = int{};
+	ffopen(&fitsFilePtr, file.generic_string().c_str(), READONLY, &fitsError);
+
+	if (fitsError == 0)
+	{
+		auto status = int{};
+		ffclos(fitsFilePtr, &status);
+		assert(status == 0);
+		return true;
+	}
+	return false;
+}
+
+
 #define logError(status)                                                                                               \
 	do                                                                                                                 \
 	{                                                                                                                  \
@@ -152,3 +173,96 @@ using UniqueFitsfile = std::unique_ptr<fitsfile, decltype(&fitsDeleter)>;
 		std::cout << errorMsg.data() << std::endl;                                                                     \
 	}                                                                                                                  \
 	while (0)
+
+
+enum class CuttingStrategy
+{
+	binaryPartition,
+	fitMemoryReq
+};
+
+enum class LogLevel
+{
+	none,
+	essential,
+	all
+};
+
+enum class Filter
+{
+	max,
+	mean
+};
+
+static auto operator>>(std::istream& in, Filter& filter) -> std::istream&
+{
+	std::string token;
+	in >> token;
+
+	std::ranges::transform(token, token.begin(), [](unsigned char c) { return std::tolower(c); });
+
+	if (token == "upper")
+	{
+		filter = Filter::max;
+	}
+	else if (token == "mean")
+	{
+		filter = Filter::mean;
+	}
+	else
+	{
+		throw po::validation_error{ po::validation_error::kind_t::invalid_option_value };
+	}
+
+	return in;
+}
+
+static auto operator>>(std::istream& in, LogLevel& level) -> std::istream&
+{
+	std::string token;
+	in >> token;
+
+	std::ranges::transform(token, token.begin(), [](unsigned char c) { return std::tolower(c); });
+
+	if (token == "none")
+	{
+		level = LogLevel::none;
+	}
+	else if (token == "essential")
+	{
+		level = LogLevel::essential;
+	}
+	else if (token == "all")
+	{
+		level = LogLevel::all;
+	}
+	else
+	{
+		throw po::validation_error{ po::validation_error::kind_t::invalid_option_value };
+	}
+
+	return in;
+}
+
+static auto operator>>(std::istream& in, CuttingStrategy& strategy) -> std::istream&
+{
+	std::string token;
+	in >> token;
+
+	std::ranges::transform(token, token.begin(), [](unsigned char c) { return std::tolower(c); });
+
+	if (token == "binary_partition")
+	{
+		strategy = CuttingStrategy::binaryPartition;
+	}
+	else if (token == "fit_memory_req")
+	{
+		strategy = CuttingStrategy::fitMemoryReq;
+	}
+	else
+	{
+		throw po::validation_error{ po::validation_error::kind_t::invalid_option_value };
+	}
+
+	return in;
+}

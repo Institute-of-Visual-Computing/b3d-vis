@@ -1,4 +1,4 @@
-#include "MaskHelper.h"
+#include "FitsHelper.h"
 
 #include <algorithm>
 #include <execution>
@@ -26,10 +26,20 @@ auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& sea
 	assert(axisCount == 3);
 	assert(imgType <= LONG_IMG);
 
+	int bitPerPixel; // BYTE_IMG (8), SHORT_IMG (16), LONG_IMG (32), LONGLONG_IMG (64), FLOAT_IMG (-32)
+
+	{
+		auto status = 0;
+		if (fits_get_img_equivtype(fitsFile.get(), &bitPerPixel, &status))
+		{
+			logError(status);
+		}
+	}
+
 	// optimal row size = fits_get_rowsize
 
 	const auto srcBox =
-		Box3I{ { 0, 0, 0 }, { static_cast<int>(axis[0]), static_cast<int>(axis[1]), static_cast<int>(axis[2]) } };
+		Box3I{ { 0, 0, 0 }, { static_cast<int>(axis[0]), static_cast<int>(axis[1]), static_cast<int>(axis[2])} };
 	const auto newSearchBox = searchBox != Box3I{} ? clip(searchBox, srcBox) : srcBox;
 	const auto searchBoxSize = newSearchBox.size();
 
@@ -82,7 +92,7 @@ auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& sea
 
 		const auto localFitsFile = UniqueFitsfile(localFilePtr, &fitsDeleter);
 
-		const auto box = batchBoxes[batchItemIndex];
+		auto box = batchBoxes[batchItemIndex];
 		const auto boxSize = box.size();
 		const auto voxels = boxSize.x * boxSize.y * boxSize.z;
 		std::vector<long> dataBuffer;
@@ -212,4 +222,135 @@ auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& sea
 
 
 	return map;
+}
+
+auto extractBinaryClusterMask(const std::filesystem::path& file, std::vector<ClusterId> clusters,
+							  const Box3I& searchBox) -> std::vector<bool>
+{
+	fitsfile* fitsFilePtr{ nullptr };
+	auto fitsError = int{};
+	ffopen(&fitsFilePtr, file.generic_string().c_str(), READONLY, &fitsError);
+	assert(fitsError == 0);
+
+	const auto fitsFile = UniqueFitsfile(fitsFilePtr, &fitsDeleter);
+
+	int axisCount;
+	int imgType;
+	long axis[3];
+	fits_get_img_param(fitsFile.get(), 3, &imgType, &axisCount, &axis[0], &fitsError);
+
+	assert(fitsError == 0);
+	assert(axisCount == 3);
+	assert(imgType <= LONG_IMG);
+
+	const auto srcBox =
+		Box3I{ { 0, 0, 0 }, { static_cast<int>(axis[0])-1, static_cast<int>(axis[1])-1, static_cast<int>(axis[2])-1 } };
+	const auto box = searchBox != Box3I{} ? clip(searchBox, srcBox) : srcBox;
+	const auto boxSize = box.size();
+	const auto voxels = boxSize.x * boxSize.y * boxSize.z;
+	std::vector<long> dataBuffer;
+	dataBuffer.resize(voxels);
+
+	constexpr auto samplingInterval = std::array{ 1l, 1l, 1l };
+	const auto min = std::array<long, 3>{ box.lower.x + 1, box.lower.y + 1, box.lower.z + 1 };
+	const auto max = std::array<long, 3>{ box.upper.x, box.upper.y, box.upper.z };
+	constexpr auto nan = 0l;
+	{
+		auto error = int{};
+		fits_read_subset(fitsFile.get(), TINT32BIT, const_cast<long*>(min.data()), const_cast<long*>(max.data()),
+						 const_cast<long*>(samplingInterval.data()), const_cast<long*>(&nan), dataBuffer.data(),
+						 nullptr, &error);
+		if (error != 0)
+		{
+			std::array<char, 30> txt;
+			fits_get_errstatus(error, txt.data());
+			std::print(std::cout, "CFITSIO error: {}", txt.data());
+		}
+		assert(error == 0);
+	}
+
+	std::vector<bool> maskBuffer;
+	maskBuffer.resize(voxels);
+
+
+	/*const auto span = std::mdspan(dataBuffer.data(), boxSize.x, boxSize.y, boxSize.z);*/
+
+	/*for (const auto& v : dataBuffer)
+	{
+		if (v == 17u)
+		{
+			std::println(std::cout, ":{}", v);
+		}
+	}*/
+
+	auto filter = [&clusters](const long& value) -> bool
+	{
+		for (const auto clusterId : clusters)
+		{
+			if (value == clusterId)
+			{
+				return true;
+			}
+		}
+		return false;
+	};
+
+	std::transform(std::execution::seq, dataBuffer.begin(), dataBuffer.end(), maskBuffer.begin(), filter);
+
+	return maskBuffer;
+}
+
+auto extractClusterMask(const std::filesystem::path& file, ClusterId cluster, const Box3I& searchBox)
+	-> std::vector<uint32_t>
+{
+	return std::vector<uint32_t>();
+}
+
+
+auto extractData(const std::filesystem::path& file, const Box3I& searchBox) -> std::vector<float>
+{
+	fitsfile* fitsFilePtr{ nullptr };
+	auto fitsError = int{};
+	ffopen(&fitsFilePtr, file.generic_string().c_str(), READONLY, &fitsError);
+	assert(fitsError == 0);
+
+	const auto fitsFile = UniqueFitsfile(fitsFilePtr, &fitsDeleter);
+
+	int axisCount;
+	int imgType;
+	long axis[3];
+	fits_get_img_param(fitsFile.get(), 3, &imgType, &axisCount, &axis[0], &fitsError);
+
+	assert(fitsError == 0);
+	assert(axisCount == 3);
+	assert(imgType <= FLOAT_IMG);
+
+	const auto srcBox =
+		Box3I{ { 0, 0, 0 }, { static_cast<int>(axis[0])-1, static_cast<int>(axis[1])-1, static_cast<int>(axis[2])-1 } };
+	const auto newSearchBox = searchBox != Box3I{} ? clip(searchBox, srcBox) : srcBox;
+	const auto searchBoxSize = newSearchBox.size();
+
+	const auto voxels = searchBoxSize.x * searchBoxSize.y * searchBoxSize.z;
+	std::vector<float> dataBuffer;
+	dataBuffer.resize(voxels);
+
+	constexpr auto samplingInterval = std::array{ 1l, 1l, 1l };
+	const auto min =
+		std::array<long, 3>{ newSearchBox.lower.x + 1, newSearchBox.lower.y + 1, newSearchBox.lower.z + 1 };
+	const auto max = std::array<long, 3>{ newSearchBox.upper.x, newSearchBox.upper.y, newSearchBox.upper.z };
+	auto nan = 0.0f;
+
+	{
+		auto error = int{};
+		fits_read_subset(fitsFile.get(), TFLOAT, const_cast<long*>(min.data()), const_cast<long*>(max.data()),
+						 const_cast<long*>(samplingInterval.data()), &nan, dataBuffer.data(), nullptr, &error);
+		if (error != 0)
+		{
+			std::array<char, 30> txt;
+			fits_get_errstatus(error, txt.data());
+			std::print(std::cout, "CFITSIO error: {}", txt.data());
+		}
+		assert(error == 0);
+	}
+	return dataBuffer;
 }

@@ -15,119 +15,9 @@
 #include <NanoCutterParser.h>
 
 #include "Common.h"
-#include "MaskHelper.h"
+#include "FitsHelper.h"
 
 namespace po = boost::program_options;
-
-enum class CuttingStrategy
-{
-	binaryPartition,
-	fitMemoryReq
-};
-
-enum class LogLevel
-{
-	none,
-	essential,
-	all
-};
-
-enum class Filter
-{
-	max,
-	mean
-};
-
-static auto operator>>(std::istream& in, Filter& filter) -> std::istream&
-{
-	std::string token;
-	in >> token;
-
-	std::ranges::transform(token, token.begin(), [](unsigned char c) { return std::tolower(c); });
-
-	if (token == "upper")
-	{
-		filter = Filter::max;
-	}
-	else if (token == "mean")
-	{
-		filter = Filter::mean;
-	}
-	else
-	{
-		throw po::validation_error{ po::validation_error::kind_t::invalid_option_value };
-	}
-
-	return in;
-}
-
-static auto operator>>(std::istream& in, LogLevel& level) -> std::istream&
-{
-	std::string token;
-	in >> token;
-
-	std::ranges::transform(token, token.begin(), [](unsigned char c) { return std::tolower(c); });
-
-	if (token == "none")
-	{
-		level = LogLevel::none;
-	}
-	else if (token == "essential")
-	{
-		level = LogLevel::essential;
-	}
-	else if (token == "all")
-	{
-		level = LogLevel::all;
-	}
-	else
-	{
-		throw po::validation_error{ po::validation_error::kind_t::invalid_option_value };
-	}
-
-	return in;
-}
-
-static auto operator>>(std::istream& in, CuttingStrategy& strategy) -> std::istream&
-{
-	std::string token;
-	in >> token;
-
-	std::ranges::transform(token, token.begin(), [](unsigned char c) { return std::tolower(c); });
-
-	if (token == "binary_partition")
-	{
-		strategy = CuttingStrategy::binaryPartition;
-	}
-	else if (token == "fit_memory_req")
-	{
-		strategy = CuttingStrategy::fitMemoryReq;
-	}
-	else
-	{
-		throw po::validation_error{ po::validation_error::kind_t::invalid_option_value };
-	}
-
-	return in;
-}
-
-auto testFitsFile(const std::filesystem::path& file) -> bool
-{
-	auto canOpen = false;
-	fitsfile* fitsFilePtr{ nullptr };
-	auto fitsError = int{};
-	ffopen(&fitsFilePtr, file.generic_string().c_str(), READONLY, &fitsError);
-
-	canOpen = fitsError == 0;
-
-	if (canOpen)
-	{
-		ffclos(fitsFilePtr, &fitsError);
-		assert(fitsError == 0);
-	}
-
-	return canOpen;
-}
 
 auto main(int argc, char** argv) -> int
 {
@@ -184,7 +74,8 @@ auto main(int argc, char** argv) -> int
 	generalConfigurations.add_options()(
 		"regions, r", po::value<std::vector<std::filesystem::path>>(&cutterConfig.regions)->composing());
 	generalConfigurations.add_options()(
-		"masks, m", po::value<std::vector<std::filesystem::path>>(&cutterConfig.masks)->composing());
+		"masks, m", po::value<std::vector<std::filesystem::path>>(&cutterConfig.masks)->composing()->multitoken(),
+		"mask fits files path");
 	generalConfigurations.add_options()("threshold_filter_min,lower", po::value<double>(&cutterConfig.min));
 	generalConfigurations.add_options()("threshold_filter_max,upper", po::value<double>(&cutterConfig.max));
 	generalConfigurations.add_options()("clamp_to_threshold,c",
@@ -206,25 +97,34 @@ auto main(int argc, char** argv) -> int
 
 	auto cmdOptions = po::options_description{}.add(generalConfigurations).add(cuttingConfigurations);
 	auto vm = po::variables_map{};
-	po::store(po::command_line_parser(argc, argv).options(cmdOptions).allow_unregistered().run(), vm);
-	po::notify(vm);
 
+	try
+	{
+		po::store(po::command_line_parser(argc, argv).options(cmdOptions).run(), vm);
+		po::notify(vm);
+	}
+	catch (std::exception& e)
+	{
+		std::cout << e.what() << "\n";
+		std::cout << cmdOptions << "\n";
+		return EXIT_FAILURE;
+	}
 	std::cout << cmdOptions << std::endl;
 
-	if (vm.count("src"))
 
-		if (vm.count("help"))
-		{
-			std::cout << cmdOptions << "\n";
-			return 1;
-		}
+	if (vm.count("help"))
+	{
+		std::cout << cmdOptions << "\n";
+		return EXIT_SUCCESS;
+	}
+
 
 	if (vm.count("source_fits_file"))
 	{
 		auto isValid = false;
 		if (exists(cutterConfig.src) && cutterConfig.src.has_filename())
 		{
-			isValid = testFitsFile(cutterConfig.src);
+			isValid = isFitsFile(cutterConfig.src);
 		}
 		if (!vm.count("storage_directory") && isValid)
 		{
@@ -257,11 +157,29 @@ auto main(int argc, char** argv) -> int
 		}
 	}
 
+	if (vm.count("masks"))
+	{
+		for (const auto& file : cutterConfig.masks)
+		{
+			if (!isFitsFile(file))
+			{
+				std::cout << "Mask file [" << file << "]"
+						  << "is not valid!" << std::endl;
+				return EXIT_FAILURE;
+			}
+		}
+	}
+
 	const auto fitsFilePath = std::filesystem::path{ "D:/datacubes/testDataSet/n4565.fits" };
 	const auto catalogFilePath = std::filesystem::path{ "D:/datacubes/testDataSet/n4565_catalog.fits" };
 	const auto maskFilePath = std::filesystem::path{ "D:/datacubes/testDataSet/n4565_mask.fits" };
 
-	const auto map = extractPerClusterBox(cutterConfig.masks.front(), Box3I::maxBox(), Vec3I{ 64, 64, 64 } );
+	const auto map = extractPerClusterBox(cutterConfig.masks.front(), Box3I::maxBox(), Vec3I{ 64, 64, 64 });
+	//const auto data = extractData(cutterConfig.src, map.at(1));
+	//const auto mask = extractBinaryClusterMask(cutterConfig.masks.front(), {19}, map.at(19));// Box3I{{450,410,180},{470,420,200}});
+	//const auto mask2 = extractBinaryClusterMask(cutterConfig.masks.front(), {17}, map.at(17));// Box3I{{450,410,180},{470,420,200}});
+	const auto mask2 = extractBinaryClusterMask(cutterConfig.masks.front(), {17}, Box3I::maxBox());// Box3I{{450,410,180},{470,420,200}});
+
 
 	return 0;
 	fitsfile* fitsFilePtr{ nullptr };
@@ -277,9 +195,8 @@ auto main(int argc, char** argv) -> int
 	fits_get_img_param(fitsFile.get(), 3, &imgType, &axisCount, &axis[0], &fitsError);
 
 	assert(fitsError == 0);
-    assert(axisCount == 3);
-    assert(imgType == FLOAT_IMG);
-
+	assert(axisCount == 3);
+	assert(imgType == FLOAT_IMG);
 
 
 	const auto box = nanovdb::CoordBBox(nanovdb::Coord(0, 0, 0), nanovdb::Coord(axis[0] - 1, axis[1] - 1, axis[2] - 1));
@@ -288,18 +205,18 @@ auto main(int argc, char** argv) -> int
 
 	auto minThreshold = 0.0f;
 
-	long firstPx[3] ={1,1,1};
-    long lastPx[3] = {axis[0], axis[1], axis[2]};
-	long inc[3] = { 1,1,1 };
+	long firstPx[3] = { 1, 1, 1 };
+	long lastPx[3] = { axis[0], axis[1], axis[2] };
+	long inc[3] = { 1, 1, 1 };
 
 	std::vector<float> dataBuffer;
-	dataBuffer.resize(axis[0]*axis[1]*axis[2]);
+	dataBuffer.resize(axis[0] * axis[1] * axis[2]);
 
 
 	fits_read_subset(fitsFile.get(), TFLOAT, firstPx, lastPx, inc, &nan, dataBuffer.data(), nullptr, &fitsError);
-	if(fitsError != 0)
+	if (fitsError != 0)
 	{
-		std::array<char,30> txt;
+		std::array<char, 30> txt;
 		fits_get_errstatus(fitsError, txt.data());
 		std::print(std::cout, "CFITSIO error: {}", txt.data());
 	}
@@ -310,7 +227,7 @@ auto main(int argc, char** argv) -> int
 		const auto i = ijk.x();
 		const auto j = ijk.y();
 		const auto k = ijk.z();
-		const auto index = k*axis[0]*axis[1] + j*axis[1]+i;
+		const auto index = k * axis[0] * axis[1] + j * axis[1] + i;
 		const auto v = dataBuffer[index];
 		return v > minThreshold ? v : minThreshold;
 	};
@@ -336,7 +253,8 @@ auto main(int argc, char** argv) -> int
 
 	std::println(std::cout, "NanoVdb buffer size: {}bytes", gridHandle.size());
 
-	/*auto g = nanovdb::createFogVolumeSphere(10.0f, nanovdb::Vec3d(-20, 0, 0), 1.0, 3.0, nanovdb::Vec3d(0), "sphere");*/
+	/*auto g = nanovdb::createFogVolumeSphere(10.0f, nanovdb::Vec3d(-20, 0, 0), 1.0, 3.0, nanovdb::Vec3d(0),
+	 * "sphere");*/
 
 	nanovdb::io::writeGrid((cutterConfig.dst / "funny.nvdb").string(), gridHandle,
 						   nanovdb::io::Codec::NONE); // TODO: enable nanovdb::io::Codec::BLOSC
@@ -347,14 +265,13 @@ auto main(int argc, char** argv) -> int
 	cutterParser::TreeNode c2;
 	c2.nanoVdbFile = "funny.nvdb";
 
-	
 
 	cutterParser::TreeNode n;
 	n.nanoVdbFile = "funny.nvdb";
 	n.children.push_back(c1);
 	n.children.push_back(c2);
 
-	cutterParser::store(cutterConfig.dst/"project.b3d", n);
+	cutterParser::store(cutterConfig.dst / "project.b3d", n);
 
 	int bitpix; // BYTE_IMG (8), SHORT_IMG (16), LONG_IMG (32), LONGLONG_IMG (64), FLOAT_IMG (-32)
 

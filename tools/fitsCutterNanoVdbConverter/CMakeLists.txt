@@ -7,9 +7,9 @@ add_executable(NanoCutter)
 target_sources(NanoCutter PRIVATE
 	main.cpp
 	NanoCutterApi.h
-	MaskHelper.h
+	FitsHelper.h
 	Common.h
-	MaskHelper.cpp
+	FitsHelper.cpp
 )
 
 target_link_libraries(NanoCutter PRIVATE cfitsio Boost::program_options OpenVDB::openvdb OpenVDB::nanovdb NanoCutterParser)
