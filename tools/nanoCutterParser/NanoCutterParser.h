@@ -28,6 +28,6 @@ namespace cutterParser
 
 	using json = nlohmann::json;
 
-	auto load(const std::filesystem::path& file) -> TreeNode;
-	auto store(const std::filesystem::path& file, const TreeNode& root) -> void;
+	auto load(const std::filesystem::path& file) -> std::vector<TreeNode>;
+	auto store(const std::filesystem::path& file, const std::vector<TreeNode>& trees) -> void;
 } // namespace cutterParser

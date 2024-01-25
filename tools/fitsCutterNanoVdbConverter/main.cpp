@@ -174,11 +174,51 @@ auto main(int argc, char** argv) -> int
 	const auto catalogFilePath = std::filesystem::path{ "D:/datacubes/testDataSet/n4565_catalog.fits" };
 	const auto maskFilePath = std::filesystem::path{ "D:/datacubes/testDataSet/n4565_mask.fits" };
 
-	const auto map = extractPerClusterBox(cutterConfig.masks.front(), Box3I::maxBox(), Vec3I{ 64, 64, 64 });
-	//const auto data = extractData(cutterConfig.src, map.at(1));
-	//const auto mask = extractBinaryClusterMask(cutterConfig.masks.front(), {19}, map.at(19));// Box3I{{450,410,180},{470,420,200}});
-	//const auto mask2 = extractBinaryClusterMask(cutterConfig.masks.front(), {17}, map.at(17));// Box3I{{450,410,180},{470,420,200}});
-	const auto mask2 = extractBinaryClusterMask(cutterConfig.masks.front(), {17}, Box3I::maxBox());// Box3I{{450,410,180},{470,420,200}});
+	const auto map = extractPerClusterBox(cutterConfig.masks.front(), Box3I::maxBox(), Vec3I{});
+	// const auto data = extractData(cutterConfig.src, map.at(1));
+	// const auto mask = extractBinaryClusterMask(cutterConfig.masks.front(), {19}, map.at(19));//
+	// Box3I{{450,410,180},{470,420,200}}); const auto mask2 = extractBinaryClusterMask(cutterConfig.masks.front(),
+	// {17}, map.at(17));// Box3I{{450,410,180},{470,420,200}});
+	auto trees = std::vector<cutterParser::TreeNode>{};
+
+	for (const auto m : map)
+	{
+		const auto mask =
+			extractBinaryClusterMask(cutterConfig.masks.front(), { m.first },
+									 m.second); // Box3I::maxBox());// Box3I{{450,410,180},{470,420,200}});
+		auto data = extractData(cutterConfig.src, m.second); // Box3I::maxBox());// Box3I{{450,410,180},{470,420,200}});
+
+
+		const auto maskedValue = -100.0f;
+		const auto filteredData = applyMask(data, mask, maskedValue);
+
+		const auto size = m.second.size();
+
+		static auto ii = 0;
+
+		const auto fitsFileName = std::format("filtered_data_{}_{}_{}_nr{}.fits", size.x, size.y, size.z, ii++);
+		const auto fitsPath = (cutterConfig.dst / fitsFileName).string();
+
+
+		return 0;
+		writeFitsFile(fitsPath.c_str(), size, filteredData);
+
+		const auto fileName = std::format("nano_level_0_{}_{}_{}.nvdb", size.x, size.y, size.z);
+		const auto path = (cutterConfig.dst / fileName).string();
+
+		generateNanoVdb(path, size, maskedValue, 0.0f, filteredData);
+
+
+		cutterParser::TreeNode node;
+		node.nanoVdbFile = fileName;
+		node.aabb.min = { static_cast<float>(m.second.lower.x), static_cast<float>(m.second.lower.y),
+						  static_cast<float>(m.second.lower.z) };
+		node.aabb.max = { static_cast<float>(m.second.upper.x), static_cast<float>(m.second.upper.y),
+						  static_cast<float>(m.second.upper.z) };
+
+		trees.push_back(node);
+	}
+	cutterParser::store(cutterConfig.dst / "project.b3d", trees);
 
 
 	return 0;
@@ -271,7 +311,7 @@ auto main(int argc, char** argv) -> int
 	n.children.push_back(c1);
 	n.children.push_back(c2);
 
-	cutterParser::store(cutterConfig.dst / "project.b3d", n);
+	cutterParser::store(cutterConfig.dst / "project.b3d", { n });
 
 	int bitpix; // BYTE_IMG (8), SHORT_IMG (16), LONG_IMG (32), LONGLONG_IMG (64), FLOAT_IMG (-32)
 

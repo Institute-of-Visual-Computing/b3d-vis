@@ -7,6 +7,54 @@
 
 #include <cfitsio/fitsio.h>
 
+
+auto writeFitsFile(const std::string& file, const Vec3I boxSize, const std::vector<long>& data) -> void
+{
+	fitsfile* fptr; /* pointer to the FITS file; defined in fitsio.h */
+	int status;
+	long fpixel = 1, naxis = 3, exposure;
+	long naxes[3] = { boxSize.x, boxSize.y, boxSize.z }; /* image is 300 pixels wide by 200 rows */
+
+	status = 0; /* initialize status before calling fitsio routines */
+	fits_create_file(&fptr, file.c_str(), &status); /* create new file */
+	/* Create the primary array image (16-bit short integer pixels */
+	fits_create_img(fptr, LONG_IMG, naxis, naxes, &status);
+	/* Write a keyword; must pass the ADDRESS of the value */
+	exposure = 1500.;
+	fits_update_key(fptr, TLONG, "EXPOSURE", &exposure, "Total Exposure Time", &status);
+	/* Initialize the values in the image with a linear ramp function */
+
+	/* Write the array of integers to the image */
+	fits_write_img(fptr, TLONG, fpixel, data.size(), (void*)data.data(), &status);
+
+	fits_close_file(fptr, &status); /* close the file */
+	fits_report_error(stderr, status); /* print out any error messages */
+}
+
+auto writeFitsFile(const std::string& file, const Vec3I boxSize, const std::vector<float>& data) -> void
+{
+	fitsfile* fptr; /* pointer to the FITS file; defined in fitsio.h */
+	int status;
+	long fpixel = 1, naxis = 3, exposure;
+	long naxes[3] = { boxSize.x, boxSize.y, boxSize.z }; /* image is 300 pixels wide by 200 rows */
+
+	status = 0; /* initialize status before calling fitsio routines */
+	fits_create_file(&fptr, file.c_str(), &status); /* create new file */
+	/* Create the primary array image (16-bit short integer pixels */
+	fits_create_img(fptr, FLOAT_IMG, naxis, naxes, &status);
+	/* Write a keyword; must pass the ADDRESS of the value */
+	exposure = 1500.;
+	fits_update_key(fptr, TLONG, "EXPOSURE", &exposure, "Total Exposure Time", &status);
+	/* Initialize the values in the image with a linear ramp function */
+
+	/* Write the array of integers to the image */
+	fits_write_img(fptr, TFLOAT, fpixel, data.size(), (void*)data.data(), &status);
+
+	fits_close_file(fptr, &status); /* close the file */
+	fits_report_error(stderr, status); /* print out any error messages */
+}
+
+
 auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& searchBox, const Vec3I& perBatchSearchSize)
 	-> std::map<ClusterId, Box3I>
 {
@@ -15,42 +63,80 @@ auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& sea
 	ffopen(&fitsFilePtr, srcFile.generic_string().c_str(), READONLY, &fitsError);
 	assert(fitsError == 0);
 
-	const auto fitsFile = UniqueFitsfile(fitsFilePtr, &fitsDeleter);
-
 	int axisCount;
 	int imgType;
 	long axis[3];
-	fits_get_img_param(fitsFile.get(), 3, &imgType, &axisCount, &axis[0], &fitsError);
-
-	assert(fitsError == 0);
-	assert(axisCount == 3);
-	assert(imgType <= LONG_IMG);
-
-	int bitPerPixel; // BYTE_IMG (8), SHORT_IMG (16), LONG_IMG (32), LONGLONG_IMG (64), FLOAT_IMG (-32)
-
 	{
-		auto status = 0;
-		if (fits_get_img_equivtype(fitsFile.get(), &bitPerPixel, &status))
+		const auto fitsFile = UniqueFitsfile(fitsFilePtr, &fitsDeleter);
+		fits_get_img_param(fitsFile.get(), 3, &imgType, &axisCount, &axis[0], &fitsError);
+
+		assert(fitsError == 0);
+		assert(axisCount == 3);
+		assert(imgType <= LONG_IMG);
+
+		int bitPerPixel; // BYTE_IMG (8), SHORT_IMG (16), LONG_IMG (32), LONGLONG_IMG (64), FLOAT_IMG (-32)
+
 		{
-			logError(status);
+			auto status = 0;
+			if (fits_get_img_equivtype(fitsFile.get(), &bitPerPixel, &status))
+			{
+				logError(status);
+			}
 		}
+
+		/*{
+			auto status = 0;
+			auto totalRows = 0l;
+			fits_get_num_rows(fitsFile.get(), &totalRows, &status);
+			logError(status);
+			auto optimalRowsReadsAtOnce = 0l;
+			fits_get_rowsize(fitsFile.get(), &optimalRowsReadsAtOnce, &status);
+
+			logError(status);
+		}*/
 	}
 
 	// optimal row size = fits_get_rowsize
 
 	const auto srcBox =
-		Box3I{ { 0, 0, 0 }, { static_cast<int>(axis[0]), static_cast<int>(axis[1]), static_cast<int>(axis[2])} };
+		Box3I{ { 0, 0, 0 }, { static_cast<int>(axis[0]), static_cast<int>(axis[1]), static_cast<int>(axis[2]) } };
 	const auto newSearchBox = searchBox != Box3I{} ? clip(searchBox, srcBox) : srcBox;
 	const auto searchBoxSize = newSearchBox.size();
 
 
-	const auto perSearchBatchBoxSize =
-		perBatchSearchSize != Vec3I{} ? min(perBatchSearchSize, searchBoxSize) : searchBoxSize;
+	auto newBatchSize = Vec3I{};
+	if (perBatchSearchSize == Vec3I{})
+	{
+		const auto bytesPerBatch = 6291456; //~64mb
+		const auto elementSize = 32; // can be fetched
+		const auto bytesPerRow = searchBoxSize.x * elementSize;
+		const auto columns = (bytesPerBatch) / bytesPerRow;
+
+		const auto maxConcurrency = static_cast<int>(std::thread::hardware_concurrency());
+		const auto uniformBatching = (searchBoxSize.z + maxConcurrency - 1) / maxConcurrency;
+
+		const auto batchesPerThread = 16;
+
+		const auto uniformBatchingPerThread = (uniformBatching + batchesPerThread - 1) / batchesPerThread;
+
+		newBatchSize = Vec3I{ searchBoxSize.x, columns, 1 };									//benchmark 3
+		//newBatchSize = Vec3I{ searchBoxSize.x, searchBoxSize.x, 1 };							//benchmark 2
+		//newBatchSize = Vec3I{ searchBoxSize.x, searchBoxSize.x, uniformBatchingPerThread };	//benchmark 4
+		//newBatchSize = Vec3I{ 64, 64, 64 };												//benchmark 1
+	}
+	else
+	{
+		newBatchSize = perBatchSearchSize;
+	}
+
+	const auto perSearchBatchBoxSize = min(newBatchSize, searchBoxSize);
+
+	/*const auto perSearchBatchBoxSize =
+		perBatchSearchSize != Vec3I{} ? min(perBatchSearchSize, searchBoxSize) : searchBoxSize;*/
 
 
 	const auto batchSize = Vec3I{ searchBoxSize.x / perSearchBatchBoxSize.x, searchBoxSize.y / perSearchBatchBoxSize.y,
 								  searchBoxSize.z / perSearchBatchBoxSize.z };
-
 
 	auto batchBoxes = std::vector<Box3I>{};
 
@@ -73,6 +159,7 @@ auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& sea
 		}
 	}
 
+
 	auto batchResults = std::vector<std::map<ClusterId, Box3I>>{};
 	batchResults.resize(batchItemCount);
 	auto indices = std::vector<int>{};
@@ -92,7 +179,7 @@ auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& sea
 
 		const auto localFitsFile = UniqueFitsfile(localFilePtr, &fitsDeleter);
 
-		auto box = batchBoxes[batchItemIndex];
+		const auto box = batchBoxes[batchItemIndex];
 		const auto boxSize = box.size();
 		const auto voxels = boxSize.x * boxSize.y * boxSize.z;
 		std::vector<long> dataBuffer;
@@ -117,18 +204,18 @@ auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& sea
 			assert(error == 0);
 		}
 
-
 		const auto span = std::mdspan(dataBuffer.data(), boxSize.x, boxSize.y, boxSize.z);
 
 		auto map = std::map<ClusterId, Box3I>{};
 		const auto offset = box.lower;
-		for (auto i = 0; i != span.extent(0); i++)
+		for (auto k = 0; k != boxSize.z; k++)
 		{
-			for (auto j = 0; j != span.extent(1); j++)
+			for (auto j = 0; j != boxSize.y; j++)
 			{
-				for (auto k = 0; k != span.extent(2); k++)
+				for (auto i = 0; i != boxSize.x; i++)
 				{
-					const auto value = span[std::array{ i, j, k }];
+					const auto ii = boxSize.x * boxSize.y * k + boxSize.x * j + i;
+					const auto value = dataBuffer[ii]; // span[std::array{ i, j, k }];
 					// skip 0 cluster
 					if (value != 0)
 					{
@@ -145,8 +232,9 @@ auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& sea
 			}
 		}
 
+
 		batchResults[batchItemIndex] = map;
-		progressCounter++;
+		++progressCounter;
 		progressCounter.notify_one();
 	};
 
@@ -209,7 +297,7 @@ auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& sea
 	std::for_each(std::execution::par_unseq, indices.begin(), indices.end(), loadAndExtract);
 
 	const auto t2 = std::chrono::high_resolution_clock::now();
-	const std::chrono::duration<double, std::deci> ms1 = t2 - t1;
+	const std::chrono::duration<double> ms1 = t2 - t1;
 	std::println(std::cout, "Data extraction finished in {:.2f} s.", ms1.count());
 	std::println(std::cout, "Starting data reducing...");
 
@@ -217,10 +305,8 @@ auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& sea
 						   std::map<ClusterId, Box3I>{}, merge);
 
 	const auto t3 = std::chrono::high_resolution_clock::now();
-	const std::chrono::duration<double, std::deci> ms2 = t3 - t2;
+	const std::chrono::duration<double> ms2 = t3 - t2;
 	std::println(std::cout, "Data reducing finished in {:.2f} s.", ms2.count());
-
-
 	return map;
 }
 
@@ -244,7 +330,8 @@ auto extractBinaryClusterMask(const std::filesystem::path& file, std::vector<Clu
 	assert(imgType <= LONG_IMG);
 
 	const auto srcBox =
-		Box3I{ { 0, 0, 0 }, { static_cast<int>(axis[0])-1, static_cast<int>(axis[1])-1, static_cast<int>(axis[2])-1 } };
+		Box3I{ { 0, 0, 0 },
+			   { static_cast<int>(axis[0]) - 1, static_cast<int>(axis[1]) - 1, static_cast<int>(axis[2]) - 1 } };
 	const auto box = searchBox != Box3I{} ? clip(searchBox, srcBox) : srcBox;
 	const auto boxSize = box.size();
 	const auto voxels = boxSize.x * boxSize.y * boxSize.z;
@@ -326,7 +413,8 @@ auto extractData(const std::filesystem::path& file, const Box3I& searchBox) -> s
 	assert(imgType <= FLOAT_IMG);
 
 	const auto srcBox =
-		Box3I{ { 0, 0, 0 }, { static_cast<int>(axis[0])-1, static_cast<int>(axis[1])-1, static_cast<int>(axis[2])-1 } };
+		Box3I{ { 0, 0, 0 },
+			   { static_cast<int>(axis[0]) - 1, static_cast<int>(axis[1]) - 1, static_cast<int>(axis[2]) - 1 } };
 	const auto newSearchBox = searchBox != Box3I{} ? clip(searchBox, srcBox) : srcBox;
 	const auto searchBoxSize = newSearchBox.size();
 
@@ -352,5 +440,19 @@ auto extractData(const std::filesystem::path& file, const Box3I& searchBox) -> s
 		}
 		assert(error == 0);
 	}
+
 	return dataBuffer;
+}
+auto applyMask(const std::vector<float>& data, const std::vector<bool>& mask, const float maskedValue)
+	-> std::vector<float>
+{
+	assert(data.size() == mask.size());
+	auto result = std::vector<float>{};
+	result.resize(data.size());
+
+	for (auto i = 0; i < data.size(); i++)
+	{
+		result[i] = mask[i] > 0 ? data[i] : maskedValue;
+	}
+	return result;
 }

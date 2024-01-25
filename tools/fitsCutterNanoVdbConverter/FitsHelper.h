@@ -28,10 +28,16 @@ template <typename T1, typename T2>
 
 [[nodiscard]] auto extractData(const std::filesystem::path& file, const Box3I& searchBox = Box3I::maxBox()) -> std::vector<float>;
 
-auto applyMask(std::vector<float>& data, const std::vector<bool>& mask);
+auto applyMask(const std::vector<float>& data, const std::vector<bool>& mask, const float maskedValue = 0.0f) -> std::vector<float>;
 //
 //template <typename T>
 //inline auto extractData(const std::filesystem::path& file, const Box3I& searchBox) -> std::vector<T>
 //{
 //	return std::vector<T>();
 //}
+
+auto writeFitsFile(const std::string& file, const Vec3I boxSize, const std::vector<long>& data)-> void;
+auto writeFitsFile(const std::string& file, const Vec3I boxSize, const std::vector<float>& data)-> void;
+
+
+auto generateNanoVdb(const std::string& file, const Vec3I boxSize, float maskedValues, float emptySpaceValue, const std::vector<float>& data) -> void;
