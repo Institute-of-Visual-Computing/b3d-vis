@@ -9,6 +9,12 @@
 
 using ClusterId = int;
 
+struct MinMaxBounds
+{
+	float min;
+	float max;
+};
+
 [[nodiscard]] auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& searchBox = Box3I::maxBox(),
 										const Vec3I& perBatchSearchSize = Vec3I{}) -> std::map<ClusterId, Box3I>;
 
@@ -28,13 +34,16 @@ template <typename T1, typename T2>
 
 [[nodiscard]] auto extractData(const std::filesystem::path& file, const Box3I& searchBox = Box3I::maxBox()) -> std::vector<float>;
 
-auto applyMask(const std::vector<float>& data, const std::vector<bool>& mask, const float maskedValue = 0.0f) -> std::vector<float>;
+[[nodiscard]] auto applyMask(const std::vector<float>& data, const std::vector<bool>& mask, const float maskedValue = 0.0f) -> std::vector<float>;
 //
 //template <typename T>
 //inline auto extractData(const std::filesystem::path& file, const Box3I& searchBox) -> std::vector<T>
 //{
 //	return std::vector<T>();
 //}
+
+[[nodiscard]] auto searchMinMaxBounds(const std::vector<float>& data) -> MinMaxBounds;
+
 
 auto writeFitsFile(const std::string& file, const Vec3I boxSize, const std::vector<long>& data)-> void;
 auto writeFitsFile(const std::string& file, const Vec3I boxSize, const std::vector<float>& data)-> void;

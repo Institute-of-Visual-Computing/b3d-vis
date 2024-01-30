@@ -25,15 +25,15 @@ auto main(int argc, char** argv) -> int
 	/*
 	 *	program	src		|--source_fits_file file
 	 *			[-r		|	--regions				regions_files...	]
-	 *			[-lower	|	--threshold_filter_min	value				] //??? We do not know the stored format upfront
-	 * //value will be cast to the source format value
-	 *			[-upper	|	--threshold_filter_max	value				] //??? same
-	 *			[-c		|	--clamp_to_threshold						] //???
+	 *			[-lower	|	--threshold_filter_min	value				]		We do not know the stored format upfront
+	 *																			value will be cast to the source format value
+	 *			[-upper	|	--threshold_filter_max	value				]		same
+	 *			[-c		|	--clamp_to_threshold						]
 	 *			[-m		|	--masks					masks_files...		]
-	 *			[-dst	|	--storage_directory		directory			] //same as source directory otherwise
+	 *			[-dst	|	--storage_directory		directory			]		same as source directory otherwise
 	 *			[-l		|	--log_level				none |
 	 *												essential |
-	 *												all					] //all includes performance counters and stat.
+	 *												all					]		all includes performance counters and stat.
 	 *essential is by default
 	 *			=====cutting parameters============
 	 *			[-s		|	--strategy				binary_partition |
@@ -181,42 +181,45 @@ auto main(int argc, char** argv) -> int
 	// {17}, map.at(17));// Box3I{{450,410,180},{470,420,200}});
 	auto trees = std::vector<cutterParser::TreeNode>{};
 
-	for (const auto m : map)
+	auto id = 0;
+	for (const auto& [clusterId, clusterBox] : map)
 	{
+		//if(clusterId == 1) continue;
 		const auto mask =
-			extractBinaryClusterMask(cutterConfig.masks.front(), { m.first },
-									 m.second); // Box3I::maxBox());// Box3I{{450,410,180},{470,420,200}});
-		auto data = extractData(cutterConfig.src, m.second); // Box3I::maxBox());// Box3I{{450,410,180},{470,420,200}});
+			extractBinaryClusterMask(cutterConfig.masks.front(), { clusterId },
+									 clusterBox); // Box3I::maxBox());// Box3I{{450,410,180},{470,420,200}});
+		auto data = extractData(cutterConfig.src, clusterBox); // Box3I::maxBox());// Box3I{{450,410,180},{470,420,200}});
 
 
-		const auto maskedValue = -100.0f;
+		constexpr auto maskedValue = -100.0f;
 		const auto filteredData = applyMask(data, mask, maskedValue);
 
-		const auto size = m.second.size();
+		const auto size = clusterBox.size();
 
-		static auto ii = 0;
 
-		const auto fitsFileName = std::format("filtered_data_{}_{}_{}_nr{}.fits", size.x, size.y, size.z, ii++);
+		const auto fitsFileName = std::format("filtered_level_0_{}_{}_{}_id_{}.fits", size.x, size.y, size.z, id);
 		const auto fitsPath = (cutterConfig.dst / fitsFileName).string();
 
-
-		return 0;
 		writeFitsFile(fitsPath.c_str(), size, filteredData);
 
-		const auto fileName = std::format("nano_level_0_{}_{}_{}.nvdb", size.x, size.y, size.z);
+		const auto fileName = std::format("nano_level_0_{}_{}_{}_id_{}.nvdb", size.x, size.y, size.z, id);
 		const auto path = (cutterConfig.dst / fileName).string();
+
+		const auto [min, max] = searchMinMaxBounds(filteredData);
 
 		generateNanoVdb(path, size, maskedValue, 0.0f, filteredData);
 
 
 		cutterParser::TreeNode node;
 		node.nanoVdbFile = fileName;
-		node.aabb.min = { static_cast<float>(m.second.lower.x), static_cast<float>(m.second.lower.y),
-						  static_cast<float>(m.second.lower.z) };
-		node.aabb.max = { static_cast<float>(m.second.upper.x), static_cast<float>(m.second.upper.y),
-						  static_cast<float>(m.second.upper.z) };
-
+		node.aabb.min = { static_cast<float>(clusterBox.lower.x), static_cast<float>(clusterBox.lower.y),
+						  static_cast<float>(clusterBox.lower.z) };
+		node.aabb.max = { static_cast<float>(clusterBox.upper.x), static_cast<float>(clusterBox.upper.y),
+						  static_cast<float>(clusterBox.upper.z) };
+		node.minValue = min;
+		node.maxValue = max;
 		trees.push_back(node);
+		id++;
 	}
 	cutterParser::store(cutterConfig.dst / "project.b3d", trees);
 

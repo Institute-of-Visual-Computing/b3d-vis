@@ -334,18 +334,18 @@ auto extractBinaryClusterMask(const std::filesystem::path& file, std::vector<Clu
 			   { static_cast<int>(axis[0]) - 1, static_cast<int>(axis[1]) - 1, static_cast<int>(axis[2]) - 1 } };
 	const auto box = searchBox != Box3I{} ? clip(searchBox, srcBox) : srcBox;
 	const auto boxSize = box.size();
-	const auto voxels = boxSize.x * boxSize.y * boxSize.z;
-	std::vector<long> dataBuffer;
+	const auto voxels = static_cast<int64_t>(boxSize.x) * static_cast<int64_t>(boxSize.y) * static_cast<int64_t>(boxSize.z);
+	std::vector<int32_t> dataBuffer;
 	dataBuffer.resize(voxels);
 
 	constexpr auto samplingInterval = std::array{ 1l, 1l, 1l };
 	const auto min = std::array<long, 3>{ box.lower.x + 1, box.lower.y + 1, box.lower.z + 1 };
 	const auto max = std::array<long, 3>{ box.upper.x, box.upper.y, box.upper.z };
-	constexpr auto nan = 0l;
+	auto nan = 0l;
 	{
 		auto error = int{};
 		fits_read_subset(fitsFile.get(), TINT32BIT, const_cast<long*>(min.data()), const_cast<long*>(max.data()),
-						 const_cast<long*>(samplingInterval.data()), const_cast<long*>(&nan), dataBuffer.data(),
+						 const_cast<long*>(samplingInterval.data()), &nan, dataBuffer.data(),
 						 nullptr, &error);
 		if (error != 0)
 		{
@@ -403,13 +403,16 @@ auto extractData(const std::filesystem::path& file, const Box3I& searchBox) -> s
 
 	const auto fitsFile = UniqueFitsfile(fitsFilePtr, &fitsDeleter);
 
-	int axisCount;
-	int imgType;
-	long axis[3];
-	fits_get_img_param(fitsFile.get(), 3, &imgType, &axisCount, &axis[0], &fitsError);
+	auto axisCount = 0;
+	auto imgType = 0;
+	fits_get_img_param(fitsFile.get(), 3, &imgType, &axisCount, nullptr, &fitsError);
+	assert(axisCount > 0);
+	auto axis = std::vector<long>{};
+	axis.resize(axisCount);
+	fits_get_img_param(fitsFile.get(), 3, &imgType, &axisCount, axis.data(), &fitsError);
 
 	assert(fitsError == 0);
-	assert(axisCount == 3);
+	assert(axisCount >= 3);
 	assert(imgType <= FLOAT_IMG);
 
 	const auto srcBox =
@@ -422,16 +425,28 @@ auto extractData(const std::filesystem::path& file, const Box3I& searchBox) -> s
 	std::vector<float> dataBuffer;
 	dataBuffer.resize(voxels);
 
-	constexpr auto samplingInterval = std::array{ 1l, 1l, 1l };
-	const auto min =
-		std::array<long, 3>{ newSearchBox.lower.x + 1, newSearchBox.lower.y + 1, newSearchBox.lower.z + 1 };
-	const auto max = std::array<long, 3>{ newSearchBox.upper.x, newSearchBox.upper.y, newSearchBox.upper.z };
-	auto nan = 0.0f;
+	auto samplingInterval = std::vector<long>{};
+	auto min = std::vector<long>{};
+	auto max = std::vector<long>{};
+	samplingInterval.resize(axisCount);
+	min.resize(axisCount);
+	max.resize(axisCount);
+	std::ranges::fill(samplingInterval, 1l);
+	std::ranges::fill(min, 1l);
+	std::ranges::fill(max, 1l);
+
+	min[0] = newSearchBox.lower.x + 1;
+	min[1] = newSearchBox.lower.y + 1;
+	min[2] = newSearchBox.lower.z + 1;
+
+	max[0] = newSearchBox.upper.x;
+	max[1] = newSearchBox.upper.y;
+	max[2] = newSearchBox.upper.z;
 
 	{
 		auto error = int{};
-		fits_read_subset(fitsFile.get(), TFLOAT, const_cast<long*>(min.data()), const_cast<long*>(max.data()),
-						 const_cast<long*>(samplingInterval.data()), &nan, dataBuffer.data(), nullptr, &error);
+		fits_read_subset(fitsFile.get(), TFLOAT, min.data(), max.data(),
+						 samplingInterval.data(), &nan, dataBuffer.data(), nullptr, &error);
 		if (error != 0)
 		{
 			std::array<char, 30> txt;
@@ -455,4 +470,17 @@ auto applyMask(const std::vector<float>& data, const std::vector<bool>& mask, co
 		result[i] = mask[i] > 0 ? data[i] : maskedValue;
 	}
 	return result;
+}
+
+auto searchMinMaxBounds(const std::vector<float>& data) -> MinMaxBounds
+{
+	MinMaxBounds bounds;
+	bounds.min = std::numeric_limits<float>::max();
+	bounds.max = std::numeric_limits<float>::min();
+	for (auto i = 0; i < data.size(); i++)
+	{
+		bounds.max = std::max({bounds.max, data[i]});
+		bounds.min = std::min({bounds.min, data[i]});
+	}
+	return bounds;
 }
