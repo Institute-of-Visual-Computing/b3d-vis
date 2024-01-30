@@ -1,11 +1,9 @@
 #include "NanoRenderer.h"
-#include <Logging.h>
 #include <nanovdb/NanoVDB.h>
 #include <owl/helper/cuda.h>
 #include "cuda_runtime.h"
 
 #include <nanovdb/util/CudaDeviceBuffer.h>
-#include <nanovdb/util/GridBuilder.h>
 #include <nanovdb/util/Primitives.h>
 
 #include <nanovdb/util/IO.h>
@@ -60,12 +58,12 @@ namespace
 
 	unique_volume_ptr nanoVdbVolume;
 
-	auto getOptixTransform(const nanovdb::GridHandle<>& grid, float transform[]) -> void
+	[[maybe_unused]] auto getOptixTransform(const nanovdb::GridHandle<>& grid, float transform[]) -> void
 	{
 		// Extract the index-to-world-space affine transform from the Grid and convert
 		// to 3x4 row-major matrix for Optix.
-		auto* grid_handle = grid.grid<float>();
-		const nanovdb::Map& map = grid_handle->map();
+		auto* gridHandle = grid.grid<float>();
+		const auto& map = gridHandle->map();
 		transform[0] = map.mMatF[0];
 		transform[1] = map.mMatF[1];
 		transform[2] = map.mMatF[2];
@@ -87,8 +85,8 @@ namespace
 		//assert(std::filesystem::exists(testFile));
 		// owlInstanceGroupSetTransform
 		auto volume = NanoVdbVolume{};
-		const auto gridVolume = nanovdb::createFogVolumeTorus();
-		//const auto gridVolume = nanovdb::io::readGrid(testFile.string());
+		// const auto gridVolume = nanovdb::createFogVolumeTorus();
+		const auto gridVolume = nanovdb::io::readGrid(testFile.string());
 		OWL_CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&volume.grid), gridVolume.size()));
 		OWL_CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(volume.grid), gridVolume.data(), gridVolume.size(),
 								  cudaMemcpyHostToDevice));
@@ -130,17 +128,17 @@ namespace
 	}
 
 
-	float computeStableEpsilon(float f)
+	auto computeStableEpsilon(const float f) -> float
 	{
-		return abs(f) * float(1. / (1 << 21));
+		return abs(f) * static_cast<float>(1. / (1 << 21));
 	}
 
-	float computeStableEpsilon(const vec3f v)
+	auto computeStableEpsilon(const vec3f& v) -> float
 	{
 		return max(max(computeStableEpsilon(v.x), computeStableEpsilon(v.y)), computeStableEpsilon(v.z));
 	}
 
-	RayCameraData createRayCameraData(const Camera& camera, const Extent& textureExtent)
+	auto createRayCameraData(const Camera& camera, const Extent& textureExtent) -> RayCameraData
 	{
 		const auto origin = vec3f{ camera.origin.x, camera.origin.y, camera.origin.z };
 		const auto aspect = textureExtent.width / static_cast<float>(textureExtent.height);
@@ -151,17 +149,18 @@ namespace
 		const auto focalDistance = length(camera.at - origin);
 		const auto minFocalDistance = max(computeStableEpsilon(origin), computeStableEpsilon(vx));
 
-		const auto screen_height = 2.f * tanf(camera.FoV / 2.f) * max(minFocalDistance, focalDistance);
-		const auto vertical = screen_height * vy;
-		const auto horizontal = screen_height * aspect * vx;
-		const auto lower_left = -max(minFocalDistance, focalDistance) * vz - 0.5f * vertical - 0.5f * horizontal;
+		const auto screenHeight = 2.f * tanf(camera.FoV / 2.f) * max(minFocalDistance, focalDistance);
+		const auto vertical = screenHeight * vy;
+		const auto horizontal = screenHeight * aspect * vx;
+		const auto lowerLeft = -max(minFocalDistance, focalDistance) * vz - 0.5f * vertical - 0.5f * horizontal;
 
-		return { origin, lower_left, horizontal, vertical };
+		return { origin, lowerLeft, horizontal, vertical };
 	}
+
+	
 
 
 	std::filesystem::path b3dFilePath{};
-
 } // namespace
 
 
@@ -173,7 +172,7 @@ auto NanoRenderer::prepareGeometry() -> void
 
 	const auto module = owlModuleCreate(context, NanoRenderer_ptx);
 
-	const auto volumeGeometryVars =
+	[[maybe_unused]] const auto volumeGeometryVars =
 		std::array{ OWLVarDecl{ "indexBox", OWL_FLOAT3, OWL_OFFSETOF(NanoVdbVolume, indexBox) },
 					OWLVarDecl{ "worldAabb", OWL_FLOAT3, OWL_OFFSETOF(NanoVdbVolume, worldAabb) },
 					OWLVarDecl{ "indexBox", OWL_AFFINE3F, OWL_OFFSETOF(NanoVdbVolume, transform) },
@@ -186,8 +185,7 @@ auto NanoRenderer::prepareGeometry() -> void
 		owlGeomTypeCreate(context, OWL_GEOM_USER, sizeof(GeometryData), geometryVars.data(), geometryVars.size());
 
 	const auto rayGenerationVars =
-		std::array{ 
-					OWLVarDecl{ "frameBufferSize", OWL_INT2, OWL_OFFSETOF(RayGenerationData, frameBufferSize) },
+		std::array{ OWLVarDecl{ "frameBufferSize", OWL_INT2, OWL_OFFSETOF(RayGenerationData, frameBufferSize) },
 					OWLVarDecl{ "world", OWL_GROUP, OWL_OFFSETOF(RayGenerationData, world) } };
 
 	const auto rayGen = owlRayGenCreate(context, module, "rayGeneration", sizeof(RayGenerationData),
@@ -241,15 +239,17 @@ auto NanoRenderer::prepareGeometry() -> void
 	owlMissProgSet3f(nanoContext_.missProgram, "color0", owl3f{ .8f, 0.f, 0.f });
 	owlMissProgSet3f(nanoContext_.missProgram, "color1", owl3f{ .8f, .8f, .8f });
 
-	// Create Launch params
+
 	{
-		OWLVarDecl launchParamsVarsWithStruct[] = {
-			{ "cameraData", OWL_USER_TYPE(RayCameraData), OWL_OFFSETOF(LaunchParams, cameraData) },
-			{ "surfacePointer", OWL_USER_TYPE(cudaSurfaceObject_t), OWL_OFFSETOF(LaunchParams, surfacePointer) },
-			{}
+		const auto launchParamsVarsWithStruct = std::array{
+			OWLVarDecl{ "cameraData", OWL_USER_TYPE(RayCameraData), OWL_OFFSETOF(LaunchParams, cameraData) },
+			OWLVarDecl{ "surfacePointer", OWL_USER_TYPE(cudaSurfaceObject_t),
+						OWL_OFFSETOF(LaunchParams, surfacePointer) },
 		};
 
-		nanoContext_.launchParams = owlParamsCreate(nanoContext_.context, sizeof(LaunchParams), launchParamsVarsWithStruct, -1);
+		nanoContext_.launchParams =
+			owlParamsCreate(nanoContext_.context, sizeof(LaunchParams), launchParamsVarsWithStruct.data(),
+							launchParamsVarsWithStruct.size());
 	}
 
 
@@ -262,9 +262,6 @@ auto NanoRenderer::prepareGeometry() -> void
 
 auto NanoRenderer::onRender(const View& view) -> void
 {
-
-	debugDraw().drawBox(nanoVdbVolume->worldAabb.center(), nanoVdbVolume->worldAabb.size(),
-						owl::vec3f(0.1f, 0.82f, 0.15f));
 	gpuTimers_.nextFrame();
 
 	auto waitParams = cudaExternalSemaphoreWaitParams{};
@@ -289,7 +286,24 @@ auto NanoRenderer::onRender(const View& view) -> void
 			OWL_CUDA_CHECK(cudaCreateSurfaceObject(&cudaSurfaceObjects[i], &resDesc))
 		}
 	}
-	
+	trs_ = rendererState_->worldMatTRS;
+
+	owlInstanceGroupSetTransform(nanoContext_.worldGeometryGroup, 0, reinterpret_cast<const float*>(&trs_));
+	owlGroupRefitAccel(nanoContext_.worldGeometryGroup);
+
+	/*auto rsInv = trs_.l.inverse();
+	auto d = std::array{ trs_.l.vx, trs_.l.vy, trs_.l.vz };
+	auto dInv = std::array{ rsInv.vx, rsInv.vy, rsInv.vz };
+	currentMap_.set(d.data(), dInv.data(), trs_.p);*/
+
+	{
+		// TODO: need OBB, AABB !!!!!!!!!!!!!!!!!!!!!!!!
+		// pass Map to cuda and apply
+		debugDraw().drawBox(trs_.p, nanoVdbVolume->worldAabb.size(),
+							owl::vec3f(0.1f, 0.82f, 0.15f), trs_.l);
+	}
+
+
 	owlMissProgSet3f(nanoContext_.missProgram, "color0",
 					 owl3f{ guiData.rtBackgroundColorPalette.color1[0], guiData.rtBackgroundColorPalette.color1[1],
 							guiData.rtBackgroundColorPalette.color1[2] });
@@ -304,7 +318,7 @@ auto NanoRenderer::onRender(const View& view) -> void
 
 	owlBuildSBT(nanoContext_.context);
 
-	RayCameraData rcd;
+	auto rcd = RayCameraData{};
 	if (view.cameras[0].directionsAvailable)
 	{
 		rcd = { view.cameras[0].origin, view.cameras[0].dir00, view.cameras[0].dirDu, view.cameras[0].dirDv };
@@ -347,12 +361,10 @@ auto NanoRenderer::onInitialize() -> void
 {
 	RendererBase::onInitialize();
 	prepareGeometry();
-	log("[NanoRenderer] onInitialize!");
 }
 
 auto NanoRenderer::onDeinitialize() -> void
 {
-	log("[NanoRenderer] onDeinitialize!");
 }
 
 auto NanoRenderer::onGui() -> void
@@ -373,7 +385,7 @@ auto NanoRenderer::onGui() -> void
 		{
 			const auto t = cutterParser::load(b3dFilePath.generic_string());
 
-			const auto nanoFile = t.nanoVdbFile;
+			const auto nanoFile = t.front().nanoVdbFile;
 		}
 		else
 		{
@@ -389,24 +401,19 @@ auto NanoRenderer::onGui() -> void
 	const auto timing = gpuTimers_.get("basic owl rt");
 
 	static float values[100] = {};
-	static int values_offset = 0;
-	static double refresh_time = 0.0;
+	static auto valuesOffset = 0;
 
-	values[values_offset] = timing;
-	values_offset = (values_offset + 1) % IM_ARRAYSIZE(values);
+	values[valuesOffset] = timing;
+	valuesOffset = (valuesOffset + 1) % IM_ARRAYSIZE(values);
 
-	// Plots can display overlay texts
-	// (in this example, we will display an average value)
 	{
-		float average = 0.0f;
-		for (int n = 0; n < IM_ARRAYSIZE(values); n++)
+		auto average = 0.0f;
+		for (auto n = 0; n < IM_ARRAYSIZE(values); n++)
 			average += values[n];
-		average /= (float)IM_ARRAYSIZE(values);
-		char overlay[32];
-		sprintf(overlay, "avg %f", average);
-		ImGui::PlotHistogram("##perfGraph", values, IM_ARRAYSIZE(values), values_offset, overlay,0.0f, 16.0f, ImVec2(0, 400.0f));
+		average /= static_cast<float>(IM_ARRAYSIZE(values));
+		ImGui::PlotHistogram("##perfGraph", values, IM_ARRAYSIZE(values), valuesOffset,
+							 std::format("avg {}", average).c_str(), 0.0f, 16.0f, ImVec2(0, 400.0f));
 	}
-
 
 	ImGui::Text("%1.3f", timing);
 
@@ -417,9 +424,6 @@ auto NanoRenderer::onGui() -> void
 
 	const auto center = ImGui::GetMainViewport()->GetCenter();
 	ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-
-	// const auto root = std::filesystem::current_path().root_name();
-
 
 	if (ImGui::BeginPopupModal("FileSelectDialog", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
@@ -443,9 +447,7 @@ auto NanoRenderer::onGui() -> void
 			{
 				currentPath = currentPath.parent_path();
 			}
-
 			auto i = 0;
-
 			for (auto& dir : std::filesystem::directory_iterator{ currentPath })
 			{
 				i++;
@@ -484,7 +486,6 @@ auto NanoRenderer::onGui() -> void
 			selectedPath.clear();
 			ImGui::CloseCurrentPopup();
 		}
-
 		ImGui::EndPopup();
 	}
 

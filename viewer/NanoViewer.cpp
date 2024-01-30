@@ -256,15 +256,15 @@ auto NanoViewer::gui() -> void
 		ImGui::Separator();
 
 
-		if (ImGui::IsKeyPressed(ImGuiKey_T))
+		if (ImGui::IsKeyPressed(ImGuiKey_1))
 		{
 			currentGizmoOperation = ImGuizmo::TRANSLATE;
 		}
-		if (ImGui::IsKeyPressed(ImGuiKey_R))
+		if (ImGui::IsKeyPressed(ImGuiKey_2))
 		{
 			currentGizmoOperation = ImGuizmo::ROTATE;
 		}
-		if (ImGui::IsKeyPressed(ImGuiKey_E))
+		if (ImGui::IsKeyPressed(ImGuiKey_3))
 		{
 			currentGizmoOperation = ImGuizmo::SCALE;
 		}
@@ -316,7 +316,6 @@ auto NanoViewer::gui() -> void
 		ImGui::TextWrapped("This Application should run in admin mode to apply the effect of this option!");
 		ImGui::PopStyleColor();
 		ImGui::AlignTextToFramePadding();
-
 	}
 	// const auto rr = nvmlDeviceSetPersistenceMode(nvmlDevice, enablePersistenceMode?NVML_FEATURE_ENABLED:
 	// NVML_FEATURE_DISABLED);
@@ -754,7 +753,7 @@ NanoViewer::~NanoViewer()
 	vulkanContext_.device.destroySemaphore(synchronizationResources_.vkWaitSemaphore);
 	vulkanContext_.device.destroy();
 
-	if(isAdmin_)
+	if (isAdmin_)
 	{
 		const auto error = nvmlDeviceResetGpuLockedClocks(nvmlDevice_);
 		assert(error == NVML_SUCCESS);

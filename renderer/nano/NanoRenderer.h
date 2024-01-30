@@ -41,7 +41,7 @@ namespace b3d::renderer
 		NanoContext nanoContext_{};
 		owl::AffineSpace3f trs_{};
 
-		nanovdb::Map currentMap{};
+		nanovdb::Map currentMap_{};
 
 		CudaGpuTimers<100, 4> gpuTimers_{};
 	};
