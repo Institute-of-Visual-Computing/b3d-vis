@@ -24,6 +24,8 @@
 #include <NanoCutterParser.h>
 
 extern "C" char NanoRenderer_ptx[];
+extern "C" uint8_t NanoRenderer_optixir[];
+extern "C" uint32_t NanoRenderer_optixir_length;
 
 
 using namespace b3d::renderer;
@@ -81,12 +83,16 @@ namespace
 
 	auto createVolume() -> NanoVdbVolume
 	{
-		// const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
-		//assert(std::filesystem::exists(testFile));
+		//const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
+		//const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" };
+		//const auto testFile = std::filesystem::path{ "D:/datacubes/ska/40gb/sky_ldev_v2.nvdb" };
+		
+		
+		// assert(std::filesystem::exists(testFile));
 		// owlInstanceGroupSetTransform
 		auto volume = NanoVdbVolume{};
-		// const auto gridVolume = nanovdb::createFogVolumeTorus();
-		const auto gridVolume = nanovdb::io::readGrid(testFile.string());
+		const auto gridVolume = nanovdb::createFogVolumeTorus(6,2);
+		//const auto gridVolume = nanovdb::io::readGrid(testFile.string());
 		OWL_CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&volume.grid), gridVolume.size()));
 		OWL_CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(volume.grid), gridVolume.data(), gridVolume.size(),
 								  cudaMemcpyHostToDevice));
@@ -172,6 +178,8 @@ auto NanoRenderer::prepareGeometry() -> void
 
 	const auto module = owlModuleCreate(context, NanoRenderer_ptx);
 
+	const auto optixirModule = owlModuleCreateFromIR(context, NanoRenderer_optixir, NanoRenderer_optixir_length);
+
 	[[maybe_unused]] const auto volumeGeometryVars =
 		std::array{ OWLVarDecl{ "indexBox", OWL_FLOAT3, OWL_OFFSETOF(NanoVdbVolume, indexBox) },
 					OWLVarDecl{ "worldAabb", OWL_FLOAT3, OWL_OFFSETOF(NanoVdbVolume, worldAabb) },
@@ -188,7 +196,7 @@ auto NanoRenderer::prepareGeometry() -> void
 		std::array{ OWLVarDecl{ "frameBufferSize", OWL_INT2, OWL_OFFSETOF(RayGenerationData, frameBufferSize) },
 					OWLVarDecl{ "world", OWL_GROUP, OWL_OFFSETOF(RayGenerationData, world) } };
 
-	const auto rayGen = owlRayGenCreate(context, module, "rayGeneration", sizeof(RayGenerationData),
+	const auto rayGen = owlRayGenCreate(context, optixirModule, "rayGeneration", sizeof(RayGenerationData),
 										rayGenerationVars.data(), rayGenerationVars.size());
 
 	nanoContext_.rayGen = rayGen;
@@ -223,8 +231,8 @@ auto NanoRenderer::prepareGeometry() -> void
 
 	owlRayGenSetGroup(rayGen, "world", nanoContext_.worldGeometryGroup);
 
-	owlGeomTypeSetIntersectProg(geometryType, 0, module, "nano_intersection");
-	owlGeomTypeSetClosestHit(geometryType, 0, module, "nano_closestHit");
+	owlGeomTypeSetIntersectProg(geometryType, 0, optixirModule, "nano_intersection");
+	owlGeomTypeSetClosestHit(geometryType, 0, optixirModule, "nano_closestHit");
 
 
 	const auto missProgramVars =
@@ -232,7 +240,7 @@ auto NanoRenderer::prepareGeometry() -> void
 					OWLVarDecl{ "color1", OWL_FLOAT3, OWL_OFFSETOF(MissProgramData, color1) } };
 
 	// ----------- create object  ----------------------------
-	nanoContext_.missProgram = owlMissProgCreate(context, module, "miss", sizeof(MissProgramData),
+	nanoContext_.missProgram = owlMissProgCreate(context, optixirModule, "miss", sizeof(MissProgramData),
 												 missProgramVars.data(), missProgramVars.size());
 
 	// ----------- set variables  ----------------------------
