@@ -13,6 +13,7 @@ set(SHARED_HEADERS
 	NullDebugDrawList.h
 	NullGizmoHelper.h
 	CudaGpuTimers.h
+	OwlExtensions.h
 )
 
 add_library(${MODULE_NAME} ${SRC} ${SHARED_HEADERS})
