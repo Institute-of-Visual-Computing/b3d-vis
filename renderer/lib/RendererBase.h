@@ -70,6 +70,7 @@ namespace b3d::renderer
 		cudaExternalSemaphore_t waitSemaphore;
 		cudaExternalSemaphore_t signalSemaphore;
 		cudaUUID_t deviceUuid;
+		int deviceIndex;
 	};
 
 	struct DebugInitializationInfo

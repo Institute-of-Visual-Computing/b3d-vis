@@ -4,6 +4,8 @@
 #include "nanovdb/util/CreateNanoGrid.h"
 #include "owl/owl_host.h"
 
+#include <CudaGpuTimers.h>
+
 struct NanoNativeRenderingData : b3d::renderer::RendererState
 {
 	b3d::renderer::VolumeTransform volumeTransform;
@@ -39,6 +41,8 @@ namespace b3d::renderer
 		NanoContext nanoContext_{};
 		owl::AffineSpace3f trs_{};
 
-		nanovdb::Map currentMap{};
+		nanovdb::Map currentMap_{};
+
+		CudaGpuTimers<100, 4> gpuTimers_{};
 	};
 } // namespace b3d::renderer

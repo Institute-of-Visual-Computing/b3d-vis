@@ -46,6 +46,7 @@ target_link_libraries(viewer
 	Vulkan::Vulkan
 	Vulkan::Headers
 	imguizmo::imguizmo
+	${CUDA_nvml_LIBRARY}
 )
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/resources")

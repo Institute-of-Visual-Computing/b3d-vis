@@ -1,4 +1,5 @@
 #pragma once
+#include <nvml.h>
 #include <owlViewer/OWLViewer.h>
 #include "DebugDrawList.h"
 
@@ -15,6 +16,7 @@ public:
 	auto showAndRunWithGui() -> void;
 	auto showAndRunWithGui(const std::function<bool()>& keepgoing) -> void;
 	virtual ~NanoViewer();
+
 private:
 	auto selectRenderer(const std::uint32_t index) -> void;
 	auto gui() -> void;
@@ -22,6 +24,19 @@ private:
 	auto resize(const owl::vec2i& newSize) -> void override;
 	auto cameraChanged() -> void override;
 	auto onFrameBegin() -> void;
+
+
+	struct CameraMatrices
+	{
+		glm::mat4 view;
+		glm::mat4 projection;
+		glm::mat4 viewProjection;
+	};
+
+	auto drawGizmos(const CameraMatrices& cameraMatrices) -> void;
+	static auto computeViewProjectionMatrixFromCamera(const owl::viewer::Camera& camera, const int width,
+													  const int height) -> CameraMatrices;
+
 
 	std::shared_ptr<DebugDrawList> debugDrawList_{};
 	std::shared_ptr<GizmoHelper> gizmoHelper_{};
@@ -39,6 +54,9 @@ private:
 
 	b3d::renderer::RendererInitializationInfo rendererInfo_{};
 	b3d::renderer::RenderMode mode_{ b3d::renderer::RenderMode::mono };
+
+	nvmlDevice_t nvmlDevice_{};
+	bool isAdmin_{false};
 
 	// NOTICE: OpenGL <-> CUDA synchronization:
 	// https://github.com/nvpro-samples/gl_cuda_simple_interop/blob/master/README.md

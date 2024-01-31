@@ -21,6 +21,9 @@
 
 #include <ImGuizmo.h>
 
+#include <cuda_runtime.h>
+
+#include <nvml.h>
 
 using namespace owl;
 using namespace owl::viewer;
@@ -81,29 +84,6 @@ namespace
 		}
 	}
 
-	struct CameraMatrices
-	{
-		glm::mat4 view;
-		glm::mat4 projection;
-		glm::mat4 viewProjection;
-	};
-
-	auto computeViewProjectionMatrixFromCamera(const Camera& camera, const int width, const int height)
-		-> CameraMatrices
-	{
-		const auto aspect = width / static_cast<float>(height);
-
-		CameraMatrices mat;
-		mat.projection = glm::perspective(glm::radians(camera.getFovyInDegrees()), aspect, 0.01f, 10000.0f);
-		mat.view = glm::lookAt(glm::vec3{ camera.position.x, camera.position.y, camera.position.z },
-							   glm::vec3{ camera.getAt().x, camera.getAt().y, camera.getAt().z },
-							   glm::normalize(glm::vec3{ camera.getUp().x, camera.getUp().y, camera.getUp().z }));
-
-
-		mat.viewProjection = mat.projection * mat.view;
-		return mat;
-	}
-
 	std::vector<ImFont*> defaultFonts;
 	std::unordered_map<float, int> scaleToFont{};
 	int currentFontIndex{ 0 };
@@ -132,6 +112,7 @@ namespace
 			auto scaleY = 0.0f;
 			glfwGetMonitorContentScale(monitor, &scaleX, &scaleY);
 			const auto dpiScale = scaleX; // / 96;
+
 			config.SizePixels = dpiScale * baseFontSize;
 
 			if (!scaleToFont.contains(scaleX))
@@ -201,8 +182,8 @@ namespace
 
 auto NanoViewer::gui() -> void
 {
-	static auto show_demo_window = true;
-	ImGui::ShowDemoWindow(&show_demo_window);
+	static auto showDemoWindow = true;
+	ImGui::ShowDemoWindow(&showDemoWindow);
 
 	currentRenderer_->gui();
 	static auto showViewerSettings = true;
@@ -275,20 +256,69 @@ auto NanoViewer::gui() -> void
 		ImGui::Separator();
 
 
-		if (ImGui::IsKeyPressed(ImGuiKey_T))
+		if (ImGui::IsKeyPressed(ImGuiKey_1))
 		{
 			currentGizmoOperation = ImGuizmo::TRANSLATE;
 		}
-		if (ImGui::IsKeyPressed(ImGuiKey_R))
+		if (ImGui::IsKeyPressed(ImGuiKey_2))
 		{
 			currentGizmoOperation = ImGuizmo::ROTATE;
 		}
-		if (ImGui::IsKeyPressed(ImGuiKey_E))
+		if (ImGui::IsKeyPressed(ImGuiKey_3))
 		{
 			currentGizmoOperation = ImGuizmo::SCALE;
 		}
 	}
 
+	ImGui::SeparatorText("NVML Settings");
+
+
+	static auto enablePersistenceMode{ false };
+	static auto enabledPersistenceMode{ false };
+	static auto showPermissionDeniedMessage{ false };
+
+	uint32_t clock;
+	{
+		const auto error = nvmlDeviceGetClockInfo(nvmlDevice_, NVML_CLOCK_SM, &clock);
+		assert(error == NVML_SUCCESS);
+	}
+
+	ImGui::BeginDisabled(!isAdmin_);
+	ImGui::Checkbox(std::format("Max GPU SM Clock [current: {} MHz]", clock).c_str(), &enablePersistenceMode);
+	ImGui::EndDisabled();
+	if (enablePersistenceMode != enabledPersistenceMode)
+	{
+		if (enablePersistenceMode)
+		{
+			const auto error =
+				nvmlDeviceSetGpuLockedClocks(nvmlDevice_, static_cast<unsigned int>(NVML_CLOCK_LIMIT_ID_TDP),
+											 static_cast<unsigned int>(NVML_CLOCK_LIMIT_ID_TDP));
+
+			enabledPersistenceMode = true;
+
+			assert(error == NVML_SUCCESS);
+		}
+
+		else
+		{
+			const auto error = nvmlDeviceResetGpuLockedClocks(nvmlDevice_);
+
+			enabledPersistenceMode = false;
+			enablePersistenceMode = false;
+			assert(error == NVML_SUCCESS);
+		}
+	}
+
+
+	if (!isAdmin_)
+	{
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4{ 0.9f, 0.1f, 0.1f, 1.0f });
+		ImGui::TextWrapped("This Application should run in admin mode to apply the effect of this option!");
+		ImGui::PopStyleColor();
+		ImGui::AlignTextToFramePadding();
+	}
+	// const auto rr = nvmlDeviceSetPersistenceMode(nvmlDevice, enablePersistenceMode?NVML_FEATURE_ENABLED:
+	// NVML_FEATURE_DISABLED);
 
 	ImGui::End();
 }
@@ -342,6 +372,28 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 	: owl::viewer::OWLViewer(title, owl::vec2i(initWindowWidth, initWindowHeight), true, enableVsync), resources_{},
 	  synchronizationResources_{}
 {
+	nvmlInit();
+
+
+	{
+		const auto error = nvmlDeviceGetHandleByIndex(rendererInfo_.deviceIndex, &nvmlDevice_);
+		assert(error == NVML_SUCCESS);
+	}
+
+	{
+		const auto error = nvmlDeviceResetGpuLockedClocks(nvmlDevice_);
+		if (error == NVML_ERROR_NO_PERMISSION)
+		{
+			isAdmin_ = false;
+		}
+		if (error == NVML_SUCCESS)
+		{
+			isAdmin_ = true;
+		}
+		assert(error == NVML_SUCCESS || error == NVML_ERROR_NO_PERMISSION);
+	}
+
+
 	gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
 	gladLoadGL();
 
@@ -420,6 +472,7 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 
 		vulkanContext_.physicalDevice = devices[index];
 		rendererInfo_.deviceUuid = uuid;
+		rendererInfo_.deviceIndex = index;
 
 		debugDrawList_ = std::make_unique<DebugDrawList>();
 		gizmoHelper_ = std::make_unique<GizmoHelper>();
@@ -539,6 +592,74 @@ auto NanoViewer::showAndRunWithGui() -> void
 	showAndRunWithGui([]() { return true; });
 }
 
+auto NanoViewer::drawGizmos(const CameraMatrices& cameraMatrices) -> void
+{
+	ImGui::Begin("##GizmoOverlay", nullptr,
+				 ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoScrollbar |
+					 ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar |
+					 ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus |
+					 ImGuiWindowFlags_NoNavFocus);
+	{
+		ImGui::SetWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y), 0);
+		ImGui::SetWindowPos(ImVec2(0, 0));
+		ImGuizmo::SetDrawlist();
+		ImGuizmo::SetRect(0, 0, ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y);
+		for (const auto transform : gizmoHelper_->getTransforms())
+		{
+			float mat[16];
+
+			mat[3] = 0.0f;
+			mat[7] = 0.0f;
+			mat[11] = 0.0f;
+
+			mat[12] = transform->p.x;
+			mat[13] = transform->p.y;
+			mat[14] = transform->p.z;
+
+			mat[15] = 1.0f;
+
+			mat[0] = transform->l.vx.x;
+			mat[1] = transform->l.vx.y;
+			mat[2] = transform->l.vx.z;
+
+			mat[4] = transform->l.vy.x;
+			mat[5] = transform->l.vy.y;
+			mat[6] = transform->l.vy.z;
+
+			mat[8] = transform->l.vz.x;
+			mat[9] = transform->l.vz.y;
+			mat[10] = transform->l.vz.z;
+
+			ImGuizmo::Manipulate(reinterpret_cast<const float*>(&cameraMatrices.view),
+								 reinterpret_cast<const float*>(&cameraMatrices.projection), currentGizmoOperation,
+								 currentGizmoMode, mat, nullptr, nullptr);
+
+			transform->p.x = mat[12];
+			transform->p.y = mat[13];
+			transform->p.z = mat[14];
+
+			transform->l.vx = owl::vec3f{ mat[0], mat[1], mat[2] };
+			transform->l.vy = owl::vec3f{ mat[4], mat[5], mat[6] };
+			transform->l.vz = owl::vec3f{ mat[8], mat[9], mat[10] };
+		}
+	}
+	ImGui::End();
+}
+auto NanoViewer::computeViewProjectionMatrixFromCamera(const owl::viewer::Camera& camera, const int width,
+													   const int height) -> CameraMatrices
+{
+	const auto aspect = width / static_cast<float>(height);
+
+	CameraMatrices mat;
+	mat.projection = glm::perspective(glm::radians(camera.getFovyInDegrees()), aspect, 0.01f, 10000.0f);
+	mat.view = glm::lookAt(glm::vec3{ camera.position.x, camera.position.y, camera.position.z },
+						   glm::vec3{ camera.getAt().x, camera.getAt().y, camera.getAt().z },
+						   glm::normalize(glm::vec3{ camera.getUp().x, camera.getUp().y, camera.getUp().z }));
+
+
+	mat.viewProjection = mat.projection * mat.view;
+	return mat;
+}
 auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> void
 {
 	gladLoadGL();
@@ -585,56 +706,7 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 
 		if (viewerSettings.enableDebugDraw)
 		{
-			ImGui::Begin("##GizmoOverlay", nullptr,
-						 ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoScrollbar |
-							 ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoResize |
-							 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse |
-							 ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus);
-			{
-				ImGui::SetWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y), 0);
-				ImGui::SetWindowPos(ImVec2(0, 0));
-				ImGuizmo::SetDrawlist();
-				ImGuizmo::SetRect(0, 0, ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y);
-				for (const auto transform : gizmoHelper_->getTransforms())
-				{
-					float mat[16];
-
-					mat[3] = 0.0f;
-					mat[7] = 0.0f;
-					mat[11] = 0.0f;
-
-					mat[12] = transform->p.x;
-					mat[13] = transform->p.y;
-					mat[14] = transform->p.z;
-
-					mat[15] = 1.0f;
-
-					mat[0] = transform->l.vx.x;
-					mat[1] = transform->l.vx.y;
-					mat[2] = transform->l.vx.z;
-
-					mat[4] = transform->l.vy.x;
-					mat[5] = transform->l.vy.y;
-					mat[6] = transform->l.vy.z;
-
-					mat[8] = transform->l.vz.x;
-					mat[9] = transform->l.vz.y;
-					mat[10] = transform->l.vz.z;
-
-					ImGuizmo::Manipulate(reinterpret_cast<const float*>(&cameraMatrices.view),
-										 reinterpret_cast<const float*>(&cameraMatrices.projection),
-										 currentGizmoOperation, currentGizmoMode, mat, nullptr, nullptr);
-
-					transform->p.x = mat[12];
-					transform->p.y = mat[13];
-					transform->p.z = mat[14];
-
-					transform->l.vx = owl::vec3f{ mat[0], mat[1], mat[2] };
-					transform->l.vy = owl::vec3f{ mat[4], mat[5], mat[6] };
-					transform->l.vz = owl::vec3f{ mat[8], mat[9], mat[10] };
-				}
-			}
-			ImGui::End();
+			drawGizmos(cameraMatrices);
 		}
 
 		ImGui::PopFont();
@@ -680,6 +752,13 @@ NanoViewer::~NanoViewer()
 	vulkanContext_.device.destroySemaphore(synchronizationResources_.vkSignalSemaphore);
 	vulkanContext_.device.destroySemaphore(synchronizationResources_.vkWaitSemaphore);
 	vulkanContext_.device.destroy();
+
+	if (isAdmin_)
+	{
+		const auto error = nvmlDeviceResetGpuLockedClocks(nvmlDevice_);
+		assert(error == NVML_SUCCESS);
+	}
+	nvmlShutdown();
 }
 auto NanoViewer::selectRenderer(const std::uint32_t index) -> void
 {

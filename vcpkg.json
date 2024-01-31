@@ -8,7 +8,11 @@
 		"args",
 		"glfw3",
 		"tinyxml2",
-		"cfitsio",
+		{
+			"name": "cfitsio",
+			"default-features": false,
+			"features": [ "pthreads" ]
+		},
 		"glew",
 		"glm",
 		"nlohmann-json",
