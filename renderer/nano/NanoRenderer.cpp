@@ -83,26 +83,28 @@ namespace
 
 	auto createVolume() -> NanoVdbVolume
 	{
-		//const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
+		const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
 		//const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" };
 		//const auto testFile = std::filesystem::path{ "D:/datacubes/ska/40gb/sky_ldev_v2.nvdb" };
 		
 		
-		// assert(std::filesystem::exists(testFile));
+		assert(std::filesystem::exists(testFile));
 		// owlInstanceGroupSetTransform
 		auto volume = NanoVdbVolume{};
-		const auto gridVolume = nanovdb::createFogVolumeTorus(6,2);
-		//const auto gridVolume = nanovdb::io::readGrid(testFile.string());
+		//auto gridVolume = nanovdb::createFogVolumeTorus();
+		const auto gridVolume = nanovdb::io::readGrid(testFile.string());
 		OWL_CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&volume.grid), gridVolume.size()));
 		OWL_CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(volume.grid), gridVolume.data(), gridVolume.size(),
 								  cudaMemcpyHostToDevice));
 
 		const auto gridHandle = gridVolume.grid<float>();
-		const auto& map = gridHandle->map();
+		const auto& map = gridHandle->mMap;
 		const auto orientation =
 			owl::LinearSpace3f{ map.mMatF[0], map.mMatF[1], map.mMatF[2], map.mMatF[3], map.mMatF[4],
 								map.mMatF[5], map.mMatF[6], map.mMatF[7], map.mMatF[8] };
 		const auto position = vec3f{ 0.0, 0.0, 0.0 };
+		//const auto dim = gridVolume.gridMetaData()->worldBBox().dim();
+		//map.set(0.1, nanovdb::Vec3{-dim[0]*0.5,-dim[1]*0.5,-dim[2]*0.5 });
 
 		volume.transform = AffineSpace3f{ orientation, position }; // AffineSpace3f{ orientation, position };
 
@@ -307,7 +309,7 @@ auto NanoRenderer::onRender(const View& view) -> void
 	{
 		// TODO: need OBB, AABB !!!!!!!!!!!!!!!!!!!!!!!!
 		// pass Map to cuda and apply
-		debugDraw().drawBox(trs_.p, nanoVdbVolume->worldAabb.size(),
+		debugDraw().drawBox(trs_.p, nanoVdbVolume->indexBox.size(),
 							owl::vec3f(0.1f, 0.82f, 0.15f), trs_.l);
 	}
 
@@ -338,6 +340,8 @@ auto NanoRenderer::onRender(const View& view) -> void
 
 	owlParamsSetRaw(nanoContext_.launchParams, "cameraData", &rcd);
 	owlParamsSetRaw(nanoContext_.launchParams, "surfacePointer", &cudaSurfaceObjects[0]);
+	//owlParamsSetRaw()
+
 
 
 	constexpr auto deviceId = 0;
@@ -378,6 +382,10 @@ auto NanoRenderer::onDeinitialize() -> void
 auto NanoRenderer::onGui() -> void
 {
 	ImGui::Begin("RT Settings");
+	if(ImGui::Button("Reset Model Transform"))
+	{
+		rendererState_->worldMatTRS = AffineSpace3f{};
+	}
 	ImGui::SeparatorText("Data File (.b3d)");
 	ImGui::InputText("##source", const_cast<char*>(b3dFilePath.string().c_str()), b3dFilePath.string().size(),
 					 ImGuiInputTextFlags_ReadOnly);
