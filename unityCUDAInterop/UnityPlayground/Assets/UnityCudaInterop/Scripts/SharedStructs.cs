@@ -1,8 +1,5 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using Unity.VisualScripting;
 using UnityEngine;
 using static UnityEngine.Camera;
 using UnityEngine.XR;
@@ -11,7 +8,7 @@ namespace B3D
 {
     namespace UnityCudaInterop
     {
-		struct EyeCamera
+		public struct EyeCamera
 		{
 			public EyeCamera(int eyeIdx, StereoscopicEye camEye, XRNode n, InputFeatureUsage<Vector3> feature)
 			{
@@ -34,6 +31,18 @@ namespace B3D
 				new( 1, Camera.StereoscopicEye.Right, XRNode.RightHand, CommonUsages.rightEyePosition)
 			};
 		}
+
+		public class RenderEventTypes
+		{
+			public const int MAX_EVENT_COUNT = 10;
+
+			public const int ACTION_INITIALIZE = 0;
+			public const int ACTION_SET_TEXTURES = 1;
+
+			public const int BASE_ACTION_COUNT = ACTION_SET_TEXTURES + 1;
+
+		}
+
 
 		namespace NativeStructs
         {
@@ -126,28 +135,7 @@ namespace B3D
 			}
 
 
-			[StructLayout(LayoutKind.Sequential)]
-			public struct NativeRenderingDataWrapper
-			{
-				public NativeRenderingData NativeRenderingData;
-
-				public IntPtr AdditionalDataPointer;
-
-				public NativeRenderingDataWrapper(NativeRenderingData nativeRenderingData, IntPtr additionalDataPointer)
-				{
-					this.NativeRenderingData = nativeRenderingData;
-					this.AdditionalDataPointer = additionalDataPointer;
-				}
-
-				public static NativeRenderingDataWrapper CREATE()
-				{
-					NativeRenderingDataWrapper nrdw = new();
-					nrdw.NativeRenderingData = NativeRenderingData.CREATE();
-					nrdw.AdditionalDataPointer = IntPtr.Zero;
-					return nrdw;
-				}	
-
-			}
+			
 
 			public struct NativeMatrix4x3
 			{
@@ -181,6 +169,46 @@ namespace B3D
 				public Vector3 scale;
 				public Quaternion rotation;
 			};
+
+			namespace RenderAction
+			{
+				[StructLayout(LayoutKind.Sequential)]
+				public struct RenderingActionNativeInitData
+				{
+					public NativeTextureData textureData;
+					public static RenderingActionNativeInitData CREATE()
+					{
+						RenderingActionNativeInitData nid = new()
+						{
+							textureData = NativeTextureData.CREATE()
+						};
+						return nid;
+					}
+				};
+
+				[StructLayout(LayoutKind.Sequential)]
+				public struct RenderingActionNativeRenderingDataWrapper
+				{
+					public NativeRenderingData NativeRenderingData;
+
+					public IntPtr AdditionalDataPointer;
+
+					public RenderingActionNativeRenderingDataWrapper(NativeRenderingData nativeRenderingData, IntPtr additionalDataPointer)
+					{
+						this.NativeRenderingData = nativeRenderingData;
+						this.AdditionalDataPointer = additionalDataPointer;
+					}
+
+					public static RenderingActionNativeRenderingDataWrapper CREATE()
+					{
+						RenderingActionNativeRenderingDataWrapper nrdw = new();
+						nrdw.NativeRenderingData = NativeRenderingData.CREATE();
+						nrdw.AdditionalDataPointer = IntPtr.Zero;
+						return nrdw;
+					}
+
+				}
+			}
 		}
     }
 }
