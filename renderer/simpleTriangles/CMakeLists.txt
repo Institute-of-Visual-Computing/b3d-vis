@@ -7,6 +7,9 @@ embed_ptx(
     SimpleTrianglesDeviceCode.cu
 )
 
+set_property(TARGET SimpleTriangles-ptx PROPERTY FOLDER "Renderer/PTX Targets")
+set_property(TARGET SimpleTriangles-ptx_ptx PROPERTY FOLDER "Renderer/PTX Targets")
+
 find_package(imgui CONFIG REQUIRED)
 
 add_b3d_renderer(
