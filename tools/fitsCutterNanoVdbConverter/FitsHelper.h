@@ -4,6 +4,7 @@
 #include <map>
 
 #include "Common.h"
+#include "util/CreateNanoGrid.h"
 
 using ClusterId = int;
 
@@ -40,6 +41,6 @@ auto writeFitsFile(const std::filesystem::path& file, const Vec3I boxSize, const
 auto writeFitsFile(const std::filesystem::path& file, const Vec3I boxSize, const std::vector<float>& data)-> void;
 
 
-auto generateNanoVdb(const std::string& file, const Vec3I boxSize, float maskedValues, float emptySpaceValue, const std::vector<float>& data) -> void;
+auto generateNanoVdb(const Vec3I boxSize, float maskedValues, float emptySpaceValue, const std::vector<float>& data) -> nanovdb::GridHandle<>;
 
 auto upscaleFitsData(const std::filesystem::path& srcFile, const std::filesystem::path& dstFile, const Vec3I& axisScaleFactor, const std::function<float(const float, const Vec3I&, const Vec3I&)>& filter) -> void;

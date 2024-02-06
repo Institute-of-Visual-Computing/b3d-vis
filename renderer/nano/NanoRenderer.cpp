@@ -43,6 +43,9 @@ namespace
 			std::array<float, 3> color2{ 0.0f, 0.3f, 0.3f };
 		};
 		BackgroundColorPalette rtBackgroundColorPalette;
+		bool fillBox{ false };
+		std::array<float, 3> fillColor{ 0.8f, 0.3f, 0.2f };
+		std::array<float, 3> color{ 1.0f, 1.0f, 1.0f };
 	};
 
 	GuiData guiData{};
@@ -83,15 +86,17 @@ namespace
 
 	auto createVolume() -> NanoVdbVolume
 	{
-		const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
-		//const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" };
-		//const auto testFile = std::filesystem::path{ "D:/datacubes/ska/40gb/sky_ldev_v2.nvdb" };
-		
-		
+		// const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
+		const auto testFile =
+			std::filesystem::path{ "D:/datacubes/n4565_cut/filtered_level_0_224_257_177_id_7_upscale.fits.nvdb" };
+		// const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" };
+		// const auto testFile = std::filesystem::path{ "D:/datacubes/ska/40gb/sky_ldev_v2.nvdb" };
+
+
 		assert(std::filesystem::exists(testFile));
 		// owlInstanceGroupSetTransform
 		auto volume = NanoVdbVolume{};
-		//auto gridVolume = nanovdb::createFogVolumeTorus();
+		// auto gridVolume = nanovdb::createFogVolumeTorus();
 		const auto gridVolume = nanovdb::io::readGrid(testFile.string());
 		OWL_CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&volume.grid), gridVolume.size()));
 		OWL_CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(volume.grid), gridVolume.data(), gridVolume.size(),
@@ -103,8 +108,8 @@ namespace
 			owl::LinearSpace3f{ map.mMatF[0], map.mMatF[1], map.mMatF[2], map.mMatF[3], map.mMatF[4],
 								map.mMatF[5], map.mMatF[6], map.mMatF[7], map.mMatF[8] };
 		const auto position = vec3f{ 0.0, 0.0, 0.0 };
-		//const auto dim = gridVolume.gridMetaData()->worldBBox().dim();
-		//map.set(0.1, nanovdb::Vec3{-dim[0]*0.5,-dim[1]*0.5,-dim[2]*0.5 });
+		// const auto dim = gridVolume.gridMetaData()->worldBBox().dim();
+		// map.set(0.1, nanovdb::Vec3{-dim[0]*0.5,-dim[1]*0.5,-dim[2]*0.5 });
 
 		volume.transform = AffineSpace3f{ orientation, position }; // AffineSpace3f{ orientation, position };
 
@@ -164,8 +169,6 @@ namespace
 
 		return { origin, lowerLeft, horizontal, vertical };
 	}
-
-	
 
 
 	std::filesystem::path b3dFilePath{};
@@ -255,6 +258,12 @@ auto NanoRenderer::prepareGeometry() -> void
 			OWLVarDecl{ "cameraData", OWL_USER_TYPE(RayCameraData), OWL_OFFSETOF(LaunchParams, cameraData) },
 			OWLVarDecl{ "surfacePointer", OWL_USER_TYPE(cudaSurfaceObject_t),
 						OWL_OFFSETOF(LaunchParams, surfacePointer) },
+			OWLVarDecl{ "bg.color0", OWL_FLOAT3, OWL_OFFSETOF(LaunchParams, bg.color0) },
+			OWLVarDecl{ "bg.color1", OWL_FLOAT3, OWL_OFFSETOF(LaunchParams, bg.color1) },
+			OWLVarDecl{ "bg.fillBox", OWL_BOOL, OWL_OFFSETOF(LaunchParams, bg.fillBox) },
+			OWLVarDecl{ "bg.fillColor", OWL_FLOAT3, OWL_OFFSETOF(LaunchParams, bg.fillColor) },
+			OWLVarDecl{ "color", OWL_FLOAT3, OWL_OFFSETOF(LaunchParams, color) },
+
 		};
 
 		nanoContext_.launchParams =
@@ -309,8 +318,7 @@ auto NanoRenderer::onRender(const View& view) -> void
 	{
 		// TODO: need OBB, AABB !!!!!!!!!!!!!!!!!!!!!!!!
 		// pass Map to cuda and apply
-		debugDraw().drawBox(trs_.p, nanoVdbVolume->indexBox.size(),
-							owl::vec3f(0.1f, 0.82f, 0.15f), trs_.l);
+		debugDraw().drawBox(trs_.p, nanoVdbVolume->indexBox.size(), owl::vec3f(0.1f, 0.82f, 0.15f), trs_.l);
 	}
 
 
@@ -340,8 +348,18 @@ auto NanoRenderer::onRender(const View& view) -> void
 
 	owlParamsSetRaw(nanoContext_.launchParams, "cameraData", &rcd);
 	owlParamsSetRaw(nanoContext_.launchParams, "surfacePointer", &cudaSurfaceObjects[0]);
-	//owlParamsSetRaw()
-
+	owlParamsSet3f(nanoContext_.launchParams, "bg.color0",
+				   owl3f{ guiData.rtBackgroundColorPalette.color1[0], guiData.rtBackgroundColorPalette.color1[1],
+						  guiData.rtBackgroundColorPalette.color1[2] });
+	owlParamsSet3f(nanoContext_.launchParams, "bg.color1",
+				   owl3f{ guiData.rtBackgroundColorPalette.color2[0], guiData.rtBackgroundColorPalette.color2[1],
+						  guiData.rtBackgroundColorPalette.color2[2] });
+	owlParamsSet1b(nanoContext_.launchParams, "bg.fillBox", guiData.fillBox);
+	owlParamsSet3f(nanoContext_.launchParams, "bg.fillColor",
+				   owl3f{ guiData.fillColor[0], guiData.fillColor[1], guiData.fillColor[2] });
+	owlParamsSet3f(nanoContext_.launchParams, "color",
+				   owl3f{ guiData.color[0], guiData.color[1], guiData.color[2] });
+	// owlParamsSetRaw()
 
 
 	constexpr auto deviceId = 0;
@@ -382,7 +400,7 @@ auto NanoRenderer::onDeinitialize() -> void
 auto NanoRenderer::onGui() -> void
 {
 	ImGui::Begin("RT Settings");
-	if(ImGui::Button("Reset Model Transform"))
+	if (ImGui::Button("Reset Model Transform"))
 	{
 		rendererState_->worldMatTRS = AffineSpace3f{};
 	}
@@ -408,9 +426,17 @@ auto NanoRenderer::onGui() -> void
 			ImGui::TextColored(ImVec4{ 0.9f, 0.1f, 0.1f, 1.0f }, "Error: Can't load file!");
 		}
 	}
+	ImGui::ColorEdit3("Cloud Color", guiData.color.data());
 	ImGui::SeparatorText("Background Color Palette");
 	ImGui::ColorEdit3("Color 1", guiData.rtBackgroundColorPalette.color1.data());
 	ImGui::ColorEdit3("Color 2", guiData.rtBackgroundColorPalette.color2.data());
+
+	ImGui::Checkbox("Fill Box", &guiData.fillBox);
+
+	if (guiData.fillBox)
+	{
+		ImGui::ColorEdit3("Fill Color", guiData.fillColor.data());
+	}
 
 	ImGui::SeparatorText("Timings");
 

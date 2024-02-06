@@ -4,8 +4,8 @@
 #include <nanovdb/util/GridBuilder.h>
 #include <nanovdb/util/IO.h>
 
-auto generateNanoVdb(const std::string& file, const Vec3I boxSize, float maskedValues, float emptySpaceValue,
-					 const std::vector<float>& data) -> void
+auto generateNanoVdb(const Vec3I boxSize, float maskedValues, float emptySpaceValue,
+					 const std::vector<float>& data) -> nanovdb::GridHandle<>
 {
 	auto func = [&](const nanovdb::Coord& ijk)
 	{
@@ -20,12 +20,8 @@ auto generateNanoVdb(const std::string& file, const Vec3I boxSize, float maskedV
 
 	const auto box =
 		nanovdb::CoordBBox(nanovdb::Coord(0, 0, 0), nanovdb::Coord(boxSize.x - 1, boxSize.y - 1, boxSize.z - 1));
-	nanovdb::build::Grid<float> grid(emptySpaceValue, "funny", nanovdb::GridClass::FogVolume);
+	nanovdb::build::Grid<float> grid(emptySpaceValue, "_nameless_", nanovdb::GridClass::FogVolume);
 	grid(func, box);
 
-	const auto gridHandle = nanovdb::createNanoGrid(grid);
-	std::cout << std::format("NanoVdb buffer size: {}bytes", gridHandle.size()) << std::endl;
-
-	nanovdb::io::writeGrid(file, gridHandle,
-						   nanovdb::io::Codec::NONE); // TODO: enable nanovdb::io::Codec::BLOSC
+	return nanovdb::createNanoGrid(grid);
 }
