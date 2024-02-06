@@ -1,12 +1,16 @@
-using B3D.UnityCudaInterop;
 using System;
 using System.Runtime.InteropServices;
 
-public class ActionConcrete : AbstractRenderingAction
+using B3D.UnityCudaInterop;
+
+// This class acts as a template for new actions. Do not change the content in any way! <LINETOREMOVE>
+
+public class RenderActionTemplate : AbstractRenderingAction
 {
 	#region dll function signatures
-	const string dllName = "ActionConcrete";
-	
+
+	const string dllName = "RenderActionTemplate";
+
 	[DllImport(dllName, EntryPoint = dllFuncNameCreateAction)]
 	private static extern IntPtr createActionExtern();
 
@@ -26,13 +30,13 @@ public class ActionConcrete : AbstractRenderingAction
 	[DllImport(dllName, EntryPoint = dllFuncNameTeardownAction)]
 	private static extern void teardownActionExtern(IntPtr nativeAction);
 
+
 	[DllImport(dllName, EntryPoint = dllFuncNameGetRenderEventAndDataFunc)]
 	private static extern IntPtr getRenderEventAndDataFuncExtern();
 
 	#endregion dll function signatures
 
 	#region dll function calls
-
 	protected override IntPtr CreateAction()
 	{
 		return createActionExtern();
@@ -44,12 +48,6 @@ public class ActionConcrete : AbstractRenderingAction
 		ActionPointer = IntPtr.Zero;
 	}
 
-	protected override int GetRenderEventIdOffset()
-	{
-		return getRenderEventIDOffsetExtern(ActionPointer);
-	}
-
-
 	public override void InitializeAction(IntPtr data)
 	{
 		initializeActionExtern(ActionPointer, data);
@@ -60,6 +58,11 @@ public class ActionConcrete : AbstractRenderingAction
 		teardownActionExtern(ActionPointer);
 	}
 
+	protected override int GetRenderEventIdOffset()
+	{
+		return getRenderEventIDOffsetExtern(ActionPointer);
+	}
+
 	protected override IntPtr GetRenderEventAndDataFunc()
 	{
 		return getRenderEventAndDataFuncExtern();
@@ -67,15 +70,8 @@ public class ActionConcrete : AbstractRenderingAction
 
 	#endregion dll function calls
 
-
-	public ActionConcrete() : base()
+	public RenderActionTemplate() : base()
 	{
 
 	}
-
-	public void initialize(IntPtr data)
-	{
-		initialize(data);
-	}
-
 }

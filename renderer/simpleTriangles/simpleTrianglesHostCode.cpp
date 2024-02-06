@@ -4,6 +4,9 @@
 // public owl node-graph API
 #include "owl/owl.h"
 // our device-side data structures
+#include <cuda/std/cstddef>
+
+
 #include "deviceCode.h"
 #include "imgui.h"
 #include "owl/helper/cuda.h"
@@ -279,6 +282,6 @@ auto SimpleTrianglesRenderer::onGui() -> void
 	ImGui::SeparatorText("Background Color Palette");
 	ImGui::ColorEdit3("Color 1", guiData.rtBackgroundColorPalette.color1.data());
 	ImGui::ColorEdit3("Color 2", guiData.rtBackgroundColorPalette.color2.data());
-
+	debugInfo_.gizmoHelper->drawGizmo(rendererState_->worldMatTRS);
 	ImGui::End();
 }

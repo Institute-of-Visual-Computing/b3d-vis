@@ -1,13 +1,8 @@
 using B3D.UnityCudaInterop.NativeStructs;
-using Oculus.Interaction;
-using System.Collections;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
-using Unity.XR.MockHMD;
 using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.XR;
-using UnityEngine.XR.Management;
 
 public class ActionTextureProvider
 {

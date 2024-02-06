@@ -57,7 +57,7 @@ namespace b3d::renderer
 	{
 		owl::vec3f position {0,0,0};
 		owl::vec3f scale { 1, 1, 1};
-		owl::Quaternion3f rotation;
+		owl::Quaternion3f rotation {1};
 	};
 
 	struct RendererState

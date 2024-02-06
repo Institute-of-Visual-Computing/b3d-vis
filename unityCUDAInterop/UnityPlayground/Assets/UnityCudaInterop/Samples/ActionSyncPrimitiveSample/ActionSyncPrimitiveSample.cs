@@ -1,7 +1,8 @@
+using B3D.UnityCudaInterop;
 using System;
 using System.Runtime.InteropServices;
 
-public class ActionSyncPrimitiveSample : AbstractAction
+public class ActionSyncPrimitiveSample : AbstractRenderingAction
 {
 	#region dll function signatures
 
@@ -33,33 +34,33 @@ public class ActionSyncPrimitiveSample : AbstractAction
 	#endregion dll function signatures
 
 	#region dll function calls
-	protected override IntPtr createAction()
+	protected override IntPtr CreateAction()
 	{
 		return createActionExtern();
 	}
 
-	public override void destroyAction()
+	public override void DestroyAction()
 	{
 		destroyActionExtern(ActionPointer);
 		ActionPointer = IntPtr.Zero; 
 	}
 
-	public override void initializeAction(IntPtr data)
+	public override void InitializeAction(IntPtr data)
 	{
 		initializeActionExtern(ActionPointer, data);
 	}
 	
-	public override void teardownAction()
+	public override void TeardownAction()
 	{
 		teardownActionExtern(ActionPointer); 
 	}
 
-	protected override int getRenderEventIdOffset()
+	protected override int GetRenderEventIdOffset()
 	{
 		return getRenderEventIDOffsetExtern(ActionPointer);
 	}
 
-	protected override IntPtr getRenderEventAndDataFunc()
+	protected override IntPtr GetRenderEventAndDataFunc()
 	{
 		return getRenderEventAndDataFuncExtern();
 	}
@@ -70,6 +71,4 @@ public class ActionSyncPrimitiveSample : AbstractAction
 	{
 		
 	}
-
-
 }

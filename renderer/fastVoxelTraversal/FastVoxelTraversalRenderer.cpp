@@ -239,6 +239,10 @@ auto FastVoxelTraversalRenderer::onRender(const View& view) -> void
 		sbtDirty = false;
 	}
 
+
+	owlInstanceGroupSetTransform(world_, 0, (const float*)&rendererState_->worldMatTRS);
+	owlGroupRefitAccel(world_);
+
 	// Set Launch Params for this run. 
 	{
 		RayCameraData rcd;
@@ -287,6 +291,8 @@ void FastVoxelTraversalRenderer::onGui()
 	auto currRenderState = static_cast<FastVoxelTraversalNativeRenderingData*>(rendererState_.get());
 
 	ImGui::DragFloat("Transfer Offset", &currRenderState->transferOffset, 0.001f, 0.0f, 1.0f);
+
+	debugInfo_.gizmoHelper->drawGizmo(rendererState_->worldMatTRS);
 
 	ImGui::End();
 }
