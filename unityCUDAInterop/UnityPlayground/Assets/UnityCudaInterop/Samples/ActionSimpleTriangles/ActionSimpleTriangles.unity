@@ -403,12 +403,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetCamera: {fileID: 369142642}
-  ri: {fileID: 857077261}
   volumeCube: {fileID: 1656037655}
-  quadRenderer: {fileID: 1817149778}
-  fullscreenMaterial: {fileID: 2100000, guid: 7e92d553cff13a341ae08c229823bc46, type: 2}
-  objectMaterial: {fileID: 2100000, guid: d76b311f8f5d13d47b3954dfed6abd71, type: 2}
   objectRenderer: {fileID: 1656037657}
+  objectMaterial: {fileID: 2100000, guid: d76b311f8f5d13d47b3954dfed6abd71, type: 2}
 --- !u!1 &846200985
 GameObject:
   m_ObjectHideFlags: 0

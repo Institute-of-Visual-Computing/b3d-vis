@@ -1,7 +1,8 @@
+using B3D.UnityCudaInterop;
 using System;
 using System.Runtime.InteropServices;
 
-public class ActionConcrete : AbstractAction
+public class ActionConcrete : AbstractRenderingAction
 {
 	#region dll function signatures
 	const string dllName = "ActionConcrete";
@@ -32,34 +33,34 @@ public class ActionConcrete : AbstractAction
 
 	#region dll function calls
 
-	protected override IntPtr createAction()
+	protected override IntPtr CreateAction()
 	{
 		return createActionExtern();
 	}
 
-	public override void destroyAction()
+	public override void DestroyAction()
 	{
 		destroyActionExtern(ActionPointer);
 		ActionPointer = IntPtr.Zero;
 	}
 
-	protected override int getRenderEventIdOffset()
+	protected override int GetRenderEventIdOffset()
 	{
 		return getRenderEventIDOffsetExtern(ActionPointer);
 	}
 
 
-	public override void initializeAction(IntPtr data)
+	public override void InitializeAction(IntPtr data)
 	{
 		initializeActionExtern(ActionPointer, data);
 	}
 
-	public override void teardownAction()
+	public override void TeardownAction()
 	{
 		teardownActionExtern(ActionPointer);
 	}
 
-	protected override IntPtr getRenderEventAndDataFunc()
+	protected override IntPtr GetRenderEventAndDataFunc()
 	{
 		return getRenderEventAndDataFuncExtern();
 	}

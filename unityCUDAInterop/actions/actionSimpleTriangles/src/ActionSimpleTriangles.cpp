@@ -22,6 +22,11 @@ namespace
 	{
 		NativeTextureData textureData{};
 	};
+
+	struct SimpleTriangleNativeRenderingData
+	{
+		VolumeTransform volumeTransform;
+	};
 }
 
 enum class CustomActionRenderEventTypes : int
@@ -128,16 +133,20 @@ auto ActionSimpleTriangles::customRenderEvent(int eventId, void* data) -> void
 
 		v.mode = static_cast<RenderMode>(nrd->nativeRenderingData.eyeCount - 1);
 
-		auto strs = *static_cast<SimpleTriangleRendererState*>(nrd->additionalDataPointer);
+		auto &stnrs = *static_cast<SimpleTriangleNativeRenderingData*>(nrd->additionalDataPointer);
 
-		strs.worldMatTRS.p *= owl::vec3f{ 1, 1, -1 };
+		std::unique_ptr<RendererState> strs_ = std::make_unique<SimpleTriangleRendererState>();
+		strs_->worldMatTRS.p = stnrs.volumeTransform.position * owl::vec3f{ 1, 1, -1 };
 		/*
-		strs.volumeTransform.rotation =
-			owl::Quaternion3f{ strs.volumeTransform.rotation.k,
-							   owl::vec3f{ -strs.volumeTransform.rotation.r, -strs.volumeTransform.rotation.i,
-										   strs.volumeTransform.rotation.j } };
+		strs_->worldMatTRS.l = owl::LinearSpace3f{
+			 owl::Quaternion3f{  stnrs.volumeTransform.rotation.k,
+								 owl::vec3f{ -stnrs.volumeTransform.rotation.r, -stnrs.volumeTransform.rotation.i, stnrs.volumeTransform.rotation.j }
+			 }
+		};
+		
+		strs_->worldMatTRS.l *= owl::LinearSpace3f::scale(stnrs.volumeTransform.scale);
 		*/
-		std::unique_ptr<RendererState> strs_ = std::make_unique<SimpleTriangleRendererState>(strs);
+
 		renderer_->setRenderState(std::move(strs_));
 		
 		currFenceValue += 1;

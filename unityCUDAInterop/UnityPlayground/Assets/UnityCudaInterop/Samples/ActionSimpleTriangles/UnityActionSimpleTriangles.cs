@@ -1,187 +1,88 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
 using System.Runtime.InteropServices;
 
 using UnityEngine.Rendering;
-using System;
-using UnityEngine.UI;
-using static System.Net.Mime.MediaTypeNames;
-using UnityEngine.XR;
-using static UnityEngine.Camera;
-using UnityEditor;
 using B3D.UnityCudaInterop.NativeStructs;
-using JetBrains.Annotations;
-using UnityEngine.XR.Management;
-using Unity.XR.MockHMD;
-using UnityEngine.UIElements;
 using B3D.UnityCudaInterop;
 
-public class AbstractUnityAction : MonoBehaviour
+public class UnityActionSimpleTriangles : AbstractUnityRenderAction
 {
-
-}
-
-
-
-
-public class UnityActionSimpleTriangles : MonoBehaviour
-{
-	[StructLayout(LayoutKind.Sequential)]
-	struct NativeInitData
-	{
-		public NativeTextureData textureData;
-		public static NativeInitData CREATE()
-		{
-			NativeInitData nid = new();
-			nid.textureData = NativeTextureData.CREATE();
-			return nid;
-		}
-	};
+	#region Native structs for this action
 
 	[StructLayout(LayoutKind.Sequential)]
-	struct SimpleTriangleNativeRenderingData
+	protected struct SimpleTrianglesNativeRenderingData
 	{
-		public NativeMatrix4x3 volumeTransform;
+		public VolumeTransform volumeTransform;
 	}
+	class SimpleTrianglesRenderEventTypes : RenderEventTypes
+	{
+		public const int ACTION_RENDER = RenderEventTypes.BASE_ACTION_COUNT + 0;
+	}
+
+	#endregion
 
 	private ActionSimpleTriangles action;
 
-	private CommandBuffer commandBuffer;
+	protected SimpleTrianglesNativeRenderingData simpleTrianglesNativeRenderingData;
 
-	public Camera targetCamera;
+	#region AbstractUnityAction Overrides
 
-	public RawImage ri;
+	protected override AbstractRenderingAction NativeAction
+	{
+		get { return action; }
+	}
 
-	public GameObject volumeCube;
-
-	public Renderer quadRenderer;
-	public Material fullscreenMaterial;
-	Material quadFullscreenMaterial;
-
-	public Material objectMaterial;
-	Material volumeObjectMaterial;
-	public Renderer objectRenderer;
-
-	SimpleTriangleNativeRenderingData simpleTriangleNativeRenderingData;
-	System.IntPtr simpleTriangleNativeRenderingDataPtr;
-
-	NativeInitData nativeInitData;
-	System.IntPtr nativeInitDataPtr;
-
-	NativeTextureData nativeTextureData;
-	IntPtr nativeTextureDataPtr;
-
-    // Start is called before the first frame update
-    void Start()
-    {
-		quadFullscreenMaterial = new Material(fullscreenMaterial);
-		quadRenderer.material = quadFullscreenMaterial;
-
-
-		volumeObjectMaterial = new Material(objectMaterial);
-		objectRenderer.material = volumeObjectMaterial;
-
-		commandBuffer = new ();
+	protected override void InitAction()
+	{
 		action = new();
-		simpleTriangleNativeRenderingData = new();
-		simpleTriangleNativeRenderingData.volumeTransform = NativeMatrix4x3.CREATE();
-		
-		nativeInitData = new();
-		nativeTextureData = new();
+	}
 
-		nativeInitDataPtr = Marshal.AllocHGlobal(Marshal.SizeOf<NativeInitData>());
-		nativeTextureDataPtr = Marshal.AllocHGlobal(Marshal.SizeOf<NativeTextureData>());
-		simpleTriangleNativeRenderingDataPtr = Marshal.AllocHGlobal(Marshal.SizeOf<SimpleTriangleNativeRenderingData>());
-		action.setAdditionalDataPointer(simpleTriangleNativeRenderingDataPtr);
-		action.setCamera(targetCamera);
+	protected override void InitAdditionalNativeStruct()
+	{
+		simpleTrianglesNativeRenderingData = new()
+		{
+			volumeTransform = new()
+		};
 
-		updateTextures();
-		fillNativeRenderingData();
+		additionalNativeStructDataPtr = Marshal.AllocHGlobal(Marshal.SizeOf<SimpleTrianglesNativeRenderingData>());
+	}
 
-		commandBuffer.IssuePluginEventAndData(action.RenderEventAndDataFuncPointer, action.mapEventId(2), action.NativeRenderingDataWrapperPointer);
+	protected override void InitRenderingCommandBuffers()
+	{
+		CommandBuffer cb = new();
+		cb.IssuePluginEventAndData(NativeAction.RenderEventAndDataFuncPointer, NativeAction.MapEventId(SimpleTrianglesRenderEventTypes.ACTION_RENDER), renderingActionNativeRenderingDataWrapperPtr_);
+		renderingCommandBuffers_.Add(new(CameraEvent.BeforeForwardOpaque, cb));
+	}
 
-		targetCamera.AddCommandBuffer(CameraEvent.BeforeForwardOpaque, commandBuffer);
+	protected override void FillAdditionalNativeRenderingData()
+	{
+		simpleTrianglesNativeRenderingData.volumeTransform.position = volumeCube.transform.position;
+		simpleTrianglesNativeRenderingData.volumeTransform.scale = volumeCube.transform.localScale;
+		simpleTrianglesNativeRenderingData.volumeTransform.rotation = volumeCube.transform.rotation;
 
-		StartCoroutine(InitPluginAtEndOfFrame());
+		Marshal.StructureToPtr(simpleTrianglesNativeRenderingData, additionalNativeStructDataPtr, true);
+	}
+
+	#endregion AbstractUnityAction Overrides
+
+	
+	/// TODO: Current approach is to override and call parent methods like shown below. Not nice. Change to smth other
+	#region Unity Methods
+
+	protected override void Start()
+    {
+		base.Start();
     }
 
-	void fillNativeRenderingData()
+	protected override void Update()
 	{
-		action.fillNativeRenderingDataWrapper();
-		var a = volumeCube.transform.localToWorldMatrix;
-		simpleTriangleNativeRenderingData.volumeTransform.vx = a.GetColumn(0);
-		simpleTriangleNativeRenderingData.volumeTransform.vy = a.GetColumn(1);
-		simpleTriangleNativeRenderingData.volumeTransform.vz = a.GetColumn(2);
-		simpleTriangleNativeRenderingData.volumeTransform.p = a.GetColumn(3);
-		// simpleTriangleNativeRenderingData.nativeCube.position = volumeCube.transform.position;
-		// simpleTriangleNativeRenderingData.nativeCube.scale = volumeCube.transform.localScale;
-		// simpleTriangleNativeRenderingData.nativeCube.rotation = volumeCube.transform.rotation;
-		Marshal.StructureToPtr(simpleTriangleNativeRenderingData, simpleTriangleNativeRenderingDataPtr, true);
-	}
-	
-	void updateTextures()
-	{
-		nativeTextureData = new();
-		action.TextureProvider.createExternalTargetTexture();
-
-		quadFullscreenMaterial.SetTexture("_MainTex", action.TextureProvider.ExternalTargetTexture);
-		volumeObjectMaterial.SetTexture("_MainTex", action.TextureProvider.ExternalTargetTexture);
-
-		nativeTextureData.DepthTexture.Extent.Depth = 0;
-		nativeTextureData.DepthTexture.TexturePointer = IntPtr.Zero;
-
-		nativeTextureData.ColorTexture.TexturePointer = action.TextureProvider.ExternalTargetTexture.GetNativeTexturePtr();
-		nativeTextureData.ColorTexture.Extent = action.TextureProvider.ExternalTargetTextureExtent;
-
-		Marshal.StructureToPtr(nativeTextureData, nativeTextureDataPtr, true);
+		base.Update();
 	}
 
-	private void Update()
+	protected override void OnDestroy()
 	{
-		if(action.TextureProvider.renderTextureDescriptorChanged())
-		{
-			updateTextures();
-			targetCamera.RemoveCommandBuffer(CameraEvent.BeforeForwardOpaque, commandBuffer);
-
-			CommandBuffer cbImmediate = new();
-			cbImmediate.IssuePluginEventAndData(action.RenderEventAndDataFuncPointer, action.mapEventId(1), nativeTextureDataPtr);
-			Graphics.ExecuteCommandBuffer(cbImmediate);
-			StartCoroutine(UpdateTextureAfterWait());
-		}
-		else
-		{
-			fillNativeRenderingData();
-		}
+		base.OnDestroy();
 	}
 
-	IEnumerator UpdateTextureAfterWait()
-	{
-		yield return new WaitForEndOfFrame();
-		yield return new WaitForSeconds(1);
-		targetCamera.AddCommandBuffer(CameraEvent.BeforeForwardOpaque, commandBuffer);
-	}
+	#endregion Unity Methods
 
-	IEnumerator InitPluginAtEndOfFrame()
-	{
-		yield return new WaitForEndOfFrame();
-
-		nativeInitData = new();
-		nativeInitData.textureData = nativeTextureData;
-		Marshal.StructureToPtr(nativeInitData, nativeInitDataPtr, true);
-
-		CommandBuffer immediate = new();
-		immediate.IssuePluginEventAndData(action.RenderEventAndDataFuncPointer, action.mapEventId(0), nativeInitDataPtr);
-		Graphics.ExecuteCommandBuffer(immediate);
-	}
-
-	void OnDestroy()
-	{
-		action.teardownAction();
-		action.destroyAction();
-
-		Marshal.FreeHGlobal(simpleTriangleNativeRenderingDataPtr);
-		Marshal.FreeHGlobal(nativeInitDataPtr);
-		Marshal.FreeHGlobal(nativeTextureDataPtr);
-	}
 }

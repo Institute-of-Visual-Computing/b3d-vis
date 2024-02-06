@@ -23,15 +23,15 @@ public class UnityActionConcrete : MonoBehaviour
 
     void OnDestroy()
     {
-        action.teardownAction();
-        action.destroyAction();
+        action.TeardownAction();
+        action.DestroyAction();
     }
 
 	IEnumerator WaitForTexturePointer()
 	{
 		yield return new WaitForEndOfFrame();
 		tex.GetNativeTexturePtr();
-		immediate.IssuePluginEventAndData(action.RenderEventAndDataFuncPointer, action.mapEventId(0), tex.GetNativeTexturePtr());
+		immediate.IssuePluginEventAndData(action.RenderEventAndDataFuncPointer, action.MapEventId(0), tex.GetNativeTexturePtr());
 		Graphics.ExecuteCommandBuffer(immediate);
 	}
 }
