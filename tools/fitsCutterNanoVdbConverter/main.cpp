@@ -175,7 +175,7 @@ auto main(int argc, char** argv) -> int
 	const auto scaleDst =
 		std::filesystem::path{ "D:/datacubes/n4565_cut/filtered_level_0_224_257_177_id_7_upscale.fits" };
 
-
+	// Scale snippet
 	/*auto randomEngine = std::default_random_engine{ std::random_device{}() };
 	auto distribution = std::uniform_real_distribution(0.0f, 0.005f);
 
@@ -186,29 +186,21 @@ auto main(int argc, char** argv) -> int
 							0.0f;
 					});*/
 
-	//return 0;
+	// return 0;
 	const auto map = extractPerClusterBox(cutterConfig.masks.front(), Box3I::maxBox(), Vec3I{});
-	// const auto data = extractData(cutterConfig.src, map.at(1));
-	// const auto mask = extractBinaryClusterMask(cutterConfig.masks.front(), {19}, map.at(19));//
-	// Box3I{{450,410,180},{470,420,200}}); const auto mask2 = extractBinaryClusterMask(cutterConfig.masks.front(),
-	// {17}, map.at(17));// Box3I{{450,410,180},{470,420,200}});
+
 	auto trees = std::vector<cutterParser::TreeNode>{};
 
 	auto id = 0;
 	for (const auto& [clusterId, clusterBox] : map)
 	{
-		const auto mask =
-			extractBinaryClusterMask(cutterConfig.masks.front(), { clusterId },
-									 clusterBox); // Box3I::maxBox());// Box3I{{450,410,180},{470,420,200}});
-		auto data =
-			extractData(cutterConfig.src, clusterBox); // Box3I::maxBox());// Box3I{{450,410,180},{470,420,200}});
-
+		const auto mask = extractBinaryClusterMask(cutterConfig.masks.front(), { clusterId }, clusterBox);
+		auto data = extractData(cutterConfig.src, clusterBox);
 
 		constexpr auto maskedValue = -100.0f;
 		const auto filteredData = applyMask(data.data, mask, maskedValue);
 
 		const auto size = clusterBox.size();
-
 
 		const auto fitsFileName = std::format("filtered_level_0_{}_{}_{}_id_{}.fits", size.x, size.y, size.z, id);
 		const auto fitsPath = (cutterConfig.dst / fitsFileName).string();
@@ -221,7 +213,6 @@ auto main(int argc, char** argv) -> int
 		const auto [min, max] = searchMinMaxBounds(filteredData);
 
 		generateNanoVdb(path, size, maskedValue, 0.0f, filteredData);
-
 
 		cutterParser::TreeNode node;
 		node.nanoVdbFile = fileName;
