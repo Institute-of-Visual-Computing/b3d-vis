@@ -60,3 +60,6 @@ add_subdirectory(unityCUDAInterop)
 add_subdirectory(tools)
 
 
+
+set_property(TARGET owl PROPERTY FOLDER "ThirdParty/owl")
+set_property(TARGET owl_viewer PROPERTY FOLDER "ThirdParty/owl")

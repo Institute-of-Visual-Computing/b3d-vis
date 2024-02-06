@@ -8,6 +8,10 @@ embed_ptx(
 	#DEVICE_DEBUG
 )
 
+
+set_property(TARGET nano-ptx PROPERTY FOLDER "Renderer/PTX Targets")
+set_property(TARGET nano-ptx_ptx PROPERTY FOLDER "Renderer/PTX Targets")
+
 embed_optixir(
 	OUTPUT_TARGET
 		nano-optixir
@@ -17,6 +21,10 @@ embed_optixir(
 		NanoRenderer.cu
 	#DEVICE_DEBUG
 )
+
+
+set_property(TARGET nano-optixir PROPERTY FOLDER "Renderer/PTX Targets")
+set_property(TARGET nano-optixir_optixir PROPERTY FOLDER "Renderer/PTX Targets")
 
 set_source_files_properties(NanoRenderer.cu
   PROPERTIES CUDA_SOURCE_PROPERTY_FORMAT OBJ

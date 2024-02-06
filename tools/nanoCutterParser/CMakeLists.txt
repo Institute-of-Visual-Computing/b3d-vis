@@ -10,3 +10,6 @@ if(MSVC)
 	set(MSVC_CXX_COMPILER_FLAGS "/Zc:__cplusplus")
 	target_compile_options(NanoCutterParser PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${MSVC_CXX_COMPILER_FLAGS}>)
 endif()
+
+
+set_property(TARGET NanoCutterParser PROPERTY FOLDER "Tools")

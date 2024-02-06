@@ -8,6 +8,9 @@ embed_ptx(
     FastVoxelTraversalDeviceCode.cu
 )
 
+set_property(TARGET FastVoxelTraversal-ptx PROPERTY FOLDER "Renderer/PTX Targets")
+set_property(TARGET FastVoxelTraversal-ptx_ptx PROPERTY FOLDER "Renderer/PTX Targets")
+
 find_package(tinyxml2 CONFIG REQUIRED)
 find_package(unofficial-cfitsio CONFIG REQUIRED)
 

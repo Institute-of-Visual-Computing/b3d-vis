@@ -59,3 +59,5 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/resources")
 endif()
 
 add_custom_target(copy_viewer_resources ALL COMMAND ${commands})
+
+add_dependencies(viewer copy_viewer_resources)
