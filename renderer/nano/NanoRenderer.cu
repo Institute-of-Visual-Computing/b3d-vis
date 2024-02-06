@@ -21,6 +21,7 @@ struct PerRayData
 {
 	vec3f color;
 	float alpha;
+	bool isBackground{ false };
 };
 
 inline __device__ void confine(const nanovdb::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& iVec)
@@ -67,7 +68,6 @@ OPTIX_BOUNDS_PROGRAM(volumeBounds)
 {
 	const auto& self = *static_cast<const GeometryData*>(geometryData);
 	primitiveBounds = self.volume.indexBox;
-	/*self.volume.*/
 }
 
 OPTIX_RAYGEN_PROGRAM(hitCountRayGen)()
@@ -91,18 +91,20 @@ OPTIX_RAYGEN_PROGRAM(rayGeneration)()
 	PerRayData prd;
 	owl::traceRay(self.world, ray, prd);
 
-	// const auto color = prd.color;
-	const auto color = vec3f(0.8, 0.3, 0.2);
-	const auto bg1 = vec3f(0.572f, 0.100f, 0.750f);
-	const auto bg2 = vec3f(0.000f, 0.300f, 0.300f);
+	const auto bg1 = optixLaunchParams.bg.color1;
+	const auto bg2 = optixLaunchParams.bg.color0;
 	const auto pattern = (pixelId.x / 8) ^ (pixelId.y / 8);
-	const auto bgColor = (pattern & 1) ? bg1 : bg2;
+	auto bgColor = (pattern & 1) ? bg1 : bg2;
 	const auto a = prd.alpha;
+	if (optixLaunchParams.bg.fillBox && !prd.isBackground)
+	{
 
+		bgColor = optixLaunchParams.bg.fillColor;
+	}
 
-	auto mix = (color * 1.0f - a) + a * bgColor;
-	surf2Dwrite(owl::make_rgba(prd.color /*a * bgColor*/), optixLaunchParams.surfacePointer,
-				sizeof(uint32_t) * pixelId.x, pixelId.y);
+	const auto color = prd.isBackground ? bgColor : optixLaunchParams.color * (1 - a) + a * bgColor;
+
+	surf2Dwrite(owl::make_rgba(color), optixLaunchParams.surfacePointer, sizeof(uint32_t) * pixelId.x, pixelId.y);
 }
 
 OPTIX_MISS_PROGRAM(miss)()
@@ -114,7 +116,8 @@ OPTIX_MISS_PROGRAM(miss)()
 	auto& prd = owl::getPRD<PerRayData>();
 	const auto pattern = (pixelId.x / 8) ^ (pixelId.y / 8);
 	prd.color = (pattern & 1) ? self.color1 : self.color0;
-	prd.alpha = 1.0f;
+	prd.alpha = 0.0f;
+	prd.isBackground = true;
 }
 
 OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
@@ -124,7 +127,7 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 		prd.color = vec3f(0.8,0.3,0.2);
 		return;
 	}*/
-	
+
 
 	const auto& geometry = owl::getProgramData<GeometryData>();
 	auto* grid = reinterpret_cast<nanovdb::FloatGrid*>(geometry.volume.grid);
@@ -151,7 +154,7 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 	auto end = grid->worldToIndexF(nanovdb::Vec3f{ rt1.x, rt1.y, rt1.z});*/
 
 	// auto map = grid->map();
-	
+
 
 	/*float matF[3][3] = { { transform.l.vx.x, transform.l.vy.x, transform.l.vz.x },
 						 { transform.l.vx.y, transform.l.vy.y, transform.l.vz.y },
@@ -164,19 +167,22 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 										  inverseT.vz.y, inverseT.vx.z, inverseT.vy.z, inverseT.vz.z };*/
 
 	invMatF[0] = transform[0];
-	invMatF[1] =  transform[1];
-	invMatF[2] =  transform[2];
-	invMatF[3] =  transform[4];
-	invMatF[4] =  transform[5];
-	invMatF[5] =  transform[6];
-	invMatF[6] =  transform[8];
-	invMatF[7] =  transform[9];
-	invMatF[8] =  transform[10];
+	invMatF[1] = transform[1];
+	invMatF[2] = transform[2];
+	invMatF[3] = transform[4];
+	invMatF[4] = transform[5];
+	invMatF[5] = transform[6];
+	invMatF[6] = transform[8];
+	invMatF[7] = transform[9];
+	invMatF[8] = transform[10];
+
+
+	const auto& dim = grid->worldBBox().dim();
 
 	float p[3];
-	p[0] = transform[3];
-	p[1] = transform[7];
-	p[2] = transform[11];
+	p[0] = transform[3]; // -dim[0]*0.5;
+	p[1] = transform[7]; // -dim[1]*0.5;
+	p[2] = transform[11]; // -dim[2]*0.5;
 
 	// map.set(matF, invMatF, p);
 
@@ -235,7 +241,7 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 
 	auto hdda = nanovdb::HDDA<nanovdb::Ray<float>>(ray, accessor.getDim(ijk, ray));
 
-	const auto opacity = 1.0f; // 0.01f;//1.0.f;
+	const auto opacity = 0.6f; // 0.01f;//1.0.f;
 	auto transmittance = 1.0f;
 	auto t = 0.0f;
 	auto density = accessor.getValue(ijk) * opacity;
