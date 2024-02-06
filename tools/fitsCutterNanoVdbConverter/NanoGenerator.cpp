@@ -3,7 +3,6 @@
 #include <nanovdb/util/CreateNanoGrid.h>
 #include <nanovdb/util/GridBuilder.h>
 #include <nanovdb/util/IO.h>
-#include <nanovdb/util/Primitives.h>
 
 auto generateNanoVdb(const std::string& file, const Vec3I boxSize, float maskedValues, float emptySpaceValue,
 					 const std::vector<float>& data) -> void
@@ -25,7 +24,7 @@ auto generateNanoVdb(const std::string& file, const Vec3I boxSize, float maskedV
 	grid(func, box);
 
 	const auto gridHandle = nanovdb::createNanoGrid(grid);
-	std::println(std::cout, "NanoVdb buffer size: {}bytes", gridHandle.size());
+	std::cout << std::format("NanoVdb buffer size: {}bytes", gridHandle.size()) << std::endl;
 
 	nanovdb::io::writeGrid(file, gridHandle,
 						   nanovdb::io::Codec::NONE); // TODO: enable nanovdb::io::Codec::BLOSC

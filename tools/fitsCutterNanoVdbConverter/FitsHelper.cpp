@@ -2,14 +2,15 @@
 
 #include <algorithm>
 #include <execution>
+#include <format>
 #include <iostream>
 
 #include <cfitsio/fitsio.h>
 
 // write snippet id taken from Fits samples
-auto writeFitsFile(const std::string& file, const Vec3I boxSize, const std::vector<long>& data) -> void
+auto writeFitsFile(const std::filesystem::path& file, const Vec3I boxSize, const std::vector<long>& data) -> void
 {
-	auto fitsFile = fitsfile{};
+	fitsfile* fitsFile{ nullptr };
 	int status;
 	constexpr auto pixel = 1l;
 	constexpr auto axisCount = 3l;
@@ -17,19 +18,19 @@ auto writeFitsFile(const std::string& file, const Vec3I boxSize, const std::vect
 	auto axis = std::array{ static_cast<long>(boxSize.x), static_cast<long>(boxSize.y), static_cast<long>(boxSize.z) };
 
 	status = 0;
-	fits_create_file(*fitsFile, file.c_str(), &status);
-	fits_create_img(*fitsFile, LONG_IMG, axisCount, axis.data(), &status);
+	fits_create_file(&fitsFile, file.generic_string().c_str(), &status);
+	fits_create_img(fitsFile, LONG_IMG, axisCount, axis.data(), &status);
 	exposure = 1500.;
-	fits_update_key(*fitsFile, TLONG, "EXPOSURE", &exposure, "Total Exposure Time", &status);
-	fits_write_img(*fitsFile, TLONG, pixel, data.size(), (void*)data.data(), &status);
+	fits_update_key(fitsFile, TLONG, "EXPOSURE", &exposure, "Total Exposure Time", &status);
+	fits_write_img(fitsFile, TLONG, pixel, data.size(), (void*)data.data(), &status);
 
-	fits_close_file(*fitsFile, &status);
+	fits_close_file(fitsFile, &status);
 	fits_report_error(stderr, status);
 }
 
-auto writeFitsFile(const std::string& file, const Vec3I boxSize, const std::vector<float>& data) -> void
+auto writeFitsFile(const std::filesystem::path& file, const Vec3I boxSize, const std::vector<float>& data) -> void
 {
-	auto fitsFile = fitsfile{};
+	fitsfile* fitsFile{ nullptr };
 	int status;
 	constexpr auto pixel = 1l;
 	constexpr auto axisCount = 3l;
@@ -37,13 +38,13 @@ auto writeFitsFile(const std::string& file, const Vec3I boxSize, const std::vect
 	auto axis = std::array{ static_cast<long>(boxSize.x), static_cast<long>(boxSize.y), static_cast<long>(boxSize.z) };
 
 	status = 0;
-	fits_create_file(*fitsFile, file.c_str(), &status);
-	fits_create_img(*fitsFile, FLOAT_IMG, axisCount, axis.data(), &status);
+	fits_create_file(&fitsFile, file.generic_string().c_str(), &status);
+	fits_create_img(fitsFile, FLOAT_IMG, axisCount, axis.data(), &status);
 	exposure = 1500.;
-	fits_update_key(*fitsFile, TLONG, "EXPOSURE", &exposure, "Total Exposure Time", &status);
-	fits_write_img(*fitsFile, TLONG, pixel, data.size(), (void*)data.data(), &status);
+	fits_update_key(fitsFile, TLONG, "EXPOSURE", &exposure, "Total Exposure Time", &status);
+	fits_write_img(fitsFile, TLONG, pixel, data.size(), (void*)data.data(), &status);
 
-	fits_close_file(*fitsFile, &status);
+	fits_close_file(fitsFile, &status);
 	fits_report_error(stderr, status);
 }
 
@@ -173,7 +174,7 @@ auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& sea
 			{
 				std::array<char, 30> txt;
 				fits_get_errstatus(error, txt.data());
-				std::print(std::cout, "CFITSIO error: {}", txt.data());
+				std::cout << std::format("CFITSIO error: {}", txt.data());
 			}
 			assert(error == 0);
 		}
@@ -215,7 +216,7 @@ auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& sea
 		auto last = progressCounter.load();
 		auto total = batchItemCount;
 		auto run = true;
-		std::print(std::cout, "processing: {}/{}\r", last, total);
+		std::cout << std::format("processing: {}/{}\r", last, total);
 
 		while (last != total)
 		{
@@ -224,8 +225,8 @@ auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& sea
 
 			const auto ratio = last / static_cast<float>(total);
 
-			std::print(std::cout, "processing: {}/{} [{:.2f}%]{}", last, total, ratio * 100.0f,
-					   last == total ? "\n" : "\r");
+			std::cout << std::format("processing: {}/{} [{:.2f}%]{}", last, total, ratio * 100.0f,
+									 last == total ? "\n" : "\r");
 		}
 	};
 
@@ -263,22 +264,22 @@ auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& sea
 
 	auto progressPrintThread = std::jthread{ progressPrint };
 
-	std::println(std::cout, "Starting batched data extraction...");
+	std::cout << std::format("Starting batched data extraction...") << std::endl;
 	const auto t1 = std::chrono::high_resolution_clock::now();
 
 	std::for_each(std::execution::par_unseq, indices.begin(), indices.end(), loadAndExtract);
 
 	const auto t2 = std::chrono::high_resolution_clock::now();
 	const std::chrono::duration<double> ms1 = t2 - t1;
-	std::println(std::cout, "Data extraction finished in {:.2f} s.", ms1.count());
-	std::println(std::cout, "Starting data reducing...");
+	std::cout << std::format("Data extraction finished in {:.2f} s.", ms1.count()) << std::endl;
+	std::cout << std::format("Starting data reducing...") << std::endl;
 
 	auto map = std::reduce(std::execution::par_unseq, batchResults.begin(), batchResults.end(),
 						   std::map<ClusterId, Box3I>{}, merge);
 
 	const auto t3 = std::chrono::high_resolution_clock::now();
 	const std::chrono::duration<double> ms2 = t3 - t2;
-	std::println(std::cout, "Data reducing finished in {:.2f} s.", ms2.count());
+	std::cout << std::format("Data reducing finished in {:.2f} s.", ms2.count()) << std::endl;
 	return map;
 }
 
@@ -323,7 +324,7 @@ auto extractBinaryClusterMask(const std::filesystem::path& file, std::vector<Clu
 		{
 			std::array<char, 30> txt;
 			fits_get_errstatus(error, txt.data());
-			std::print(std::cout, "CFITSIO error: {}", txt.data());
+			std::cout << std::format("CFITSIO error: {}", txt.data());
 		}
 		assert(error == 0);
 	}
@@ -413,7 +414,7 @@ auto extractData(const std::filesystem::path& file, const Box3I& searchBox) -> E
 		{
 			std::array<char, 30> txt;
 			fits_get_errstatus(error, txt.data());
-			std::print(std::cout, "CFITSIO error: {}", txt.data());
+			std::cout << std::format("CFITSIO error: {}", txt.data());
 		}
 		assert(error == 0);
 	}

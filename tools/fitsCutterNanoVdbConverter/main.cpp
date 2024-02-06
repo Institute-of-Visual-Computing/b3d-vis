@@ -3,19 +3,16 @@
 #include <filesystem>
 #include <iostream>
 
-#include <boost/program_options.hpp>
-#include <cfitsio/fitsio.h>
-
-
 #include <nanovdb/util/CreateNanoGrid.h>
-#include <nanovdb/util/GridBuilder.h>
 #include <nanovdb/util/IO.h>
-#include <nanovdb/util/Primitives.h>
 
 #include <NanoCutterParser.h>
 
 #include "Common.h"
 #include "FitsHelper.h"
+
+#include <random>
+
 
 namespace po = boost::program_options;
 
@@ -26,15 +23,16 @@ auto main(int argc, char** argv) -> int
 	 *	program	src		|--source_fits_file file
 	 *			[-r		|	--regions				regions_files...	]
 	 *			[-lower	|	--threshold_filter_min	value				]		We do not know the stored format upfront
-	 *																			value will be cast to the source format value
+	 *																			value will be cast to the source format
+	 *value
 	 *			[-upper	|	--threshold_filter_max	value				]		same
 	 *			[-c		|	--clamp_to_threshold						]
 	 *			[-m		|	--masks					masks_files...		]
 	 *			[-dst	|	--storage_directory		directory			]		same as source directory otherwise
 	 *			[-l		|	--log_level				none |
 	 *												essential |
-	 *												all					]		all includes performance counters and stat.
-	 *essential is by default
+	 *												all					]		all includes performance counters and
+	 *stat. essential is by default
 	 *			=====cutting parameters============
 	 *			[-s		|	--strategy				binary_partition |
 	 *												fit_memory_req		] //binary_partition by default
@@ -173,7 +171,22 @@ auto main(int argc, char** argv) -> int
 	const auto fitsFilePath = std::filesystem::path{ "D:/datacubes/testDataSet/n4565.fits" };
 	const auto catalogFilePath = std::filesystem::path{ "D:/datacubes/testDataSet/n4565_catalog.fits" };
 	const auto maskFilePath = std::filesystem::path{ "D:/datacubes/testDataSet/n4565_mask.fits" };
+	const auto scaleSrc = std::filesystem::path{ "D:/datacubes/n4565_cut/filtered_level_0_224_257_177_id_7.fits" };
+	const auto scaleDst =
+		std::filesystem::path{ "D:/datacubes/n4565_cut/filtered_level_0_224_257_177_id_7_upscale.fits" };
 
+
+	/*auto randomEngine = std::default_random_engine{ std::random_device{}() };
+	auto distribution = std::uniform_real_distribution(0.0f, 0.005f);
+
+	upscaleFitsData(scaleSrc.generic_string(), scaleDst.generic_string(), Vec3I{ 8, 8, 8 },
+					[&](const float value, [[maybe_unused]] const Vec3I& index, [[maybe_unused]] const Vec3I& boxSize) {
+						return value + std::abs(value) > std::numeric_limits<float>::epsilon() ?
+							distribution(randomEngine) :
+							0.0f;
+					});*/
+
+	//return 0;
 	const auto map = extractPerClusterBox(cutterConfig.masks.front(), Box3I::maxBox(), Vec3I{});
 	// const auto data = extractData(cutterConfig.src, map.at(1));
 	// const auto mask = extractBinaryClusterMask(cutterConfig.masks.front(), {19}, map.at(19));//
@@ -184,15 +197,15 @@ auto main(int argc, char** argv) -> int
 	auto id = 0;
 	for (const auto& [clusterId, clusterBox] : map)
 	{
-		//if(clusterId == 1) continue;
 		const auto mask =
 			extractBinaryClusterMask(cutterConfig.masks.front(), { clusterId },
 									 clusterBox); // Box3I::maxBox());// Box3I{{450,410,180},{470,420,200}});
-		auto data = extractData(cutterConfig.src, clusterBox); // Box3I::maxBox());// Box3I{{450,410,180},{470,420,200}});
+		auto data =
+			extractData(cutterConfig.src, clusterBox); // Box3I::maxBox());// Box3I{{450,410,180},{470,420,200}});
 
 
 		constexpr auto maskedValue = -100.0f;
-		const auto filteredData = applyMask(data, mask, maskedValue);
+		const auto filteredData = applyMask(data.data, mask, maskedValue);
 
 		const auto size = clusterBox.size();
 
@@ -223,120 +236,5 @@ auto main(int argc, char** argv) -> int
 	}
 	cutterParser::store(cutterConfig.dst / "project.b3d", trees);
 
-
-	return 0;
-	fitsfile* fitsFilePtr{ nullptr };
-	auto fitsError = int{};
-	ffopen(&fitsFilePtr, fitsFilePath.generic_string().c_str(), READONLY, &fitsError);
-	assert(fitsError == 0);
-
-	auto fitsFile = UniqueFitsfile(fitsFilePtr, &fitsDeleter);
-
-	int axisCount;
-	int imgType;
-	long axis[3];
-	fits_get_img_param(fitsFile.get(), 3, &imgType, &axisCount, &axis[0], &fitsError);
-
-	assert(fitsError == 0);
-	assert(axisCount == 3);
-	assert(imgType == FLOAT_IMG);
-
-
-	const auto box = nanovdb::CoordBBox(nanovdb::Coord(0, 0, 0), nanovdb::Coord(axis[0] - 1, axis[1] - 1, axis[2] - 1));
-	auto nan = NAN;
-
-
-	auto minThreshold = 0.0f;
-
-	long firstPx[3] = { 1, 1, 1 };
-	long lastPx[3] = { axis[0], axis[1], axis[2] };
-	long inc[3] = { 1, 1, 1 };
-
-	std::vector<float> dataBuffer;
-	dataBuffer.resize(axis[0] * axis[1] * axis[2]);
-
-
-	fits_read_subset(fitsFile.get(), TFLOAT, firstPx, lastPx, inc, &nan, dataBuffer.data(), nullptr, &fitsError);
-	if (fitsError != 0)
-	{
-		std::array<char, 30> txt;
-		fits_get_errstatus(fitsError, txt.data());
-		std::print(std::cout, "CFITSIO error: {}", txt.data());
-	}
-	assert(fitsError == 0);
-
-	auto func = [&](const nanovdb::Coord& ijk)
-	{
-		const auto i = ijk.x();
-		const auto j = ijk.y();
-		const auto k = ijk.z();
-		const auto index = k * axis[0] * axis[1] + j * axis[1] + i;
-		const auto v = dataBuffer[index];
-		return v > minThreshold ? v : minThreshold;
-	};
-
-	// const auto background = 5.0f;
-
-	// const int size = 500;
-	//       auto func = [&](const nanovdb::Coord& ijk)
-	//{
-	//	float v = 40.0f +
-	//		50.0f *
-	//			(cos(ijk[0] * 0.1f) * sin(ijk[1] * 0.1f) + cos(ijk[1] * 0.1f) * sin(ijk[2] * 0.1f) +
-	//			 cos(ijk[2] * 0.1f) * sin(ijk[0] * 0.1f));
-	//	v = nanovdb::Max(v, nanovdb::Vec3f(ijk).length() - size); // CSG intersection with a sphere
-	//	return v > background ? background : v < -background ? -background : v; // clamp value
-	//};
-
-
-	nanovdb::build::Grid<float> grid(minThreshold, "funny", nanovdb::GridClass::FogVolume);
-	grid(func, box);
-
-	auto gridHandle = nanovdb::createNanoGrid(grid);
-
-	std::println(std::cout, "NanoVdb buffer size: {}bytes", gridHandle.size());
-
-	/*auto g = nanovdb::createFogVolumeSphere(10.0f, nanovdb::Vec3d(-20, 0, 0), 1.0, 3.0, nanovdb::Vec3d(0),
-	 * "sphere");*/
-
-	nanovdb::io::writeGrid((cutterConfig.dst / "funny.nvdb").string(), gridHandle,
-						   nanovdb::io::Codec::NONE); // TODO: enable nanovdb::io::Codec::BLOSC
-
-
-	cutterParser::TreeNode c1;
-	c1.nanoVdbFile = "funny.nvdb";
-	cutterParser::TreeNode c2;
-	c2.nanoVdbFile = "funny.nvdb";
-
-
-	cutterParser::TreeNode n;
-	n.nanoVdbFile = "funny.nvdb";
-	n.children.push_back(c1);
-	n.children.push_back(c2);
-
-	cutterParser::store(cutterConfig.dst / "project.b3d", { n });
-
-	int bitpix; // BYTE_IMG (8), SHORT_IMG (16), LONG_IMG (32), LONGLONG_IMG (64), FLOAT_IMG (-32)
-
-	{
-		auto status = 0;
-		if (fits_get_img_equivtype(fitsFile.get(), &bitpix, &status))
-		{
-			logError(status);
-		}
-	}
-
-	{
-		auto nan = NAN;
-		auto status = 0;
-		/*if (fits_read_subset(fitsFile, TFLOAT, firstPx, lastPx, inc, &nan, dataBuffer.data() + nextDataIdx, 0,
-		&status))
-		{
-			logError(status);
-		}*/
-	}
-	// fits_read_subset(fitsFile.get(), type, )
-
-	// fits_get_img_param()
 	return EXIT_SUCCESS;
 }
