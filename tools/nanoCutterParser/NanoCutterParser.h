@@ -20,11 +20,12 @@ namespace cutterParser
 	struct TreeNode
 	{
 		std::string nanoVdbFile{};
+		std::size_t nanoVdbBufferSize{};
 		Box aabb{};
 		std::vector<TreeNode> children{};
 		float minValue;
 		float maxValue;
-		NLOHMANN_DEFINE_TYPE_INTRUSIVE(TreeNode, nanoVdbFile, aabb, children, minValue, maxValue)
+		NLOHMANN_DEFINE_TYPE_INTRUSIVE(TreeNode, nanoVdbFile, nanoVdbBufferSize, aabb, children, minValue, maxValue)
 	};
 
 	using json = nlohmann::json;

@@ -212,10 +212,14 @@ auto main(int argc, char** argv) -> int
 
 		const auto [min, max] = searchMinMaxBounds(filteredData);
 
-		generateNanoVdb(path, size, maskedValue, 0.0f, filteredData);
+		const auto generatedNanoVdb = generateNanoVdb(size, maskedValue, 0.0f, filteredData);
+		std::cout << std::format("NanoVdb buffer size: {}bytes", generatedNanoVdb.size()) << std::endl;
+		nanovdb::io::writeGrid(path, generatedNanoVdb,
+						   nanovdb::io::Codec::NONE); // TODO: enable nanovdb::io::Codec::BLOSC
 
 		cutterParser::TreeNode node;
 		node.nanoVdbFile = fileName;
+		node.nanoVdbBufferSize = generatedNanoVdb.size();
 		node.aabb.min = { static_cast<float>(clusterBox.lower.x), static_cast<float>(clusterBox.lower.y),
 						  static_cast<float>(clusterBox.lower.z) };
 		node.aabb.max = { static_cast<float>(clusterBox.upper.x), static_cast<float>(clusterBox.upper.y),
