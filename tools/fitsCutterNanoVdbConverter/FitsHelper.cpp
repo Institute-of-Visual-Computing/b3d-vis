@@ -3,57 +3,49 @@
 #include <algorithm>
 #include <execution>
 #include <iostream>
-#include <mdspan>
 
 #include <cfitsio/fitsio.h>
 
-
+// write snippet id taken from Fits samples
 auto writeFitsFile(const std::string& file, const Vec3I boxSize, const std::vector<long>& data) -> void
 {
-	fitsfile* fptr; /* pointer to the FITS file; defined in fitsio.h */
+	auto fitsFile = fitsfile{};
 	int status;
-	long fpixel = 1, naxis = 3, exposure;
-	long naxes[3] = { boxSize.x, boxSize.y, boxSize.z }; /* image is 300 pixels wide by 200 rows */
+	constexpr auto pixel = 1l;
+	constexpr auto axisCount = 3l;
+	auto exposure = 0l;
+	auto axis = std::array{ static_cast<long>(boxSize.x), static_cast<long>(boxSize.y), static_cast<long>(boxSize.z) };
 
-	status = 0; /* initialize status before calling fitsio routines */
-	fits_create_file(&fptr, file.c_str(), &status); /* create new file */
-	/* Create the primary array image (16-bit short integer pixels */
-	fits_create_img(fptr, LONG_IMG, naxis, naxes, &status);
-	/* Write a keyword; must pass the ADDRESS of the value */
+	status = 0;
+	fits_create_file(*fitsFile, file.c_str(), &status);
+	fits_create_img(*fitsFile, LONG_IMG, axisCount, axis.data(), &status);
 	exposure = 1500.;
-	fits_update_key(fptr, TLONG, "EXPOSURE", &exposure, "Total Exposure Time", &status);
-	/* Initialize the values in the image with a linear ramp function */
+	fits_update_key(*fitsFile, TLONG, "EXPOSURE", &exposure, "Total Exposure Time", &status);
+	fits_write_img(*fitsFile, TLONG, pixel, data.size(), (void*)data.data(), &status);
 
-	/* Write the array of integers to the image */
-	fits_write_img(fptr, TLONG, fpixel, data.size(), (void*)data.data(), &status);
-
-	fits_close_file(fptr, &status); /* close the file */
-	fits_report_error(stderr, status); /* print out any error messages */
+	fits_close_file(*fitsFile, &status);
+	fits_report_error(stderr, status);
 }
 
 auto writeFitsFile(const std::string& file, const Vec3I boxSize, const std::vector<float>& data) -> void
 {
-	fitsfile* fptr; /* pointer to the FITS file; defined in fitsio.h */
+	auto fitsFile = fitsfile{};
 	int status;
-	long fpixel = 1, naxis = 3, exposure;
-	long naxes[3] = { boxSize.x, boxSize.y, boxSize.z }; /* image is 300 pixels wide by 200 rows */
+	constexpr auto pixel = 1l;
+	constexpr auto axisCount = 3l;
+	auto exposure = 0l;
+	auto axis = std::array{ static_cast<long>(boxSize.x), static_cast<long>(boxSize.y), static_cast<long>(boxSize.z) };
 
-	status = 0; /* initialize status before calling fitsio routines */
-	fits_create_file(&fptr, file.c_str(), &status); /* create new file */
-	/* Create the primary array image (16-bit short integer pixels */
-	fits_create_img(fptr, FLOAT_IMG, naxis, naxes, &status);
-	/* Write a keyword; must pass the ADDRESS of the value */
+	status = 0;
+	fits_create_file(*fitsFile, file.c_str(), &status);
+	fits_create_img(*fitsFile, FLOAT_IMG, axisCount, axis.data(), &status);
 	exposure = 1500.;
-	fits_update_key(fptr, TLONG, "EXPOSURE", &exposure, "Total Exposure Time", &status);
-	/* Initialize the values in the image with a linear ramp function */
+	fits_update_key(*fitsFile, TLONG, "EXPOSURE", &exposure, "Total Exposure Time", &status);
+	fits_write_img(*fitsFile, TLONG, pixel, data.size(), (void*)data.data(), &status);
 
-	/* Write the array of integers to the image */
-	fits_write_img(fptr, TFLOAT, fpixel, data.size(), (void*)data.data(), &status);
-
-	fits_close_file(fptr, &status); /* close the file */
-	fits_report_error(stderr, status); /* print out any error messages */
+	fits_close_file(*fitsFile, &status);
+	fits_report_error(stderr, status);
 }
-
 
 auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& searchBox, const Vec3I& perBatchSearchSize)
 	-> std::map<ClusterId, Box3I>
@@ -83,20 +75,7 @@ auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& sea
 				logError(status);
 			}
 		}
-
-		/*{
-			auto status = 0;
-			auto totalRows = 0l;
-			fits_get_num_rows(fitsFile.get(), &totalRows, &status);
-			logError(status);
-			auto optimalRowsReadsAtOnce = 0l;
-			fits_get_rowsize(fitsFile.get(), &optimalRowsReadsAtOnce, &status);
-
-			logError(status);
-		}*/
 	}
-
-	// optimal row size = fits_get_rowsize
 
 	const auto srcBox =
 		Box3I{ { 0, 0, 0 }, { static_cast<int>(axis[0]), static_cast<int>(axis[1]), static_cast<int>(axis[2]) } };
@@ -107,22 +86,22 @@ auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& sea
 	auto newBatchSize = Vec3I{};
 	if (perBatchSearchSize == Vec3I{})
 	{
-		const auto bytesPerBatch = 6291456; //~64mb
-		const auto elementSize = 32; // can be fetched
+		constexpr auto bytesPerBatch = 6291456; //~64mb
+		constexpr auto elementSize = 32; // can be fetched
 		const auto bytesPerRow = searchBoxSize.x * elementSize;
 		const auto columns = (bytesPerBatch) / bytesPerRow;
 
 		const auto maxConcurrency = static_cast<int>(std::thread::hardware_concurrency());
 		const auto uniformBatching = (searchBoxSize.z + maxConcurrency - 1) / maxConcurrency;
 
-		const auto batchesPerThread = 16;
+		constexpr auto batchesPerThread = 16;
 
 		const auto uniformBatchingPerThread = (uniformBatching + batchesPerThread - 1) / batchesPerThread;
 
-		newBatchSize = Vec3I{ searchBoxSize.x, columns, 1 };									//benchmark 3
-		//newBatchSize = Vec3I{ searchBoxSize.x, searchBoxSize.x, 1 };							//benchmark 2
-		//newBatchSize = Vec3I{ searchBoxSize.x, searchBoxSize.x, uniformBatchingPerThread };	//benchmark 4
-		//newBatchSize = Vec3I{ 64, 64, 64 };												//benchmark 1
+		newBatchSize = Vec3I{ searchBoxSize.x, columns, 1 }; // benchmark 3
+		// newBatchSize = Vec3I{ searchBoxSize.x, searchBoxSize.x, 1 };							//benchmark 2
+		// newBatchSize = Vec3I{ searchBoxSize.x, searchBoxSize.x, uniformBatchingPerThread };	//benchmark 4
+		// newBatchSize = Vec3I{ 64, 64, 64 };												//benchmark 1
 	}
 	else
 	{
@@ -130,10 +109,6 @@ auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& sea
 	}
 
 	const auto perSearchBatchBoxSize = min(newBatchSize, searchBoxSize);
-
-	/*const auto perSearchBatchBoxSize =
-		perBatchSearchSize != Vec3I{} ? min(perBatchSearchSize, searchBoxSize) : searchBoxSize;*/
-
 
 	const auto batchSize = Vec3I{ searchBoxSize.x / perSearchBatchBoxSize.x, searchBoxSize.y / perSearchBatchBoxSize.y,
 								  searchBoxSize.z / perSearchBatchBoxSize.z };
@@ -144,15 +119,14 @@ auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& sea
 
 	batchBoxes.resize(batchItemCount);
 
-	const auto boxSpan = std::mdspan(batchBoxes.data(), batchSize.x, batchSize.y, batchSize.z);
-
-	for (auto i = 0; i != boxSpan.extent(0); i++)
+	for (auto i = 0; i != batchSize.x /*boxSpan.extent(0)*/; i++)
 	{
-		for (auto j = 0; j != boxSpan.extent(1); j++)
+		for (auto j = 0; j != batchSize.y /*boxSpan.extent(1)*/; j++)
 		{
-			for (auto k = 0; k != boxSpan.extent(2); k++)
+			for (auto k = 0; k != batchSize.z /*boxSpan.extent(2)*/; k++)
 			{
-				boxSpan[std::array{ i, j, k }] = clip(
+				const auto index = batchSize.x * batchSize.y * k + batchSize.x * j + i;
+				batchBoxes[index] = clip(
 					Box3I{ perSearchBatchBoxSize * Vec3I(i, j, k), perSearchBatchBoxSize * Vec3I(i + 1, j + 1, k + 1) },
 					newSearchBox);
 			}
@@ -204,8 +178,6 @@ auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& sea
 			assert(error == 0);
 		}
 
-		const auto span = std::mdspan(dataBuffer.data(), boxSize.x, boxSize.y, boxSize.z);
-
 		auto map = std::map<ClusterId, Box3I>{};
 		const auto offset = box.lower;
 		for (auto k = 0; k != boxSize.z; k++)
@@ -214,8 +186,8 @@ auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& sea
 			{
 				for (auto i = 0; i != boxSize.x; i++)
 				{
-					const auto ii = boxSize.x * boxSize.y * k + boxSize.x * j + i;
-					const auto value = dataBuffer[ii]; // span[std::array{ i, j, k }];
+					const auto index = boxSize.x * boxSize.y * k + boxSize.x * j + i;
+					const auto value = dataBuffer[index];
 					// skip 0 cluster
 					if (value != 0)
 					{
@@ -334,7 +306,8 @@ auto extractBinaryClusterMask(const std::filesystem::path& file, std::vector<Clu
 			   { static_cast<int>(axis[0]) - 1, static_cast<int>(axis[1]) - 1, static_cast<int>(axis[2]) - 1 } };
 	const auto box = searchBox != Box3I{} ? clip(searchBox, srcBox) : srcBox;
 	const auto boxSize = box.size();
-	const auto voxels = static_cast<int64_t>(boxSize.x) * static_cast<int64_t>(boxSize.y) * static_cast<int64_t>(boxSize.z);
+	const auto voxels =
+		static_cast<int64_t>(boxSize.x) * static_cast<int64_t>(boxSize.y) * static_cast<int64_t>(boxSize.z);
 	std::vector<int32_t> dataBuffer;
 	dataBuffer.resize(voxels);
 
@@ -345,8 +318,7 @@ auto extractBinaryClusterMask(const std::filesystem::path& file, std::vector<Clu
 	{
 		auto error = int{};
 		fits_read_subset(fitsFile.get(), TINT32BIT, const_cast<long*>(min.data()), const_cast<long*>(max.data()),
-						 const_cast<long*>(samplingInterval.data()), &nan, dataBuffer.data(),
-						 nullptr, &error);
+						 const_cast<long*>(samplingInterval.data()), &nan, dataBuffer.data(), nullptr, &error);
 		if (error != 0)
 		{
 			std::array<char, 30> txt;
@@ -359,16 +331,6 @@ auto extractBinaryClusterMask(const std::filesystem::path& file, std::vector<Clu
 	std::vector<bool> maskBuffer;
 	maskBuffer.resize(voxels);
 
-
-	/*const auto span = std::mdspan(dataBuffer.data(), boxSize.x, boxSize.y, boxSize.z);*/
-
-	/*for (const auto& v : dataBuffer)
-	{
-		if (v == 17u)
-		{
-			std::println(std::cout, ":{}", v);
-		}
-	}*/
 
 	auto filter = [&clusters](const long& value) -> bool
 	{
@@ -394,7 +356,7 @@ auto extractClusterMask(const std::filesystem::path& file, ClusterId cluster, co
 }
 
 
-auto extractData(const std::filesystem::path& file, const Box3I& searchBox) -> std::vector<float>
+auto extractData(const std::filesystem::path& file, const Box3I& searchBox) -> ExtractedData
 {
 	fitsfile* fitsFilePtr{ nullptr };
 	auto fitsError = int{};
@@ -445,8 +407,8 @@ auto extractData(const std::filesystem::path& file, const Box3I& searchBox) -> s
 
 	{
 		auto error = int{};
-		fits_read_subset(fitsFile.get(), TFLOAT, min.data(), max.data(),
-						 samplingInterval.data(), &nan, dataBuffer.data(), nullptr, &error);
+		fits_read_subset(fitsFile.get(), TFLOAT, min.data(), max.data(), samplingInterval.data(), &nan,
+						 dataBuffer.data(), nullptr, &error);
 		if (error != 0)
 		{
 			std::array<char, 30> txt;
@@ -456,7 +418,7 @@ auto extractData(const std::filesystem::path& file, const Box3I& searchBox) -> s
 		assert(error == 0);
 	}
 
-	return dataBuffer;
+	return ExtractedData{ newSearchBox, dataBuffer };
 }
 auto applyMask(const std::vector<float>& data, const std::vector<bool>& mask, const float maskedValue)
 	-> std::vector<float>
@@ -479,8 +441,45 @@ auto searchMinMaxBounds(const std::vector<float>& data) -> MinMaxBounds
 	bounds.max = std::numeric_limits<float>::min();
 	for (auto i = 0; i < data.size(); i++)
 	{
-		bounds.max = std::max({bounds.max, data[i]});
-		bounds.min = std::min({bounds.min, data[i]});
+		bounds.max = std::max({ bounds.max, data[i] });
+		bounds.min = std::min({ bounds.min, data[i] });
 	}
 	return bounds;
+}
+
+auto upscaleFitsData(const std::string& srcFile, const std::string& dstFile, const Vec3I& axisScaleFactor,
+					 const std::function<float(const float, const Vec3I&, const Vec3I&)>& filter) -> void
+{
+	const auto data = extractData(srcFile);
+
+	auto upscaleData = std::vector<float>{};
+	const auto newSize = static_cast<size_t>(data.data.size()) * static_cast<size_t>(axisScaleFactor.x) *
+		static_cast<size_t>(axisScaleFactor.y) * static_cast<size_t>(axisScaleFactor.z);
+	upscaleData.resize(newSize);
+	const auto& box = data.box;
+	const auto& boxSize = box.size();
+
+	const auto dstBoxSize =
+		Vec3I{ boxSize.x * axisScaleFactor.x, boxSize.y * axisScaleFactor.y, boxSize.z * axisScaleFactor.z };
+
+
+	for (auto i = 0ull; i < dstBoxSize.z; i++)
+	{
+		for (auto j = 0ull; j < dstBoxSize.y; j++)
+		{
+			for (auto k = 0ull; k < dstBoxSize.x; k++)
+			{
+				const auto index1D = i * dstBoxSize.y * dstBoxSize.x + j * dstBoxSize.x + k;
+
+				const auto indexSrc1D = i / axisScaleFactor.z * boxSize.y * boxSize.x +
+					j / axisScaleFactor.y * boxSize.x + k / axisScaleFactor.x;
+				upscaleData[index1D] =
+					filter(data.data[indexSrc1D],
+						   Vec3I{ static_cast<int>(i), static_cast<int>(j), static_cast<int>(k) }, dstBoxSize);
+			}
+		}
+	}
+
+	writeFitsFile(dstFile, dstBoxSize, upscaleData);
+	generateNanoVdb(dstFile + ".nvdb", dstBoxSize, -100.0f, 0.0, upscaleData);
 }
