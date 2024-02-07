@@ -401,6 +401,12 @@ auto NanoRenderer::onGui() -> void
 	{
 		rendererState_->worldMatTRS = AffineSpace3f{};
 	}
+	ImGui::SameLine();
+	if (ImGui::Button("Normalize Scaling"))
+	{
+		const auto scale = 1.0f / nanoVdbVolume->indexBox.size();
+		rendererState_->worldMatTRS *= AffineSpace3f::scale(scale);
+	}
 	ImGui::SeparatorText("Data File (.b3d)");
 	ImGui::InputText("##source", const_cast<char*>(b3dFilePath.string().c_str()), b3dFilePath.string().size(),
 					 ImGuiInputTextFlags_ReadOnly);
