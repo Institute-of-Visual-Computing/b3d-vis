@@ -31,7 +31,7 @@ using namespace owl::viewer;
 namespace
 {
 	auto currentGizmoOperation(ImGuizmo::ROTATE);
-	auto currentGizmoMode(ImGuizmo::WORLD);
+	auto currentGizmoMode(ImGuizmo::LOCAL);
 
 	auto reshape(GLFWwindow* window, const int width, const int height) -> void
 	{

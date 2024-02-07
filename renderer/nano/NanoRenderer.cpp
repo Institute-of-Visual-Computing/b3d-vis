@@ -148,12 +148,8 @@ namespace
 
 	auto orientedBoxToBox(const owl::box3f& box, const LinearSpace3f& orientation) -> owl::box3f
 	{
-
-
-		const auto glmMidPoint = owl::vec3f{ box.center().x, box.center().y, box.center().z };
-
-
-		const auto glmExtent = owl::vec3f{ box.size().x, box.size().y, box.size().z };
+		const auto midPoint = owl::vec3f{ box.center().x, box.center().y, box.center().z };
+		const auto extent = owl::vec3f{ box.size().x, box.size().y, box.size().z };
 
 		/*
 		 *	  p4----p5
@@ -163,14 +159,14 @@ namespace
 		 *	| /    |/
 		 *	p2----p3
 		 */
-		const auto p0 = orientation * (glmMidPoint + 0.5f * owl::vec3f(-1.0, -1.0, 1.0) * glmExtent);
-		const auto p1 = orientation * (glmMidPoint + 0.5f * owl::vec3f(1.0, -1.0, 1.0) * glmExtent);
-		const auto p2 = orientation * (glmMidPoint + 0.5f * owl::vec3f(-1.0, -1.0, -1.0) * glmExtent);
-		const auto p3 = orientation * (glmMidPoint + 0.5f * owl::vec3f(1.0, -1.0, -1.0) * glmExtent);
-		const auto p4 = orientation * (glmMidPoint + 0.5f * owl::vec3f(-1.0, 1.0, 1.0) * glmExtent);
-		const auto p5 = orientation * (glmMidPoint + 0.5f * owl::vec3f(1.0, 1.0, 1.0) * glmExtent);
-		const auto p6 = orientation * (glmMidPoint + 0.5f * owl::vec3f(-1.0, 1.0, -1.0) * glmExtent);
-		const auto p7 = orientation * (glmMidPoint + 0.5f * owl::vec3f(1.0, 1.0, -1.0) * glmExtent);
+		const auto p0 = orientation * (midPoint + 0.5f * owl::vec3f(-1.0, -1.0, 1.0) * extent);
+		const auto p1 = orientation * (midPoint + 0.5f * owl::vec3f(1.0, -1.0, 1.0) * extent);
+		const auto p2 = orientation * (midPoint + 0.5f * owl::vec3f(-1.0, -1.0, -1.0) * extent);
+		const auto p3 = orientation * (midPoint + 0.5f * owl::vec3f(1.0, -1.0, -1.0) * extent);
+		const auto p4 = orientation * (midPoint + 0.5f * owl::vec3f(-1.0, 1.0, 1.0) * extent);
+		const auto p5 = orientation * (midPoint + 0.5f * owl::vec3f(1.0, 1.0, 1.0) * extent);
+		const auto p6 = orientation * (midPoint + 0.5f * owl::vec3f(-1.0, 1.0, -1.0) * extent);
+		const auto p7 = orientation * (midPoint + 0.5f * owl::vec3f(1.0, 1.0, -1.0) * extent);
 
 		auto newBox = owl::box3f{};
 		newBox.extend(p0);
