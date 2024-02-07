@@ -20,6 +20,7 @@
 #include "DebugDrawListBase.h"
 
 #include <imgui.h>
+#include <imgui_internal.h>
 
 #include <NanoCutterParser.h>
 
@@ -63,27 +64,6 @@ namespace
 
 	unique_volume_ptr nanoVdbVolume;
 
-	[[maybe_unused]] auto getOptixTransform(const nanovdb::GridHandle<>& grid, float transform[]) -> void
-	{
-		// Extract the index-to-world-space affine transform from the Grid and convert
-		// to 3x4 row-major matrix for Optix.
-		auto* gridHandle = grid.grid<float>();
-		const auto& map = gridHandle->map();
-		transform[0] = map.mMatF[0];
-		transform[1] = map.mMatF[1];
-		transform[2] = map.mMatF[2];
-		transform[3] = map.mVecF[0];
-		transform[4] = map.mMatF[3];
-		transform[5] = map.mMatF[4];
-		transform[6] = map.mMatF[5];
-		transform[7] = map.mVecF[1];
-		transform[8] = map.mMatF[6];
-		transform[9] = map.mMatF[7];
-		transform[10] = map.mMatF[8];
-		transform[11] = map.mVecF[2];
-	}
-
-
 	auto createVolume() -> NanoVdbVolume
 	{
 		// const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
@@ -108,10 +88,8 @@ namespace
 			owl::LinearSpace3f{ map.mMatF[0], map.mMatF[1], map.mMatF[2], map.mMatF[3], map.mMatF[4],
 								map.mMatF[5], map.mMatF[6], map.mMatF[7], map.mMatF[8] };
 		const auto position = vec3f{ 0.0, 0.0, 0.0 };
-		// const auto dim = gridVolume.gridMetaData()->worldBBox().dim();
-		// map.set(0.1, nanovdb::Vec3{-dim[0]*0.5,-dim[1]*0.5,-dim[2]*0.5 });
 
-		volume.transform = AffineSpace3f{ orientation, position }; // AffineSpace3f{ orientation, position };
+		volume.transform = AffineSpace3f{ orientation, position };
 
 		{
 			const auto& box = gridVolume.gridMetaData()->worldBBox();
@@ -119,8 +97,6 @@ namespace
 										 static_cast<float>(box.min()[2]) };
 			const auto max = owl::vec3f{ static_cast<float>(box.max()[0]), static_cast<float>(box.max()[1]),
 										 static_cast<float>(box.max()[2]) };
-
-			// volume.worldAabb = owl::box3f{ map.applyMapF(min), map.applyMapF(max) };
 			volume.worldAabb = owl::box3f{ min, max };
 		}
 
@@ -170,6 +146,44 @@ namespace
 		return { origin, lowerLeft, horizontal, vertical };
 	}
 
+	auto orientedBoxToBox(const owl::box3f& box, const LinearSpace3f& orientation) -> owl::box3f
+	{
+
+
+		const auto glmMidPoint = owl::vec3f{ box.center().x, box.center().y, box.center().z };
+
+
+		const auto glmExtent = owl::vec3f{ box.size().x, box.size().y, box.size().z };
+
+		/*
+		 *	  p4----p5
+		 *	 / |   / |
+		 *	p0----p1 |
+		 *	|  p6--|-p7
+		 *	| /    |/
+		 *	p2----p3
+		 */
+		const auto p0 = orientation * (glmMidPoint + 0.5f * owl::vec3f(-1.0, -1.0, 1.0) * glmExtent);
+		const auto p1 = orientation * (glmMidPoint + 0.5f * owl::vec3f(1.0, -1.0, 1.0) * glmExtent);
+		const auto p2 = orientation * (glmMidPoint + 0.5f * owl::vec3f(-1.0, -1.0, -1.0) * glmExtent);
+		const auto p3 = orientation * (glmMidPoint + 0.5f * owl::vec3f(1.0, -1.0, -1.0) * glmExtent);
+		const auto p4 = orientation * (glmMidPoint + 0.5f * owl::vec3f(-1.0, 1.0, 1.0) * glmExtent);
+		const auto p5 = orientation * (glmMidPoint + 0.5f * owl::vec3f(1.0, 1.0, 1.0) * glmExtent);
+		const auto p6 = orientation * (glmMidPoint + 0.5f * owl::vec3f(-1.0, 1.0, -1.0) * glmExtent);
+		const auto p7 = orientation * (glmMidPoint + 0.5f * owl::vec3f(1.0, 1.0, -1.0) * glmExtent);
+
+		auto newBox = owl::box3f{};
+		newBox.extend(p0);
+		newBox.extend(p1);
+		newBox.extend(p2);
+		newBox.extend(p3);
+		newBox.extend(p4);
+		newBox.extend(p5);
+		newBox.extend(p6);
+		newBox.extend(p7);
+
+		return newBox;
+	}
 
 	std::filesystem::path b3dFilePath{};
 } // namespace
@@ -208,21 +222,12 @@ auto NanoRenderer::prepareGeometry() -> void
 
 	auto geometry = owlGeomCreate(context, geometryType);
 
-	// const auto volume = createVolume();
-
 	nanoVdbVolume = unique_volume_ptr(new NanoVdbVolume());
 	*nanoVdbVolume.get() = createVolume();
 
 	const auto geometryGroup = owlUserGeomGroupCreate(context, 1, &geometry);
 	nanoContext_.worldGeometryGroup = owlInstanceGroupCreate(context, 1, &geometryGroup, nullptr, nullptr,
 															 OWL_MATRIX_FORMAT_OWL, OPTIX_BUILD_FLAG_ALLOW_UPDATE);
-
-	// auto t = owl::affine3f::scale(owl::vec3f(.01f,.01f,.01f));
-	/*float a[12];
-	getOptixTransform(nanoVdbVolume->, a);
-	owlInstanceGroupSetTransform(world, 0, (const float*)&a,
-							   OWL_MATRIX_FORMAT_OWL);*/
-
 
 	owlGeomSetRaw(geometry, "volume", nanoVdbVolume.get());
 
@@ -271,11 +276,8 @@ auto NanoRenderer::prepareGeometry() -> void
 							launchParamsVarsWithStruct.size());
 	}
 
-
-	// owlBuildProgramsDebug(context);
 	owlBuildPrograms(context);
 	owlBuildPipeline(context);
-	// owlBuildPrograms(context)
 	owlBuildSBT(context);
 }
 
@@ -307,18 +309,18 @@ auto NanoRenderer::onRender(const View& view) -> void
 	}
 	trs_ = rendererState_->worldMatTRS;
 
-	owlInstanceGroupSetTransform(nanoContext_.worldGeometryGroup, 0, reinterpret_cast<const float*>(&trs_));
+
+	const auto volumeTranslate = AffineSpace3f::translate(-nanoVdbVolume->indexBox.size() * 0.5f);
+	const auto transform = trs_ * volumeTranslate;
+	owlInstanceGroupSetTransform(nanoContext_.worldGeometryGroup, 0, reinterpret_cast<const float*>(&transform));
 	owlGroupRefitAccel(nanoContext_.worldGeometryGroup);
 
-	/*auto rsInv = trs_.l.inverse();
-	auto d = std::array{ trs_.l.vx, trs_.l.vy, trs_.l.vz };
-	auto dInv = std::array{ rsInv.vx, rsInv.vy, rsInv.vz };
-	currentMap_.set(d.data(), dInv.data(), trs_.p);*/
 
 	{
-		// TODO: need OBB, AABB !!!!!!!!!!!!!!!!!!!!!!!!
-		// pass Map to cuda and apply
-		debugDraw().drawBox(trs_.p, nanoVdbVolume->indexBox.size(), owl::vec3f(0.1f, 0.82f, 0.15f), trs_.l);
+		debugDraw().drawBox(trs_.p, nanoVdbVolume->indexBox.size(), owl::vec4f(0.1f, 0.82f, 0.15f, 1.0f), trs_.l);
+
+		const auto aabbSize = orientedBoxToBox(nanoVdbVolume->indexBox, trs_.l).size();
+		debugDraw().drawBox(trs_.p, aabbSize, owl::vec4f(0.9f, 0.4f, 0.2f, 0.4f));
 	}
 
 
@@ -357,8 +359,7 @@ auto NanoRenderer::onRender(const View& view) -> void
 	owlParamsSet1b(nanoContext_.launchParams, "bg.fillBox", guiData.fillBox);
 	owlParamsSet3f(nanoContext_.launchParams, "bg.fillColor",
 				   owl3f{ guiData.fillColor[0], guiData.fillColor[1], guiData.fillColor[2] });
-	owlParamsSet3f(nanoContext_.launchParams, "color",
-				   owl3f{ guiData.color[0], guiData.color[1], guiData.color[2] });
+	owlParamsSet3f(nanoContext_.launchParams, "color", owl3f{ guiData.color[0], guiData.color[1], guiData.color[2] });
 	// owlParamsSetRaw()
 
 

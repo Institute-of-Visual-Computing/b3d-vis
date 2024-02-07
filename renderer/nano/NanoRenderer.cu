@@ -109,28 +109,30 @@ OPTIX_RAYGEN_PROGRAM(rayGeneration)()
 
 OPTIX_MISS_PROGRAM(miss)()
 {
-	const auto pixelId = owl::getLaunchIndex();
-
-	const auto& self = owl::getProgramData<MissProgramData>();
-
 	auto& prd = owl::getPRD<PerRayData>();
-	const auto pattern = (pixelId.x / 8) ^ (pixelId.y / 8);
-	prd.color = (pattern & 1) ? self.color1 : self.color0;
-	prd.alpha = 0.0f;
 	prd.isBackground = true;
 }
 
 OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 {
-	/*{
-		auto& prd = owl::getPRD<PerRayData>();
-		prd.color = vec3f(0.8,0.3,0.2);
-		return;
-	}*/
-
-
 	const auto& geometry = owl::getProgramData<GeometryData>();
-	auto* grid = reinterpret_cast<nanovdb::FloatGrid*>(geometry.volume.grid);
+	const auto* grid = reinterpret_cast<nanovdb::FloatGrid*>(geometry.volume.grid);
+
+	float transform[12];
+	optixGetWorldToObjectTransformMatrix(transform);
+
+	float indexToWorldTransform[9];
+	indexToWorldTransform[0] = transform[0];
+	indexToWorldTransform[1] = transform[1];
+	indexToWorldTransform[2] = transform[2];
+	indexToWorldTransform[3] = transform[4];
+	indexToWorldTransform[4] = transform[5];
+	indexToWorldTransform[5] = transform[6];
+	indexToWorldTransform[6] = transform[8];
+	indexToWorldTransform[7] = transform[9];
+	indexToWorldTransform[8] = transform[10];
+	const auto translate = nanovdb::Vec3f{ transform[3], transform[7], transform[11] };
+
 
 	const auto& accessor = grid->getAccessor();
 
@@ -142,102 +144,25 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 
 	const auto rayWorld = nanovdb::Ray<float>(reinterpret_cast<const nanovdb::Vec3f&>(rayOrigin),
 											  reinterpret_cast<const nanovdb::Vec3f&>(rayDirection));
-	const auto rt0n = nanovdb::Vec3f{ rayWorld(t0) };
-	const auto rt1n = nanovdb::Vec3f{ rayWorld(t1) };
-	auto r0 = owl::vec3f{ rt0n[0], rt0n[1], rt0n[2] };
-	auto r1 = owl::vec3f{ rt1n[0], rt1n[1], rt1n[2] };
-
-	/*auto rt0 = xfmPoint(transform, r0);
-	auto rt1 = xfmPoint(transform, r1);*/
-
-	/*auto start = grid->worldToIndexF(nanovdb::Vec3f{ rt0.x, rt0.y, rt0.z});
-	auto end = grid->worldToIndexF(nanovdb::Vec3f{ rt1.x, rt1.y, rt1.z});*/
-
-	// auto map = grid->map();
-
-
-	/*float matF[3][3] = { { transform.l.vx.x, transform.l.vy.x, transform.l.vz.x },
-						 { transform.l.vx.y, transform.l.vy.y, transform.l.vz.y },
-						 { transform.l.vx.z, transform.l.vy.z, transform.l.vz.z } };*/
-
-	float transform[12];
-	optixGetWorldToObjectTransformMatrix(transform);
-
-	float invMatF[9]; /* = { inverseT.vx.x, inverseT.vy.x, inverseT.vz.x, inverseT.vx.y, inverseT.vy.y,
-										  inverseT.vz.y, inverseT.vx.z, inverseT.vy.z, inverseT.vz.z };*/
-
-	invMatF[0] = transform[0];
-	invMatF[1] = transform[1];
-	invMatF[2] = transform[2];
-	invMatF[3] = transform[4];
-	invMatF[4] = transform[5];
-	invMatF[5] = transform[6];
-	invMatF[6] = transform[8];
-	invMatF[7] = transform[9];
-	invMatF[8] = transform[10];
-
-
-	const auto& dim = grid->worldBBox().dim();
-
-	float p[3];
-	p[0] = transform[3]; // -dim[0]*0.5;
-	p[1] = transform[7]; // -dim[1]*0.5;
-	p[2] = transform[11]; // -dim[2]*0.5;
-
-	// map.set(matF, invMatF, p);
-
-	// printf("============== %0.2f", grid->map().mInvMatF[4]);
 
 	const auto startWorld = rayWorld(t0);
 	const auto endWorld = rayWorld(t1);
-	const auto a = nanovdb::Vec3f(startWorld[0] - p[0], startWorld[1] - p[1], startWorld[2] - p[2]);
-	const auto b = nanovdb::Vec3f(endWorld[0] - p[0], endWorld[1] - p[1], endWorld[2] - p[2]);
-	auto start = nanovdb::matMult(&invMatF[0], a);
-	auto end = nanovdb::matMult(&invMatF[0], b);
-	/*auto start = grid->worldToIndexF(rayWorld(t0));
-	auto end = grid->worldToIndexF(rayWorld(t1));*/
-	/*if (owl::getLaunchIndex().x == 0 && owl::getLaunchIndex().y == 0)
-	{
+	const auto a = nanovdb::Vec3f(startWorld[0], startWorld[1], startWorld[2]);
+	const auto b = nanovdb::Vec3f(endWorld[0], endWorld[1], endWorld[2]);
+	auto start = nanovdb::matMult(&indexToWorldTransform[0], a) + translate;
+	auto end = nanovdb::matMult(&indexToWorldTransform[0], b) + translate;
 
 
-		printf(": %0.2f \n", transform[0]);
-		printf(": %0.2f \n", transform[1]);
-		printf(": %0.2f \n", transform[2]);
-		printf(": %0.2f \n", transform[3]);
-		printf(": %0.2f \n", transform[4]);
-		printf(": %0.2f \n", transform[5]);
-		printf(": %0.2f \n", transform[6]);
-		printf(": %0.2f \n", transform[7]);
-		printf(": %0.2f \n", transform[8]);
-		printf(": %0.2f \n", transform[9]);
-		printf(": %0.2f \n", transform[10]);
-		printf(": %0.2f \n", transform[11]);
 
 
-		printf("=================\n");
-	}*/
-
-
-	/*auto start = map.applyInverseMapF(rayWorld(t0));
-	auto end = map.applyInverseMapF(rayWorld(t1));*/
-
-	// start[0] = rt0.x;
-	// start[1] = rt0.y;
-	// start[2] = rt0.z;
-
-	// end[0] = rt1.x;
-	// end[1] = rt1.y;
-	// end[2] = rt1.z;
 
 	const auto bbox = grid->indexBBox();
 	confine(bbox, start, end);
-
 
 	const auto direction = end - start;
 	const auto length = direction.length();
 	const auto ray = nanovdb::Ray<float>(start, direction / length, 0.0f, length);
 	auto ijk = nanovdb::RoundDown<nanovdb::Coord>(ray.start());
-
 
 	auto hdda = nanovdb::HDDA<nanovdb::Ray<float>>(ray, accessor.getDim(ijk, ray));
 
@@ -275,7 +200,6 @@ OPTIX_INTERSECT_PROGRAM(nano_intersection)()
 	auto t1 = optixGetRayTmax();
 	const auto ray = nanovdb::Ray<float>(reinterpret_cast<const nanovdb::Vec3f&>(rayOrigin),
 										 reinterpret_cast<const nanovdb::Vec3f&>(rayDirection), t0, t1);
-
 
 	if (ray.intersects(bbox, t0, t1))
 	{
