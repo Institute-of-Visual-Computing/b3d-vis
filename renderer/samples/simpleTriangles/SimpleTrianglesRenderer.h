@@ -1,4 +1,5 @@
 #pragma once
+#include "ColorMap.h"
 #include "RendererBase.h"
 #include "owl/owl_host.h"
 
@@ -28,4 +29,9 @@ protected:
 	OWLBuffer surfaceBuffer_{ nullptr };
 	OWLParams launchParameters_{ };
 	OWLGroup world_{ nullptr };
+
+	OWLTexture colorMapTexture_;
+
+	b3d::tools::colormap::ColorMap colorMap_;
+
 };

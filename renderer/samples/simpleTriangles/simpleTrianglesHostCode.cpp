@@ -5,11 +5,17 @@
 #include "owl/owl.h"
 // our device-side data structures
 #include <cuda/std/cstddef>
+#include <filesystem>
 
 
 #include "deviceCode.h"
 #include "imgui.h"
 #include "owl/helper/cuda.h"
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
+#include "ColorMap.h"
 
 using namespace b3d::renderer;
 
@@ -27,6 +33,11 @@ namespace
 		return max(max(computeStableEpsilon(v.x), computeStableEpsilon(v.y)), computeStableEpsilon(v.z));
 	}
 
+
+	ColoringInfo colorInfo;
+
+	std::string coloringModeStrings[2] = { "Single", "ColorMap" };
+
 	struct GuiData
 	{
 		struct BackgroundColorPalette
@@ -34,13 +45,19 @@ namespace
 			std::array<float, 4> color1{ 0.572f, 0.100f, 0.750f, 1.0f };
 			std::array<float, 4> color2{ 0.0f, 0.3f, 0.3f, 1.0f };
 		};
+
+
 		BackgroundColorPalette rtBackgroundColorPalette;
+		std::array<float, 4> singleColor{ 0, 1, 0, 1 };
 
 		struct VolumeTransform
 		{
 			std::array<float, 3> rotation{ 0, 0, 0 };
 		};
 		VolumeTransform rtCubeVolumeTransform{};
+
+		int coloringModeInt = 0;
+		int selectedColorMap = 0;
 	};
 
 	RayCameraData createRayCameraData(const Camera& camera, const Extent& textureExtent)
@@ -69,7 +86,8 @@ namespace
 	}
 
 	GuiData guiData{};
-	
+
+
 	const int NUM_VERTICES = 8;
 	vec3f vertices[NUM_VERTICES] = { { -0.5f, -0.5f, -0.5f }, { +0.5f, -0.5f, -0.5f }, { -0.5f, +0.5f, -0.5f },
 									 { +0.5f, +0.5f, -0.5f }, { -0.5f, -0.5f, +0.5f }, { +0.5f, -0.5f, +0.5f },
@@ -79,7 +97,15 @@ namespace
 	vec3i indices[NUM_INDICES] = { { 0, 1, 3 }, { 2, 3, 0 }, { 5, 7, 6 }, { 5, 6, 4 }, { 0, 4, 5 }, { 0, 5, 1 },
 								   { 2, 3, 7 }, { 2, 7, 6 }, { 1, 5, 7 }, { 1, 7, 3 }, { 4, 0, 2 }, { 4, 2, 6 } };
 
-}
+	// TODO: Mapping wrong
+	vec2f texCoords[NUM_VERTICES] = {
+
+		{ +0.f, +0.f }, { +0.f, +1.f }, { +1.f, +0.f }, { +1.f, +1.f },
+
+		{ +0.f, +0.f }, { +0.f, +1.f }, { +1.f, +0.f }, { +1.f, +1.f },
+	};
+
+} // namespace
 
 auto SimpleTrianglesRenderer::onRender(const View& view) -> void
 {
@@ -108,7 +134,7 @@ auto SimpleTrianglesRenderer::onRender(const View& view) -> void
 			cudaRet = cudaCreateSurfaceObject(&cudaSurfaceObjects[i], &resDesc);
 		}
 	}
-	
+
 	if (fbSize_.x != view.colorRt.extent.width || fbSize_.y != view.colorRt.extent.height)
 	{
 		fbSize_ = { static_cast<int32_t>(view.colorRt.extent.width), static_cast<int32_t>(view.colorRt.extent.height) };
@@ -128,6 +154,24 @@ auto SimpleTrianglesRenderer::onRender(const View& view) -> void
 		owlGroupRefitAccel(world_);
 	}
 
+
+	owlParamsSetRaw(launchParameters_, "coloringInfo.colorMode", &colorInfo.colorMode);
+	owlParamsSet4f(
+		launchParameters_, "coloringInfo.singleColor",
+		{ colorInfo.singleColor.x, colorInfo.singleColor.y, colorInfo.singleColor.z, colorInfo.singleColor.w });
+	owlParamsSet1f(launchParameters_, "coloringInfo.selectedColorMap", colorInfo.selectedColorMap);
+
+
+	// Regular use would be to use owlParamsSet4f but im to lazy to cast color1 to owl4f
+
+	owlParamsSet4f(launchParameters_, "backgroundColor0",
+				   { guiData.rtBackgroundColorPalette.color1[0], guiData.rtBackgroundColorPalette.color1[1],
+					 guiData.rtBackgroundColorPalette.color1[2], guiData.rtBackgroundColorPalette.color1[3] });
+	owlParamsSet4f(launchParameters_, "backgroundColor1",
+				   { guiData.rtBackgroundColorPalette.color2[0], guiData.rtBackgroundColorPalette.color2[1],
+					 guiData.rtBackgroundColorPalette.color2[2], guiData.rtBackgroundColorPalette.color2[3] });
+
+
 	{
 		RayCameraData rcd;
 		if (view.cameras[0].directionsAvailable)
@@ -137,15 +181,15 @@ auto SimpleTrianglesRenderer::onRender(const View& view) -> void
 		else
 		{
 			rcd = createRayCameraData(view.cameras[0], view.colorRt.extent);
-			
 		}
 
 		owlParamsSetRaw(launchParameters_, "cameraData", &rcd);
 		owlParamsSetRaw(launchParameters_, "surfacePointer", &cudaSurfaceObjects[0]);
+
 		owlAsyncLaunch2D(rayGen_, view.colorRt.extent.width, view.colorRt.extent.height, launchParameters_);
 	}
 
-	if(view.mode == RenderMode::stereo && view.colorRt.extent.depth > 1)
+	if (view.mode == RenderMode::stereo && view.colorRt.extent.depth > 1)
 	{
 		RayCameraData rcd;
 		if (view.cameras[1].directionsAvailable)
@@ -161,7 +205,7 @@ auto SimpleTrianglesRenderer::onRender(const View& view) -> void
 		owlAsyncLaunch2D(rayGen_, view.colorRt.extent.width, view.colorRt.extent.height, launchParameters_);
 	}
 
-	
+
 	{
 		for (auto i = 0; i < view.colorRt.extent.depth; i++)
 		{
@@ -169,7 +213,7 @@ auto SimpleTrianglesRenderer::onRender(const View& view) -> void
 		}
 		cudaRet = cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&view.colorRt.target));
 	}
-	
+
 	auto signalParams = cudaExternalSemaphoreSignalParams{};
 	signalParams.flags = 0;
 	signalParams.params.fence.value = view.fenceValue;
@@ -184,6 +228,32 @@ auto SimpleTrianglesRenderer::onInitialize() -> void
 	context_ = owlContextCreate(nullptr, 1);
 	auto module = owlModuleCreate(context_, SimpleTrianglesDeviceCode_ptx);
 
+	// Need values for texels RGBA_FLOAT
+	std::array<vec4f, 1024 * 5> values;
+	std::ranges::fill(values, vec4f{ 0, 1, 0, 1 });
+
+	auto filePath = std::filesystem::path{ "./resources/colormaps/" };
+	colorMap_ = b3d::tools::colormap::load(filePath / "defaultColorMap.json");
+	
+	if (std::filesystem::path(colorMap_.colorMapFilePath).is_relative())
+	{
+		filePath /= colorMap_.colorMapFilePath;
+	}
+	else
+	{
+		filePath = colorMap_.colorMapFilePath;
+	}
+	int x, y, n;
+	
+	const auto bla = stbi_info(filePath.string().c_str(), &x, &y, &n);
+
+	float* data = stbi_loadf(filePath.string().c_str(), &x, &y, &n, 0);
+
+	colorMapTexture_ = owlTexture2DCreate(
+		context_, OWLTexelFormat::OWL_TEXEL_FORMAT_RGBA32F, x, y, data,
+								   OWLTextureFilterMode::OWL_TEXTURE_LINEAR, OWLTextureAddressMode::OWL_TEXTURE_CLAMP,
+								   OWLTextureColorSpace::OWL_COLOR_SPACE_LINEAR);
+
 
 	// ##################################################################
 	// set up all the *GEOMETRY* graph we want to render
@@ -192,11 +262,15 @@ auto SimpleTrianglesRenderer::onInitialize() -> void
 	// -------------------------------------------------------
 	// declare geometry type
 	// -------------------------------------------------------
-	OWLVarDecl trianglesGeomVars[] = { { "index", OWL_BUFPTR, OWL_OFFSETOF(TrianglesGeomData, index) },
-									   { "vertex", OWL_BUFPTR, OWL_OFFSETOF(TrianglesGeomData, vertex) },
-									   { "color", OWL_FLOAT4, OWL_OFFSETOF(TrianglesGeomData, color) } };
+	OWLVarDecl trianglesGeomVars[] = { { "colormaps", OWL_TEXTURE, OWL_OFFSETOF(TrianglesGeomData, colorMaps) },
+		{ "color", OWL_FLOAT4, OWL_OFFSETOF(TrianglesGeomData, color) },
+		{ "index", OWL_BUFPTR, OWL_OFFSETOF(TrianglesGeomData, index) },
+		{ "vertex", OWL_BUFPTR, OWL_OFFSETOF(TrianglesGeomData, vertex) },
+		{ "texCoord", OWL_BUFPTR, OWL_OFFSETOF(TrianglesGeomData, texCoord) },
+		{}
+	};
 	OWLGeomType trianglesGeomType =
-		owlGeomTypeCreate(context_, OWL_TRIANGLES, sizeof(TrianglesGeomData), trianglesGeomVars, 3);
+		owlGeomTypeCreate(context_, OWL_TRIANGLES, sizeof(TrianglesGeomData), trianglesGeomVars, -1);
 	owlGeomTypeSetClosestHit(trianglesGeomType, 0, module, "TriangleMesh");
 
 	// ##################################################################
@@ -209,6 +283,8 @@ auto SimpleTrianglesRenderer::onInitialize() -> void
 	OWLBuffer vertexBuffer = owlDeviceBufferCreate(context_, OWL_FLOAT3, NUM_VERTICES, vertices);
 	OWLBuffer indexBuffer = owlDeviceBufferCreate(context_, OWL_INT3, NUM_INDICES, indices);
 
+	OWLBuffer texCoordsBuffer = owlDeviceBufferCreate(context_, OWL_FLOAT2, NUM_VERTICES, texCoords);
+
 	OWLGeom trianglesGeom = owlGeomCreate(context_, trianglesGeomType);
 
 	owlTrianglesSetVertices(trianglesGeom, vertexBuffer, NUM_VERTICES, sizeof(vec3f), 0);
@@ -216,7 +292,11 @@ auto SimpleTrianglesRenderer::onInitialize() -> void
 
 	owlGeomSetBuffer(trianglesGeom, "vertex", vertexBuffer);
 	owlGeomSetBuffer(trianglesGeom, "index", indexBuffer);
-	owlGeomSet4f(trianglesGeom, "color", owl4f{ 0, 1, 0,1 });
+
+	owlGeomSetBuffer(trianglesGeom, "texCoord", texCoordsBuffer);
+	owlGeomSet4f(trianglesGeom, "color", owl4f{ 0, 1, 0, 1 });
+	owlGeomSetTexture(trianglesGeom, "colormaps", colorMapTexture_);
+
 
 	// ------------------------------------------------------------------
 	// the group/accel for that mesh
@@ -246,8 +326,7 @@ auto SimpleTrianglesRenderer::onInitialize() -> void
 	// set up ray gen program
 	// -------------------------------------------------------
 	{
-		OWLVarDecl rayGenVars[] = { 
-									{ "fbSize", OWL_INT2, OWL_OFFSETOF(RayGenData, fbSize) },
+		OWLVarDecl rayGenVars[] = { { "fbSize", OWL_INT2, OWL_OFFSETOF(RayGenData, fbSize) },
 									{ "world", OWL_GROUP, OWL_OFFSETOF(RayGenData, world) },
 									{ /* sentinel to mark end of list */ } };
 
@@ -263,6 +342,12 @@ auto SimpleTrianglesRenderer::onInitialize() -> void
 		OWLVarDecl launchParamsVarsWithStruct[] = {
 			{ "cameraData", OWL_USER_TYPE(RayCameraData), OWL_OFFSETOF(MyLaunchParams, cameraData) },
 			{ "surfacePointer", OWL_USER_TYPE(cudaSurfaceObject_t), OWL_OFFSETOF(MyLaunchParams, surfacePointer) },
+			{ "coloringInfo.colorMode", OWL_USER_TYPE(ColorMode),
+			  OWL_OFFSETOF(MyLaunchParams, coloringInfo.colorMode) },
+			{ "coloringInfo.singleColor", OWL_FLOAT4, OWL_OFFSETOF(MyLaunchParams, coloringInfo.singleColor) },
+			{ "coloringInfo.selectedColorMap", OWL_FLOAT, OWL_OFFSETOF(MyLaunchParams, coloringInfo.selectedColorMap) },
+			{ "backgroundColor0", OWL_FLOAT4, OWL_OFFSETOF(MyLaunchParams, backgroundColor0) },
+			{ "backgroundColor1", OWL_FLOAT4, OWL_OFFSETOF(MyLaunchParams, backgroundColor1) },
 			{}
 		};
 
@@ -279,9 +364,133 @@ auto SimpleTrianglesRenderer::onGui() -> void
 	auto simpleTriangleRendererState = static_cast<SimpleTriangleRendererState*>(rendererState_.get());
 
 	ImGui::Begin("RT Settings");
+
+	ImGui::SeparatorText("Coloring");
+
+	ImGui::Combo("Mode", &guiData.coloringModeInt, "Single\0ColorMap\0\0");
+	if (guiData.coloringModeInt == 0)
+	{
+		ImGui::ColorEdit3("Color", guiData.singleColor.data());	
+	}
+	else
+	{
+		if (ImGui::BeginCombo("combo 1", colorMap_.colorMapNames[guiData.selectedColorMap].c_str(), 0))
+		{
+			for (int n = 0; n < colorMap_.colorMapNames.size(); n++)
+			{
+				const bool is_selected = (guiData.selectedColorMap == n);
+				if (ImGui::Selectable(colorMap_.colorMapNames[n].c_str(), is_selected))
+				{
+					guiData.selectedColorMap = n;
+				}
+					
+				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+				if (is_selected)
+					ImGui::SetItemDefaultFocus();
+			}
+			ImGui::EndCombo();
+		}
+	}
+	if (ImGui::Button("Select"))
+	{
+		ImGui::OpenPopup("FileSelectDialog");
+	}
+
 	ImGui::SeparatorText("Background Color Palette");
 	ImGui::ColorEdit3("Color 1", guiData.rtBackgroundColorPalette.color1.data());
 	ImGui::ColorEdit3("Color 2", guiData.rtBackgroundColorPalette.color2.data());
 	debugInfo_.gizmoHelper->drawGizmo(rendererState_->worldMatTRS);
+
+	
+	colorInfo.selectedColorMap = colorMap_.firstColorMapYTextureCoordinate +
+		static_cast<float>(guiData.selectedColorMap) * colorMap_.colorMapHeightNormalized;
+
+
+
+
+
+	static auto currentPath = std::filesystem::current_path();
+	static auto selectedPath = std::filesystem::path{};
+
+	std::filesystem::path b3dFilePath{};
+
+
+
+
+
+
+	const auto center = ImGui::GetMainViewport()->GetCenter();
+	ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+	if (ImGui::BeginPopupModal("FileSelectDialog", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	{
+		constexpr auto roots = std::array{ "A:/", "B:/", "C:/", "D:/", "E:/", "F:/", "G:/", "H:/", "I:/" };
+
+		for (auto i = 0; i < roots.size(); i++)
+		{
+			const auto root = std::filesystem::path{ roots[i] };
+			if (is_directory(root))
+			{
+				ImGui::SameLine();
+				if (ImGui::Button(roots[i]))
+				{
+					currentPath = root;
+				}
+			}
+		}
+		if (ImGui::BeginListBox("##dirs", ImVec2(ImGui::GetFontSize() * 40, ImGui::GetFontSize() * 16)))
+		{
+			if (ImGui::Selectable("...", false))
+			{
+				currentPath = currentPath.parent_path();
+			}
+			auto i = 0;
+			for (auto& dir : std::filesystem::directory_iterator{ currentPath })
+			{
+				i++;
+				const auto path = dir.path();
+				if (is_directory(path))
+				{
+					if (ImGui::Selectable(dir.path().string().c_str(), false))
+					{
+						currentPath = path;
+					}
+				}
+				if (path.has_extension() && path.extension() == ".b3d")
+				{
+					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.1f, 0.9f, 0.1f, 1.0f));
+					if (ImGui::Selectable(dir.path().string().c_str(), dir.path() == selectedPath))
+					{
+						selectedPath = dir.path();
+					}
+					ImGui::PopStyleColor();
+				}
+			}
+			ImGui::EndListBox();
+		}
+		if (ImGui::Button("OK", ImVec2(120, 0)))
+		{
+			if (!selectedPath.empty() != 0)
+			{
+				b3dFilePath = selectedPath;
+			}
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::SetItemDefaultFocus();
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel", ImVec2(120, 0)))
+		{
+			selectedPath.clear();
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::EndPopup();
+	}
+
+
 	ImGui::End();
+
+
+	colorInfo.colorMode = guiData.coloringModeInt == 0 ? Single : Colormap;
+	colorInfo.singleColor = { guiData.singleColor[0], guiData.singleColor[1], guiData.singleColor[2],
+							  guiData.singleColor[3] };
 }
