@@ -163,7 +163,7 @@ public class EditorCreateAction : EditorWindow
 				new()
 				{
 					regex = "templateNativeRenderingData_",
-					replacement = $"{actionLibraryName}NativeRenderingData_",
+					replacement = $"{actionLibraryName}NativeRenderingData_".FirstCharacterToLower(),
 					options = RegexOptions.Multiline
 				},
 			}
