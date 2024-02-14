@@ -136,6 +136,18 @@ auto Application::initialization(const std::vector<Param>& params) -> void
 							notifyFaultyArguments();
 						}
 					});
+	addParamCommand(params, "enable_vsync", "Enables VSync.",
+					[&](const std::vector<std::string>& values)
+					{
+						if (values.size() == 0)
+						{
+							disableVsync = false;
+						}
+						else
+						{
+							notifyFaultyArguments();
+						}
+					});
 	addParamCommand(params, "help", "Show help.",
 					[&](const std::vector<std::string>& values)
 					{
