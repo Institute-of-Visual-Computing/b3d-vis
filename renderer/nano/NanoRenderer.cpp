@@ -356,8 +356,6 @@ auto NanoRenderer::onRender(const View& view) -> void
 	owlParamsSet3f(nanoContext_.launchParams, "bg.fillColor",
 				   owl3f{ guiData.fillColor[0], guiData.fillColor[1], guiData.fillColor[2] });
 	owlParamsSet3f(nanoContext_.launchParams, "color", owl3f{ guiData.color[0], guiData.color[1], guiData.color[2] });
-	// owlParamsSetRaw()
-
 
 	constexpr auto deviceId = 0;
 	const auto stream = owlParamsGetCudaStream(nanoContext_.launchParams, deviceId);
@@ -422,7 +420,7 @@ auto NanoRenderer::onGui() -> void
 		{
 			const auto t = cutterParser::load(b3dFilePath.generic_string());
 
-			const auto nanoFile = t.front().nanoVdbFile;
+			const auto nanoFile = t.clusters.front().accelerationStructureRoot.nanoVdbFile;
 		}
 		else
 		{
@@ -454,10 +452,12 @@ auto NanoRenderer::onGui() -> void
 	{
 		auto average = 0.0f;
 		for (auto n = 0; n < IM_ARRAYSIZE(values); n++)
+		{
 			average += values[n];
+		}
 		average /= static_cast<float>(IM_ARRAYSIZE(values));
 		ImGui::PlotHistogram("##perfGraph", values, IM_ARRAYSIZE(values), valuesOffset,
-							 std::format("avg {}", average).c_str(), 0.0f, 16.0f, ImVec2(0, 400.0f));
+							 std::format("avg {:3.2f} ms", average).c_str(), 0.0f, 16.0f, ImVec2(0, 400.0f));
 	}
 
 	ImGui::Text("%1.3f", timing);
