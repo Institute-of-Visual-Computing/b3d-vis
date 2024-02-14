@@ -11,6 +11,8 @@ target_sources(NanoCutter PRIVATE
 	Common.h
 	FitsHelper.cpp
 	NanoGenerator.cpp
+	ClusterProcessor.h
+	BinaryPartitionClusterProcessor.h
 )
 
 target_link_libraries(NanoCutter PRIVATE cfitsio Boost::program_options OpenVDB::openvdb OpenVDB::nanovdb NanoCutterParser)

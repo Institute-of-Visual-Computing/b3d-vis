@@ -103,6 +103,12 @@ struct Box3
 		r.z = std::abs(upper.z - lower.z);
 		return r;
 	}
+
+	[[nodiscard]] inline auto contains(const Vec3<T>& value) const -> bool
+	{
+		return value >= lower && value <= upper;
+	}
+
 	auto operator<=>(const Box3<T>& other) const -> auto = default;
 };
 
@@ -116,6 +122,22 @@ template <typename T>
 	return r;
 }
 
+template <typename T1, typename T2>
+[[nodiscard]] auto operator*(const T2& a, const Vec3<T1>& b) -> std::enable_if_t<std::is_convertible_v<T1,T2>, Vec3<T1>>
+{
+	Vec3<T1> r;
+	r.x = a * b.x;
+	r.y = a* b.y;
+	r.z = a * b.z;
+	return r;
+}
+
+template <typename T1, typename T2>
+[[nodiscard]] auto operator*(const Vec3<T1>& b, const T2& a) -> std::enable_if_t<std::is_convertible_v<T1,T2>, Vec3<T1>>
+{
+	return a*b;
+}
+
 template <typename T>
 [[nodiscard]] auto operator+(const Vec3<T>& a, const Vec3<T>& b) -> Vec3<T>
 {
@@ -123,6 +145,16 @@ template <typename T>
 	r.x = a.x + b.x;
 	r.y = a.y + b.y;
 	r.z = a.z + b.z;
+	return r;
+}
+
+template <typename T>
+[[nodiscard]] auto operator-(const Vec3<T>& a, const Vec3<T>& b) -> Vec3<T>
+{
+	Vec3<T> r;
+	r.x = a.x - b.x;
+	r.y = a.y - b.y;
+	r.z = a.z - b.z;
 	return r;
 }
 
@@ -266,3 +298,5 @@ static auto operator>>(std::istream& in, CuttingStrategy& strategy) -> std::istr
 
 	return in;
 }
+
+using ClusterId = uint64_t;

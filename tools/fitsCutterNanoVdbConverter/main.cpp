@@ -11,7 +11,7 @@
 #include "Common.h"
 #include "FitsHelper.h"
 
-#include <random>
+#include "BinaryPartitionClusterProcessor.h"
 
 
 namespace po = boost::program_options;
@@ -168,15 +168,13 @@ auto main(int argc, char** argv) -> int
 		}
 	}
 
-	const auto fitsFilePath = std::filesystem::path{ "D:/datacubes/testDataSet/n4565.fits" };
-	const auto catalogFilePath = std::filesystem::path{ "D:/datacubes/testDataSet/n4565_catalog.fits" };
-	const auto maskFilePath = std::filesystem::path{ "D:/datacubes/testDataSet/n4565_mask.fits" };
+#if 0
+	// Scale snippet
 	const auto scaleSrc = std::filesystem::path{ "D:/datacubes/n4565_cut/filtered_level_0_224_257_177_id_7.fits" };
 	const auto scaleDst =
 		std::filesystem::path{ "D:/datacubes/n4565_cut/filtered_level_0_224_257_177_id_7_upscale.fits" };
 
-	// Scale snippet
-	/*auto randomEngine = std::default_random_engine{ std::random_device{}() };
+	auto randomEngine = std::default_random_engine{ std::random_device{}() };
 	auto distribution = std::uniform_real_distribution(0.0f, 0.005f);
 
 	upscaleFitsData(scaleSrc.generic_string(), scaleDst.generic_string(), Vec3I{ 8, 8, 8 },
@@ -184,16 +182,44 @@ auto main(int argc, char** argv) -> int
 						return value + std::abs(value) > std::numeric_limits<float>::epsilon() ?
 							distribution(randomEngine) :
 							0.0f;
-					});*/
+					});
+	return 0;
 
-	// return 0;
+#endif
 	const auto map = extractPerClusterBox(cutterConfig.masks.front(), Box3I::maxBox(), Vec3I{});
 
 	auto trees = std::vector<cutterParser::TreeNode>{};
+	constexpr auto bigClusterResolveStrategy = CuttingStrategy::binaryPartition;
+	auto processorClusterResults = std::vector<ProcessorResult>{};
 
-	auto id = 0;
+	switch (bigClusterResolveStrategy)
+	{
+
+	case CuttingStrategy::binaryPartition:
+		{
+			//TODO: select a good default value, optionally pass vie program arguments
+			constexpr auto threshold = 16ull * 16ull * 16ull; // 256ull * 256ull * 256ull;
+
+			auto processor = BinaryPartitionClusterProcessor<Downsampler, threshold>(
+				cutterConfig.src, cutterConfig.masks.front(), cutterConfig.dst);
+
+			for (const auto& [clusterId, clusterBox] : map)
+			{
+				const auto result = processor.process(clusterId, clusterBox);
+				processorClusterResults.push_back(result);
+			}
+		}
+		break;
+	case CuttingStrategy::fitMemoryReq:
+		assert(!"Not Implemented yet!");
+		break;
+	}
+#if 0
 	for (const auto& [clusterId, clusterBox] : map)
 	{
+		const auto parentBox = clusterBox;
+
+
 		const auto mask = extractBinaryClusterMask(cutterConfig.masks.front(), { clusterId }, clusterBox);
 		auto data = extractData(cutterConfig.src, clusterBox);
 
@@ -215,7 +241,10 @@ auto main(int argc, char** argv) -> int
 		const auto generatedNanoVdb = generateNanoVdb(size, maskedValue, 0.0f, filteredData);
 		std::cout << std::format("NanoVdb buffer size: {}bytes", generatedNanoVdb.size()) << std::endl;
 		nanovdb::io::writeGrid(path, generatedNanoVdb,
-						   nanovdb::io::Codec::NONE); // TODO: enable nanovdb::io::Codec::BLOSC
+							   nanovdb::io::Codec::NONE); // TODO: enable nanovdb::io::Codec::BLOSC
+
+
+		totalMemorySize += generatedNanoVdb.size();
 
 		cutterParser::TreeNode node;
 		node.nanoVdbFile = fileName;
@@ -229,7 +258,29 @@ auto main(int argc, char** argv) -> int
 		trees.push_back(node);
 		id++;
 	}
-	cutterParser::store(cutterConfig.dst / "project.b3d", trees);
+#endif
+
+	auto totalMemorySize = 0ull;
+	auto clusters = std::vector<cutterParser::Cluster>{};
+	for(const auto processorResult : processorClusterResults)
+	{
+		clusters.push_back({processorResult.clusterId, processorResult.totalClusterMemorySize, processorResult.clusterNode});
+		totalMemorySize += processorResult.totalClusterMemorySize;
+	}
+
+	const auto sourceBounds = extractBounds(cutterConfig.src);
+	const auto dataSet = cutterParser::B3DDataSet{
+		cutterConfig.src.generic_string(),
+		totalMemorySize,
+		cutterParser::Box{ { static_cast<float>(sourceBounds.lower.x), static_cast<float>(sourceBounds.lower.y),
+							 static_cast<float>(sourceBounds.lower.z) },
+						   { static_cast<float>(sourceBounds.upper.x), static_cast<float>(sourceBounds.upper.y),
+							 static_cast<float>(sourceBounds.upper.z) } },
+		cutterParser::PartitionStrategy::binary,
+		clusters
+	};
+
+	cutterParser::store(cutterConfig.dst / "project.b3d", dataSet);
 
 	return EXIT_SUCCESS;
 }
