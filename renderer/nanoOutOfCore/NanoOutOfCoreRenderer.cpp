@@ -36,6 +36,20 @@ using namespace owl::common;
 
 namespace
 {
+	vec3f spectral_jet(float x)
+	{
+		vec3f c;
+		if (x < 0.25)
+			c = vec3f(0.0, 4.0 * x, 1.0);
+		else if (x < 0.5)
+			c = vec3f(0.0, 1.0, 1.0 + 4.0 * (0.25 - x));
+		else if (x < 0.75)
+			c = vec3f(4.0 * (x - 0.5), 1.0, 0.0);
+		else
+			c = vec3f(1.0, 1.0 + 4.0 * (0.75 - x), 0.0);
+		return clamp(c, vec3f(0.0), vec3f(1.0));
+	}
+
 	struct GuiData
 	{
 		struct BackgroundColorPalette
@@ -66,9 +80,9 @@ namespace
 
 	auto createVolume() -> NanoVdbVolume
 	{
-		// const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
-		const auto testFile =
-			std::filesystem::path{ "D:/datacubes/n4565_cut/filtered_level_0_224_257_177_id_7_upscale.fits.nvdb" };
+		const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
+		// const auto testFile =
+		std::filesystem::path{ "D:/datacubes/n4565_cut/filtered_level_0_224_257_177_id_7_upscale.fits.nvdb" };
 		// const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" };
 		// const auto testFile = std::filesystem::path{ "D:/datacubes/ska/40gb/sky_ldev_v2.nvdb" };
 
@@ -312,10 +326,59 @@ auto NanoRenderer::onRender(const View& view) -> void
 
 
 	{
-		debugDraw().drawBox(trs_.p, nanoVdbVolume->indexBox.size(), owl::vec4f(0.1f, 0.82f, 0.15f, 1.0f), trs_.l);
+		/*debugDraw().drawBox(trs_.p, nanoVdbVolume->indexBox.size(), owl::vec4f(0.1f, 0.82f, 0.15f, 1.0f), trs_.l);
 
 		const auto aabbSize = orientedBoxToBox(nanoVdbVolume->indexBox, trs_.l).size();
-		debugDraw().drawBox(trs_.p, aabbSize, owl::vec4f(0.9f, 0.4f, 0.2f, 0.4f));
+		debugDraw().drawBox(trs_.p, aabbSize, owl::vec4f(0.9f, 0.4f, 0.2f, 0.4f));*/
+	}
+
+
+	if (dataSet_.has_value())
+	{
+		const auto& set = dataSet_.value();
+		const auto box = box3f{ vec3f{ set.setBox.min[0], set.setBox.min[1], set.setBox.min[2] },
+								vec3f{ set.setBox.max[0], set.setBox.max[1], set.setBox.max[2] } };
+
+
+		debugDraw().drawBox(trs_.p, vec3f{ 0.0, 0.0, 0.0 }, box.size(), owl::vec4f(0.1f, 0.82f, 0.15f, 1.0f), trs_.l);
+
+		for (const auto& cluster : set.clusters)
+		{
+
+			struct Node
+			{
+				cutterParser::TreeNode node;
+				int level{};
+			};
+
+			std::stack<Node> p;
+			p.push(Node{ cluster.accelerationStructureRoot, 0 });
+			if (visibleLevelRange[0] <= 0 && 0 <= visibleLevelRange[1])
+			{
+				debugDraw().drawBox(trs_.p, trs_.p, box.size(), owl::vec4f(0.1f, 0.82f, 0.15f, 1.0f), trs_.l);
+			}
+
+			while (!p.empty())
+			{
+				const auto node = p.top();
+				p.pop();
+
+
+				const auto aabbBox =
+					box3f{ vec3f{ node.node.aabb.min[0], node.node.aabb.min[1], node.node.aabb.min[2] } - box.center(),
+						   vec3f{ node.node.aabb.max[0], node.node.aabb.max[1], node.node.aabb.max[2] } -
+							   box.center() };
+				if (visibleLevelRange[0] <= node.level && node.level <= visibleLevelRange[1])
+				{
+					debugDraw().drawBox(trs_.p, aabbBox.center(), aabbBox.size(),
+										owl::vec4f(spectral_jet(node.level / 10.0f), 1.0f), trs_.l);
+				}
+				for (const auto& child : node.node.children)
+				{
+					p.push({ child, node.level + 1 });
+				}
+			}
+		}
 	}
 
 
@@ -385,6 +448,7 @@ auto NanoRenderer::onInitialize() -> void
 {
 	RendererBase::onInitialize();
 	prepareGeometry();
+	dataSet_ = cutterParser::load(std::filesystem::path{ "D:/datacubes/n4565_cut_2/project.b3d" });
 }
 
 auto NanoRenderer::onDeinitialize() -> void
@@ -401,7 +465,7 @@ auto NanoRenderer::onGui() -> void
 	ImGui::SameLine();
 	if (ImGui::Button("Normalize Scaling"))
 	{
-		const auto scale = 1.0f / nanoVdbVolume->indexBox.size();
+		const auto scale = 1.0f / vec3f{ 10.0, 10.0, 10.0 };
 		rendererState_->worldMatTRS *= AffineSpace3f::scale(scale);
 	}
 	ImGui::SeparatorText("Data File (.b3d)");
@@ -421,9 +485,7 @@ auto NanoRenderer::onGui() -> void
 	{
 		if (std::filesystem::exists(b3dFilePath))
 		{
-			const auto t = cutterParser::load(b3dFilePath.generic_string());
-
-			const auto nanoFile = t.clusters.front().accelerationStructureRoot.nanoVdbFile;
+			dataSet_ = cutterParser::load(b3dFilePath.generic_string());
 		}
 		else
 		{
@@ -441,6 +503,8 @@ auto NanoRenderer::onGui() -> void
 	{
 		ImGui::ColorEdit3("Fill Color", guiData.fillColor.data());
 	}
+
+	ImGui::DragIntRange2("Select Visible Level Range", &visibleLevelRange[0], &visibleLevelRange[1], 0.05, 0, 10);
 
 	ImGui::SeparatorText("Timings");
 

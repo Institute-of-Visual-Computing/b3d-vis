@@ -166,7 +166,7 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 
 	auto hdda = nanovdb::HDDA<nanovdb::Ray<float>>(ray, accessor.getDim(ijk, ray));
 
-	const auto opacity = 0.6f; // 0.01f;//1.0.f;
+	const auto opacity = 10.0f; // 0.01f;//1.0.f;
 	auto transmittance = 1.0f;
 	auto t = 0.0f;
 	auto density = accessor.getValue(ijk) * opacity;

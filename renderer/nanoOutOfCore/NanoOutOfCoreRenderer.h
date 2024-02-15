@@ -7,6 +7,7 @@
 #include <CudaGpuTimers.h>
 
 
+#include "NanoCutterParser.h"
 #include "OpenFileDialog.h"
 
 
@@ -51,5 +52,8 @@ namespace b3d::renderer::nano
 		CudaGpuTimers<100, 4> gpuTimers_{};
 
 		OpenFileDialog openFileDialog_{ SelectMode::singleFile, {".b3d"}};
+
+		std::optional<cutterParser::B3DDataSet> dataSet_{std::nullopt};
+		std::array<int, 2> visibleLevelRange{0, 10};
 	};
 } // namespace b3d::renderer::nano
