@@ -313,10 +313,10 @@ auto NanoRenderer::onRender(const View& view) -> void
 
 
 	{
-		debugDraw().drawBox(trs_.p, nanoVdbVolume->indexBox.size(), owl::vec4f(0.1f, 0.82f, 0.15f, 1.0f), trs_.l);
+		debugDraw().drawBox(trs_.p, trs_.p, nanoVdbVolume->indexBox.size(), owl::vec4f(0.1f, 0.82f, 0.15f, 1.0f), trs_.l);
 
 		const auto aabbSize = orientedBoxToBox(nanoVdbVolume->indexBox, trs_.l).size();
-		debugDraw().drawBox(trs_.p, aabbSize, owl::vec4f(0.9f, 0.4f, 0.2f, 0.4f));
+		debugDraw().drawBox(trs_.p,trs_.p, aabbSize, owl::vec4f(0.9f, 0.4f, 0.2f, 0.4f));
 	}
 
 

@@ -15,7 +15,7 @@ private:
 public:
 	// void drawSphere(const glm::vec3& midPoint, float radius, glm::vec4 color = glm::vec4{1.0f,1.0f,1.0f,1.0f});
 	// void drawLine(const glm::vec3& p0, const glm::vec3& p1, glm::vec4 color = glm::vec4{1.0f,1.0f,1.0f,1.0f});
-	auto drawBox(const owl::vec3f& midPoint, const owl::vec3f& extent, owl::vec4f color,
+	auto drawBox(const owl::vec3f& origin, const owl::vec3f& midPoint, const owl::vec3f& extent, owl::vec4f color,
 				 const owl::LinearSpace3f& orientation) -> void override;
 
 private:
