@@ -1,6 +1,7 @@
 #include "App.h"
 
 #include "CudaSurfaceObjectWriteTestRenderer.h"
+#include "NanoOutOfCoreRenderer.h"
 #include "NanoRenderer.h"
 #include "NanoViewer.h"
 #include "NullRenderer.h"
@@ -101,6 +102,7 @@ auto Application::initialization(const std::vector<Param>& params) -> void
 {
 	registerRenderer<NullRenderer>("nullRenderer");
 	registerRenderer<NanoRenderer>("NanoRenderer");
+	registerRenderer<nano::NanoRenderer>("NanoOutOfCoreRenderer");
 	registerRenderer<SimpleTrianglesRenderer>("SimpleTrianglesRenderer");
 	registerRenderer<CudaSurfaceObjectWriteTestRenderer>("CudaSurfaceObjectWriteTestRenderer");
 	registerRenderer<FastVoxelTraversalRenderer>("FastVoxelTraversalRenderer");
