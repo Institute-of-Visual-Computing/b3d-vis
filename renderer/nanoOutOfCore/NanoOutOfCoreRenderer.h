@@ -7,6 +7,9 @@
 #include <CudaGpuTimers.h>
 
 
+#include "OpenFileDialog.h"
+
+
 namespace b3d::renderer::nano
 {
 	struct NanoNativeRenderingData : b3d::renderer::RendererState
@@ -46,5 +49,7 @@ namespace b3d::renderer::nano
 		nanovdb::Map currentMap_{};
 
 		CudaGpuTimers<100, 4> gpuTimers_{};
+
+		OpenFileDialog openFileDialog_{ SelectMode::singleFile, {".b3d"}};
 	};
 } // namespace b3d::renderer::nano

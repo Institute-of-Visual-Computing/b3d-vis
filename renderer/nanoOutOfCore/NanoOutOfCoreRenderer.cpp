@@ -180,8 +180,6 @@ namespace
 
 		return newBox;
 	}
-
-	std::filesystem::path b3dFilePath{};
 } // namespace
 
 
@@ -193,7 +191,8 @@ auto NanoRenderer::prepareGeometry() -> void
 
 	const auto module = owlModuleCreate(context, NanoOutOfCoreRenderer_ptx);
 
-	const auto optixirModule = owlModuleCreateFromIR(context, NanoOutOfCoreRenderer_optixir, NanoOutOfCoreRenderer_optixir_length);
+	const auto optixirModule =
+		owlModuleCreateFromIR(context, NanoOutOfCoreRenderer_optixir, NanoOutOfCoreRenderer_optixir_length);
 
 	[[maybe_unused]] const auto volumeGeometryVars =
 		std::array{ OWLVarDecl{ "indexBox", OWL_FLOAT3, OWL_OFFSETOF(NanoVdbVolume, indexBox) },
@@ -406,12 +405,16 @@ auto NanoRenderer::onGui() -> void
 		rendererState_->worldMatTRS *= AffineSpace3f::scale(scale);
 	}
 	ImGui::SeparatorText("Data File (.b3d)");
+
+	const auto b3dFilePath = openFileDialog_.getSelectedItems().empty() ? std::filesystem::path{} :
+																		  openFileDialog_.getSelectedItems().front();
+
 	ImGui::InputText("##source", const_cast<char*>(b3dFilePath.string().c_str()), b3dFilePath.string().size(),
 					 ImGuiInputTextFlags_ReadOnly);
 	ImGui::SameLine();
 	if (ImGui::Button("Select"))
 	{
-		ImGui::OpenPopup("FileSelectDialog");
+		openFileDialog_.open();
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Load"))
@@ -464,75 +467,8 @@ auto NanoRenderer::onGui() -> void
 
 	debugInfo_.gizmoHelper->drawGizmo(rendererState_->worldMatTRS);
 
-	static auto currentPath = std::filesystem::current_path();
-	static auto selectedPath = std::filesystem::path{};
+	openFileDialog_.gui();
 
-	const auto center = ImGui::GetMainViewport()->GetCenter();
-	ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-
-	if (ImGui::BeginPopupModal("FileSelectDialog", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-	{
-		constexpr auto roots = std::array{ "A:/", "B:/", "C:/", "D:/", "E:/", "F:/", "G:/", "H:/", "I:/" };
-
-		for (auto i = 0; i < roots.size(); i++)
-		{
-			const auto root = std::filesystem::path{ roots[i] };
-			if (is_directory(root))
-			{
-				ImGui::SameLine();
-				if (ImGui::Button(roots[i]))
-				{
-					currentPath = root;
-				}
-			}
-		}
-		if (ImGui::BeginListBox("##dirs", ImVec2(ImGui::GetFontSize() * 40, ImGui::GetFontSize() * 16)))
-		{
-			if (ImGui::Selectable("...", false))
-			{
-				currentPath = currentPath.parent_path();
-			}
-			auto i = 0;
-			for (auto& dir : std::filesystem::directory_iterator{ currentPath })
-			{
-				i++;
-				const auto path = dir.path();
-				if (is_directory(path))
-				{
-					if (ImGui::Selectable(dir.path().string().c_str(), false))
-					{
-						currentPath = path;
-					}
-				}
-				if (path.has_extension() && path.extension() == ".b3d")
-				{
-					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.1f, 0.9f, 0.1f, 1.0f));
-					if (ImGui::Selectable(dir.path().string().c_str(), dir.path() == selectedPath))
-					{
-						selectedPath = dir.path();
-					}
-					ImGui::PopStyleColor();
-				}
-			}
-			ImGui::EndListBox();
-		}
-		if (ImGui::Button("OK", ImVec2(120, 0)))
-		{
-			if (!selectedPath.empty() != 0)
-			{
-				b3dFilePath = selectedPath;
-			}
-			ImGui::CloseCurrentPopup();
-		}
-		ImGui::SetItemDefaultFocus();
-		ImGui::SameLine();
-		if (ImGui::Button("Cancel", ImVec2(120, 0)))
-		{
-			selectedPath.clear();
-			ImGui::CloseCurrentPopup();
-		}
-		ImGui::EndPopup();
-	}
 
 	ImGui::End();
 }
