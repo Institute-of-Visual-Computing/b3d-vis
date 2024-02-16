@@ -13,11 +13,6 @@
 
 namespace b3d::renderer::nano
 {
-	struct NanoNativeRenderingData : b3d::renderer::RendererState
-	{
-		b3d::renderer::VolumeTransform volumeTransform;
-	};
-
 	struct NanoContext
 	{
 		OWLContext context;
@@ -32,11 +27,11 @@ namespace b3d::renderer::nano
 	public:
 		NanoRenderer()
 		{
-			rendererState_ = std::make_unique<nano::NanoNativeRenderingData>();
+			
 		}
 
 	protected:
-		auto onRender(const View& view) -> void override;
+		auto onRender() -> void override;
 		auto onInitialize() -> void override;
 		auto onDeinitialize() -> void override;
 		auto onGui() -> void override;

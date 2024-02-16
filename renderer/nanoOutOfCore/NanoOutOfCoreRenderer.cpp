@@ -290,24 +290,28 @@ auto NanoRenderer::prepareGeometry() -> void
 	owlBuildSBT(context);
 }
 
-auto NanoRenderer::onRender(const View& view) -> void
+auto NanoRenderer::onRender() -> void
 {
 	gpuTimers_.nextFrame();
 
+	const auto synchronization = renderData_->get<Synchronization>("synchronization");
+	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
+
 	auto waitParams = cudaExternalSemaphoreWaitParams{};
 	waitParams.flags = 0;
-	waitParams.params.fence.value = view.fenceValue;
-	cudaWaitExternalSemaphoresAsync(&initializationInfo_.signalSemaphore, &waitParams, 1);
+	waitParams.params.fence.value = synchronization->fenceValue;
+	cudaWaitExternalSemaphoresAsync(&synchronization->signalSemaphore, &waitParams, 1);
 
 	std::array<cudaArray_t, 2> cudaArrays{};
 	std::array<cudaSurfaceObject_t, 2> cudaSurfaceObjects{};
 
+	const auto renderTargets = renderData_->get<RenderTargets>("renderTargets");
 	{
-		OWL_CUDA_CHECK(cudaGraphicsMapResources(1, const_cast<cudaGraphicsResource_t*>(&view.colorRt.target)));
+		OWL_CUDA_CHECK(cudaGraphicsMapResources(1, const_cast<cudaGraphicsResource_t*>(&renderTargets->colorRt.target)));
 
-		for (auto i = 0; i < view.colorRt.extent.depth; i++)
+		for (auto i = 0; i < renderTargets->colorRt.extent.depth; i++)
 		{
-			OWL_CUDA_CHECK(cudaGraphicsSubResourceGetMappedArray(&cudaArrays[i], view.colorRt.target, i, 0));
+			OWL_CUDA_CHECK(cudaGraphicsSubResourceGetMappedArray(&cudaArrays[i], renderTargets->colorRt.target, i, 0));
 
 			auto resDesc = cudaResourceDesc{};
 			resDesc.resType = cudaResourceTypeArray;
@@ -316,7 +320,7 @@ auto NanoRenderer::onRender(const View& view) -> void
 			OWL_CUDA_CHECK(cudaCreateSurfaceObject(&cudaSurfaceObjects[i], &resDesc))
 		}
 	}
-	trs_ = rendererState_->worldMatTRS;
+	trs_ = volumeTransform->worldMatTRS;
 
 
 	const auto volumeTranslate = AffineSpace3f::translate(-nanoVdbVolume->indexBox.size() * 0.5f);
@@ -390,20 +394,24 @@ auto NanoRenderer::onRender(const View& view) -> void
 							guiData.rtBackgroundColorPalette.color2[2] });
 
 
-	const auto fbSize =
-		owl2i{ static_cast<int32_t>(view.colorRt.extent.width), static_cast<int32_t>(view.colorRt.extent.height) };
+	const auto fbSize = owl2i{ static_cast<int32_t>(renderTargets->colorRt.extent.width),
+							   static_cast<int32_t>(renderTargets->colorRt.extent.height) };
 	owlRayGenSet2i(nanoContext_.rayGen, "frameBufferSize", fbSize);
 
 	owlBuildSBT(nanoContext_.context);
 
 	auto rcd = RayCameraData{};
-	if (view.cameras[0].directionsAvailable)
+
+	
+	const auto view = renderData_->get<View>("view");
+
+	if (view->cameras[0].directionsAvailable)
 	{
-		rcd = { view.cameras[0].origin, view.cameras[0].dir00, view.cameras[0].dirDu, view.cameras[0].dirDv };
+		rcd = { view->cameras[0].origin, view->cameras[0].dir00, view->cameras[0].dirDu, view->cameras[0].dirDv };
 	}
 	else
 	{
-		rcd = createRayCameraData(view.cameras[0], view.colorRt.extent);
+		rcd = createRayCameraData(view->cameras[0], renderTargets->colorRt.extent);
 	}
 
 	owlParamsSetRaw(nanoContext_.launchParams, "cameraData", &rcd);
@@ -426,22 +434,23 @@ auto NanoRenderer::onRender(const View& view) -> void
 
 	record.start();
 
-	owlAsyncLaunch2D(nanoContext_.rayGen, view.colorRt.extent.width, view.colorRt.extent.height,
+	owlAsyncLaunch2D(nanoContext_.rayGen, renderTargets->colorRt.extent.width, renderTargets->colorRt.extent.height,
 					 nanoContext_.launchParams);
 	record.stop();
 
 	{
-		for (auto i = 0; i < view.colorRt.extent.depth; i++)
+		for (auto i = 0; i < renderTargets->colorRt.extent.depth; i++)
 		{
 			OWL_CUDA_CHECK(cudaDestroySurfaceObject(cudaSurfaceObjects[i]));
 		}
-		OWL_CUDA_CHECK(cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&view.colorRt.target)));
+		OWL_CUDA_CHECK(
+			cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&renderTargets->colorRt.target)));
 	}
 
 	auto signalParams = cudaExternalSemaphoreSignalParams{};
 	signalParams.flags = 0;
-	signalParams.params.fence.value = view.fenceValue;
-	cudaSignalExternalSemaphoresAsync(&initializationInfo_.waitSemaphore, &signalParams, 1);
+	signalParams.params.fence.value = synchronization->fenceValue;
+	cudaSignalExternalSemaphoresAsync(&synchronization->waitSemaphore, &signalParams, 1);
 }
 
 auto NanoRenderer::onInitialize() -> void
@@ -457,16 +466,18 @@ auto NanoRenderer::onDeinitialize() -> void
 
 auto NanoRenderer::onGui() -> void
 {
+
+	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
 	ImGui::Begin("RT Settings");
 	if (ImGui::Button("Reset Model Transform"))
 	{
-		rendererState_->worldMatTRS = AffineSpace3f{};
+		volumeTransform->worldMatTRS = AffineSpace3f{};
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Normalize Scaling"))
 	{
 		const auto scale = 1.0f / vec3f{ 10.0, 10.0, 10.0 };
-		rendererState_->worldMatTRS *= AffineSpace3f::scale(scale);
+		volumeTransform->worldMatTRS *= AffineSpace3f::scale(scale);
 	}
 	ImGui::SeparatorText("Data File (.b3d)");
 
@@ -529,7 +540,7 @@ auto NanoRenderer::onGui() -> void
 
 	ImGui::Text("%1.3f", timing);
 
-	debugInfo_.gizmoHelper->drawGizmo(rendererState_->worldMatTRS);
+	debugInfo_.gizmoHelper->drawGizmo(volumeTransform->worldMatTRS);
 
 	openFileDialog_.gui();
 
