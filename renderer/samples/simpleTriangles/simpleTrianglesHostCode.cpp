@@ -107,26 +107,30 @@ namespace
 
 } // namespace
 
-auto SimpleTrianglesRenderer::onRender(const View& view) -> void
+auto SimpleTrianglesRenderer::onRender() -> void
 {
-	const auto simpleTriangleRendererState = static_cast<SimpleTriangleRendererState*>(rendererState_.get());
+
+	const auto synchronization = renderData_->get<Synchronization>("synchronization");
 
 	auto waitParams = cudaExternalSemaphoreWaitParams{};
 	waitParams.flags = 0;
-	waitParams.params.fence.value = view.fenceValue;
-	cudaWaitExternalSemaphoresAsync(&initializationInfo_.signalSemaphore, &waitParams, 1);
+	waitParams.params.fence.value = synchronization->fenceValue;
+	cudaWaitExternalSemaphoresAsync(&synchronization->signalSemaphore, &waitParams, 1);
 
 	// map/create/set surface
 	std::array<cudaArray_t, 2> cudaArrays{};
 	std::array<cudaSurfaceObject_t, 2> cudaSurfaceObjects{};
 
+	
+	const auto renderTargets = renderData_->get<RenderTargets>("renderTargets");
+
 	auto cudaRet = cudaSuccess;
 	// Map and createSurface
 	{
-		cudaRet = cudaGraphicsMapResources(1, const_cast<cudaGraphicsResource_t*>(&view.colorRt.target));
-		for (auto i = 0; i < view.colorRt.extent.depth; i++)
+		cudaRet = cudaGraphicsMapResources(1, const_cast<cudaGraphicsResource_t*>(&renderTargets->colorRt.target));
+		for (auto i = 0; i < renderTargets->colorRt.extent.depth; i++)
 		{
-			cudaRet = cudaGraphicsSubResourceGetMappedArray(&cudaArrays[i], view.colorRt.target, i, 0);
+			cudaRet = cudaGraphicsSubResourceGetMappedArray(&cudaArrays[i], renderTargets->colorRt.target, i, 0);
 
 			cudaResourceDesc resDesc{};
 			resDesc.resType = cudaResourceTypeArray;
@@ -135,9 +139,10 @@ auto SimpleTrianglesRenderer::onRender(const View& view) -> void
 		}
 	}
 
-	if (fbSize_.x != view.colorRt.extent.width || fbSize_.y != view.colorRt.extent.height)
+	if (fbSize_.x != renderTargets->colorRt.extent.width || fbSize_.y != renderTargets->colorRt.extent.height)
 	{
-		fbSize_ = { static_cast<int32_t>(view.colorRt.extent.width), static_cast<int32_t>(view.colorRt.extent.height) };
+		fbSize_ = { static_cast<int32_t>(renderTargets->colorRt.extent.width),
+					static_cast<int32_t>(renderTargets->colorRt.extent.height) };
 		owlRayGenSet2i(rayGen_, "fbSize", fbSize_);
 		sbtDirty = true;
 	}
@@ -150,7 +155,8 @@ auto SimpleTrianglesRenderer::onRender(const View& view) -> void
 
 	// Instance transform
 	{
-		owlInstanceGroupSetTransform(world_, 0, (const float*)&rendererState_->worldMatTRS);
+		const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
+		owlInstanceGroupSetTransform(world_, 0, (const float*)&volumeTransform->worldMatTRS);
 		owlGroupRefitAccel(world_);
 	}
 
@@ -171,53 +177,55 @@ auto SimpleTrianglesRenderer::onRender(const View& view) -> void
 				   { guiData.rtBackgroundColorPalette.color2[0], guiData.rtBackgroundColorPalette.color2[1],
 					 guiData.rtBackgroundColorPalette.color2[2], guiData.rtBackgroundColorPalette.color2[3] });
 
-
+	const auto view = renderData_->get<View>("view");
 	{
 		RayCameraData rcd;
-		if (view.cameras[0].directionsAvailable)
+		if (view->cameras[0].directionsAvailable)
 		{
-			rcd = { view.cameras[0].origin, view.cameras[0].dir00, view.cameras[0].dirDu, view.cameras[0].dirDv };
+			rcd = { view->cameras[0].origin, view->cameras[0].dir00, view->cameras[0].dirDu, view->cameras[0].dirDv };
 		}
 		else
 		{
-			rcd = createRayCameraData(view.cameras[0], view.colorRt.extent);
+			rcd = createRayCameraData(view->cameras[0], renderTargets->colorRt.extent);
 		}
 
 		owlParamsSetRaw(launchParameters_, "cameraData", &rcd);
 		owlParamsSetRaw(launchParameters_, "surfacePointer", &cudaSurfaceObjects[0]);
 
-		owlAsyncLaunch2D(rayGen_, view.colorRt.extent.width, view.colorRt.extent.height, launchParameters_);
+		owlAsyncLaunch2D(rayGen_, renderTargets->colorRt.extent.width, renderTargets->colorRt.extent.height,
+						 launchParameters_);
 	}
 
-	if (view.mode == RenderMode::stereo && view.colorRt.extent.depth > 1)
+	if (view->mode == RenderMode::stereo && renderTargets->colorRt.extent.depth > 1)
 	{
 		RayCameraData rcd;
-		if (view.cameras[1].directionsAvailable)
+		if (view->cameras[1].directionsAvailable)
 		{
-			rcd = { view.cameras[1].origin, view.cameras[1].dir00, view.cameras[1].dirDu, view.cameras[1].dirDv };
+			rcd = { view->cameras[1].origin, view->cameras[1].dir00, view->cameras[1].dirDu, view->cameras[1].dirDv };
 		}
 		else
 		{
-			rcd = createRayCameraData(view.cameras[1], view.colorRt.extent);
+			rcd = createRayCameraData(view->cameras[1], renderTargets->colorRt.extent);
 		}
 		owlParamsSetRaw(launchParameters_, "cameraData", &rcd);
 		owlParamsSetRaw(launchParameters_, "surfacePointer", &cudaSurfaceObjects[1]);
-		owlAsyncLaunch2D(rayGen_, view.colorRt.extent.width, view.colorRt.extent.height, launchParameters_);
+		owlAsyncLaunch2D(rayGen_, renderTargets->colorRt.extent.width, renderTargets->colorRt.extent.height,
+						 launchParameters_);
 	}
 
 
 	{
-		for (auto i = 0; i < view.colorRt.extent.depth; i++)
+		for (auto i = 0; i < renderTargets->colorRt.extent.depth; i++)
 		{
 			cudaRet = cudaDestroySurfaceObject(cudaSurfaceObjects[i]);
 		}
-		cudaRet = cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&view.colorRt.target));
+		cudaRet = cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&renderTargets->colorRt.target));
 	}
 
 	auto signalParams = cudaExternalSemaphoreSignalParams{};
 	signalParams.flags = 0;
-	signalParams.params.fence.value = view.fenceValue;
-	cudaRet = cudaSignalExternalSemaphoresAsync(&initializationInfo_.waitSemaphore, &signalParams, 1);
+	signalParams.params.fence.value = synchronization->fenceValue;
+	cudaSignalExternalSemaphoresAsync(&synchronization->waitSemaphore, &signalParams, 1);
 }
 
 auto SimpleTrianglesRenderer::onInitialize() -> void
@@ -361,7 +369,9 @@ auto SimpleTrianglesRenderer::onInitialize() -> void
 
 auto SimpleTrianglesRenderer::onGui() -> void
 {
-	auto simpleTriangleRendererState = static_cast<SimpleTriangleRendererState*>(rendererState_.get());
+
+	
+	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
 
 	ImGui::Begin("RT Settings");
 
@@ -399,7 +409,7 @@ auto SimpleTrianglesRenderer::onGui() -> void
 	ImGui::SeparatorText("Background Color Palette");
 	ImGui::ColorEdit3("Color 1", guiData.rtBackgroundColorPalette.color1.data());
 	ImGui::ColorEdit3("Color 2", guiData.rtBackgroundColorPalette.color2.data());
-	debugInfo_.gizmoHelper->drawGizmo(rendererState_->worldMatTRS);
+	debugInfo_.gizmoHelper->drawGizmo(volumeTransform->worldMatTRS);
 
 	
 	colorInfo.selectedColorMap = colorMap_.firstColorMapYTextureCoordinate +

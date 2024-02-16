@@ -9,7 +9,6 @@ namespace b3d::renderer
 
 	struct FastVoxelTraversalNativeRenderingData : RendererState
 	{
-		float transferOffset{ 0.5f };
 	};
 
 	class FastVoxelTraversalRenderer final : public RendererBase
@@ -18,11 +17,10 @@ namespace b3d::renderer
 	public:
 		FastVoxelTraversalRenderer()
 		{
-			rendererState_ = std::make_unique<FastVoxelTraversalNativeRenderingData>();
 		}
 
 	protected:
-		auto onRender(const View& view) -> void override;
+		auto onRender() -> void override;
 		auto onInitialize() -> void override;
 		auto onDeinitialize() -> void override;
 		auto onGui() -> void override;

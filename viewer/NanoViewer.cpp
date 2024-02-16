@@ -333,16 +333,19 @@ auto NanoViewer::render() -> void
 											.cosFoV = camera.getCosFovy(),
 											.FoV = glm::radians(camera.fovyInDegrees) };
 
-	const auto view = b3d::renderer::View{
+	renderingData_.data.view = b3d::renderer::View{
 		.cameras = { cam, cam },
 		.mode = b3d::renderer::RenderMode::mono,
+	};
+
+	renderingData_.data.renderTargets = b3d::renderer::RenderTargets{
 		.colorRt = { cuDisplayTexture, { static_cast<uint32_t>(fbSize.x), static_cast<uint32_t>(fbSize.y), 1 } },
 		.minMaxRt = { cuDisplayTexture, { static_cast<uint32_t>(fbSize.x), static_cast<uint32_t>(fbSize.y), 1 } },
 	};
 
 	GL_CALL(glSignalSemaphoreEXT(synchronizationResources_.glSignalSemaphore, 0, nullptr, 0, nullptr, &layout));
 
-	currentRenderer_->render(view);
+	currentRenderer_->render();
 
 	// NOTE: this function call return error, when the semaphore wasn't used before (or it could be in the wrong initial
 	// state)
@@ -370,13 +373,14 @@ auto NanoViewer::onFrameBegin() -> void
 NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, const int initWindowHeight,
 					   bool enableVsync, const int rendererIndex)
 	: owl::viewer::OWLViewer(title, owl::vec2i(initWindowWidth, initWindowHeight), true, enableVsync), resources_{},
-	  synchronizationResources_{}
+	  renderingData_{},synchronizationResources_{}
 {
 	nvmlInit();
 
 
 	{
-		const auto error = nvmlDeviceGetHandleByIndex(rendererInfo_.deviceIndex, &nvmlDevice_);
+		const auto error =
+			nvmlDeviceGetHandleByIndex(renderingData_.data.rendererInitializationInfo.deviceIndex, &nvmlDevice_);
 		assert(error == NVML_SUCCESS);
 	}
 
@@ -471,8 +475,8 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 		}
 
 		vulkanContext_.physicalDevice = devices[index];
-		rendererInfo_.deviceUuid = uuid;
-		rendererInfo_.deviceIndex = index;
+		renderingData_.data.rendererInitializationInfo.deviceUuid = uuid;
+		renderingData_.data.rendererInitializationInfo.deviceIndex = index;
 
 		debugDrawList_ = std::make_unique<DebugDrawList>();
 		gizmoHelper_ = std::make_unique<GizmoHelper>();
@@ -545,12 +549,14 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 	externalSemaphoreHandleDesc.flags = 0;
 	{
 		externalSemaphoreHandleDesc.handle.win32.handle = synchronizationResources_.waitSemaphoreHandle;
-		const auto error = cudaImportExternalSemaphore(&rendererInfo_.waitSemaphore, &externalSemaphoreHandleDesc);
+		const auto error = cudaImportExternalSemaphore(&renderingData_.data.synchronization.waitSemaphore,
+													   &externalSemaphoreHandleDesc);
 		assert(error == cudaError::cudaSuccess);
 	}
 	{
 		externalSemaphoreHandleDesc.handle.win32.handle = synchronizationResources_.signalSemaphoreHandle;
-		const auto result = cudaImportExternalSemaphore(&rendererInfo_.signalSemaphore, &externalSemaphoreHandleDesc);
+		const auto result = cudaImportExternalSemaphore(&renderingData_.data.synchronization.signalSemaphore,
+														&externalSemaphoreHandleDesc);
 		assert(result == cudaError::cudaSuccess);
 	}
 
@@ -778,5 +784,6 @@ auto NanoViewer::selectRenderer(const std::uint32_t index) -> void
 
 	const auto debugInfo = b3d::renderer::DebugInitializationInfo{ debugDrawList_, gizmoHelper_ };
 
-	currentRenderer_->initialize(rendererInfo_, debugInfo);
+	currentRenderer_->initialize(&renderingData_.buffer, debugInfo);
+	
 }

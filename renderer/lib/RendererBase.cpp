@@ -5,10 +5,10 @@ using namespace b3d::renderer;
 
 std::vector<RendererRegistryEntry> b3d::renderer::registry;
 
-auto RendererBase::initialize(const RendererInitializationInfo& initializationInfo, const DebugInitializationInfo& debugInitializationInfo) -> void
+auto RendererBase::initialize(RenderingDataBuffer* renderData,
+							  const DebugInitializationInfo& debugInitializationInfo) -> void
 {
-	assert(rendererState_.get());
-	initializationInfo_ = initializationInfo;
+	renderData_ = renderData;
 	debugInfo_ = debugInitializationInfo;
 	onInitialize();
 }
@@ -23,8 +23,8 @@ auto RendererBase::gui() -> void
 	onGui();
 }
 
-auto RendererBase::render(const View& view) -> void
+auto RendererBase::render() -> void
 {
-	onRender(view);
+	onRender();
 }
 

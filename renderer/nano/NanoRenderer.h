@@ -6,7 +6,7 @@
 
 #include <CudaGpuTimers.h>
 
-struct NanoNativeRenderingData : b3d::renderer::RendererState
+struct NanoRenderingState : b3d::renderer::RendererState
 {
 	b3d::renderer::VolumeTransform volumeTransform;
 };
@@ -27,10 +27,9 @@ namespace b3d::renderer
 	public:
 		NanoRenderer()
 		{
-			rendererState_ = std::make_unique<NanoNativeRenderingData>();
 		}
 	protected:
-		auto onRender(const View& view) -> void override;
+		auto onRender() -> void override;
 		auto onInitialize() -> void override;
 		auto onDeinitialize() -> void override;
 		auto onGui() -> void override;

@@ -14,7 +14,6 @@
 #include "Logging.h"
 #include "SourceVolumeLoader.h"
 
-#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 using namespace b3d::renderer;
@@ -197,24 +196,28 @@ void FastVoxelTraversalRenderer::onInitialize()
 	owlBuildSBT(context_);
 }
 
-auto FastVoxelTraversalRenderer::onRender(const View& view) -> void
+auto FastVoxelTraversalRenderer::onRender() -> void
 {
+	const auto synchronization = renderData_->get<Synchronization>("synchronization");
+
 	auto waitParams = cudaExternalSemaphoreWaitParams{};
 	waitParams.flags = 0;
-	waitParams.params.fence.value = view.fenceValue;
-	cudaWaitExternalSemaphoresAsync(&initializationInfo_.signalSemaphore, &waitParams, 1);
+	waitParams.params.fence.value = synchronization->fenceValue;
+	cudaWaitExternalSemaphoresAsync(&synchronization->signalSemaphore, &waitParams, 1);
 
 	// map/create/set surface
 	std::array<cudaArray_t, 2> cudaArrays{};
 	std::array<cudaSurfaceObject_t, 2> cudaSurfaceObjects{};
 
+	const auto renderTargets = renderData_->get<RenderTargets>("renderTargets");
+
 	auto cudaRet = cudaSuccess;
 	// Map and createSurface
 	{
-		cudaRet = cudaGraphicsMapResources(1, const_cast<cudaGraphicsResource_t*>(&view.colorRt.target));
-		for (auto i = 0; i < view.colorRt.extent.depth; i++)
+		cudaRet = cudaGraphicsMapResources(1, const_cast<cudaGraphicsResource_t*>(&renderTargets->colorRt.target));
+		for (auto i = 0; i < renderTargets->colorRt.extent.depth; i++)
 		{
-			cudaRet = cudaGraphicsSubResourceGetMappedArray(&cudaArrays[i], view.colorRt.target, i, 0);
+			cudaRet = cudaGraphicsSubResourceGetMappedArray(&cudaArrays[i], renderTargets->colorRt.target, i, 0);
 
 			cudaResourceDesc resDesc{};
 			resDesc.resType = cudaResourceTypeArray;
@@ -223,12 +226,15 @@ auto FastVoxelTraversalRenderer::onRender(const View& view) -> void
 		}
 	}
 
+	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
+	const auto transferOffset = renderData_->get<float>("transferOffset");
 
-	const auto currRenderState = static_cast<FastVoxelTraversalNativeRenderingData*>(rendererState_.get());
+	const auto view = renderData_->get<View>("view");
 
-	if (fbSize_.x != view.colorRt.extent.width || fbSize_.y != view.colorRt.extent.height)
+	if (fbSize_.x != renderTargets->colorRt.extent.width || fbSize_.y != renderTargets->colorRt.extent.height)
 	{
-		fbSize_ = { static_cast<int32_t>(view.colorRt.extent.width), static_cast<int32_t>(view.colorRt.extent.height) };
+		fbSize_ = { static_cast<int32_t>(renderTargets->colorRt.extent.width),
+					static_cast<int32_t>(renderTargets->colorRt.extent.height) };
 		owlRayGenSet2i(rayGen_, "fbSize", fbSize_);
 		sbtDirty = true;
 	}
@@ -240,42 +246,43 @@ auto FastVoxelTraversalRenderer::onRender(const View& view) -> void
 	}
 
 
-	owlInstanceGroupSetTransform(world_, 0, (const float*)&rendererState_->worldMatTRS);
+	owlInstanceGroupSetTransform(world_, 0, (const float*)&volumeTransform->worldMatTRS);
 	owlGroupRefitAccel(world_);
 
 	// Set Launch Params for this run. 
 	{
 		RayCameraData rcd;
-		if (view.cameras[0].directionsAvailable)
+		if (view->cameras[0].directionsAvailable)
 		{
-			rcd = { view.cameras[0].origin, view.cameras[0].dir00, view.cameras[0].dirDu, view.cameras[0].dirDv };
+			rcd = { view->cameras[0].origin, view->cameras[0].dir00, view->cameras[0].dirDu, view->cameras[0].dirDv };
 		}
 		else
 		{
-			rcd = createRayCameraData(view.cameras[0], view.colorRt.extent);
+			rcd = createRayCameraData(view->cameras[0], renderTargets->colorRt.extent);
 		}
 
 		owlParamsSetRaw(launchParameters_, "cameraData", &rcd);
 		owlParamsSetRaw(launchParameters_, "surfacePointer", &cudaSurfaceObjects[0]);
-		owlParamsSet1f(launchParameters_, "transferOffset", currRenderState->transferOffset);
+		owlParamsSet1f(launchParameters_, "transferOffset", *transferOffset);
 	}
 	
-	owlAsyncLaunch2D(rayGen_, view.colorRt.extent.width, view.colorRt.extent.height, launchParameters_);
+	owlAsyncLaunch2D(rayGen_, renderTargets->colorRt.extent.width, renderTargets->colorRt.extent.height,
+					 launchParameters_);
 
 
 	// Destroy and unmap surface
 	{
-		for (auto i = 0; i < view.colorRt.extent.depth; i++)
+		for (auto i = 0; i < renderTargets->colorRt.extent.depth; i++)
 		{
 			cudaRet = cudaDestroySurfaceObject(cudaSurfaceObjects[i]);
 		}
-		cudaRet = cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&view.colorRt.target));
+		cudaRet = cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&renderTargets->colorRt.target));
 	}
 
 	auto signalParams = cudaExternalSemaphoreSignalParams{};
 	signalParams.flags = 0;
-	signalParams.params.fence.value = view.fenceValue;
-	cudaSignalExternalSemaphoresAsync(&initializationInfo_.waitSemaphore, &signalParams, 1);
+	signalParams.params.fence.value = synchronization->fenceValue;
+	cudaSignalExternalSemaphoresAsync(&synchronization->waitSemaphore, &signalParams, 1);
 }
 
 void FastVoxelTraversalRenderer::onDeinitialize()
@@ -285,14 +292,16 @@ void FastVoxelTraversalRenderer::onDeinitialize()
 
 void FastVoxelTraversalRenderer::onGui()
 {
+
+	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
+	const auto transferOffset = renderData_->get<float>("transferOffset");
+
 	ImGui::Begin("RT Settings");
 	ImGui::SeparatorText("Transfer Offset");
 
-	auto currRenderState = static_cast<FastVoxelTraversalNativeRenderingData*>(rendererState_.get());
+	ImGui::DragFloat("Transfer Offset", transferOffset, 0.001f, 0.0f, 1.0f);
 
-	ImGui::DragFloat("Transfer Offset", &currRenderState->transferOffset, 0.001f, 0.0f, 1.0f);
-
-	debugInfo_.gizmoHelper->drawGizmo(rendererState_->worldMatTRS);
+	debugInfo_.gizmoHelper->drawGizmo(volumeTransform->worldMatTRS);
 
 	ImGui::End();
 }

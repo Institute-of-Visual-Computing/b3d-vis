@@ -3,6 +3,7 @@ set(MODULE_NAME "B3DRendererLibrary")
 set(SRC
 	Logging.cpp
 	RendererBase.cpp
+	RenderData.cpp
 )
 
 set(SHARED_HEADERS
@@ -14,6 +15,7 @@ set(SHARED_HEADERS
 	NullGizmoHelper.h
 	CudaGpuTimers.h
 	OwlExtensions.h
+	SharedStructs.h
 )
 
 add_library(${MODULE_NAME} ${SRC} ${SHARED_HEADERS})

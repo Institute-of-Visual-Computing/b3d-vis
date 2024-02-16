@@ -12,12 +12,11 @@ class SimpleTrianglesRenderer final : public b3d::renderer::RendererBase
 public:
 	SimpleTrianglesRenderer() 
 	{
-		rendererState_ = std::make_unique<SimpleTriangleRendererState>();
 	}
 
 	auto onGui() -> void override;
 protected:
-	auto onRender(const b3d::renderer::View& view) -> void override;
+	auto onRender() -> void override;
 	auto onInitialize() -> void override;
 
 	bool sbtDirty = true;
