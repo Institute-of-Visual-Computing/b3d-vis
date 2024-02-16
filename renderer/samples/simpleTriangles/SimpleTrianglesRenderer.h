@@ -1,4 +1,5 @@
 #pragma once
+#include "ColorMap.h"
 #include "RendererBase.h"
 #include "owl/owl_host.h"
 
@@ -11,12 +12,11 @@ class SimpleTrianglesRenderer final : public b3d::renderer::RendererBase
 public:
 	SimpleTrianglesRenderer() 
 	{
-		rendererState_ = std::make_unique<SimpleTriangleRendererState>();
 	}
 
 	auto onGui() -> void override;
 protected:
-	auto onRender(const b3d::renderer::View& view) -> void override;
+	auto onRender() -> void override;
 	auto onInitialize() -> void override;
 
 	bool sbtDirty = true;
@@ -28,4 +28,9 @@ protected:
 	OWLBuffer surfaceBuffer_{ nullptr };
 	OWLParams launchParameters_{ };
 	OWLGroup world_{ nullptr };
+
+	OWLTexture colorMapTexture_;
+
+	b3d::tools::colormap::ColorMap colorMap_;
+
 };

@@ -29,24 +29,28 @@ __global__ auto writeVertexBuffer(cudaSurfaceObject_t surface, unsigned int widt
 }
 
 
-auto CudaSurfaceObjectWriteTestRenderer::onRender(const View& view) -> void
+auto CudaSurfaceObjectWriteTestRenderer::onRender() -> void
 {
+	const auto synchronization = renderData_->get<Synchronization>("synchronization");
+
 	auto waitParams = cudaExternalSemaphoreWaitParams{};
 	waitParams.flags = 0;
-	waitParams.params.fence.value = view.fenceValue;
-	cudaWaitExternalSemaphoresAsync(&initializationInfo_.signalSemaphore, &waitParams, 1);
+	waitParams.params.fence.value = synchronization->fenceValue;
+	cudaWaitExternalSemaphoresAsync(&synchronization->signalSemaphore, &waitParams, 1);
 	
 	// TODO: class members
 	std::array<cudaArray_t, 2> cudaArrays{};
 	std::array<cudaSurfaceObject_t, 2> cudaSurfaceObjects{};
 
+	const auto renderTargets = renderData_->get<RenderTargets>("renderTargets");
+
 	auto cudaRet = cudaSuccess;
 	// Map and createSurface
 	{
-		cudaRet = cudaGraphicsMapResources(1, const_cast<cudaGraphicsResource_t*>(&view.colorRt.target));
-		for (auto i = 0; i < view.colorRt.extent.depth; i++)
+		cudaRet = cudaGraphicsMapResources(1, const_cast<cudaGraphicsResource_t*>(&renderTargets->colorRt.target));
+		for (auto i = 0; i < renderTargets->colorRt.extent.depth; i++)
 		{
-			cudaRet = cudaGraphicsSubResourceGetMappedArray(&cudaArrays[i], view.colorRt.target, i, 0);
+			cudaRet = cudaGraphicsSubResourceGetMappedArray(&cudaArrays[i], renderTargets->colorRt.target, i, 0);
 
 			cudaResourceDesc resDesc{};
 			resDesc.resType = cudaResourceTypeArray;
@@ -57,12 +61,13 @@ auto CudaSurfaceObjectWriteTestRenderer::onRender(const View& view) -> void
 
 	// Execute Kernel
 	{
-		const auto gridDimXAdd = view.colorRt.extent.width % 32 == 0 ? 0 : 1; 
-		const auto gridDimYAdd= view.colorRt.extent.height % 32 == 0 ? 0 : 1; 
-		auto gridDim = dim3{ view.colorRt.extent.width / 32 + gridDimXAdd, view.colorRt.extent.height / 32 + gridDimYAdd};
+		const auto gridDimXAdd = renderTargets->colorRt.extent.width % 32 == 0 ? 0 : 1; 
+		const auto gridDimYAdd = renderTargets->colorRt.extent.height % 32 == 0 ? 0 : 1; 
+		auto gridDim = dim3{ renderTargets->colorRt.extent.width / 32 + gridDimXAdd,
+							 renderTargets->colorRt.extent.height / 32 + gridDimYAdd };
 		auto blockDim = dim3{ 32, 32 };
-		writeVertexBuffer<<<gridDim, blockDim>>>(cudaSurfaceObjects[0], view.colorRt.extent.width,
-												 view.colorRt.extent.height);
+		writeVertexBuffer<<<gridDim, blockDim>>>(cudaSurfaceObjects[0], renderTargets->colorRt.extent.width,
+												 renderTargets->colorRt.extent.height);
 		cudaDeviceSynchronize();
 		cudaRet = cudaGetLastError();
 	}
@@ -71,9 +76,10 @@ auto CudaSurfaceObjectWriteTestRenderer::onRender(const View& view) -> void
 	if constexpr (false)
 	{
 		std::vector<uint32_t> hostMem;
-		hostMem.resize(view.colorRt.extent.width * view.colorRt.extent.height);
-		cudaMemcpy2DFromArray(hostMem.data(), view.colorRt.extent.width * sizeof(uint32_t), cudaArrays[0], 0, 0,
-							  view.colorRt.extent.width * sizeof(uint32_t), view.colorRt.extent.height,
+		hostMem.resize(renderTargets->colorRt.extent.width * renderTargets->colorRt.extent.height);
+		cudaMemcpy2DFromArray(hostMem.data(), renderTargets->colorRt.extent.width * sizeof(uint32_t), cudaArrays[0], 0,
+							  0, renderTargets->colorRt.extent.width * sizeof(uint32_t),
+							  renderTargets->colorRt.extent.height,
 							  cudaMemcpyDeviceToHost);
 		cudaDeviceSynchronize();
 		cudaDeviceSynchronize();
@@ -81,17 +87,17 @@ auto CudaSurfaceObjectWriteTestRenderer::onRender(const View& view) -> void
 
 	// Destroy and unmap
 	{
-		for (auto i = 0; i < view.colorRt.extent.depth; i++)
+		for (auto i = 0; i < renderTargets->colorRt.extent.depth; i++)
 		{
 			cudaRet = cudaDestroySurfaceObject(cudaSurfaceObjects[i]);
 		}
-		cudaRet = cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&view.colorRt.target));
+		cudaRet = cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&renderTargets->colorRt.target));
 	}
 
 	auto signalParams = cudaExternalSemaphoreSignalParams{};
 	signalParams.flags = 0;
-	signalParams.params.fence.value = view.fenceValue;
-	cudaRet = cudaSignalExternalSemaphoresAsync(&initializationInfo_.waitSemaphore, &signalParams, 1);
+	signalParams.params.fence.value = synchronization->fenceValue;
+	cudaSignalExternalSemaphoresAsync(&synchronization->waitSemaphore, &signalParams, 1);
 }
 
 auto CudaSurfaceObjectWriteTestRenderer::onInitialize() -> void

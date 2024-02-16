@@ -36,26 +36,29 @@ __global__ void kernel()
 #endif
 }
 
-void b3d::renderer::SyncPrimitiveSampleRenderer::onRender(const View& view)
+void b3d::renderer::SyncPrimitiveSampleRenderer::onRender()
 {
 
 	auto cudaRet = cudaSuccess;
 
+	const auto synchronization = renderData_->get<Synchronization>("synchronization");
+
 	auto waitParams = cudaExternalSemaphoreWaitParams{};
 	waitParams.flags = 0;
-	waitParams.params.fence.value = view.fenceValue;
-	cudaRet = cudaWaitExternalSemaphoresAsync(&initializationInfo_.signalSemaphore, &waitParams, 1);
+	waitParams.params.fence.value = synchronization->fenceValue;
+	cudaWaitExternalSemaphoresAsync(&synchronization->signalSemaphore, &waitParams, 1);
 
-	// TODO: class members
 	std::array<cudaArray_t, 2> cudaArrays{};
 	std::array<cudaSurfaceObject_t, 2> cudaSurfaceObjects{};
 
+	const auto renderTargets = renderData_->get<RenderTargets>("renderTargets");
+
 	// Map and createSurface
 	{
-		cudaRet = cudaGraphicsMapResources(1, const_cast<cudaGraphicsResource_t*>(&view.colorRt.target));
-		for (auto i = 0; i < view.colorRt.extent.depth; i++)
+		cudaRet = cudaGraphicsMapResources(1, const_cast<cudaGraphicsResource_t*>(&renderTargets->colorRt.target));
+		for (auto i = 0; i < renderTargets->colorRt.extent.depth; i++)
 		{
-			cudaRet = cudaGraphicsSubResourceGetMappedArray(&cudaArrays[i], view.colorRt.target, i, 0);
+			cudaRet = cudaGraphicsSubResourceGetMappedArray(&cudaArrays[i], renderTargets->colorRt.target, i, 0);
 			 
 			cudaResourceDesc resDesc{};
 			resDesc.resType = cudaResourceTypeArray;
@@ -66,12 +69,13 @@ void b3d::renderer::SyncPrimitiveSampleRenderer::onRender(const View& view)
 
 	// Execute Kernel
 	{
-		const auto gridDimXAdd = view.colorRt.extent.width % 2 == 0 ? 0 : 1;
-		const auto gridDimYAdd = view.colorRt.extent.height % 2 == 0 ? 0 : 1;
-		auto gridDim =
-			dim3{ view.colorRt.extent.width / 32 + gridDimXAdd, view.colorRt.extent.height / 32 + gridDimYAdd };
+		const auto gridDimXAdd = renderTargets->colorRt.extent.width % 2 == 0 ? 0 : 1;
+		const auto gridDimYAdd = renderTargets->colorRt.extent.height % 2 == 0 ? 0 : 1;
+		auto gridDim = dim3{ renderTargets->colorRt.extent.width / 32 + gridDimXAdd,
+							 renderTargets->colorRt.extent.height / 32 + gridDimYAdd };
 		auto blockDim = dim3{ 32, 32 };
-		writeVertexBuffer<<<gridDim, blockDim>>>(cudaSurfaceObjects[0], view.colorRt.extent.width, view.colorRt.extent.height);
+		writeVertexBuffer<<<gridDim, blockDim>>>(cudaSurfaceObjects[0], renderTargets->colorRt.extent.width,
+												 renderTargets->colorRt.extent.height);
 		kernel<<<1, 1>>>();
 		
 		//cudaRet = cudaGetLastError();
@@ -81,25 +85,26 @@ void b3d::renderer::SyncPrimitiveSampleRenderer::onRender(const View& view)
 	if constexpr (false)
 	{
 		std::vector<uint32_t> hostMem;
-		hostMem.resize(view.colorRt.extent.width * view.colorRt.extent.height);
-		cudaMemcpy2DFromArray(hostMem.data(), view.colorRt.extent.width * sizeof(uint32_t), cudaArrays[0], 0, 0,
-							  view.colorRt.extent.width * sizeof(uint32_t), view.colorRt.extent.height,
+		hostMem.resize(renderTargets->colorRt.extent.width * renderTargets->colorRt.extent.height);
+		cudaMemcpy2DFromArray(hostMem.data(), renderTargets->colorRt.extent.width * sizeof(uint32_t), cudaArrays[0], 0,
+							  0, renderTargets->colorRt.extent.width * sizeof(uint32_t),
+							  renderTargets->colorRt.extent.height,
 							  cudaMemcpyDeviceToHost);
 	}
 
 	// Destroy and unmap
 	{
-		for (auto i = 0; i < view.colorRt.extent.depth; i++)
+		for (auto i = 0; i < renderTargets->colorRt.extent.depth; i++)
 		{
 			cudaRet = cudaDestroySurfaceObject(cudaSurfaceObjects[i]);
 		}
-		cudaRet = cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&view.colorRt.target));
+		cudaRet = cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&renderTargets->colorRt.target));
 	}
 
 	auto signalParams = cudaExternalSemaphoreSignalParams{};
 	signalParams.flags = 0;
-	signalParams.params.fence.value = view.fenceValue;
-	cudaRet = cudaSignalExternalSemaphoresAsync(&initializationInfo_.waitSemaphore, &signalParams, 1);
+	signalParams.params.fence.value = synchronization->fenceValue;
+	cudaSignalExternalSemaphoresAsync(&synchronization->waitSemaphore, &signalParams, 1);
 
 	cudaError_t rc = cudaGetLastError();
 	if (rc != cudaSuccess)

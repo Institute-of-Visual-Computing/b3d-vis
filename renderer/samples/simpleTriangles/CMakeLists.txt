@@ -1,3 +1,6 @@
+
+find_package(Stb REQUIRED)
+
 embed_ptx(
   OUTPUT_TARGET
     "SimpleTriangles-ptx"
@@ -20,7 +23,13 @@ add_b3d_renderer(
 	HEADERS
 		deviceCode.h
 	LIBRARIES
+		B3D::Tools::ColorMap
 		"SimpleTriangles-ptx"
 		imgui::imgui
+)
+
+target_include_directories(SimpleTriangles
+	PRIVATE
+		${Stb_INCLUDE_DIR}
 )
 

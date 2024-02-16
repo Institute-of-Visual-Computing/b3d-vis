@@ -52,7 +52,8 @@ private:
 		GLuint minMaxTexture;
 	} resources_;
 
-	b3d::renderer::RendererInitializationInfo rendererInfo_{};
+	b3d::renderer::RenderingDataWrapper renderingData_;
+
 	b3d::renderer::RenderMode mode_{ b3d::renderer::RenderMode::mono };
 
 	nvmlDevice_t nvmlDevice_{};

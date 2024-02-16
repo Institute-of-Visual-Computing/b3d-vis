@@ -14,10 +14,30 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
-#include <optix_device.h>
 #include "deviceCode.h"
+#include <optix_device.h>
 #include "owl/owl_device.h"
 
+namespace
+{
+	#define PRINT_VEC3F(name, vec)                                                                                         \
+	{                                                                                                                  \
+		printf("%s: x: %.5f, y: %.5f, z: %.5f\n", name, (float)(vec).x, (float)(vec).y, (float)(vec).z);               \
+	}
+
+	#define PRINT_VEC4F(name, vec)                                                                                         \
+	{                                                                                                                  \
+		printf("%s: x: %.5f, y: %.5f, z: %.5f, w: %.5f\n", name, (float)(vec).x, (float)(vec).y, (float)(vec).z, (float)(vec).w);               \
+	}
+
+#define PRINT_VEC3I(name, vec)                                                                                         \
+	{                                                                                                                  \
+		printf("%s: x: %d, y: %d, z: %d\n", name, (int)(vec).x, (int)(vec).y, (int)(vec).z);                           \
+	}
+
+#define PRINT_NEWLINE() printf("\n");
+#define PRINT_HORIZ_LINE() printf("------------\n");
+}
 
 __constant__ MyLaunchParams optixLaunchParams;
 
@@ -31,19 +51,22 @@ OPTIX_RAYGEN_PROGRAM(simpleRayGen)()
 	ray.origin = optixLaunchParams.cameraData.pos;
 	ray.direction = normalize(optixLaunchParams.cameraData.dir_00 + screen.u * optixLaunchParams.cameraData.dir_du +
 							  screen.v * optixLaunchParams.cameraData.dir_dv);
+	PerRayData prd;
+	prd.color = 0;
+	prd.frameBufferSize = self.fbSize;
 
-	vec4f color;
+	
 	owl::traceRay(/*accel to trace against*/ self.world,
 				  /*the ray to trace*/ ray,
-				  /*prd*/ color);
+				  /*prd*/ prd);
 
 	const int fbOfs = pixelID.x + self.fbSize.x * pixelID.y;
-	surf2Dwrite(owl::make_rgba(color), optixLaunchParams.surfacePointer, sizeof(uint32_t) * pixelID.x, pixelID.y);
+	surf2Dwrite(owl::make_rgba(prd.color), optixLaunchParams.surfacePointer, sizeof(uint32_t) * pixelID.x, pixelID.y);
 }
 
 OPTIX_CLOSEST_HIT_PROGRAM(TriangleMesh)()
 {
-	vec4f& prd = owl::getPRD<vec4f>();
+	PerRayData& prd = owl::getPRD<PerRayData>();
 
 	const TrianglesGeomData& self = owl::getProgramData<TrianglesGeomData>();
 
@@ -56,8 +79,22 @@ OPTIX_CLOSEST_HIT_PROGRAM(TriangleMesh)()
 	const vec3f Ng = normalize(cross(B - A, C - A));
 
 	const vec3f rayDir = optixGetWorldRayDirection();
-	prd = (.2f + .8f * fabs(dot(rayDir, Ng))) * self.color;
-	prd.w = 1.0f;
+
+	const vec2f uv = optixGetTriangleBarycentrics();
+	const vec2f tc =
+		(1.f - uv.x - uv.y) * self.texCoord[index.x] + uv.x * self.texCoord[index.y] + uv.y * self.texCoord[index.z];
+
+
+	prd.color = (.2f + .8f * fabs(dot(rayDir, Ng)));
+	if (optixLaunchParams.coloringInfo.colorMode == Single)
+	{
+		prd.color *= optixLaunchParams.coloringInfo.singleColor;
+	}
+	else
+	{
+		vec4f bla = tex2D<float4>(self.colorMaps, tc.y, optixLaunchParams.coloringInfo.selectedColorMap);
+		prd.color *= bla;
+	}
 }
 
 OPTIX_MISS_PROGRAM(miss)()
@@ -66,8 +103,9 @@ OPTIX_MISS_PROGRAM(miss)()
 
 	const MissProgData& self = owl::getProgramData<MissProgData>();
 
-	vec4f& prd = owl::getPRD<vec4f>();
+	PerRayData& prd = owl::getPRD<PerRayData>();
 	int pattern = (pixelID.x / 8) ^ (pixelID.y / 8);
-	prd = 0;
+
+	prd.color = (pattern & 1) ? optixLaunchParams.backgroundColor0 : optixLaunchParams.backgroundColor1;
 	
 }

@@ -6,16 +6,18 @@
 #include "RenderAPI.h"
 #include "RendererBase.h"
 #include "RenderingContext.h"
-#include "SimpleTrianglesRenderer.h"
+#include "SharedStructs.h"
 #include "Texture.h"
 
-#include "SharedStructs.h"
+#include "NanoRenderer.h"
 
+
+// This line is crucial and must stay. Should be one of the last include. But in any case after the include of Action.
 #include "create_action.h"
-
 
 using namespace b3d::renderer;
 using namespace b3d::unity_cuda_interop;
+
 
 namespace
 {
@@ -24,13 +26,13 @@ namespace
 		NativeTextureData textureData{};
 	};
 
-	struct SimpleTriangleNativeRenderingData
+	struct NanoRendererNativeRenderingData
 	{
 		VolumeTransform volumeTransform;
 	};
-}
+} // namespace
 
-enum class CustomActionRenderEventTypes : int
+enum class NanoRenderEventTypes : int
 {
 	initializeEvent = 0,
 	setTexturesEvent,
@@ -38,10 +40,10 @@ enum class CustomActionRenderEventTypes : int
 	customActionRenderEventTypeCount
 };
 
-class ActionSimpleTriangles final : public Action
+class ActionNanoRenderer final : public Action
 {
 public:
-	ActionSimpleTriangles();
+	ActionNanoRenderer();
 	auto initialize(void* data) -> void override;
 	auto teardown() -> void override;
 
@@ -53,23 +55,23 @@ protected:
 	std::unique_ptr<SyncPrimitive> signalPrimitive_;
 	std::unique_ptr<RenderingContext> renderingContext_;
 
+	std::unique_ptr<NanoRenderer> renderer_;
+
 	std::unique_ptr<Texture> colorTexture_;
 	std::unique_ptr<Texture> depthTexture_;
-	
+
 	RendererInitializationInfo initializationInfo_{};
 
-	// explicite. can be generic
-	std::unique_ptr<SimpleTrianglesRenderer> renderer_;
 	bool isReady_{ false };
 	uint64_t currFenceValue = 0;
 };
 
-ActionSimpleTriangles::ActionSimpleTriangles()
+ActionNanoRenderer::ActionNanoRenderer()
 {
-	renderer_ = std::make_unique<SimpleTrianglesRenderer>();
+	renderer_ = std::make_unique<NanoRenderer>();
 }
 
-auto ActionSimpleTriangles::initialize(void* data) -> void
+auto ActionNanoRenderer::initialize(void* data) -> void
 {
 	const auto initData = static_cast<NativeInitData*>(data);
 	if (initData != nullptr)
@@ -95,9 +97,25 @@ auto ActionSimpleTriangles::initialize(void* data) -> void
 	isInitialized_ = true;
 }
 
-auto ActionSimpleTriangles::customRenderEvent(int eventId, void* data) -> void
+auto ActionNanoRenderer::teardown() -> void
 {
-	if (isInitialized_ && isReady_ && eventId == static_cast<int>(CustomActionRenderEventTypes::renderEvent))
+
+	isReady_ = false;
+	isInitialized_ = false;
+	renderer_->deinitialize();
+	cudaDeviceSynchronize();
+
+	renderer_.reset();
+	depthTexture_.reset();
+	colorTexture_.reset();
+	waitPrimitive_.reset();
+	signalPrimitive_.reset();
+	renderingContext_.reset();
+}
+
+auto ActionNanoRenderer::customRenderEvent(int eventId, void* data) -> void
+{
+	if (isInitialized_ && isReady_ && eventId == static_cast<int>(NanoRenderEventTypes::renderEvent))
 	{
 		if (data == nullptr)
 		{
@@ -106,7 +124,6 @@ auto ActionSimpleTriangles::customRenderEvent(int eventId, void* data) -> void
 
 		const auto nrd = static_cast<NativeRenderingDataWrapper*>(data);
 
-		logger_->log("Render");
 		View v;
 		v.colorRt = { .target = colorTexture_->getCudaGraphicsResource(),
 					  .extent = { static_cast<uint32_t>(colorTexture_->getWidth()),
@@ -132,25 +149,25 @@ auto ActionSimpleTriangles::customRenderEvent(int eventId, void* data) -> void
 		v.cameras[1].dirDu.z *= -1.0f;
 		v.cameras[1].dirDv.z *= -1.0f;
 
-
 		v.mode = static_cast<RenderMode>(nrd->nativeRenderingData.eyeCount - 1);
 
-		auto &stnrs = *static_cast<SimpleTriangleNativeRenderingData*>(nrd->additionalDataPointer);
+		auto& stnrs = *static_cast<NanoRendererNativeRenderingData*>(nrd->additionalDataPointer);
 
-		std::unique_ptr<RendererState> strs_ = std::make_unique<SimpleTriangleRendererState>();
+		auto strs_ = std::make_unique<NanoRenderingState>();
+
 		strs_->worldMatTRS.p = stnrs.volumeTransform.position * owl::vec3f{ 1, 1, -1 };
-		/*
-		strs_->worldMatTRS.l = owl::LinearSpace3f{
-			 owl::Quaternion3f{  stnrs.volumeTransform.rotation.k,
-								 owl::vec3f{ -stnrs.volumeTransform.rotation.r, -stnrs.volumeTransform.rotation.i, stnrs.volumeTransform.rotation.j }
-			 }
-		};
 		
+		strs_->worldMatTRS.l = owl::LinearSpace3f{
+			owl::Quaternion3f{
+				stnrs.volumeTransform.rotation.k,
+				owl::vec3f{ -stnrs.volumeTransform.rotation.r, -stnrs.volumeTransform.rotation.i,stnrs.volumeTransform.rotation.j }
+			}
+		};
+
 		strs_->worldMatTRS.l *= owl::LinearSpace3f::scale(stnrs.volumeTransform.scale);
-		*/
 
 		renderer_->setRenderState(std::move(strs_));
-		
+
 		currFenceValue += 1;
 		v.fenceValue = currFenceValue;
 
@@ -159,17 +176,17 @@ auto ActionSimpleTriangles::customRenderEvent(int eventId, void* data) -> void
 
 		renderingContext_->wait(waitPrimitive_.get(), currFenceValue);
 	}
-	else if (eventId == static_cast<int>(CustomActionRenderEventTypes::initializeEvent))
+	else if (eventId == static_cast<int>(NanoRenderEventTypes::initializeEvent))
 	{
 		initialize(data);
 	}
-	else if (eventId == static_cast<int>(CustomActionRenderEventTypes::setTexturesEvent))
+	else if (eventId == static_cast<int>(NanoRenderEventTypes::setTexturesEvent))
 	{
 		setTextures(static_cast<NativeTextureData*>(data));
 	}
 }
 
-auto ActionSimpleTriangles::setTextures(const NativeTextureData* nativeTextureData) -> void
+auto ActionNanoRenderer::setTextures(const NativeTextureData* nativeTextureData) -> void
 {
 	isReady_ = false;
 	const auto ntd = *nativeTextureData;
@@ -193,18 +210,5 @@ auto ActionSimpleTriangles::setTextures(const NativeTextureData* nativeTextureDa
 	isReady_ = true;
 }
 
-auto ActionSimpleTriangles::teardown() -> void
-{
-	isReady_ = false;
-	isInitialized_ = false;
-	renderer_->deinitialize();
-	cudaDeviceSynchronize();
-	renderer_.reset();
-
-	depthTexture_.reset();
-	colorTexture_.reset();
-	waitPrimitive_.reset();
-	signalPrimitive_.reset();
-}
-
-EXTERN_CREATE_ACTION(ActionSimpleTriangles)
+// This line is crucial and must stay. Replace type with your newly created action type.
+EXTERN_CREATE_ACTION(ActionNanoRenderer)

@@ -16,9 +16,12 @@
 
 #pragma once
 
-#include "owl/Object.h"
-#include <owl/common/math/vec.h>
 #include <owl/owl.h>
+
+#include <cuda_runtime.h>
+#include "owl/Object.h"
+
+#include <owl/common/math/vec.h>
 
 using namespace owl;
 
@@ -30,21 +33,48 @@ struct RayCameraData
 	vec3f dir_dv;
 };
 
+enum ColorMode
+{
+	Single,
+	Colormap
+};
+
+struct ColorMaps
+{
+	cudaTextureObject_t texture;
+	int colorMapCount;
+	int singleColormapPxHeight;
+};
+
+struct ColoringInfo
+{
+	ColorMode colorMode;
+	vec4f singleColor;
+	float selectedColorMap;
+};
+
 struct MyLaunchParams
 {
 	RayCameraData cameraData;
 	cudaSurfaceObject_t surfacePointer;
+	ColoringInfo coloringInfo;
+
+	vec4f backgroundColor0;
+	vec4f backgroundColor1;
 };
 
 /* variables for the triangle mesh geometry */
 struct TrianglesGeomData
 {
+	cudaTextureObject_t colorMaps;
 	/*! base color we use for the entire mesh */
 	vec4f color;
 	/*! array/buffer of vertex indices */
 	vec3i* index;
 	/*! array/buffer of vertex positions */
 	vec3f* vertex;
+	/*! array/buffer of the texgture coordinates */
+	vec2f* texCoord;
 
 };
 
@@ -55,6 +85,12 @@ struct RayGenData
 {
 	vec2i fbSize;
 	OptixTraversableHandle world;
+};
+
+struct PerRayData
+{
+	vec4f color;
+	vec2i frameBufferSize;
 };
 
 /* variables for the miss program */

@@ -8,11 +8,10 @@ namespace b3d::renderer
 	public:
 		NullRenderer()
 		{
-			rendererState_ = std::make_unique<RendererState>();
 		}
 
 	protected:
-		auto onRender(const View& view) -> void override;
+		auto onRender() -> void override;
 		auto onInitialize() -> void override;
 		auto onDeinitialize() -> void override;
 		auto onGui() -> void override;
