@@ -67,16 +67,17 @@ namespace
 	auto createVolume() -> NanoVdbVolume
 	{
 		// const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
-		// const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/filtered_level_0_224_257_177_id_7_upscale.fits.nvdb" };
+		const auto testFile =
+			std::filesystem::path{ "D:/datacubes/n4565_cut/filtered_level_0_224_257_177_id_7_upscale.fits.nvdb" };
 		// const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" };
 		// const auto testFile = std::filesystem::path{ "D:/datacubes/ska/40gb/sky_ldev_v2.nvdb" };
 
 
-		//assert(std::filesystem::exists(testFile));
+		assert(std::filesystem::exists(testFile));
 		// owlInstanceGroupSetTransform
 		auto volume = NanoVdbVolume{};
-		auto gridVolume = nanovdb::createFogVolumeTorus();
-		// const auto gridVolume = nanovdb::io::readGrid(testFile.string());
+		 auto gridVolume = nanovdb::createFogVolumeTorus();
+		//const auto gridVolume = nanovdb::io::readGrid(testFile.string());
 		OWL_CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&volume.grid), gridVolume.size()));
 		OWL_CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(volume.grid), gridVolume.data(), gridVolume.size(),
 								  cudaMemcpyHostToDevice));
@@ -146,7 +147,6 @@ namespace
 
 	auto orientedBoxToBox(const owl::box3f& box, const LinearSpace3f& orientation) -> owl::box3f
 	{
-		const auto midPoint = owl::vec3f{ box.center().x, box.center().y, box.center().z };
 		const auto extent = owl::vec3f{ box.size().x, box.size().y, box.size().z };
 
 		/*
@@ -157,14 +157,14 @@ namespace
 		 *	| /    |/
 		 *	p2----p3
 		 */
-		const auto p0 = orientation * (midPoint + 0.5f * owl::vec3f(-1.0, -1.0, 1.0) * extent);
-		const auto p1 = orientation * (midPoint + 0.5f * owl::vec3f(1.0, -1.0, 1.0) * extent);
-		const auto p2 = orientation * (midPoint + 0.5f * owl::vec3f(-1.0, -1.0, -1.0) * extent);
-		const auto p3 = orientation * (midPoint + 0.5f * owl::vec3f(1.0, -1.0, -1.0) * extent);
-		const auto p4 = orientation * (midPoint + 0.5f * owl::vec3f(-1.0, 1.0, 1.0) * extent);
-		const auto p5 = orientation * (midPoint + 0.5f * owl::vec3f(1.0, 1.0, 1.0) * extent);
-		const auto p6 = orientation * (midPoint + 0.5f * owl::vec3f(-1.0, 1.0, -1.0) * extent);
-		const auto p7 = orientation * (midPoint + 0.5f * owl::vec3f(1.0, 1.0, -1.0) * extent);
+		const auto p0 = orientation * (0.5f * owl::vec3f(-1.0, -1.0, 1.0) * extent);
+		const auto p1 = orientation * (0.5f * owl::vec3f(1.0, -1.0, 1.0) * extent);
+		const auto p2 = orientation * (0.5f * owl::vec3f(-1.0, -1.0, -1.0) * extent);
+		const auto p3 = orientation * (0.5f * owl::vec3f(1.0, -1.0, -1.0) * extent);
+		const auto p4 = orientation * (0.5f * owl::vec3f(-1.0, 1.0, 1.0) * extent);
+		const auto p5 = orientation * (0.5f * owl::vec3f(1.0, 1.0, 1.0) * extent);
+		const auto p6 = orientation * ( 0.5f * owl::vec3f(-1.0, 1.0, -1.0) * extent);
+		const auto p7 = orientation * (0.5f * owl::vec3f(1.0, 1.0, -1.0) * extent);
 
 		auto newBox = owl::box3f{};
 		newBox.extend(p0);
@@ -219,6 +219,13 @@ auto NanoRenderer::prepareGeometry() -> void
 	nanoVdbVolume = unique_volume_ptr(new NanoVdbVolume());
 	*nanoVdbVolume.get() = createVolume();
 
+	const auto volumeSize = nanoVdbVolume->indexBox.size();
+	const auto longestAxis = std::max({ volumeSize.x, volumeSize.y, volumeSize.z });
+
+	const auto scale = 1.0f / longestAxis;
+
+	renormalizeScale_ = AffineSpace3f::scale(vec3f{ scale, scale, scale });
+
 	const auto geometryGroup = owlUserGeomGroupCreate(context, 1, &geometry);
 	nanoContext_.worldGeometryGroup = owlInstanceGroupCreate(context, 1, &geometryGroup, nullptr, nullptr,
 															 OWL_MATRIX_FORMAT_OWL, OPTIX_BUILD_FLAG_ALLOW_UPDATE);
@@ -254,7 +261,8 @@ auto NanoRenderer::prepareGeometry() -> void
 	{
 		const auto launchParamsVarsWithStruct = std::array{
 			OWLVarDecl{ "cameraData", OWL_USER_TYPE(RayCameraData), OWL_OFFSETOF(LaunchParams, cameraData) },
-			OWLVarDecl{ "surfacePointer", OWL_USER_TYPE(cudaSurfaceObject_t),	OWL_OFFSETOF(LaunchParams, surfacePointer) },
+			OWLVarDecl{ "surfacePointer", OWL_USER_TYPE(cudaSurfaceObject_t),
+						OWL_OFFSETOF(LaunchParams, surfacePointer) },
 			OWLVarDecl{ "bg.color0", OWL_FLOAT3, OWL_OFFSETOF(LaunchParams, bg.color0) },
 			OWLVarDecl{ "bg.color1", OWL_FLOAT3, OWL_OFFSETOF(LaunchParams, bg.color1) },
 			OWLVarDecl{ "bg.fillBox", OWL_BOOL, OWL_OFFSETOF(LaunchParams, bg.fillBox) },
@@ -303,21 +311,23 @@ auto NanoRenderer::onRender() -> void
 			OWL_CUDA_CHECK(cudaCreateSurfaceObject(&cudaSurfaceObjects[i], &resDesc))
 		}
 	}
-	
-	trs_ = volumeTransform->worldMatTRS;
+
+	trs_ = volumeTransform->worldMatTRS * renormalizeScale_;
 
 
-	const auto volumeTranslate = AffineSpace3f::translate(-nanoVdbVolume->indexBox.size() * 0.5f);
-	const auto transform = trs_ * volumeTranslate;
-	owlInstanceGroupSetTransform(nanoContext_.worldGeometryGroup, 0, reinterpret_cast<const float*>(&transform));
+	const auto volumeTranslate = AffineSpace3f::translate(-nanoVdbVolume->indexBox.center());
+	const auto groupTransform = trs_ * volumeTranslate;
+	owlInstanceGroupSetTransform(nanoContext_.worldGeometryGroup, 0,
+								 reinterpret_cast<const float*>(&groupTransform));
 	owlGroupRefitAccel(nanoContext_.worldGeometryGroup);
 
 
 	{
-		debugDraw().drawBox(trs_.p, trs_.p, nanoVdbVolume->indexBox.size(), owl::vec4f(0.1f, 0.82f, 0.15f, 1.0f), trs_.l);
-
-		const auto aabbSize = orientedBoxToBox(nanoVdbVolume->indexBox, trs_.l).size();
-		debugDraw().drawBox(trs_.p,trs_.p, aabbSize, owl::vec4f(0.9f, 0.4f, 0.2f, 0.4f));
+		debugDraw().drawBox(trs_.p/2, trs_.p, nanoVdbVolume->indexBox.size(), owl::vec4f(0.1f, 0.82f, 0.15f, 1.0f),
+							trs_.l);
+		
+		const auto aabbSize = orientedBoxToBox(nanoVdbVolume->indexBox, volumeTransform->worldMatTRS.l).size();
+		debugDraw().drawBox(trs_.p/2, trs_.p, aabbSize, owl::vec4f(0.9f, 0.4f, 0.2f, 0.4f), renormalizeScale_.l);
 	}
 
 
@@ -405,12 +415,6 @@ auto NanoRenderer::onGui() -> void
 	if (ImGui::Button("Reset Model Transform"))
 	{
 		volumeTransform->worldMatTRS = AffineSpace3f{};
-	}
-	ImGui::SameLine();
-	if (ImGui::Button("Normalize Scaling"))
-	{
-		const auto scale = 1.0f / nanoVdbVolume->indexBox.size();
-		volumeTransform->worldMatTRS *= AffineSpace3f::scale(scale);
 	}
 	ImGui::SeparatorText("Data File (.b3d)");
 	ImGui::InputText("##source", const_cast<char*>(b3dFilePath.string().c_str()), b3dFilePath.string().size(),

@@ -12,8 +12,8 @@ auto DebugDrawList::reset() -> void
 	vertices_.clear();
 }
 
-auto DebugDrawList::drawBox(const owl::vec3f& origin, const owl::vec3f& midPoint, const owl::vec3f& extent, owl::vec4f color,
-							const owl::LinearSpace3f& orientation) -> void
+auto DebugDrawList::drawBox(const owl::vec3f& origin, const owl::vec3f& midPoint, const owl::vec3f& extent,
+							owl::vec4f color, const owl::LinearSpace3f& orientation) -> void
 {
 	float mat[16];
 
@@ -41,7 +41,7 @@ auto DebugDrawList::drawBox(const owl::vec3f& origin, const owl::vec3f& midPoint
 								mat[8], mat[9], mat[10], mat[11], mat[12], mat[13], mat[14], mat[15] };
 
 	const auto glmExtent = glm::vec3{ extent.x, extent.y, extent.z };
-	const auto glmMidPoint = glm::vec4{ midPoint.x, midPoint.y, midPoint.z, 1.0 };
+	const auto glmMidPoint = glm::vec4{ midPoint.x - origin.x, midPoint.y - origin.y, midPoint.z - origin.z, 1.0 };
 	/*
 	 *	  p4----p5
 	 *	 / |   / |
@@ -50,14 +50,21 @@ auto DebugDrawList::drawBox(const owl::vec3f& origin, const owl::vec3f& midPoint
 	 *	| /    |/
 	 *	p2----p3
 	 */
-	const auto p0 = glm::vec3(transform * (glmMidPoint + glm::vec4(0.5f * glm::vec3(-1.0, -1.0, 1.0) * glmExtent, 1.0)));
-	const auto p1 = glm::vec3(transform * (glmMidPoint + glm::vec4(0.5f * glm::vec3(1.0, -1.0, 1.0) * glmExtent, 1.0f)));
-	const auto p2 = glm::vec3(transform * (glmMidPoint + glm::vec4(0.5f * glm::vec3(-1.0, -1.0, -1.0) * glmExtent, 1.0f)));
-	const auto p3 = glm::vec3(transform * (glmMidPoint + glm::vec4(0.5f * glm::vec3(1.0, -1.0, -1.0) * glmExtent, 1.0f)));
-	const auto p4 = glm::vec3(transform * (glmMidPoint + glm::vec4(0.5f * glm::vec3(-1.0, 1.0, 1.0) * glmExtent, 1.0f)));
+	const auto p0 =
+		glm::vec3(transform * ((glmMidPoint) + glm::vec4(0.5f * glm::vec3(-1.0, -1.0, 1.0) * glmExtent, 1.0)));
+	const auto p1 =
+		glm::vec3(transform * (glmMidPoint + glm::vec4(0.5f * glm::vec3(1.0, -1.0, 1.0) * glmExtent, 1.0f)));
+	const auto p2 =
+		glm::vec3(transform * (glmMidPoint + glm::vec4(0.5f * glm::vec3(-1.0, -1.0, -1.0) * glmExtent, 1.0f)));
+	const auto p3 =
+		glm::vec3(transform * (glmMidPoint + glm::vec4(0.5f * glm::vec3(1.0, -1.0, -1.0) * glmExtent, 1.0f)));
+	const auto p4 =
+		glm::vec3(transform * (glmMidPoint + glm::vec4(0.5f * glm::vec3(-1.0, 1.0, 1.0) * glmExtent, 1.0f)));
 	const auto p5 = glm::vec3(transform * (glmMidPoint + glm::vec4(0.5f * glm::vec3(1.0, 1.0, 1.0) * glmExtent, 1.0f)));
-	const auto p6 = glm::vec3(transform * (glmMidPoint + glm::vec4(0.5f * glm::vec3(-1.0, 1.0, -1.0) * glmExtent, 1.0f)));
-	const auto p7 = glm::vec3(transform * (glmMidPoint + glm::vec4(0.5f * glm::vec3(1.0, 1.0, -1.0) * glmExtent, 1.0f)));
+	const auto p6 =
+		glm::vec3(transform * (glmMidPoint + glm::vec4(0.5f * glm::vec3(-1.0, 1.0, -1.0) * glmExtent, 1.0f)));
+	const auto p7 =
+		glm::vec3(transform * (glmMidPoint + glm::vec4(0.5f * glm::vec3(1.0, 1.0, -1.0) * glmExtent, 1.0f)));
 
 	const auto packedColor = glm::packUnorm4x8(glm::vec4(color.x, color.y, color.z, color.w));
 

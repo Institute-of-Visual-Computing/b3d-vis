@@ -38,5 +38,7 @@ namespace b3d::renderer
 		nanovdb::Map currentMap_{};
 
 		CudaGpuTimers<100, 4> gpuTimers_{};
+
+		owl::AffineSpace3f renormalizeScale_{};
 	};
 } // namespace b3d::renderer
