@@ -1,4 +1,5 @@
 #include "RendererBase.h"
+
 #include "SimpleTrianglesRenderer.h"
 
 // public owl node-graph API
@@ -8,7 +9,6 @@
 #include <filesystem>
 
 
-#include "deviceCode.h"
 #include "imgui.h"
 #include "owl/helper/cuda.h"
 
@@ -16,6 +16,8 @@
 #include "stb_image.h"
 
 #include "ColorMap.h"
+
+#include "deviceCode.h"
 
 using namespace b3d::renderer;
 
@@ -32,9 +34,7 @@ namespace
 	{
 		return max(max(computeStableEpsilon(v.x), computeStableEpsilon(v.y)), computeStableEpsilon(v.z));
 	}
-
-
-	ColoringInfo colorInfo;
+	ColoringInfo coloringInfo = { single, { 0, 1, 0, 1 }, 0 };
 
 	std::string coloringModeStrings[2] = { "Single", "ColorMap" };
 
@@ -160,12 +160,16 @@ auto SimpleTrianglesRenderer::onRender() -> void
 		owlGroupRefitAccel(world_);
 	}
 
+	// const auto coloringInfo = renderData_->get<ColoringInfo>("coloringInfo");
 
-	owlParamsSetRaw(launchParameters_, "coloringInfo.colorMode", &colorInfo.colorMode);
+
+
+	owlParamsSetRaw(launchParameters_, "coloringInfo.colorMode", &coloringInfo.coloringMode);
 	owlParamsSet4f(
 		launchParameters_, "coloringInfo.singleColor",
-		{ colorInfo.singleColor.x, colorInfo.singleColor.y, colorInfo.singleColor.z, colorInfo.singleColor.w });
-	owlParamsSet1f(launchParameters_, "coloringInfo.selectedColorMap", colorInfo.selectedColorMap);
+				   { coloringInfo.singleColor.x, coloringInfo.singleColor.y, coloringInfo.singleColor.z,
+					 coloringInfo.singleColor.w });
+	owlParamsSet1f(launchParameters_, "coloringInfo.selectedColorMap", coloringInfo.selectedColorMap);
 
 
 	// Regular use would be to use owlParamsSet4f but im to lazy to cast color1 to owl4f
@@ -240,7 +244,7 @@ auto SimpleTrianglesRenderer::onInitialize() -> void
 	std::array<vec4f, 1024 * 5> values;
 	std::ranges::fill(values, vec4f{ 0, 1, 0, 1 });
 
-	auto filePath = std::filesystem::path{ "./resources/colormaps/" };
+	auto filePath = std::filesystem::path{ "D:/projects/b3d/b3d-vis/viewer/resources/colormaps" };
 	colorMap_ = b3d::tools::colormap::load(filePath / "defaultColorMap.json");
 	
 	if (std::filesystem::path(colorMap_.colorMapFilePath).is_relative())
@@ -350,8 +354,8 @@ auto SimpleTrianglesRenderer::onInitialize() -> void
 		OWLVarDecl launchParamsVarsWithStruct[] = {
 			{ "cameraData", OWL_USER_TYPE(RayCameraData), OWL_OFFSETOF(MyLaunchParams, cameraData) },
 			{ "surfacePointer", OWL_USER_TYPE(cudaSurfaceObject_t), OWL_OFFSETOF(MyLaunchParams, surfacePointer) },
-			{ "coloringInfo.colorMode", OWL_USER_TYPE(ColorMode),
-			  OWL_OFFSETOF(MyLaunchParams, coloringInfo.colorMode) },
+			{ "coloringInfo.colorMode", OWL_USER_TYPE(ColoringMode),
+			  OWL_OFFSETOF(MyLaunchParams, coloringInfo.coloringMode) },
 			{ "coloringInfo.singleColor", OWL_FLOAT4, OWL_OFFSETOF(MyLaunchParams, coloringInfo.singleColor) },
 			{ "coloringInfo.selectedColorMap", OWL_FLOAT, OWL_OFFSETOF(MyLaunchParams, coloringInfo.selectedColorMap) },
 			{ "backgroundColor0", OWL_FLOAT4, OWL_OFFSETOF(MyLaunchParams, backgroundColor0) },
@@ -372,6 +376,7 @@ auto SimpleTrianglesRenderer::onGui() -> void
 
 	
 	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
+	
 
 	ImGui::Begin("RT Settings");
 
@@ -412,7 +417,7 @@ auto SimpleTrianglesRenderer::onGui() -> void
 	debugInfo_.gizmoHelper->drawGizmo(volumeTransform->worldMatTRS);
 
 	
-	colorInfo.selectedColorMap = colorMap_.firstColorMapYTextureCoordinate +
+	coloringInfo.selectedColorMap = colorMap_.firstColorMapYTextureCoordinate +
 		static_cast<float>(guiData.selectedColorMap) * colorMap_.colorMapHeightNormalized;
 
 
@@ -500,7 +505,7 @@ auto SimpleTrianglesRenderer::onGui() -> void
 	ImGui::End();
 
 
-	colorInfo.colorMode = guiData.coloringModeInt == 0 ? Single : Colormap;
-	colorInfo.singleColor = { guiData.singleColor[0], guiData.singleColor[1], guiData.singleColor[2],
+	coloringInfo.coloringMode = guiData.coloringModeInt == 0 ? single : colormap;
+	coloringInfo.singleColor = { guiData.singleColor[0], guiData.singleColor[1], guiData.singleColor[2],
 							  guiData.singleColor[3] };
 }

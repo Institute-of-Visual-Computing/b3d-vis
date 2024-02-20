@@ -52,7 +52,7 @@ protected:
 	std::unique_ptr<SyncPrimitive> signalPrimitive_;
 	std::unique_ptr<RenderingContext> renderingContext_;
 	std::unique_ptr<Texture> testTexture_;
-	RendererInitializationInfo initializationInfo_ {};
+	
 
 	// explicite. can be generic
 	std::unique_ptr<SyncPrimitiveSampleRenderer> renderer_;
@@ -84,12 +84,12 @@ auto ActionSyncPrimitiveSample::initialize(void* data) -> void
 
 	renderingContext_ = renderAPI_->createRenderingContext();
 
-	initializationInfo_.waitSemaphore = waitPrimitive_->getCudaSemaphore();
-	initializationInfo_.signalSemaphore = signalPrimitive_->getCudaSemaphore();
-	initializationInfo_.deviceUuid = renderAPI_->getCudaUUID();
+	renderingDataWrapper_.data.synchronization.waitSemaphore = waitPrimitive_->getCudaSemaphore();
+	renderingDataWrapper_.data.synchronization.signalSemaphore = signalPrimitive_->getCudaSemaphore();
+	renderingDataWrapper_.data.rendererInitializationInfo.deviceUuid = renderAPI_->getCudaUUID();
 
 	renderer_->initialize(
-		initializationInfo_,
+		&renderingDataWrapper_.buffer,
 		DebugInitializationInfo{ std::make_shared<NullDebugDrawList>(), std::make_shared<NullGizmoHelper>() });
 	isInitialized_ = true;
 }
@@ -112,17 +112,18 @@ auto ActionSyncPrimitiveSample::customRenderEvent(int eventId, void* data) -> vo
 	if (isInitialized_ && isReady_ && eventId == static_cast<int>(CustomActionRenderEventTypes::beforeForwardAlpha))
 	{
 		logger_->log("Render");
-		View v;
-		v.colorRt = { .target = testTexture_->getCudaGraphicsResource(),
+
+		renderingDataWrapper_.data.renderTargets.colorRt = {
+			.target = testTexture_->getCudaGraphicsResource(),
 					  .extent = { static_cast<uint32_t>(testTexture_->getWidth()),
 								  static_cast<uint32_t>(testTexture_->getHeight()), 1 } };
 
 		currFenceValue += 1;
-		v.fenceValue = currFenceValue;
+		renderingDataWrapper_.data.synchronization.fenceValue = currFenceValue;
 
 		renderingContext_->signal(signalPrimitive_.get(), currFenceValue);
 
-		renderer_->render(v);
+		renderer_->render();
 
 		renderingContext_->wait(waitPrimitive_.get(), currFenceValue);
 		

@@ -3,10 +3,6 @@
 #include "RendererBase.h"
 #include "owl/owl_host.h"
 
-struct SimpleTriangleRendererState : b3d::renderer::RendererState
-{
-};
-
 class SimpleTrianglesRenderer final : public b3d::renderer::RendererBase
 {
 public:

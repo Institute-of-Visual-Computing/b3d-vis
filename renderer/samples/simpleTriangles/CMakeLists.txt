@@ -6,6 +6,7 @@ embed_ptx(
     "SimpleTriangles-ptx"
   PTX_LINK_LIBRARIES
     owl::owl
+	B3D::Renderer::Library
   SOURCES
     SimpleTrianglesDeviceCode.cu
 )

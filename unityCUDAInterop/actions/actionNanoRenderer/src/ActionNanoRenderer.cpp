@@ -60,7 +60,6 @@ protected:
 	std::unique_ptr<Texture> colorTexture_;
 	std::unique_ptr<Texture> depthTexture_;
 
-	RendererInitializationInfo initializationInfo_{};
 
 	bool isReady_{ false };
 	uint64_t currFenceValue = 0;
@@ -69,6 +68,7 @@ protected:
 ActionNanoRenderer::ActionNanoRenderer()
 {
 	renderer_ = std::make_unique<NanoRenderer>();
+
 }
 
 auto ActionNanoRenderer::initialize(void* data) -> void
@@ -87,12 +87,12 @@ auto ActionNanoRenderer::initialize(void* data) -> void
 
 	renderingContext_ = renderAPI_->createRenderingContext();
 
-	initializationInfo_.waitSemaphore = waitPrimitive_->getCudaSemaphore();
-	initializationInfo_.signalSemaphore = signalPrimitive_->getCudaSemaphore();
-	initializationInfo_.deviceUuid = renderAPI_->getCudaUUID();
+	renderingDataWrapper_.data.synchronization.waitSemaphore = waitPrimitive_->getCudaSemaphore();
+	renderingDataWrapper_.data.synchronization.signalSemaphore = signalPrimitive_->getCudaSemaphore();
+	renderingDataWrapper_.data.rendererInitializationInfo.deviceUuid = renderAPI_->getCudaUUID();
 
 	renderer_->initialize(
-		initializationInfo_,
+		&renderingDataWrapper_.buffer,
 		DebugInitializationInfo{ std::make_shared<NullDebugDrawList>(), std::make_shared<NullGizmoHelper>() });
 	isInitialized_ = true;
 }
@@ -123,56 +123,53 @@ auto ActionNanoRenderer::customRenderEvent(int eventId, void* data) -> void
 		}
 
 		const auto nrd = static_cast<NativeRenderingDataWrapper*>(data);
-
-		View v;
-		v.colorRt = { .target = colorTexture_->getCudaGraphicsResource(),
+		
+		renderingDataWrapper_.data.renderTargets.colorRt = { .target = colorTexture_->getCudaGraphicsResource(),
 					  .extent = { static_cast<uint32_t>(colorTexture_->getWidth()),
 								  static_cast<uint32_t>(colorTexture_->getHeight()),
 								  static_cast<uint32_t>(colorTexture_->getDepth()) } };
 
-		v.cameras[0] = nrd->nativeRenderingData.nativeCameradata[0];
-		v.cameras[1] = nrd->nativeRenderingData.nativeCameradata[1];
+		renderingDataWrapper_.data.view.cameras[0] = nrd->nativeRenderingData.nativeCameradata[0];
+		renderingDataWrapper_.data.view.cameras[1] = nrd->nativeRenderingData.nativeCameradata[1];
 
-		v.cameras[0].at.z *= -1.0f;
-		v.cameras[0].origin.z *= -1.0f;
-		v.cameras[0].up.z *= -1.0f;
+		renderingDataWrapper_.data.view.cameras[0].at.z *= -1.0f;
+		renderingDataWrapper_.data.view.cameras[0].origin.z *= -1.0f;
+		renderingDataWrapper_.data.view.cameras[0].up.z *= -1.0f;
 
-		v.cameras[0].dir00.z *= -1.0f;
-		v.cameras[0].dirDu.z *= -1.0f;
-		v.cameras[0].dirDv.z *= -1.0f;
+		renderingDataWrapper_.data.view.cameras[0].dir00.z *= -1.0f;
+		renderingDataWrapper_.data.view.cameras[0].dirDu.z *= -1.0f;
+		renderingDataWrapper_.data.view.cameras[0].dirDv.z *= -1.0f;
 
-		v.cameras[1].at.z *= -1.0f;
-		v.cameras[1].origin.z *= -1.0f;
-		v.cameras[1].up.z *= -1.0f;
+		renderingDataWrapper_.data.view.cameras[1].at.z *= -1.0f;
+		renderingDataWrapper_.data.view.cameras[1].origin.z *= -1.0f;
+		renderingDataWrapper_.data.view.cameras[1].up.z *= -1.0f;
 
-		v.cameras[1].dir00.z *= -1.0f;
-		v.cameras[1].dirDu.z *= -1.0f;
-		v.cameras[1].dirDv.z *= -1.0f;
+		renderingDataWrapper_.data.view.cameras[1].dir00.z *= -1.0f;
+		renderingDataWrapper_.data.view.cameras[1].dirDu.z *= -1.0f;
+		renderingDataWrapper_.data.view.cameras[1].dirDv.z *= -1.0f;
 
-		v.mode = static_cast<RenderMode>(nrd->nativeRenderingData.eyeCount - 1);
+		renderingDataWrapper_.data.view.mode = static_cast<RenderMode>(nrd->nativeRenderingData.eyeCount - 1);
 
 		auto& stnrs = *static_cast<NanoRendererNativeRenderingData*>(nrd->additionalDataPointer);
 
-		auto strs_ = std::make_unique<NanoRenderingState>();
-
-		strs_->worldMatTRS.p = stnrs.volumeTransform.position * owl::vec3f{ 1, 1, -1 };
+		renderingDataWrapper_.data.volumeTransform.worldMatTRS.p = stnrs.volumeTransform.position * owl::vec3f{ 1, 1, -1 };
 		
-		strs_->worldMatTRS.l = owl::LinearSpace3f{
+		renderingDataWrapper_.data.volumeTransform.worldMatTRS.l = owl::LinearSpace3f{
 			owl::Quaternion3f{
 				stnrs.volumeTransform.rotation.k,
 				owl::vec3f{ -stnrs.volumeTransform.rotation.r, -stnrs.volumeTransform.rotation.i,stnrs.volumeTransform.rotation.j }
 			}
 		};
 
-		strs_->worldMatTRS.l *= owl::LinearSpace3f::scale(stnrs.volumeTransform.scale);
-
-		renderer_->setRenderState(std::move(strs_));
+		renderingDataWrapper_.data.volumeTransform.worldMatTRS.l *=
+			owl::LinearSpace3f::scale(stnrs.volumeTransform.scale);
 
 		currFenceValue += 1;
-		v.fenceValue = currFenceValue;
+
+		renderingDataWrapper_.data.synchronization.fenceValue = currFenceValue;
 
 		renderingContext_->signal(signalPrimitive_.get(), currFenceValue);
-		renderer_->render(v);
+		renderer_->render();
 
 		renderingContext_->wait(waitPrimitive_.get(), currFenceValue);
 	}

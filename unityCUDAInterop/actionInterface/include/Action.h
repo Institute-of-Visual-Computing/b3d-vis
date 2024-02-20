@@ -11,22 +11,51 @@ extern b3d::unity_cuda_interop::PluginHandler sPluginHandler;
 
 namespace b3d::unity_cuda_interop
 {
+	using UnityCamera = renderer::Camera;
+	using UnityExtent = renderer::Extent;
+	using UnityRenderMode = renderer::RenderMode;
+	using UnityView = renderer::View;
+	using UnityColoringMode = renderer::ColoringMode;
+	using UnityColoringInfo = renderer::ColoringInfo;
 
-	// See TODO above
-	struct NativeRenderingData
+	struct UnityTexture
 	{
-		int eyeCount{ 1 };
-		renderer::Camera nativeCameradata[2];
+		void* texturePointer;
+		UnityExtent textureExtent;
 	};
 
-	// See TODO above
-	struct NativeRenderingDataWrapper
+	struct UnityRenderTargets
 	{
-		NativeRenderingData nativeRenderingData{};
-		void* additionalDataPointer{ nullptr };
+		UnityTexture colorTexture;
+		UnityTexture depthTexture;
+	};
+
+	struct UnityVolumeTransform
+	{
+		owl::vec3f position{ 0, 0, 0 };
+		owl::vec3f scale{ 1, 1, 1 };
+		owl::Quaternion3f rotation{ 1 };
+	};
+
+	struct UnityRenderingData
+	{
+		UnityRenderTargets renderTargets;
+		UnityView view;
+		UnityVolumeTransform volumeTransform;
+		UnityColoringInfo coloringInfo;			
+	};
+
+	static const renderer::SchemaData unityDataSchema { {
+			SCHEMA_ENTRY("renderTargets", renderTargets, UnityRenderingData),
+			SCHEMA_ENTRY("view", view, UnityRenderingData),
+			SCHEMA_ENTRY("volumeTransform", volumeTransform, UnityRenderingData),
+			SCHEMA_ENTRY("coloringInfo", coloringInfo, UnityRenderingData),
+										  },
+		sizeof(UnityRenderingData)
 	};
 
 	class PluginLogger;
+
 	class Action
 	{
 	public:
@@ -95,6 +124,8 @@ namespace b3d::unity_cuda_interop
 		
 		PluginLogger* logger_{ nullptr };
 		RenderAPI* renderAPI_{ nullptr };
+
+		renderer::RenderingDataWrapper renderingDataWrapper_{};
 
 		int renderEventIDOffset_{ -1 };
 		bool isRegistered_{ false };

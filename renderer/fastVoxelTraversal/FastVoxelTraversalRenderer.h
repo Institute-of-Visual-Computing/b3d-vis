@@ -6,11 +6,6 @@
 
 namespace b3d::renderer
 {
-
-	struct FastVoxelTraversalNativeRenderingData : RendererState
-	{
-	};
-
 	class FastVoxelTraversalRenderer final : public RendererBase
 	{
 

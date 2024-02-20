@@ -60,14 +60,6 @@ namespace b3d::renderer
 	
 	struct VolumeTransform
 	{
-		owl::vec3f position{ 0, 0, 0 };
-		owl::vec3f scale{ 1, 1, 1 };
-		owl::Quaternion3f rotation{ 1 };
-		owl::affine3f worldMatTRS{};
-	};
-
-	struct RendererState
-	{
 		owl::affine3f worldMatTRS{};
 	};
 
@@ -77,5 +69,16 @@ namespace b3d::renderer
 		int deviceIndex;
 	};
 
+	enum ColoringMode
+	{
+		single = 0,
+		colormap = 1
+	};
 
+	struct ColoringInfo
+	{
+		ColoringMode coloringMode;
+		owl::vec4f singleColor;
+		float selectedColorMap;
+	};
 }

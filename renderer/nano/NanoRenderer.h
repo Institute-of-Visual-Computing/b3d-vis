@@ -6,11 +6,6 @@
 
 #include <CudaGpuTimers.h>
 
-struct NanoRenderingState : b3d::renderer::RendererState
-{
-	b3d::renderer::VolumeTransform volumeTransform;
-};
-
 namespace b3d::renderer
 {
 	struct NanoContext

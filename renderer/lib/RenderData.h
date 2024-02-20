@@ -16,7 +16,6 @@ namespace b3d::renderer
 		Synchronization synchronization;
 		VolumeTransform volumeTransform;
 		float transferOffset{ 0.5f };
-
 	};
 
 	using Schema = std::unordered_map<std::string, size_t>;
@@ -26,7 +25,6 @@ namespace b3d::renderer
 		Schema schema{};
 		size_t schemaContentSize{};
 	};
-
 
 #define SCHEMA_ENTRY(keyValue, memberName, parentStruct)                                                               \
 	{                                                                                                                  \
@@ -43,7 +41,6 @@ namespace b3d::renderer
 										  },
 										  sizeof(RenderingData) };
 
-
 	class RenderingDataBuffer
 	{
 	private:
@@ -59,6 +56,7 @@ namespace b3d::renderer
 		{
 			return schemaData_.schema.find(key);
 		}
+			
 
 	public:
 		RenderingDataBuffer()
@@ -87,8 +85,25 @@ namespace b3d::renderer
 			dataPtr_ = static_cast<std::byte*>(buffer);
 		}
 
+		auto getDataBufferPtr() const -> void*
+		{
+			return dataPtr_;
+		}
+		
+
 		template <typename T>
 		auto get(const std::string& key) -> T*
+		{
+			const auto schemaEntry = getSchemaEntry(key);
+			if (schemaData_.schema.end() == schemaEntry)
+			{
+				return nullptr;
+			}
+			return reinterpret_cast<T*>(&dataPtr_[schemaEntry->second]);
+		}
+
+		template <typename T>
+		auto get(const std::string& key) const -> T*
 		{
 			const auto schemaEntry = getSchemaEntry(key);
 			if (schemaData_.schema.end() == schemaEntry)

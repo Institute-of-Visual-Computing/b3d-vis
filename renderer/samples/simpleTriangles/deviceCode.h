@@ -33,32 +33,13 @@ struct RayCameraData
 	vec3f dir_dv;
 };
 
-enum ColorMode
-{
-	Single,
-	Colormap
-};
 
-struct ColorMaps
-{
-	cudaTextureObject_t texture;
-	int colorMapCount;
-	int singleColormapPxHeight;
-};
-
-struct ColoringInfo
-{
-	ColorMode colorMode;
-	vec4f singleColor;
-	float selectedColorMap;
-};
 
 struct MyLaunchParams
 {
 	RayCameraData cameraData;
 	cudaSurfaceObject_t surfacePointer;
-	ColoringInfo coloringInfo;
-
+    b3d::renderer::ColoringInfo coloringInfo;
 	vec4f backgroundColor0;
 	vec4f backgroundColor1;
 };
@@ -77,7 +58,6 @@ struct TrianglesGeomData
 	vec2f* texCoord;
 
 };
-
 
 
 /* variables for the ray generation program */

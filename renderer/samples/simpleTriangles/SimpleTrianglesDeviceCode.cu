@@ -14,8 +14,11 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 
-#include "deviceCode.h"
 #include <optix_device.h>
+
+#include "SharedStructs.h"
+#include "deviceCode.h"
+
 #include "owl/owl_device.h"
 
 namespace
@@ -86,7 +89,7 @@ OPTIX_CLOSEST_HIT_PROGRAM(TriangleMesh)()
 
 
 	prd.color = (.2f + .8f * fabs(dot(rayDir, Ng)));
-	if (optixLaunchParams.coloringInfo.colorMode == Single)
+	if (optixLaunchParams.coloringInfo.coloringMode == b3d::renderer::ColoringMode::single)
 	{
 		prd.color *= optixLaunchParams.coloringInfo.singleColor;
 	}
