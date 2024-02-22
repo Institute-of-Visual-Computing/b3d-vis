@@ -42,7 +42,6 @@ add_b3d_renderer(
 	HEADERS
 		NanoOutOfCoreRenderer.h
 		OpenFileDialog.h
-		Curve.h
 	LIBRARIES
 		nanoOutOfCore-ptx
 		nanoOutOfCore-optixir

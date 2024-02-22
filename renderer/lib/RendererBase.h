@@ -1,5 +1,5 @@
 #pragma once
-
+#define IMGUI_DEFINE_MATH_OPERATORS
 #include <memory>
 #include <owl/common.h>
 
@@ -10,6 +10,7 @@
 #include "GizmoHelperBase.h"
 
 #include "RenderData.h"
+#include "RenderFeature.h"
 
 
 namespace b3d::renderer
@@ -46,6 +47,15 @@ namespace b3d::renderer
 		RenderingDataBuffer* renderData_{};
 
 		DebugInitializationInfo debugInfo_{};
+
+		std::vector<std::unique_ptr<RenderFeature>> renderFeatures_{};
+
+		template<typename Feature, class... Args>
+		auto addFeature(Args&&... args) -> std::enable_if_t<std::is_base_of_v<RenderFeature, Feature>, Feature*>
+		{
+			renderFeatures_.push_back(std::make_unique<Feature>(std::forward<Args>(args)...));
+			return static_cast<Feature*>(renderFeatures_.back().get());
+		}
 
 	};
 

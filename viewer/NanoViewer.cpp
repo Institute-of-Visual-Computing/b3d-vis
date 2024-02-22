@@ -334,9 +334,6 @@ auto NanoViewer::gui() -> void
 	// NVML_FEATURE_DISABLED);
 
 
-	ImGui::Image((void*)(intptr_t)colorMapResources_.colormapTexture,
-				 ImVec2(colorMapResources_.colorMap.width, colorMapResources_.colorMap.width));
-
 	ImGui::End();
 }
 
@@ -615,6 +612,7 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 
 			renderingData_.data.colorMapTexture.extent =
 				b3d::renderer::Extent{ static_cast<uint32_t>(x), static_cast<uint32_t>(y), 1 };
+			renderingData_.data.colorMapTexture.nativeHandle = reinterpret_cast<void*>(colorMapResources_.colormapTexture);
 		} else
 		{
 			GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 100, 1, 0, GL_RGBA, GL_FLOAT, nullptr));
@@ -783,6 +781,8 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 
 	while (!glfwWindowShouldClose(handle) && keepgoing())
 	{
+		//TODO: if windows minimized or not visible -> skip rendering
+
 		onFrameBegin();
 		glClear(GL_COLOR_BUFFER_BIT);
 		static double lastCameraUpdate = -1.f;

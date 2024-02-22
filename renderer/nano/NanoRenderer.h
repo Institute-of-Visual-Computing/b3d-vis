@@ -7,6 +7,9 @@
 #include <CudaGpuTimers.h>
 #include "ColorMap.h"
 
+#include "features/ColorMapFeature.h"
+#include "features/TransferFunctionFeature.h"
+
 namespace b3d::renderer
 {
 	struct NanoContext
@@ -23,6 +26,8 @@ namespace b3d::renderer
 	public:
 		NanoRenderer()
 		{
+			colorMapFeature_ = addFeature<ColorMapFeature>("Color Filtering");
+			transferFunctionFeature_ = addFeature<TransferFunctionFeature>("Transfer Function");
 		}
 	protected:
 		auto onRender() -> void override;
@@ -41,5 +46,8 @@ namespace b3d::renderer
 		CudaGpuTimers<100, 4> gpuTimers_{};
 
 		owl::AffineSpace3f renormalizeScale_{};
+
+		ColorMapFeature* colorMapFeature_;
+		TransferFunctionFeature* transferFunctionFeature_;
 	};
 } // namespace b3d::renderer

@@ -16,6 +16,13 @@ set(SHARED_HEADERS
 	CudaGpuTimers.h
 	OwlExtensions.h
 	SharedStructs.h
+	RenderFeature.h
+	features/ColorMapFeature.h
+	features/ColorMapFeature.cpp
+	features/TransferFunctionFeature.h
+	features/TransferFunctionFeature.cpp
+	Curve.h
+	Curve.cpp
 )
 
 add_library(${MODULE_NAME} ${SRC} ${SHARED_HEADERS})

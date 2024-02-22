@@ -31,6 +31,7 @@ namespace b3d::renderer
 	{
 		cudaGraphicsResource_t target;
 		Extent extent;
+		void* nativeHandle{nullptr};
 	};
 
 	// ExternalTexture is read only

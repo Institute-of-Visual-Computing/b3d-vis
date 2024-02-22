@@ -26,6 +26,8 @@
 
 #include <NanoCutterParser.h>
 
+#include <OwlExtensions.h>
+
 extern "C" char NanoRenderer_ptx[];
 extern "C" uint8_t NanoRenderer_optixir[];
 extern "C" uint32_t NanoRenderer_optixir_length;
@@ -48,9 +50,6 @@ namespace
 		BackgroundColorPalette rtBackgroundColorPalette;
 		bool fillBox{ false };
 		std::array<float, 3> fillColor{ 0.8f, 0.3f, 0.2f };
-
-		int coloringModeInt = 0;
-		int selectedColorMap = 0;
 	};
 	
 	GuiData guiData{};
@@ -80,8 +79,8 @@ namespace
 		assert(std::filesystem::exists(testFile));
 		// owlInstanceGroupSetTransform
 		auto volume = NanoVdbVolume{};
-		 auto gridVolume = nanovdb::createFogVolumeTorus();
-		//const auto gridVolume = nanovdb::io::readGrid(testFile.string());
+		 //auto gridVolume = nanovdb::createFogVolumeTorus();
+		const auto gridVolume = nanovdb::io::readGrid(testFile.string());
 		OWL_CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&volume.grid), gridVolume.size()));
 		OWL_CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(volume.grid), gridVolume.data(), gridVolume.size(),
 								  cudaMemcpyHostToDevice));
@@ -324,41 +323,6 @@ auto NanoRenderer::onRender() -> void
 		}
 	}
 
-	const auto colorMapTexture = renderData_->get<ExternalTexture>("colorMapTexture");
-	const auto coloringInfo = renderData_->get<ColoringInfo>("coloringInfo");
-	cudaArray_t colorMapCudaArray{};
-	cudaTextureObject_t colorMapCudaTexture{};
-	{
-		OWL_CUDA_CHECK(cudaGraphicsMapResources(1, const_cast<cudaGraphicsResource_t*>(&colorMapTexture->target)));
-
-		OWL_CUDA_CHECK(cudaGraphicsSubResourceGetMappedArray(&colorMapCudaArray, colorMapTexture->target, 0, 0));
-
-		// Create texture
-		auto resDesc = cudaResourceDesc{};
-		resDesc.resType = cudaResourceTypeArray;
-		resDesc.res.array.array = colorMapCudaArray;
-
-		auto texDesc = cudaTextureDesc{};
-		texDesc.addressMode[0] = cudaAddressModeClamp;
-		texDesc.addressMode[1] = cudaAddressModeClamp;
-
-		texDesc.filterMode = cudaFilterModePoint;
-		texDesc.readMode = cudaReadModeElementType; // cudaReadModeNormalizedFloat
-
-		texDesc.normalizedCoords = 1;
-		texDesc.maxAnisotropy = 1;
-		texDesc.maxMipmapLevelClamp = 0;
-		texDesc.minMipmapLevelClamp = 0;
-		texDesc.mipmapFilterMode = cudaFilterModePoint;
-		texDesc.borderColor[0] = 1.0f;
-		texDesc.borderColor[1] = 1.0f;
-		texDesc.borderColor[2] = 1.0f;
-		texDesc.borderColor[3] = 1.0f;
-		texDesc.sRGB = 0;
-
-		OWL_CUDA_CHECK(cudaCreateTextureObject(&colorMapCudaTexture, &resDesc, &texDesc, nullptr));
-	}
-
 	trs_ = volumeTransform->worldMatTRS * renormalizeScale_;
 
 
@@ -374,14 +338,14 @@ auto NanoRenderer::onRender() -> void
 		const auto aabbSize = orientedBoxToBox(nanoVdbVolume->indexBox, volumeTransform->worldMatTRS.l).size();
 		debugDraw().drawBox(trs_.p/2, trs_.p, aabbSize, owl::vec4f(0.9f, 0.4f, 0.2f, 0.4f), renormalizeScale_.l);
 	}
-	
-	owlParamsSetRaw(nanoContext_.launchParams, "coloringInfo.colorMode", &coloringInfo->coloringMode);
+
+	const auto colorMapParams = colorMapFeature_->getParamsData();
+	using namespace owl::extensions;
+	owlParamsSetRaw(nanoContext_.launchParams, "coloringInfo.colorMode", &colorMapParams.mode);
 	owlParamsSet4f(nanoContext_.launchParams, "coloringInfo.singleColor",
-				   { coloringInfo->singleColor.x, coloringInfo->singleColor.y, coloringInfo->singleColor.z,
-					 coloringInfo->singleColor.w });
+				  colorMapParams.uniformColor);
 
-	owlParamsSet1f(nanoContext_.launchParams, "coloringInfo.selectedColorMap", coloringInfo->selectedColorMap);
-
+	owlParamsSet1f(nanoContext_.launchParams, "coloringInfo.selectedColorMap", colorMapParams.selectedColorMap);
 
 	owlMissProgSet3f(nanoContext_.missProgram, "color0",
 					 owl3f{ guiData.rtBackgroundColorPalette.color1[0], guiData.rtBackgroundColorPalette.color1[1],
@@ -413,7 +377,7 @@ auto NanoRenderer::onRender() -> void
 	owlParamsSetRaw(nanoContext_.launchParams, "cameraData", &rcd);
 
 	owlParamsSetRaw(nanoContext_.launchParams, "surfacePointer", &cudaSurfaceObjects[0]);
-	owlParamsSetRaw(nanoContext_.launchParams, "colormaps", &colorMapCudaTexture);
+	owlParamsSetRaw(nanoContext_.launchParams, "colormaps", &colorMapParams.colorMapTexture);
 	
 	owlParamsSet3f(nanoContext_.launchParams, "bg.color0",
 				   owl3f{ guiData.rtBackgroundColorPalette.color1[0], guiData.rtBackgroundColorPalette.color1[1],
@@ -446,11 +410,6 @@ auto NanoRenderer::onRender() -> void
 			cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&renderTargets->colorRt.target)));
 	}
 
-	{
-		OWL_CUDA_CHECK(cudaDestroyTextureObject(colorMapCudaTexture));
-		cudaGraphicsUnmapResources(1, &colorMapTexture->target);
-	}
-
 	auto signalParams = cudaExternalSemaphoreSignalParams{};
 	signalParams.flags = 0;
 	signalParams.params.fence.value = synchronization->fenceValue;
@@ -465,10 +424,6 @@ auto NanoRenderer::onInitialize() -> void
 
 	nanoContext_.context = context;
 
-	// Need values for texels RGBA_FLOAT
-	std::array<vec4f, 1024 * 5> values;
-	std::ranges::fill(values, vec4f{ 0, 1, 0, 1 });
-
 	prepareGeometry();
 }
 
@@ -480,11 +435,10 @@ auto NanoRenderer::onGui() -> void
 {
 	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
 
-	const auto coloringInfo = renderData_->get<ColoringInfo>("coloringInfo");
-	const auto colorMapInfos = renderData_->get<ColorMapInfos>("colorMapInfos");
-
 
 	ImGui::Begin("RT Settings");
+
+	//colorMapFeature_.gui();
 
 	if (ImGui::Button("Reset Model Transform"))
 	{
@@ -512,35 +466,6 @@ auto NanoRenderer::onGui() -> void
 			ImGui::TextColored(ImVec4{ 0.9f, 0.1f, 0.1f, 1.0f }, "Error: Can't load file!");
 		}
 	}
-	
-	ImGui::SeparatorText("Coloring");
-	ImGui::Combo("Mode", &guiData.coloringModeInt, "Single\0ColorMap\0\0");
-	if (guiData.coloringModeInt == 0)
-	{
-		ImGui::ColorEdit3("Color",&coloringInfo->singleColor.x);
-	}
-	else
-	{
-		if (ImGui::BeginCombo("combo 1", (*colorMapInfos->colorMapNames)[guiData.selectedColorMap].c_str(), 0))
-		{
-			for (int n = 0; n < colorMapInfos->colorMapNames->size(); n++)
-			{
-				const bool is_selected = (guiData.selectedColorMap == n);
-				if (ImGui::Selectable((*colorMapInfos->colorMapNames)[n].c_str(),
-									  is_selected))
-				{
-					guiData.selectedColorMap = n;
-				}
-
-				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
-				if (is_selected)
-					ImGui::SetItemDefaultFocus();
-			}
-			ImGui::EndCombo();
-		}
-	}
-
-
 
 	ImGui::SeparatorText("Background Color Palette");
 	ImGui::ColorEdit3("Color 1", guiData.rtBackgroundColorPalette.color1.data());
@@ -648,8 +573,4 @@ auto NanoRenderer::onGui() -> void
 		ImGui::EndPopup();
 	}
 	ImGui::End();
-
-	coloringInfo->coloringMode = guiData.coloringModeInt == 0 ? single : colormap;
-	coloringInfo->selectedColorMap = colorMapInfos->firstColorMapYTextureCoordinate +
-		static_cast<float>(guiData.selectedColorMap) * colorMapInfos->colorMapHeightNormalized;
 }
