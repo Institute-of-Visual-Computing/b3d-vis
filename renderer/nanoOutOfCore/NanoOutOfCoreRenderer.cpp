@@ -24,6 +24,8 @@
 
 #include <NanoCutterParser.h>
 
+#include "Curve.h"
+
 extern "C" char NanoOutOfCoreRenderer_ptx[];
 extern "C" uint8_t NanoOutOfCoreRenderer_optixir[];
 extern "C" uint32_t NanoOutOfCoreRenderer_optixir_length;
@@ -36,6 +38,9 @@ using namespace owl::common;
 
 namespace
 {
+	std::array<ImVec2, 10> foo{};
+    int selectionIdx = -1;
+
 	vec3f spectral_jet(float x)
 	{
 		vec3f c;
@@ -80,10 +85,10 @@ namespace
 
 	auto createVolume() -> NanoVdbVolume
 	{
-		const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
-		// const auto testFile =
+		//const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
+		 //const auto testFile =
 		std::filesystem::path{ "D:/datacubes/n4565_cut/filtered_level_0_224_257_177_id_7_upscale.fits.nvdb" };
-		// const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" };
+		 const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" };
 		// const auto testFile = std::filesystem::path{ "D:/datacubes/ska/40gb/sky_ldev_v2.nvdb" };
 
 
@@ -455,6 +460,7 @@ auto NanoRenderer::onRender() -> void
 
 auto NanoRenderer::onInitialize() -> void
 {
+	foo[0].x = ImGui::CurveTerminator;
 	RendererBase::onInitialize();
 	prepareGeometry();
 	dataSet_ = cutterParser::load(std::filesystem::path{ "D:/datacubes/n4565_cut_2/project.b3d" });
@@ -544,6 +550,16 @@ auto NanoRenderer::onGui() -> void
 
 	openFileDialog_.gui();
 
+	
+	const auto size = ImGui::GetContentRegionAvail();
+
+    if (ImGui::Curve("Das editor", size, 10, foo.data(), &selectionIdx))
+    {
+        // curve changed
+    }
+    float value_you_care_about = ImGui::CurveValue(0.7f, 10, foo.data()); // calculate value at position 0.7
 
 	ImGui::End();
+
+	
 }
