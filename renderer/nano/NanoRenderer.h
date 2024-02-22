@@ -5,7 +5,6 @@
 #include "owl/owl_host.h"
 
 #include <CudaGpuTimers.h>
-#include "ColorMap.h"
 
 #include "features/ColorMapFeature.h"
 #include "features/TransferFunctionFeature.h"

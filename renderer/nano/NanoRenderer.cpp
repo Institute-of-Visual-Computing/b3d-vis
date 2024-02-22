@@ -8,11 +8,8 @@
 
 #include <nanovdb/util/IO.h>
 
-#include <cuda.h>
-
 #include <filesystem>
 
-#include "ColorMap.h"
 
 #include "SharedStructs.h"
 #include "owl/owl_host.h"
@@ -51,7 +48,7 @@ namespace
 		bool fillBox{ false };
 		std::array<float, 3> fillColor{ 0.8f, 0.3f, 0.2f };
 	};
-	
+
 	GuiData guiData{};
 
 	struct NanoVdbVolumeDeleter
@@ -79,7 +76,7 @@ namespace
 		assert(std::filesystem::exists(testFile));
 		// owlInstanceGroupSetTransform
 		auto volume = NanoVdbVolume{};
-		 //auto gridVolume = nanovdb::createFogVolumeTorus();
+		// auto gridVolume = nanovdb::createFogVolumeTorus();
 		const auto gridVolume = nanovdb::io::readGrid(testFile.string());
 		OWL_CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&volume.grid), gridVolume.size()));
 		OWL_CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(volume.grid), gridVolume.data(), gridVolume.size(),
@@ -166,7 +163,7 @@ namespace
 		const auto p3 = orientation * (0.5f * owl::vec3f(1.0, -1.0, -1.0) * extent);
 		const auto p4 = orientation * (0.5f * owl::vec3f(-1.0, 1.0, 1.0) * extent);
 		const auto p5 = orientation * (0.5f * owl::vec3f(1.0, 1.0, 1.0) * extent);
-		const auto p6 = orientation * ( 0.5f * owl::vec3f(-1.0, 1.0, -1.0) * extent);
+		const auto p6 = orientation * (0.5f * owl::vec3f(-1.0, 1.0, -1.0) * extent);
 		const auto p7 = orientation * (0.5f * owl::vec3f(1.0, 1.0, -1.0) * extent);
 
 		auto newBox = owl::box3f{};
@@ -188,7 +185,7 @@ namespace
 
 auto NanoRenderer::prepareGeometry() -> void
 {
-	
+
 	const auto context = nanoContext_.context;
 
 	const auto module = owlModuleCreate(context, NanoRenderer_ptx);
@@ -202,18 +199,17 @@ auto NanoRenderer::prepareGeometry() -> void
 					OWLVarDecl{ "grid", OWL_BUFFER_POINTER, OWL_OFFSETOF(NanoVdbVolume, grid) } };
 
 	const auto geometryVars =
-		std::array{
-			OWLVarDecl{ "volume", OWL_USER_TYPE(NanoVdbVolume), OWL_OFFSETOF(GeometryData, volume) }
+		std::array{ OWLVarDecl{ "volume", OWL_USER_TYPE(NanoVdbVolume), OWL_OFFSETOF(GeometryData, volume) }
 
 		};
 
 	const auto geometryType =
 		owlGeomTypeCreate(context, OWL_GEOM_USER, sizeof(GeometryData), geometryVars.data(), geometryVars.size());
 
-	const auto rayGenerationVars =
-		std::array{ OWLVarDecl{ "frameBufferSize", OWL_INT2, OWL_OFFSETOF(RayGenerationData, frameBufferSize) },
+	const auto rayGenerationVars = std::array{
+		OWLVarDecl{ "frameBufferSize", OWL_INT2, OWL_OFFSETOF(RayGenerationData, frameBufferSize) },
 		OWLVarDecl{ "world", OWL_GROUP, OWL_OFFSETOF(RayGenerationData, world) },
-		};
+	};
 
 	const auto rayGen = owlRayGenCreate(context, optixirModule, "rayGeneration", sizeof(RayGenerationData),
 										rayGenerationVars.data(), rayGenerationVars.size());
@@ -328,22 +324,20 @@ auto NanoRenderer::onRender() -> void
 
 	const auto volumeTranslate = AffineSpace3f::translate(-nanoVdbVolume->indexBox.center());
 	const auto groupTransform = trs_ * volumeTranslate;
-	owlInstanceGroupSetTransform(nanoContext_.worldGeometryGroup, 0,
-								 reinterpret_cast<const float*>(&groupTransform));
+	owlInstanceGroupSetTransform(nanoContext_.worldGeometryGroup, 0, reinterpret_cast<const float*>(&groupTransform));
 	owlGroupRefitAccel(nanoContext_.worldGeometryGroup);
 	{
-		debugDraw().drawBox(trs_.p/2, trs_.p, nanoVdbVolume->indexBox.size(), owl::vec4f(0.1f, 0.82f, 0.15f, 1.0f),
+		debugDraw().drawBox(trs_.p / 2, trs_.p, nanoVdbVolume->indexBox.size(), owl::vec4f(0.1f, 0.82f, 0.15f, 1.0f),
 							trs_.l);
-		
+
 		const auto aabbSize = orientedBoxToBox(nanoVdbVolume->indexBox, volumeTransform->worldMatTRS.l).size();
-		debugDraw().drawBox(trs_.p/2, trs_.p, aabbSize, owl::vec4f(0.9f, 0.4f, 0.2f, 0.4f), renormalizeScale_.l);
+		debugDraw().drawBox(trs_.p / 2, trs_.p, aabbSize, owl::vec4f(0.9f, 0.4f, 0.2f, 0.4f), renormalizeScale_.l);
 	}
 
 	const auto colorMapParams = colorMapFeature_->getParamsData();
 	using namespace owl::extensions;
 	owlParamsSetRaw(nanoContext_.launchParams, "coloringInfo.colorMode", &colorMapParams.mode);
-	owlParamsSet4f(nanoContext_.launchParams, "coloringInfo.singleColor",
-				  colorMapParams.uniformColor);
+	owlParamsSet4f(nanoContext_.launchParams, "coloringInfo.singleColor", colorMapParams.uniformColor);
 
 	owlParamsSet1f(nanoContext_.launchParams, "coloringInfo.selectedColorMap", colorMapParams.selectedColorMap);
 
@@ -378,7 +372,7 @@ auto NanoRenderer::onRender() -> void
 
 	owlParamsSetRaw(nanoContext_.launchParams, "surfacePointer", &cudaSurfaceObjects[0]);
 	owlParamsSetRaw(nanoContext_.launchParams, "colormaps", &colorMapParams.colorMapTexture);
-	
+
 	owlParamsSet3f(nanoContext_.launchParams, "bg.color0",
 				   owl3f{ guiData.rtBackgroundColorPalette.color1[0], guiData.rtBackgroundColorPalette.color1[1],
 						  guiData.rtBackgroundColorPalette.color1[2] });
@@ -435,10 +429,7 @@ auto NanoRenderer::onGui() -> void
 {
 	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
 
-
 	ImGui::Begin("RT Settings");
-
-	//colorMapFeature_.gui();
 
 	if (ImGui::Button("Reset Model Transform"))
 	{
@@ -495,8 +486,9 @@ auto NanoRenderer::onGui() -> void
 			average += values[n];
 		}
 		average /= static_cast<float>(IM_ARRAYSIZE(values));
+		ImGui::SetNextItemWidth(-1);
 		ImGui::PlotHistogram("##perfGraph", values, IM_ARRAYSIZE(values), valuesOffset,
-							 std::format("avg {:3.2f} ms", average).c_str(), 0.0f, 16.0f, ImVec2(0, 400.0f));
+							 std::format("avg {:3.2f} ms", average).c_str(), 0.0f, 16.0f, ImVec2(0, 200.0f));
 	}
 
 	ImGui::Text("%1.3f", timing);

@@ -2,8 +2,10 @@
 
 #include <format>
 #include "Logging.h"
+
 #include "imgui.h"
 #include "imgui_internal.h"
+
 #include "owl/helper/cuda.h"
 
 auto b3d::renderer::ColorMapFeature::beginUpdate() -> void

@@ -10,6 +10,7 @@ TransferFunctionFeature::TransferFunctionFeature(const std::string& name, const 
 	assert(dataPointsCount > 0);
 	dataPoints_[0].x = ImGui::CurveTerminator;
 }
+
 auto TransferFunctionFeature::beginUpdate() -> void
 {
 	//TODO: check all shared params and skip if they are incomplete
@@ -30,14 +31,15 @@ auto TransferFunctionFeature::endUpdate() -> void
 }
 auto TransferFunctionFeature::gui() -> void
 {
-
-	const auto size = ImVec2{ ImGui::GetContentRegionAvail().x, 200 };
+	const auto availableSize = ImGui::GetContentRegionAvail();
+	const auto size = ImVec2{ availableSize.x , std::min( {200.0f, availableSize.y}) };
 
     if (ImGui::Curve("##transferFunction", size, dataPoints_.size(), dataPoints_.data(), &selectedCurveHandleIdx_))
     {
         // curve changed
+		//TODO: maybe trigger an event to refit/recreate data
     }
 
 	//TODO: resample to a appropriate size
-    float value_you_care_about = ImGui::CurveValue(0.7f, dataPoints_.size(), dataPoints_.data()); // calculate value at position 0.7
+    const auto resampledValue = ImGui::CurveValue(0.7f, dataPoints_.size(), dataPoints_.data()); // calculate value at position 0.7
 }
