@@ -10,12 +10,6 @@ public class UnityActionNanoRenderer : AbstractUnityRenderAction
 {
 	#region Native structs for this action
 
-	[StructLayout(LayoutKind.Sequential)]
-	protected struct ActionNanoRendererNativeRenderingData
-	{
-		public VolumeTransform volumeTransform;
-	}
-
 	class ActionNanoRendererRenderEventTypes : RenderEventTypes
 	{
 		public const int ACTION_RENDER = RenderEventTypes.BASE_ACTION_COUNT + 0;
@@ -24,8 +18,6 @@ public class UnityActionNanoRenderer : AbstractUnityRenderAction
 	#endregion
 
 	private ActionNanoRenderer action_;
-
-	protected ActionNanoRendererNativeRenderingData actionNanoRendererNativeRenderingData_;
 
 	#region AbstractUnityAction Overrides
 
@@ -38,21 +30,10 @@ public class UnityActionNanoRenderer : AbstractUnityRenderAction
 	{
 		action_ = new();
 	}
-
-	protected override void InitAdditionalNativeStruct()
-	{
-		actionNanoRendererNativeRenderingData_ = new()
-		{
-			volumeTransform = new()
-		};
-
-		additionalNativeStructDataPtr = Marshal.AllocHGlobal(Marshal.SizeOf<ActionNanoRendererNativeRenderingData>());
-	}
-
 	protected override void InitRenderingCommandBuffers()
 	{
 		CommandBuffer cb = new();
-		cb.IssuePluginEventAndData(NativeAction.RenderEventAndDataFuncPointer, NativeAction.MapEventId(ActionNanoRendererRenderEventTypes.ACTION_RENDER), renderingActionNativeRenderingDataWrapperPtr_);
+		cb.IssuePluginEventAndData(NativeAction.RenderEventAndDataFuncPointer, NativeAction.MapEventId(ActionNanoRendererRenderEventTypes.ACTION_RENDER), unityRenderingDataPtr);
 		renderingCommandBuffers_.Add(new(CameraEvent.BeforeForwardOpaque, cb));
 	}
 
@@ -60,11 +41,9 @@ public class UnityActionNanoRenderer : AbstractUnityRenderAction
 	{
 		// Fill struct with custom data and copy struct to unmanaged code.
 
-		actionNanoRendererNativeRenderingData_.volumeTransform.position = volumeCube.transform.position;
-		actionNanoRendererNativeRenderingData_.volumeTransform.scale = volumeCube.transform.localScale;
-		actionNanoRendererNativeRenderingData_.volumeTransform.rotation = volumeCube.transform.rotation;
-
-		Marshal.StructureToPtr(actionNanoRendererNativeRenderingData_, additionalNativeStructDataPtr, true);
+		unityRenderingData.volumeTransform.position = volumeCube.transform.position;
+		unityRenderingData.volumeTransform.scale = volumeCube.transform.localScale;
+		unityRenderingData.volumeTransform.rotation = volumeCube.transform.rotation;
 	}
 
 	#endregion AbstractUnityAction Overrides

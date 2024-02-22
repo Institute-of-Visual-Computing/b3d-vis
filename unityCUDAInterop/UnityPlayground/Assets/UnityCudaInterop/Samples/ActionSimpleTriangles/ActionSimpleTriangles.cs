@@ -33,6 +33,11 @@ namespace B3D
 			[DllImport(dllName, EntryPoint = dllFuncNameGetRenderEventAndDataFunc)]
 			private static extern IntPtr getRenderEventAndDataFuncExtern();
 
+			[DllImport(dllName, EntryPoint = dllFuncNameGetWriteBuffer)]
+			private static extern IntPtr getWriteBufferExtern(IntPtr nativeAction);
+
+
+
 			#endregion dll function signatures
 
 			#region dll function calls

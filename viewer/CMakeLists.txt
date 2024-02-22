@@ -47,7 +47,14 @@ target_link_libraries(viewer
 	Vulkan::Vulkan
 	Vulkan::Headers
 	imguizmo::imguizmo
+	B3D::Tools::ColorMap
 	${CUDA_nvml_LIBRARY}
+)
+
+
+target_include_directories(viewer
+	PRIVATE
+		${Stb_INCLUDE_DIR}
 )
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/resources")

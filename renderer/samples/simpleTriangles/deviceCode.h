@@ -39,6 +39,7 @@ struct MyLaunchParams
 {
 	RayCameraData cameraData;
 	cudaSurfaceObject_t surfacePointer;
+	cudaTextureObject_t colorMaps;
     b3d::renderer::ColoringInfo coloringInfo;
 	vec4f backgroundColor0;
 	vec4f backgroundColor1;
@@ -47,7 +48,6 @@ struct MyLaunchParams
 /* variables for the triangle mesh geometry */
 struct TrianglesGeomData
 {
-	cudaTextureObject_t colorMaps;
 	/*! base color we use for the entire mesh */
 	vec4f color;
 	/*! array/buffer of vertex indices */

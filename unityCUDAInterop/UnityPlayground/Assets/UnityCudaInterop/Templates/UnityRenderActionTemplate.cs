@@ -37,16 +37,6 @@ public class UnityRenderActionTemplate : AbstractUnityRenderAction
 		action_ = new();
 	}
 
-	protected override void InitAdditionalNativeStruct()
-	{
-		templateNativeRenderingData_ = new()
-		{
-			
-		};
-
-		additionalNativeStructDataPtr = Marshal.AllocHGlobal(Marshal.SizeOf<TemplateNativeRenderingData>());
-	}
-
 	protected override void InitRenderingCommandBuffers()
 	{
 		/*
@@ -59,8 +49,6 @@ public class UnityRenderActionTemplate : AbstractUnityRenderAction
 	protected override void FillAdditionalNativeRenderingData()
 	{
 		// Fill struct with custom data and copy struct to unmanaged code.
-
-		Marshal.StructureToPtr(templateNativeRenderingData_, additionalNativeStructDataPtr, true);
 	}
 
 	#endregion AbstractUnityAction Overrides

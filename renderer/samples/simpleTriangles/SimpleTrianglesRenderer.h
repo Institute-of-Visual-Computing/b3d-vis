@@ -25,8 +25,4 @@ protected:
 	OWLParams launchParameters_{ };
 	OWLGroup world_{ nullptr };
 
-	OWLTexture colorMapTexture_;
-
-	b3d::tools::colormap::ColorMap colorMap_;
-
 };

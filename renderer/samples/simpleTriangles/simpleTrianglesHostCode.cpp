@@ -12,7 +12,7 @@
 #include "imgui.h"
 #include "owl/helper/cuda.h"
 
-#define STB_IMAGE_IMPLEMENTATION
+
 #include "stb_image.h"
 
 #include "ColorMap.h"
@@ -34,7 +34,7 @@ namespace
 	{
 		return max(max(computeStableEpsilon(v.x), computeStableEpsilon(v.y)), computeStableEpsilon(v.z));
 	}
-	ColoringInfo coloringInfo = { single, { 0, 1, 0, 1 }, 0 };
+
 
 	std::string coloringModeStrings[2] = { "Single", "ColorMap" };
 
@@ -46,15 +46,8 @@ namespace
 			std::array<float, 4> color2{ 0.0f, 0.3f, 0.3f, 1.0f };
 		};
 
-
 		BackgroundColorPalette rtBackgroundColorPalette;
 		std::array<float, 4> singleColor{ 0, 1, 0, 1 };
-
-		struct VolumeTransform
-		{
-			std::array<float, 3> rotation{ 0, 0, 0 };
-		};
-		VolumeTransform rtCubeVolumeTransform{};
 
 		int coloringModeInt = 0;
 		int selectedColorMap = 0;
@@ -127,7 +120,7 @@ auto SimpleTrianglesRenderer::onRender() -> void
 	auto cudaRet = cudaSuccess;
 	// Map and createSurface
 	{
-		cudaRet = cudaGraphicsMapResources(1, const_cast<cudaGraphicsResource_t*>(&renderTargets->colorRt.target));
+		cudaRet = cudaGraphicsMapResources(1, &renderTargets->colorRt.target);
 		for (auto i = 0; i < renderTargets->colorRt.extent.depth; i++)
 		{
 			cudaRet = cudaGraphicsSubResourceGetMappedArray(&cudaArrays[i], renderTargets->colorRt.target, i, 0);
@@ -137,6 +130,41 @@ auto SimpleTrianglesRenderer::onRender() -> void
 			resDesc.res.array.array = cudaArrays[i];
 			cudaRet = cudaCreateSurfaceObject(&cudaSurfaceObjects[i], &resDesc);
 		}
+	}
+
+	const auto colorMapTexture = renderData_->get<ExternalTexture>("colorMapTexture");
+	const auto coloringInfo = renderData_->get<ColoringInfo>("coloringInfo");
+	cudaArray_t colorMapCudaArray{};
+	cudaTextureObject_t colorMapCudaTexture{};
+	{
+		OWL_CUDA_CHECK(cudaGraphicsMapResources(1, &colorMapTexture->target));
+
+		OWL_CUDA_CHECK(cudaGraphicsSubResourceGetMappedArray(&colorMapCudaArray, colorMapTexture->target, 0, 0));
+
+		// Create texture
+		auto resDesc = cudaResourceDesc{};
+		resDesc.resType = cudaResourceTypeArray;
+		resDesc.res.array.array = colorMapCudaArray;
+
+		auto texDesc = cudaTextureDesc{};
+		texDesc.addressMode[0] = cudaAddressModeClamp;
+		texDesc.addressMode[1] = cudaAddressModeClamp;
+
+		texDesc.filterMode = cudaFilterModePoint;
+		texDesc.readMode = cudaReadModeElementType; // cudaReadModeNormalizedFloat
+
+		texDesc.normalizedCoords = 1;
+		texDesc.maxAnisotropy = 1;
+		texDesc.maxMipmapLevelClamp = 0;
+		texDesc.minMipmapLevelClamp = 0;
+		texDesc.mipmapFilterMode = cudaFilterModePoint;
+		texDesc.borderColor[0] = 1.0f;
+		texDesc.borderColor[1] = 1.0f;
+		texDesc.borderColor[2] = 1.0f;
+		texDesc.borderColor[3] = 1.0f;
+		texDesc.sRGB = 0;
+
+		OWL_CUDA_CHECK(cudaCreateTextureObject(&colorMapCudaTexture, &resDesc, &texDesc, nullptr));
 	}
 
 	if (fbSize_.x != renderTargets->colorRt.extent.width || fbSize_.y != renderTargets->colorRt.extent.height)
@@ -162,14 +190,12 @@ auto SimpleTrianglesRenderer::onRender() -> void
 
 	// const auto coloringInfo = renderData_->get<ColoringInfo>("coloringInfo");
 
-
-
-	owlParamsSetRaw(launchParameters_, "coloringInfo.colorMode", &coloringInfo.coloringMode);
+	owlParamsSetRaw(launchParameters_, "coloringInfo.colorMode", &coloringInfo->coloringMode);
 	owlParamsSet4f(
 		launchParameters_, "coloringInfo.singleColor",
-				   { coloringInfo.singleColor.x, coloringInfo.singleColor.y, coloringInfo.singleColor.z,
-					 coloringInfo.singleColor.w });
-	owlParamsSet1f(launchParameters_, "coloringInfo.selectedColorMap", coloringInfo.selectedColorMap);
+				   { coloringInfo->singleColor.x, coloringInfo->singleColor.y, coloringInfo->singleColor.z,
+					 coloringInfo->singleColor.w });
+	owlParamsSet1f(launchParameters_, "coloringInfo.selectedColorMap", coloringInfo->selectedColorMap);
 
 
 	// Regular use would be to use owlParamsSet4f but im to lazy to cast color1 to owl4f
@@ -180,6 +206,7 @@ auto SimpleTrianglesRenderer::onRender() -> void
 	owlParamsSet4f(launchParameters_, "backgroundColor1",
 				   { guiData.rtBackgroundColorPalette.color2[0], guiData.rtBackgroundColorPalette.color2[1],
 					 guiData.rtBackgroundColorPalette.color2[2], guiData.rtBackgroundColorPalette.color2[3] });
+	owlParamsSetRaw(launchParameters_, "colormaps", &colorMapCudaTexture);
 
 	const auto view = renderData_->get<View>("view");
 	{
@@ -226,6 +253,11 @@ auto SimpleTrianglesRenderer::onRender() -> void
 		cudaRet = cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&renderTargets->colorRt.target));
 	}
 
+	{
+		OWL_CUDA_CHECK(cudaDestroyTextureObject(colorMapCudaTexture));
+		cudaGraphicsUnmapResources(1, &colorMapTexture->target);
+	}
+
 	auto signalParams = cudaExternalSemaphoreSignalParams{};
 	signalParams.flags = 0;
 	signalParams.params.fence.value = synchronization->fenceValue;
@@ -240,32 +272,6 @@ auto SimpleTrianglesRenderer::onInitialize() -> void
 	context_ = owlContextCreate(nullptr, 1);
 	auto module = owlModuleCreate(context_, SimpleTrianglesDeviceCode_ptx);
 
-	// Need values for texels RGBA_FLOAT
-	std::array<vec4f, 1024 * 5> values;
-	std::ranges::fill(values, vec4f{ 0, 1, 0, 1 });
-
-	auto filePath = std::filesystem::path{ "D:/projects/b3d/b3d-vis/viewer/resources/colormaps" };
-	colorMap_ = b3d::tools::colormap::load(filePath / "defaultColorMap.json");
-	
-	if (std::filesystem::path(colorMap_.colorMapFilePath).is_relative())
-	{
-		filePath /= colorMap_.colorMapFilePath;
-	}
-	else
-	{
-		filePath = colorMap_.colorMapFilePath;
-	}
-	int x, y, n;
-	
-	const auto bla = stbi_info(filePath.string().c_str(), &x, &y, &n);
-
-	float* data = stbi_loadf(filePath.string().c_str(), &x, &y, &n, 0);
-
-	colorMapTexture_ = owlTexture2DCreate(
-		context_, OWLTexelFormat::OWL_TEXEL_FORMAT_RGBA32F, x, y, data,
-								   OWLTextureFilterMode::OWL_TEXTURE_LINEAR, OWLTextureAddressMode::OWL_TEXTURE_CLAMP,
-								   OWLTextureColorSpace::OWL_COLOR_SPACE_LINEAR);
-
 
 	// ##################################################################
 	// set up all the *GEOMETRY* graph we want to render
@@ -274,7 +280,7 @@ auto SimpleTrianglesRenderer::onInitialize() -> void
 	// -------------------------------------------------------
 	// declare geometry type
 	// -------------------------------------------------------
-	OWLVarDecl trianglesGeomVars[] = { { "colormaps", OWL_TEXTURE, OWL_OFFSETOF(TrianglesGeomData, colorMaps) },
+	OWLVarDecl trianglesGeomVars[] = {
 		{ "color", OWL_FLOAT4, OWL_OFFSETOF(TrianglesGeomData, color) },
 		{ "index", OWL_BUFPTR, OWL_OFFSETOF(TrianglesGeomData, index) },
 		{ "vertex", OWL_BUFPTR, OWL_OFFSETOF(TrianglesGeomData, vertex) },
@@ -307,7 +313,6 @@ auto SimpleTrianglesRenderer::onInitialize() -> void
 
 	owlGeomSetBuffer(trianglesGeom, "texCoord", texCoordsBuffer);
 	owlGeomSet4f(trianglesGeom, "color", owl4f{ 0, 1, 0, 1 });
-	owlGeomSetTexture(trianglesGeom, "colormaps", colorMapTexture_);
 
 
 	// ------------------------------------------------------------------
@@ -354,8 +359,8 @@ auto SimpleTrianglesRenderer::onInitialize() -> void
 		OWLVarDecl launchParamsVarsWithStruct[] = {
 			{ "cameraData", OWL_USER_TYPE(RayCameraData), OWL_OFFSETOF(MyLaunchParams, cameraData) },
 			{ "surfacePointer", OWL_USER_TYPE(cudaSurfaceObject_t), OWL_OFFSETOF(MyLaunchParams, surfacePointer) },
-			{ "coloringInfo.colorMode", OWL_USER_TYPE(ColoringMode),
-			  OWL_OFFSETOF(MyLaunchParams, coloringInfo.coloringMode) },
+			{ "colormaps", OWL_USER_TYPE(cudaTextureObject_t), OWL_OFFSETOF(MyLaunchParams, colorMaps) },
+			{ "coloringInfo.colorMode", OWL_USER_TYPE(ColoringMode), OWL_OFFSETOF(MyLaunchParams, coloringInfo.coloringMode) },
 			{ "coloringInfo.singleColor", OWL_FLOAT4, OWL_OFFSETOF(MyLaunchParams, coloringInfo.singleColor) },
 			{ "coloringInfo.selectedColorMap", OWL_FLOAT, OWL_OFFSETOF(MyLaunchParams, coloringInfo.selectedColorMap) },
 			{ "backgroundColor0", OWL_FLOAT4, OWL_OFFSETOF(MyLaunchParams, backgroundColor0) },
@@ -373,10 +378,9 @@ auto SimpleTrianglesRenderer::onInitialize() -> void
 
 auto SimpleTrianglesRenderer::onGui() -> void
 {
-
-	
 	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
-	
+	const auto coloringInfo = renderData_->get<ColoringInfo>("coloringInfo");
+	const auto colorMapInfos = renderData_->get<ColorMapInfos>("colorMapInfos");
 
 	ImGui::Begin("RT Settings");
 
@@ -385,20 +389,20 @@ auto SimpleTrianglesRenderer::onGui() -> void
 	ImGui::Combo("Mode", &guiData.coloringModeInt, "Single\0ColorMap\0\0");
 	if (guiData.coloringModeInt == 0)
 	{
-		ImGui::ColorEdit3("Color", guiData.singleColor.data());	
+		ImGui::ColorEdit3("Color", &coloringInfo->singleColor.x);
 	}
 	else
 	{
-		if (ImGui::BeginCombo("combo 1", colorMap_.colorMapNames[guiData.selectedColorMap].c_str(), 0))
+		if (ImGui::BeginCombo("combo 1", (*colorMapInfos->colorMapNames)[guiData.selectedColorMap].c_str(), 0))
 		{
-			for (int n = 0; n < colorMap_.colorMapNames.size(); n++)
+			for (int n = 0; n < colorMapInfos->colorMapNames->size(); n++)
 			{
 				const bool is_selected = (guiData.selectedColorMap == n);
-				if (ImGui::Selectable(colorMap_.colorMapNames[n].c_str(), is_selected))
+				if (ImGui::Selectable((*colorMapInfos->colorMapNames)[n].c_str(), is_selected))
 				{
 					guiData.selectedColorMap = n;
 				}
-					
+
 				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
 				if (is_selected)
 					ImGui::SetItemDefaultFocus();
@@ -406,6 +410,7 @@ auto SimpleTrianglesRenderer::onGui() -> void
 			ImGui::EndCombo();
 		}
 	}
+
 	if (ImGui::Button("Select"))
 	{
 		ImGui::OpenPopup("FileSelectDialog");
@@ -416,96 +421,9 @@ auto SimpleTrianglesRenderer::onGui() -> void
 	ImGui::ColorEdit3("Color 2", guiData.rtBackgroundColorPalette.color2.data());
 	debugInfo_.gizmoHelper->drawGizmo(volumeTransform->worldMatTRS);
 
-	
-	coloringInfo.selectedColorMap = colorMap_.firstColorMapYTextureCoordinate +
-		static_cast<float>(guiData.selectedColorMap) * colorMap_.colorMapHeightNormalized;
-
-
-
-
-
-	static auto currentPath = std::filesystem::current_path();
-	static auto selectedPath = std::filesystem::path{};
-
-	std::filesystem::path b3dFilePath{};
-
-
-
-
-
-
-	const auto center = ImGui::GetMainViewport()->GetCenter();
-	ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-
-	if (ImGui::BeginPopupModal("FileSelectDialog", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-	{
-		constexpr auto roots = std::array{ "A:/", "B:/", "C:/", "D:/", "E:/", "F:/", "G:/", "H:/", "I:/" };
-
-		for (auto i = 0; i < roots.size(); i++)
-		{
-			const auto root = std::filesystem::path{ roots[i] };
-			if (is_directory(root))
-			{
-				ImGui::SameLine();
-				if (ImGui::Button(roots[i]))
-				{
-					currentPath = root;
-				}
-			}
-		}
-		if (ImGui::BeginListBox("##dirs", ImVec2(ImGui::GetFontSize() * 40, ImGui::GetFontSize() * 16)))
-		{
-			if (ImGui::Selectable("...", false))
-			{
-				currentPath = currentPath.parent_path();
-			}
-			auto i = 0;
-			for (auto& dir : std::filesystem::directory_iterator{ currentPath })
-			{
-				i++;
-				const auto path = dir.path();
-				if (is_directory(path))
-				{
-					if (ImGui::Selectable(dir.path().string().c_str(), false))
-					{
-						currentPath = path;
-					}
-				}
-				if (path.has_extension() && path.extension() == ".b3d")
-				{
-					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.1f, 0.9f, 0.1f, 1.0f));
-					if (ImGui::Selectable(dir.path().string().c_str(), dir.path() == selectedPath))
-					{
-						selectedPath = dir.path();
-					}
-					ImGui::PopStyleColor();
-				}
-			}
-			ImGui::EndListBox();
-		}
-		if (ImGui::Button("OK", ImVec2(120, 0)))
-		{
-			if (!selectedPath.empty() != 0)
-			{
-				b3dFilePath = selectedPath;
-			}
-			ImGui::CloseCurrentPopup();
-		}
-		ImGui::SetItemDefaultFocus();
-		ImGui::SameLine();
-		if (ImGui::Button("Cancel", ImVec2(120, 0)))
-		{
-			selectedPath.clear();
-			ImGui::CloseCurrentPopup();
-		}
-		ImGui::EndPopup();
-	}
-
-
 	ImGui::End();
 
-
-	coloringInfo.coloringMode = guiData.coloringModeInt == 0 ? single : colormap;
-	coloringInfo.singleColor = { guiData.singleColor[0], guiData.singleColor[1], guiData.singleColor[2],
-							  guiData.singleColor[3] };
+	coloringInfo->coloringMode = guiData.coloringModeInt == 0 ? single : colormap;
+	coloringInfo->selectedColorMap = colorMapInfos->firstColorMapYTextureCoordinate +
+		static_cast<float>(guiData.selectedColorMap) * colorMapInfos->colorMapHeightNormalized;
 }

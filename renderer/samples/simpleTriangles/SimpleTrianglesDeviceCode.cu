@@ -95,7 +95,7 @@ OPTIX_CLOSEST_HIT_PROGRAM(TriangleMesh)()
 	}
 	else
 	{
-		vec4f bla = tex2D<float4>(self.colorMaps, tc.y, optixLaunchParams.coloringInfo.selectedColorMap);
+		vec4f bla = tex2D<float4>(optixLaunchParams.colorMaps, tc.y, optixLaunchParams.coloringInfo.selectedColorMap);
 		prd.color *= bla;
 	}
 }

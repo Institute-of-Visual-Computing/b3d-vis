@@ -1,3 +1,4 @@
+using B3D.UnityCudaInterop.NativeStructs;
 using System;
 using System.Net.NetworkInformation;
 
@@ -17,6 +18,7 @@ namespace B3D
 			protected const string dllFuncNameInitializeAction = "InitializeAction";
 			protected const string dllFuncNameTeardownAction = "TeardownAction";
 			protected const string dllFuncNameGetRenderEventAndDataFunc = "GetRenderEventAndDataFunc";
+			protected const string dllFuncNameGetWriteBuffer = "GetWriteBuffer";
 
 			#endregion DLL exported function names
 

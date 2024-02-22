@@ -42,6 +42,7 @@ namespace b3d::unity_cuda_interop
 		UnityRenderTargets renderTargets;
 		UnityView view;
 		UnityVolumeTransform volumeTransform;
+		UnityTexture colorMapsTexture;
 		UnityColoringInfo coloringInfo;			
 	};
 
@@ -49,6 +50,7 @@ namespace b3d::unity_cuda_interop
 			SCHEMA_ENTRY("renderTargets", renderTargets, UnityRenderingData),
 			SCHEMA_ENTRY("view", view, UnityRenderingData),
 			SCHEMA_ENTRY("volumeTransform", volumeTransform, UnityRenderingData),
+			SCHEMA_ENTRY("colorMapsTexture", colorMapsTexture, UnityRenderingData),
 			SCHEMA_ENTRY("coloringInfo", coloringInfo, UnityRenderingData),
 										  },
 		sizeof(UnityRenderingData)

@@ -5,8 +5,13 @@ using UnityEngine.XR.Management;
 using System;
 using UnityEngine.XR;
 using UnityEngine.SubsystemsImplementation;
+using B3D.UnityCudaInterop.NativeStructs;
+using System.Runtime.InteropServices;
+using B3D.UnityCudaInterop;
 public class ManualXRControl : MonoBehaviour
 {
+
+
 	void StartXR()
 	{
 		
@@ -18,7 +23,6 @@ public class ManualXRControl : MonoBehaviour
 		XRGeneralSettings.Instance.Manager.InitializeLoaderSync();
 		XRGeneralSettings.Instance.Manager.StartSubsystems();
 	}
-
 
 	void StopXR()
 	{

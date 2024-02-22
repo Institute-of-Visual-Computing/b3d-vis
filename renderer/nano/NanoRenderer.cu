@@ -98,12 +98,19 @@ OPTIX_RAYGEN_PROGRAM(rayGeneration)()
 	const auto a = prd.alpha;
 	if (optixLaunchParams.bg.fillBox && !prd.isBackground)
 	{
-
 		bgColor = optixLaunchParams.bg.fillColor;
 	}
+	
+	auto col = vec3f{ optixLaunchParams.coloringInfo.singleColor };
 
-	const auto color = prd.isBackground ? bgColor : optixLaunchParams.color * (1 - a) + a * bgColor;
+	if (optixLaunchParams.coloringInfo.coloringMode == b3d::renderer::ColoringMode::colormap && !prd.isBackground)
+	{
+		vec4f bla = tex2D<float4>(optixLaunchParams.colorMaps, a, optixLaunchParams.coloringInfo.selectedColorMap); // 
+		col = vec3f{ bla };
+	}
 
+	const auto color = prd.isBackground ? bgColor : col * (1 - a) + a * bgColor;
+	
 	surf2Dwrite(owl::make_rgba(color), optixLaunchParams.surfacePointer, sizeof(uint32_t) * pixelId.x, pixelId.y);
 }
 

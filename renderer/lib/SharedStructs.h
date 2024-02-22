@@ -33,6 +33,9 @@ namespace b3d::renderer
 		Extent extent;
 	};
 
+	// ExternalTexture is read only
+	using ExternalTexture = ExternalRenderTarget;
+
 	enum class RenderMode : int
 	{
 		mono = 0,
@@ -75,10 +78,21 @@ namespace b3d::renderer
 		colormap = 1
 	};
 
+	
+
 	struct ColoringInfo
 	{
 		ColoringMode coloringMode;
 		owl::vec4f singleColor;
 		float selectedColorMap;
 	};
+
+	struct ColorMapInfos
+	{
+		std::vector<std::string> *colorMapNames{};
+		int colorMapCount;
+		float firstColorMapYTextureCoordinate;
+		float colorMapHeightNormalized;
+	};
+
 }

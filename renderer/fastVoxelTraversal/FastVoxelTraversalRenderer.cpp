@@ -14,6 +14,7 @@
 #include "Logging.h"
 #include "SourceVolumeLoader.h"
 
+#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 using namespace b3d::renderer;
@@ -30,6 +31,10 @@ namespace
 	{
 		return max(max(computeStableEpsilon(v.x), computeStableEpsilon(v.y)), computeStableEpsilon(v.z));
 	}
+
+	ColoringInfo coloringInfo = { single, { 0, 1, 0, 1 }, 0 };
+
+	std::string coloringModeStrings[2] = { "Single", "ColorMap" };
 
 	RayCameraData createRayCameraData(const Camera& camera, const Extent& textureExtent)
 	{

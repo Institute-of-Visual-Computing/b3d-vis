@@ -9,11 +9,6 @@ public class UnityActionSyncPrimitiveSample : AbstractUnityRenderAction
 
 	#region Native structs for this action
 
-	[StructLayout(LayoutKind.Sequential)]
-	protected struct SyncPrimitiveSampleNativeRenderingData
-	{
-		public VolumeTransform volumeTransform;
-	}
 	class SyncPrimitiveSampleRenderEventTypes : RenderEventTypes
 	{
 		public const int ACTION_RENDER = RenderEventTypes.BASE_ACTION_COUNT + 0;
@@ -22,8 +17,6 @@ public class UnityActionSyncPrimitiveSample : AbstractUnityRenderAction
 	#endregion
 
 	private ActionSyncPrimitiveSample action;
-
-	protected SyncPrimitiveSampleNativeRenderingData syncPrimitiveSampleNativeRenderingData;
 
 	#region AbstractUnityAction Overrides
 
@@ -37,15 +30,10 @@ public class UnityActionSyncPrimitiveSample : AbstractUnityRenderAction
 		action = new();
 	}
 
-	protected override void InitAdditionalNativeStruct()
-	{
-		// additionalNativeStructDataPtr = Marshal.AllocHGlobal(Marshal.SizeOf<SyncPrimitiveSampleNativeRenderingData>());
-	}
-
 	protected override void InitRenderingCommandBuffers()
 	{
 		CommandBuffer cb = new();
-		cb.IssuePluginEventAndData(NativeAction.RenderEventAndDataFuncPointer, NativeAction.MapEventId(SyncPrimitiveSampleRenderEventTypes.ACTION_RENDER), renderingActionNativeRenderingDataWrapperPtr_);
+		cb.IssuePluginEventAndData(NativeAction.RenderEventAndDataFuncPointer, NativeAction.MapEventId(SyncPrimitiveSampleRenderEventTypes.ACTION_RENDER), unityRenderingDataPtr);
 		renderingCommandBuffers_.Add(new(CameraEvent.BeforeForwardOpaque, cb));
 	}
 

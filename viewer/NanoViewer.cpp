@@ -2,6 +2,9 @@
 
 #include "NanoViewer.h"
 
+
+#include <cuda.h>
+
 #include "passes/DebugDrawPass.h"
 #include "passes/FullscreenTexturePass.h"
 #include "passes/InfinitGridPass.h"
@@ -22,8 +25,11 @@
 #include <ImGuizmo.h>
 
 #include <cuda_runtime.h>
+#include <filesystem>
 
 #include <nvml.h>
+
+#include "stb_image.h"
 
 using namespace owl;
 using namespace owl::viewer;
@@ -238,6 +244,9 @@ auto NanoViewer::gui() -> void
 	}
 	ImGui::Separator();
 
+	ImGui::Separator();
+
+
 	ImGui::Checkbox("Enable Grid Floor", &viewerSettings.enableGridFloor);
 
 	if (viewerSettings.enableGridFloor)
@@ -246,6 +255,10 @@ auto NanoViewer::gui() -> void
 		ImGui::ColorEdit3("Color", viewerSettings.gridColor.data());
 		ImGui::Separator();
 	}
+
+
+
+
 
 	ImGui::Checkbox("Enable Debug Draw", &viewerSettings.enableDebugDraw);
 
@@ -320,6 +333,10 @@ auto NanoViewer::gui() -> void
 	// const auto rr = nvmlDeviceSetPersistenceMode(nvmlDevice, enablePersistenceMode?NVML_FEATURE_ENABLED:
 	// NVML_FEATURE_DISABLED);
 
+
+	ImGui::Image((void*)(intptr_t)colorMapResources_.colormapTexture,
+				 ImVec2(colorMapResources_.colorMap.width, colorMapResources_.colorMap.width));
+
 	ImGui::End();
 }
 
@@ -373,7 +390,7 @@ auto NanoViewer::onFrameBegin() -> void
 NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, const int initWindowHeight,
 					   bool enableVsync, const int rendererIndex)
 	: owl::viewer::OWLViewer(title, owl::vec2i(initWindowWidth, initWindowHeight), true, enableVsync), resources_{},
-	  renderingData_{},synchronizationResources_{}
+	  renderingData_{},synchronizationResources_{}, colorMapResources_{}
 {
 	nvmlInit();
 
@@ -558,6 +575,80 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 		const auto result = cudaImportExternalSemaphore(&renderingData_.data.synchronization.signalSemaphore,
 														&externalSemaphoreHandleDesc);
 		assert(result == cudaError::cudaSuccess);
+	}
+
+	// Create Colormap and load data from default colormap, if present
+	{
+		GL_CALL(glGenTextures(1, &colorMapResources_.colormapTexture));
+		GL_CALL(glBindTexture(GL_TEXTURE_2D, colorMapResources_.colormapTexture));
+
+		 // Setup filtering parameters for display
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE); // This is required on WebGL for non power-of-two textures
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Same
+
+		// Load default colormap
+		auto filePath = std::filesystem::path{ "resources/colormaps" };
+		if(std::filesystem::exists(filePath / "defaultColorMap.json"))
+		{
+			colorMapResources_.colorMap = b3d::tools::colormap::load(filePath / "defaultColorMap.json");
+
+			if (std::filesystem::path(colorMapResources_.colorMap.colorMapFilePath).is_relative())
+			{
+				filePath /= colorMapResources_.colorMap.colorMapFilePath;
+			}
+			else
+			{
+				filePath = colorMapResources_.colorMap.colorMapFilePath;
+			}
+			int x, y, n;
+
+			const auto bla = stbi_info(filePath.string().c_str(), &x, &y, &n);
+
+			auto data = stbi_loadf(filePath.string().c_str(), &x, &y, &n, 0);
+
+			// Load Colormap
+			GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, x, y, 0, GL_RGBA, GL_FLOAT, data));
+
+			stbi_image_free(data);
+
+			renderingData_.data.colorMapTexture.extent =
+				b3d::renderer::Extent{ static_cast<uint32_t>(x), static_cast<uint32_t>(y), 1 };
+		} else
+		{
+			GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 100, 1, 0, GL_RGBA, GL_FLOAT, nullptr));
+			renderingData_.data.colorMapTexture.extent =
+				b3d::renderer::Extent{ 100, 1, 1 };
+		}
+
+		std::string colormaptexturename = "ColorMap";
+		GL_CALL(glObjectLabel(GL_TEXTURE, colorMapResources_.colormapTexture, colormaptexturename.length() + 1,
+							  colormaptexturename.c_str()));
+
+
+
+
+
+
+
+
+
+		// TODO: add cuda error checks
+		auto rc =
+			cudaGraphicsGLRegisterImage(&colorMapResources_.cudaGraphicsResource, colorMapResources_.colormapTexture, GL_TEXTURE_2D, cudaGraphicsRegisterFlagsTextureGather);
+
+		renderingData_.data.colorMapTexture.target = colorMapResources_.cudaGraphicsResource;
+
+		renderingData_.data.coloringInfo =
+			b3d::renderer::ColoringInfo{ b3d::renderer::ColoringMode::single, vec4f{ 1, 1, 1, 1 },
+										 colorMapResources_.colorMap.firstColorMapYTextureCoordinate };
+
+		renderingData_.data.colorMapInfos =
+			b3d::renderer::ColorMapInfos{ &colorMapResources_.colorMap.colorMapNames,
+										  colorMapResources_.colorMap.colorMapCount,
+										  colorMapResources_.colorMap.firstColorMapYTextureCoordinate,
+										  colorMapResources_.colorMap.colorMapHeightNormalized };
 	}
 
 	/*glGenTextures(1, &resources_.colorTexture);

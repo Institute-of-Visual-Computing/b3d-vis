@@ -3,6 +3,7 @@
 #include <owl/common/math/AffineSpace.h>
 #include <owl/common/math/box.h>
 #include <owl/common/math/vec.h>
+#include <SharedStructs.h>
 
 #include <optix_types.h>
 #include <surface_types.h>
@@ -33,7 +34,8 @@ namespace b3d
 					bool fillBox;
 					owl::vec3f fillColor;
 				} bg;
-				owl::vec3f color;
+				cudaTextureObject_t colorMaps;
+				b3d::renderer::ColoringInfo coloringInfo;
 			};
 
 			struct NanoVdbVolume

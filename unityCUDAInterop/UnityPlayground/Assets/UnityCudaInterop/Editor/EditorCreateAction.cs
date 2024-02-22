@@ -2,7 +2,6 @@ using UnityEngine;
 using UnityEditor;
 using UnityEngine.UIElements;
 using System.Text.RegularExpressions;
-using Unity.VisualScripting;
 
 public class EditorCreateAction : EditorWindow
 {
@@ -103,7 +102,7 @@ public class EditorCreateAction : EditorWindow
 		var actionParentFolderPath = AssetDatabase.GUIDToAssetPath(actionParentFolderGUID);
 
 		var actionClassName = actionLibraryName;
-		var unityActionClassName = $"Unity{actionLibraryName.FirstCharacterToUpper()}";
+		var unityActionClassName = $"Unity{char.ToUpper(actionLibraryName[0])}{actionLibraryName[1..]}";
 
 		AssetDuplicationInfos actionClassDuplicateInfo = new()
 		{
@@ -163,7 +162,7 @@ public class EditorCreateAction : EditorWindow
 				new()
 				{
 					regex = "templateNativeRenderingData_",
-					replacement = $"{actionLibraryName}NativeRenderingData_".FirstCharacterToLower(),
+					replacement =  $"{char.ToLower(actionLibraryName[0])}{actionLibraryName[1..]}NativeRenderingData_",
 					options = RegexOptions.Multiline
 				},
 			}

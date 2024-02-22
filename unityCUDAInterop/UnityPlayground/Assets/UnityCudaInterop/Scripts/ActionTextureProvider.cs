@@ -9,10 +9,10 @@ public class ActionTextureProvider
 	RenderTextureDescriptor renderTextureDescriptor_;
 	Texture externalTargetTexture_ = null;
 	Texture oldExternalTexture_ = null;
-	TextureExtent externalTargetTextureExtent_;
+	UnityExtent externalTargetTextureExtent_;
 
 	public Texture ExternalTargetTexture { get { return externalTargetTexture_; } }
-	public TextureExtent ExternalTargetTextureExtent { get { return externalTargetTextureExtent_; } }
+	public UnityExtent ExternalTargetTextureExtent { get { return externalTargetTextureExtent_; } }
 
 	readonly RenderTextureDescriptor monoDefaultRenderTextureDescriptor = new RenderTextureDescriptor(Screen.width, Screen.height, RenderTextureFormat.ARGB32)
 	{

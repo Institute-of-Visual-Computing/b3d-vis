@@ -3,16 +3,12 @@ using System.Runtime.InteropServices;
 using UnityEngine.Rendering;
 using B3D.UnityCudaInterop.NativeStructs;
 using B3D.UnityCudaInterop;
+using UnityEngine;
 
 public class UnityActionSimpleTriangles : AbstractUnityRenderAction
 {
 	#region Native structs for this action
 
-	[StructLayout(LayoutKind.Sequential)]
-	protected struct SimpleTrianglesNativeRenderingData
-	{
-		public VolumeTransform volumeTransform;
-	}
 	class SimpleTrianglesRenderEventTypes : RenderEventTypes
 	{
 		public const int ACTION_RENDER = RenderEventTypes.BASE_ACTION_COUNT + 0;
@@ -22,7 +18,14 @@ public class UnityActionSimpleTriangles : AbstractUnityRenderAction
 
 	private ActionSimpleTriangles action;
 
-	protected SimpleTrianglesNativeRenderingData simpleTrianglesNativeRenderingData;
+	public Texture2D colorMapsTexture;
+
+	public TextAsset colorMapsDescription;
+
+	ColorMaps colorMaps;
+
+	public UnityColoringMode coloringMode = UnityColoringMode.Single;
+
 
 	#region AbstractUnityAction Overrides
 
@@ -36,30 +39,18 @@ public class UnityActionSimpleTriangles : AbstractUnityRenderAction
 		action = new();
 	}
 
-	protected override void InitAdditionalNativeStruct()
-	{
-		simpleTrianglesNativeRenderingData = new()
-		{
-			volumeTransform = new()
-		};
-
-		additionalNativeStructDataPtr = Marshal.AllocHGlobal(Marshal.SizeOf<SimpleTrianglesNativeRenderingData>());
-	}
-
 	protected override void InitRenderingCommandBuffers()
 	{
 		CommandBuffer cb = new();
-		cb.IssuePluginEventAndData(NativeAction.RenderEventAndDataFuncPointer, NativeAction.MapEventId(SimpleTrianglesRenderEventTypes.ACTION_RENDER), renderingActionNativeRenderingDataWrapperPtr_);
+		cb.IssuePluginEventAndData(NativeAction.RenderEventAndDataFuncPointer, NativeAction.MapEventId(SimpleTrianglesRenderEventTypes.ACTION_RENDER), unityRenderingDataPtr);
 		renderingCommandBuffers_.Add(new(CameraEvent.BeforeForwardOpaque, cb));
 	}
 
 	protected override void FillAdditionalNativeRenderingData()
 	{
-		simpleTrianglesNativeRenderingData.volumeTransform.position = volumeCube.transform.position;
-		simpleTrianglesNativeRenderingData.volumeTransform.scale = volumeCube.transform.localScale;
-		simpleTrianglesNativeRenderingData.volumeTransform.rotation = volumeCube.transform.rotation;
-
-		Marshal.StructureToPtr(simpleTrianglesNativeRenderingData, additionalNativeStructDataPtr, true);
+		unityRenderingData.volumeTransform.position = volumeCube.transform.position;
+		unityRenderingData.volumeTransform.scale = volumeCube.transform.localScale;
+		unityRenderingData.volumeTransform.rotation = volumeCube.transform.rotation;
 	}
 
 	#endregion AbstractUnityAction Overrides
@@ -69,9 +60,15 @@ public class UnityActionSimpleTriangles : AbstractUnityRenderAction
 	#region Unity Methods
 
 	protected override void Start()
-    {
+	{
 		base.Start();
-    }
+		colorMaps = ColorMaps.load(colorMapsDescription.text);
+		unityRenderingData.colorMapsTexture = new(colorMapsTexture.GetNativeTexturePtr(), new((uint)colorMaps.width, (uint)colorMaps.height, 1));
+
+		unityRenderingData.coloringInfo.coloringMode = UnityColoringMode.Single;
+		unityRenderingData.coloringInfo.singleColor = new Vector4(0, 1, 0, 1);
+		unityRenderingData.coloringInfo.selectedColorMap = colorMaps.firstColorMapYTextureCoordinate;
+	}
 
 	protected override void Update()
 	{

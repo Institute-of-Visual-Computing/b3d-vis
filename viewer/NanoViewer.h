@@ -5,6 +5,7 @@
 
 #include <RendererBase.h>
 
+#include "ColorMap.h"
 #include "GizmoHelper.h"
 #include "Vulkan.h"
 
@@ -50,7 +51,16 @@ private:
 	{
 		GLuint colorTexture;
 		GLuint minMaxTexture;
+
 	} resources_;
+
+	
+	struct ColorMapResources
+	{
+		b3d::tools::colormap::ColorMap colorMap;
+		GLuint colormapTexture;
+		cudaGraphicsResource_t cudaGraphicsResource;
+	} colorMapResources_;
 
 	b3d::renderer::RenderingDataWrapper renderingData_;
 

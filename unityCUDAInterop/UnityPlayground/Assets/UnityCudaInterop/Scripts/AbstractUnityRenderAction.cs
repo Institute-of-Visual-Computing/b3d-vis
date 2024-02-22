@@ -1,5 +1,3 @@
-using B3D.UnityCudaInterop.NativeStructs;
-using B3D.UnityCudaInterop.NativeStructs.RenderAction;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -8,6 +6,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using static UnityEngine.Camera;
 using UnityEngine.XR;
+using B3D.UnityCudaInterop.NativeStructs;
 
 namespace B3D
 {
@@ -47,19 +46,12 @@ namespace B3D
 			/// </summary>
 			protected ActionTextureProvider textureProvider_;
 
-			protected RenderingActionNativeInitData nativeInitData;
-			protected System.IntPtr nativeInitDataPtr;
-
-			protected NativeTextureData nativeTextureData;
-			protected IntPtr nativeTextureDataPtr;
-
-			protected RenderingActionNativeRenderingDataWrapper renderingActionNativeRenderingDataWrapper_;
-			protected System.IntPtr renderingActionNativeRenderingDataWrapperPtr_;
+			protected UnityRenderingData unityRenderingData;
 
 			/// <summary>
-			/// Pointer to unmanaged memory for custom data. Gets destroyed automatically. Derived classes must create memory in order to use custom data.
+			/// Pointer to unmanaged memory for custom data. Gets destroyed automatically.
 			/// </summary>
-			protected System.IntPtr additionalNativeStructDataPtr;
+			protected System.IntPtr unityRenderingDataPtr;
 			
 			protected CommandBuffer commandBuffer;
 
@@ -88,6 +80,7 @@ namespace B3D
 				else
 				{
 					FillNativeRenderingData();
+					Marshal.StructureToPtr(unityRenderingData, unityRenderingDataPtr, true);
 				}
 			}
 
@@ -98,11 +91,7 @@ namespace B3D
 				NativeAction.TeardownAction();
 				NativeAction.DestroyAction();
 
-
-				Marshal.FreeHGlobal(additionalNativeStructDataPtr);
-				Marshal.FreeHGlobal(renderingActionNativeRenderingDataWrapperPtr_);
-				Marshal.FreeHGlobal(nativeInitDataPtr);
-				Marshal.FreeHGlobal(nativeTextureDataPtr);
+				Marshal.FreeHGlobal(unityRenderingDataPtr);
 			}
 
 			#endregion Unity Methods
@@ -123,11 +112,6 @@ namespace B3D
 			protected abstract void InitAction();
 
 			/// <summary>
-			/// If the derived class uses additional data the corresponding structs should be created here.
-			/// </summary>
-			protected abstract void InitAdditionalNativeStruct();
-
-			/// <summary>
 			/// Create commandbuffers for rendering purposes in this method. Pass them to <see cref="renderingCommandBuffers_"/>
 			/// </summary>
 			protected abstract void InitRenderingCommandBuffers();
@@ -143,12 +127,10 @@ namespace B3D
 			{
 				yield return new WaitForEndOfFrame();
 
-				nativeInitData = new();
-				nativeInitData.textureData = nativeTextureData;
-				Marshal.StructureToPtr(nativeInitData, nativeInitDataPtr, true);
+				Marshal.StructureToPtr(unityRenderingData, unityRenderingDataPtr, true);
 
 				CommandBuffer immediate = new();
-				immediate.IssuePluginEventAndData(NativeAction.RenderEventAndDataFuncPointer, NativeAction.MapEventId(RenderEventTypes.ACTION_INITIALIZE), nativeInitDataPtr);
+				immediate.IssuePluginEventAndData(NativeAction.RenderEventAndDataFuncPointer, NativeAction.MapEventId(RenderEventTypes.ACTION_INITIALIZE), unityRenderingDataPtr);
 				Graphics.ExecuteCommandBuffer(immediate);
 				yield return new WaitForEndOfFrame();
 				yield return new WaitForEndOfFrame();
@@ -169,44 +151,39 @@ namespace B3D
 
 				renderingCommandBuffers_ = new();
 				textureProvider_ = new();
+
+				unityRenderingData = new();
+				unityRenderingData.view = UnityView.CREATE();
+				unityRenderingDataPtr = Marshal.AllocHGlobal(Marshal.SizeOf<UnityRenderingData>());
+
 				InitAction();
-
-				renderingActionNativeRenderingDataWrapper_ = RenderingActionNativeRenderingDataWrapper.CREATE();
-				renderingActionNativeRenderingDataWrapperPtr_ = Marshal.AllocHGlobal(Marshal.SizeOf<RenderingActionNativeRenderingDataWrapper>());
-				InitAdditionalNativeStruct();
-				renderingActionNativeRenderingDataWrapper_.AdditionalDataPointer = additionalNativeStructDataPtr;
-
-				nativeInitData = new();
-				nativeTextureData = new();
-
-				nativeInitDataPtr = Marshal.AllocHGlobal(Marshal.SizeOf<RenderingActionNativeInitData>());
-				nativeTextureDataPtr = Marshal.AllocHGlobal(Marshal.SizeOf<NativeTextureData>());
-
+				
 				InitRenderingCommandBuffers();
 			}
 
 			protected virtual void SetTextures(bool init = false)
 			{
-				nativeTextureData = new();
 				textureProvider_.createExternalTargetTexture();
 
 				// quadFullscreenMaterial.SetTexture("_MainTex", action.TextureProvider.ExternalTargetTexture);
 				volumeObjectMaterial.SetTexture("_MainTex", textureProvider_.ExternalTargetTexture);
 
-				nativeTextureData.DepthTexture.Extent.Depth = 0;
-				nativeTextureData.DepthTexture.TexturePointer = IntPtr.Zero;
 
-				nativeTextureData.ColorTexture.TexturePointer = textureProvider_.ExternalTargetTexture.GetNativeTexturePtr();
-				nativeTextureData.ColorTexture.Extent = textureProvider_.ExternalTargetTextureExtent;
+				unityRenderingData.renderTargets.minMaxRt.Extent.Depth = 0;
+				unityRenderingData.renderTargets.minMaxRt.TexturePointer = IntPtr.Zero;
 
-				Marshal.StructureToPtr(nativeTextureData, nativeTextureDataPtr, true);
 
-				// Execute only if we're updating the texture.
+				unityRenderingData.renderTargets.colorRt.TexturePointer = textureProvider_.ExternalTargetTexture.GetNativeTexturePtr();
+				unityRenderingData.renderTargets.colorRt.Extent = textureProvider_.ExternalTargetTextureExtent;
+
+				// Execute only if we're updating the texture. 
 				if(!init) {
 					RemoveRenderingCommandBuffersFromCamera();
-					
+
+					Marshal.StructureToPtr(unityRenderingData, unityRenderingDataPtr, true);
+
 					CommandBuffer cbImmediate = new();
-					cbImmediate.IssuePluginEventAndData(NativeAction.RenderEventAndDataFuncPointer, NativeAction.MapEventId(RenderEventTypes.ACTION_SET_TEXTURES), nativeTextureDataPtr);
+					cbImmediate.IssuePluginEventAndData(NativeAction.RenderEventAndDataFuncPointer, NativeAction.MapEventId(RenderEventTypes.ACTION_SET_TEXTURES), unityRenderingDataPtr);
 					Graphics.ExecuteCommandBuffer(cbImmediate);
 					StartCoroutine(WaitEndOfFrameAfterImmediateCommandBufferExec());
 				}
@@ -216,7 +193,7 @@ namespace B3D
 			{
 				if (XRSettings.isDeviceActive)
 				{
-					renderingActionNativeRenderingDataWrapper_.NativeRenderingData.EyeCount = 2;
+					unityRenderingData.view.mode = UnityRenderMode.stereo;
 
 					Vector3 cameraWorldPosition = targetCamera.transform.position;
 
@@ -237,23 +214,23 @@ namespace B3D
 						var onePxDirectionV = (upperLeft - lowerLeft); //  / action.TextureProvider.ExternalTargetTextureExtent.Height;
 						var camLowerLeft = (lowerLeft - eyePos);
 
-						renderingActionNativeRenderingDataWrapper_.NativeRenderingData.NativeCameradata[nodeUsage.eyeIndex].dir00 = camLowerLeft;
-						renderingActionNativeRenderingDataWrapper_.NativeRenderingData.NativeCameradata[nodeUsage.eyeIndex].dirDu = onePxDirectionU;
-						renderingActionNativeRenderingDataWrapper_.NativeRenderingData.NativeCameradata[nodeUsage.eyeIndex].dirDv = onePxDirectionV;
-						renderingActionNativeRenderingDataWrapper_.NativeRenderingData.NativeCameradata[nodeUsage.eyeIndex].directionsAvailable = true;
+						
+						unityRenderingData.view.UnityCameras[nodeUsage.eyeIndex].dir00 = camLowerLeft;
+						unityRenderingData.view.UnityCameras[nodeUsage.eyeIndex].dirDu = onePxDirectionU;
+						unityRenderingData.view.UnityCameras[nodeUsage.eyeIndex].dirDv = onePxDirectionV;
+						unityRenderingData.view.UnityCameras[nodeUsage.eyeIndex].directionsAvailable = true;
 					}
 				}
 				else
 				{
-					renderingActionNativeRenderingDataWrapper_.NativeRenderingData.EyeCount = 1;
+					unityRenderingData.view.mode = UnityRenderMode.mono;
 					SetNativeRenderingCameraData(targetCamera.transform.position, targetCamera.transform.forward, targetCamera.transform.up, targetCamera.fieldOfView, 0);
 				}
-				Marshal.StructureToPtr(renderingActionNativeRenderingDataWrapper_, renderingActionNativeRenderingDataWrapperPtr_, true);
 			}
 
 			protected virtual void SetNativeRenderingCameraData(Vector3 origin, Vector3 at, Vector3 up, float fovYDegree, int eyeIndex)
 			{
-				NativeCameraData nativeCameraData = new()
+				UnityCamera nativeCameraData = new()
 				{
 					Origin = origin,
 					At = at,
@@ -262,7 +239,7 @@ namespace B3D
 					FovY = Mathf.Deg2Rad * fovYDegree,
 					directionsAvailable = false
 				};
-				renderingActionNativeRenderingDataWrapper_.NativeRenderingData.NativeCameradata[eyeIndex] = nativeCameraData;
+				unityRenderingData.view.UnityCameras[eyeIndex] = nativeCameraData;
 			}
 
 			protected virtual void FillNativeRenderingData()
@@ -282,9 +259,12 @@ namespace B3D
 
 			protected virtual void RemoveRenderingCommandBuffersFromCamera()
 			{
-				foreach (var (evt, cb) in renderingCommandBuffers_)
+				if (targetCamera)
 				{
-					targetCamera.AddCommandBuffer(evt, cb);
+					foreach (var (evt, cb) in renderingCommandBuffers_)
+					{
+						targetCamera.AddCommandBuffer(evt, cb);
+					}
 				}
 			}
 

@@ -5,6 +5,7 @@
 #include "owl/owl_host.h"
 
 #include <CudaGpuTimers.h>
+#include "ColorMap.h"
 
 namespace b3d::renderer
 {

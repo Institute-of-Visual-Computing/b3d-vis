@@ -3,6 +3,7 @@ embed_ptx(
 		nano-ptx
 	PTX_LINK_LIBRARIES
 		owl::owl
+		B3D::Renderer::Library
 	SOURCES
 		NanoRenderer.cu
 	#DEVICE_DEBUG
@@ -16,7 +17,8 @@ embed_optixir(
 	OUTPUT_TARGET
 		nano-optixir
 	OPTIXIR_LINK_LIBRARIES
-		owl::owl
+		owl::owl	
+		B3D::Renderer::Library
 	SOURCES
 		NanoRenderer.cu
 	#DEVICE_DEBUG
@@ -46,4 +48,5 @@ add_b3d_renderer(
 		OpenVDB::nanovdb
 		imgui::imgui
 		NanoCutterParser
+		B3D::Tools::ColorMap
 )

@@ -43,6 +43,8 @@ protected:
 	std::unique_ptr<Texture> colorTexture_;
 	std::unique_ptr<Texture> depthTexture_;
 
+	std::unique_ptr<Texture> colorMapsTexture_;
+
 	// explicite. can be generic
 	std::unique_ptr<SimpleTrianglesRenderer> renderer_;
 	bool isReady_{ false };
@@ -76,6 +78,22 @@ auto ActionSimpleTriangles::initialize(void* data) -> void
 	renderingDataWrapper_.data.synchronization.signalSemaphore = signalPrimitive_->getCudaSemaphore();
 	renderingDataWrapper_.data.rendererInitializationInfo.deviceUuid = renderAPI_->getCudaUUID();
 
+	const auto colorMapsTexture = rdb.get<UnityTexture>("colorMapsTexture");
+	const auto coloringInfo = rdb.get<UnityColoringInfo>("coloringInfo");
+
+	colorMapsTexture_ = renderAPI_->createTexture(colorMapsTexture->texturePointer);
+	colorMapsTexture_->registerCUDA();
+	cudaDeviceSynchronize();
+	renderingDataWrapper_.data.colorMapTexture = {
+		.target = colorMapsTexture_->getCudaGraphicsResource(),
+														  .extent = {
+															  static_cast<uint32_t>(colorMapsTexture_->getWidth()),
+															  static_cast<uint32_t>(colorMapsTexture_->getHeight()),
+															  static_cast<uint32_t>(colorMapsTexture_->getDepth()) }
+	};
+	
+	renderingDataWrapper_.data.coloringInfo = *coloringInfo;
+
 	renderer_->initialize(
 		&renderingDataWrapper_.buffer,
 		DebugInitializationInfo{ std::make_shared<NullDebugDrawList>(), std::make_shared<NullGizmoHelper>() });
@@ -94,6 +112,10 @@ auto ActionSimpleTriangles::customRenderEvent(int eventId, void* data) -> void
 					  .extent = { static_cast<uint32_t>(colorTexture_->getWidth()),
 								  static_cast<uint32_t>(colorTexture_->getHeight()),
 								  static_cast<uint32_t>(colorTexture_->getDepth()) } };
+
+		
+		const auto coloringInfo = rdb.get<UnityColoringInfo>("coloringInfo");
+		renderingDataWrapper_.data.coloringInfo = *coloringInfo;
 
 		const auto& view = rdb.get<View>("view");
 		renderingDataWrapper_.data.view.cameras[0] = view->cameras[0];
@@ -182,6 +204,7 @@ auto ActionSimpleTriangles::teardown() -> void
 	cudaDeviceSynchronize();
 	renderer_.reset();
 
+	colorMapsTexture_.reset();
 	depthTexture_.reset();
 	colorTexture_.reset();
 	waitPrimitive_.reset();

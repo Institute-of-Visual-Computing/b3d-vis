@@ -16,6 +16,9 @@ namespace b3d::renderer
 		Synchronization synchronization;
 		VolumeTransform volumeTransform;
 		float transferOffset{ 0.5f };
+		ExternalTexture colorMapTexture;
+		ColoringInfo coloringInfo;
+		ColorMapInfos colorMapInfos;
 	};
 
 	using Schema = std::unordered_map<std::string, size_t>;
@@ -38,6 +41,9 @@ namespace b3d::renderer
 											  SCHEMA_ENTRY("synchronization", synchronization, RenderingData),
 											  SCHEMA_ENTRY("volumeTransform", volumeTransform, RenderingData),
 											  SCHEMA_ENTRY("transferOffset", transferOffset, RenderingData),
+											  SCHEMA_ENTRY("colorMapTexture", colorMapTexture, RenderingData),
+											  SCHEMA_ENTRY("coloringInfo", coloringInfo, RenderingData),
+												SCHEMA_ENTRY("colorMapInfos", colorMapInfos, RenderingData)
 										  },
 										  sizeof(RenderingData) };
 

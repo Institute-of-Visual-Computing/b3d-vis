@@ -1,7 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
-using static UnityEngine.Camera;
 using UnityEngine.XR;
 
 namespace B3D
@@ -10,7 +10,7 @@ namespace B3D
     {
 		public struct EyeCamera
 		{
-			public EyeCamera(int eyeIdx, StereoscopicEye camEye, XRNode n, InputFeatureUsage<Vector3> feature)
+			public EyeCamera(int eyeIdx, UnityEngine.Camera.StereoscopicEye camEye, XRNode n, InputFeatureUsage<Vector3> feature)
 			{
 				eyeIndex = eyeIdx;
 				cameraEye = camEye;
@@ -32,6 +32,30 @@ namespace B3D
 			};
 		}
 
+		[Serializable]
+		public class ColorMaps
+		{
+			public string colorMapFilePath;
+			public List<string> colorMapNames;
+			public int height;
+			public int width;
+			public int pixelsPerMap;
+			public int colorMapCount;
+
+			[NonSerialized]
+			public float firstColorMapYTextureCoordinate;
+			[NonSerialized]
+			public float colorMapHeightNormalized;
+
+			public static ColorMaps load(string jsonString)
+			{
+				ColorMaps cms = JsonUtility.FromJson<ColorMaps>(jsonString);
+				cms.colorMapHeightNormalized = (1.0f / (float)cms.height) * cms.pixelsPerMap;
+				cms.firstColorMapYTextureCoordinate = cms.colorMapHeightNormalized / 2.0f;
+				return cms;
+			}
+		}
+
 		public class RenderEventTypes
 		{
 			public const int MAX_EVENT_COUNT = 10;
@@ -43,171 +67,122 @@ namespace B3D
 
 		}
 
-
 		namespace NativeStructs
         {
-            [StructLayout(LayoutKind.Sequential)]
-            public struct TextureExtent
-            {
+			// defined in Action.h - using UnityCamera = renderer::Camera;
+			[StructLayout(LayoutKind.Sequential)]
+			public struct UnityCamera
+			{
+				public Vector3 Origin;
+				public Vector3 At;
+				public Vector3 Up;
+				public float CosFovY;
+				public float FovY; // in radians
+				public bool directionsAvailable;
+				public Vector3 dir00;
+				public Vector3 dirDu;
+				public Vector3 dirDv;
+			};
+
+			// defined in Action.h - using UnityExtent = renderer::Extent;
+			[StructLayout(LayoutKind.Sequential)]
+            public struct UnityExtent
+			{
                 public uint Width;
                 public uint Height;
                 public uint Depth;
 
-                public TextureExtent(uint width, uint height, uint depth)
+                public UnityExtent(uint width, uint height, uint depth)
                 {
                     this.Width = width;
                     this.Height = height;
                     this.Depth = depth;
                 }
             }
-        
-            [StructLayout(LayoutKind.Sequential)]
-	        public struct NativeUnityTexture
-	        {
-		        public IntPtr TexturePointer;
-		        public TextureExtent Extent;
 
-                public NativeUnityTexture(IntPtr texturePointer, TextureExtent extent)
-                {
-                    this.TexturePointer = texturePointer;
-                    this.Extent = extent;
-                }
-	        }
-        
-            [StructLayout(LayoutKind.Sequential)]
-            public struct NativeCameraData
-            {
-                public Vector3 Origin;
-                public Vector3 At;
-                public Vector3 Up;
-                public float CosFovY;
-                public float FovY;
-				public bool directionsAvailable;
-				public Vector3 dir00;
-				public Vector3 dirDu;
-				public Vector3 dirDv;
-            }
-            
-            [StructLayout(LayoutKind.Sequential)]
-            public struct NativeTextureData
-            {
-                public NativeUnityTexture ColorTexture;
-                public NativeUnityTexture DepthTexture;
-                public static NativeTextureData CREATE()
-                {
-                    NativeTextureData ntd = new();
-                    ntd.ColorTexture = new NativeUnityTexture();
-                    ntd.DepthTexture = new NativeUnityTexture();
-                    return ntd;
-                }
-
-                public NativeTextureData(NativeUnityTexture colorTexture, NativeUnityTexture depthTexture)
-                {
-                    this.ColorTexture = colorTexture;
-                    this.DepthTexture = depthTexture;
-                }
-            }
-
-
-			[StructLayout(LayoutKind.Sequential)]
-			public struct NativeRenderingData
+			// defined in Action.h - using UnityRenderMode = renderer::RenderMode;
+			public enum UnityRenderMode : int
 			{
-				public int EyeCount;
+				mono = 0,
+				stereo
+			};
 
+			// defined in Action.h - using UnityView = renderer::View;
+			[StructLayout(LayoutKind.Sequential)]
+			public struct UnityView
+			{
 				[MarshalAs(UnmanagedType.ByValArray, SizeConst = 2)]
-				public NativeCameraData[] NativeCameradata;
+				public UnityCamera[] UnityCameras;
 
-				public NativeRenderingData(int eyeCount, NativeCameraData[] nativeCameradata)
+				public UnityRenderMode mode;
+
+				public static UnityView CREATE()
 				{
-					this.EyeCount = eyeCount;
-					NativeCameradata = new NativeCameraData[2];
-					NativeCameradata[0] = nativeCameradata[0];
-					NativeCameradata[1] = nativeCameradata[1];	
+					UnityView uv = new();
+					uv.UnityCameras = new UnityCamera[2];
+					uv.mode = UnityRenderMode.mono;
+					return uv;
 				}
 
-				public static NativeRenderingData CREATE()
-				{
-					var nrd = new NativeRenderingData();
-					nrd.EyeCount = 1;
-					nrd.NativeCameradata = new NativeCameraData[2];
-					return nrd;
-				}
-			}
+			};
 
-
-			
-
-			public struct NativeMatrix4x3
+			// defined in Action.h - using UnityColoringMode = renderer::ColoringMode;
+			public enum UnityColoringMode : int
 			{
-				/*
-					vx0  vy0 vz0 p0
-					vx1  vy1 vz1 p1
-					vx2  vy2 vz2 p2
-				*/
-				public Vector3 vx;
-				public Vector3 vy;
-				public Vector3 vz;
-				public Vector3 p;
+				Single = 0,
+				Colormap = 1
+			};
 
-				public static NativeMatrix4x3 CREATE()
+			// defined in Action.h - using UnityColoringInfo = renderer::ColoringInfo;
+			[StructLayout(LayoutKind.Sequential)]
+			public struct UnityColoringInfo
+			{
+				public UnityColoringMode coloringMode;
+				public Vector4 singleColor;
+				public float selectedColorMap;
+			};
+
+			// defined in Action.h - struct UnityTexture
+			[StructLayout(LayoutKind.Sequential)]
+			public struct UnityTexture
+			{
+				public IntPtr TexturePointer;
+				public UnityExtent Extent;
+
+				public UnityTexture(IntPtr texturePointer, UnityExtent extent)
 				{
-					var nm43 = new NativeMatrix4x3
-					{
-						vx = Vector3.right,
-						vy = Vector3.up,
-						vz = Vector3.forward,
-						p = Vector3.zero
-					};
-					return nm43;
+					this.TexturePointer = texturePointer;
+					this.Extent = extent;
 				}
 			}
 
+			// defined in Action.h - struct UnityRenderTargets
 			[StructLayout(LayoutKind.Sequential)]
-			public struct VolumeTransform
+			public struct UnityRenderTargets
+			{
+				public UnityTexture colorRt;
+				public UnityTexture minMaxRt;
+			};
+
+			// defined in Action.h - struct UnityVolumeTransform
+			[StructLayout(LayoutKind.Sequential)]
+			public struct UnityVolumeTransform
 			{
 				public Vector3 position;
 				public Vector3 scale;
 				public Quaternion rotation;
 			};
 
-			namespace RenderAction
+			// defined in Action.h - struct UnityRenderingData
+			[StructLayout(LayoutKind.Sequential)]
+			public struct UnityRenderingData
 			{
-				[StructLayout(LayoutKind.Sequential)]
-				public struct RenderingActionNativeInitData
-				{
-					public NativeTextureData textureData;
-					public static RenderingActionNativeInitData CREATE()
-					{
-						RenderingActionNativeInitData nid = new()
-						{
-							textureData = NativeTextureData.CREATE()
-						};
-						return nid;
-					}
-				};
+				public UnityRenderTargets renderTargets;
+				public UnityView view;
+				public UnityVolumeTransform volumeTransform;
+				public UnityTexture colorMapsTexture;
+				public UnityColoringInfo coloringInfo;
 
-				[StructLayout(LayoutKind.Sequential)]
-				public struct RenderingActionNativeRenderingDataWrapper
-				{
-					public NativeRenderingData NativeRenderingData;
-
-					public IntPtr AdditionalDataPointer;
-
-					public RenderingActionNativeRenderingDataWrapper(NativeRenderingData nativeRenderingData, IntPtr additionalDataPointer)
-					{
-						this.NativeRenderingData = nativeRenderingData;
-						this.AdditionalDataPointer = additionalDataPointer;
-					}
-
-					public static RenderingActionNativeRenderingDataWrapper CREATE()
-					{
-						RenderingActionNativeRenderingDataWrapper nrdw = new();
-						nrdw.NativeRenderingData = NativeRenderingData.CREATE();
-						nrdw.AdditionalDataPointer = IntPtr.Zero;
-						return nrdw;
-					}
-
-				}
 			}
 		}
     }
