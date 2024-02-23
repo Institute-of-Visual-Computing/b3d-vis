@@ -38,15 +38,7 @@ __global__ void kernel()
 
 void b3d::renderer::SyncPrimitiveSampleRenderer::onRender()
 {
-
 	auto cudaRet = cudaSuccess;
-
-	const auto synchronization = renderData_->get<Synchronization>("synchronization");
-
-	auto waitParams = cudaExternalSemaphoreWaitParams{};
-	waitParams.flags = 0;
-	waitParams.params.fence.value = synchronization->fenceValue;
-	cudaWaitExternalSemaphoresAsync(&synchronization->signalSemaphore, &waitParams, 1);
 
 	std::array<cudaArray_t, 2> cudaArrays{};
 	std::array<cudaSurfaceObject_t, 2> cudaSurfaceObjects{};
@@ -99,18 +91,6 @@ void b3d::renderer::SyncPrimitiveSampleRenderer::onRender()
 			cudaRet = cudaDestroySurfaceObject(cudaSurfaceObjects[i]);
 		}
 		cudaRet = cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&renderTargets->colorRt.target));
-	}
-
-	auto signalParams = cudaExternalSemaphoreSignalParams{};
-	signalParams.flags = 0;
-	signalParams.params.fence.value = synchronization->fenceValue;
-	cudaSignalExternalSemaphoresAsync(&synchronization->waitSemaphore, &signalParams, 1);
-
-	cudaError_t rc = cudaGetLastError();
-	if (rc != cudaSuccess)
-	{
-		fprintf(stderr, "error (%s: line %d): %d:  %s\n", __FILE__, __LINE__, rc, cudaGetErrorString(rc));
-		// OWL_RAISE("fatal cuda error");
 	}
 }
 

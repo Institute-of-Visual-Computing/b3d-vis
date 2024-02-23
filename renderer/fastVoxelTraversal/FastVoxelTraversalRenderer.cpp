@@ -203,13 +203,6 @@ void FastVoxelTraversalRenderer::onInitialize()
 
 auto FastVoxelTraversalRenderer::onRender() -> void
 {
-	const auto synchronization = renderData_->get<Synchronization>("synchronization");
-
-	auto waitParams = cudaExternalSemaphoreWaitParams{};
-	waitParams.flags = 0;
-	waitParams.params.fence.value = synchronization->fenceValue;
-	cudaWaitExternalSemaphoresAsync(&synchronization->signalSemaphore, &waitParams, 1);
-
 	// map/create/set surface
 	std::array<cudaArray_t, 2> cudaArrays{};
 	std::array<cudaSurfaceObject_t, 2> cudaSurfaceObjects{};
@@ -274,7 +267,6 @@ auto FastVoxelTraversalRenderer::onRender() -> void
 	owlAsyncLaunch2D(rayGen_, renderTargets->colorRt.extent.width, renderTargets->colorRt.extent.height,
 					 launchParameters_);
 
-
 	// Destroy and unmap surface
 	{
 		for (auto i = 0; i < renderTargets->colorRt.extent.depth; i++)
@@ -283,11 +275,6 @@ auto FastVoxelTraversalRenderer::onRender() -> void
 		}
 		cudaRet = cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&renderTargets->colorRt.target));
 	}
-
-	auto signalParams = cudaExternalSemaphoreSignalParams{};
-	signalParams.flags = 0;
-	signalParams.params.fence.value = synchronization->fenceValue;
-	cudaSignalExternalSemaphoresAsync(&synchronization->waitSemaphore, &signalParams, 1);
 }
 
 void FastVoxelTraversalRenderer::onDeinitialize()

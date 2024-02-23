@@ -31,13 +31,6 @@ __global__ auto writeVertexBuffer(cudaSurfaceObject_t surface, unsigned int widt
 
 auto CudaSurfaceObjectWriteTestRenderer::onRender() -> void
 {
-	const auto synchronization = renderData_->get<Synchronization>("synchronization");
-
-	auto waitParams = cudaExternalSemaphoreWaitParams{};
-	waitParams.flags = 0;
-	waitParams.params.fence.value = synchronization->fenceValue;
-	cudaWaitExternalSemaphoresAsync(&synchronization->signalSemaphore, &waitParams, 1);
-	
 	// TODO: class members
 	std::array<cudaArray_t, 2> cudaArrays{};
 	std::array<cudaSurfaceObject_t, 2> cudaSurfaceObjects{};
@@ -93,11 +86,6 @@ auto CudaSurfaceObjectWriteTestRenderer::onRender() -> void
 		}
 		cudaRet = cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&renderTargets->colorRt.target));
 	}
-
-	auto signalParams = cudaExternalSemaphoreSignalParams{};
-	signalParams.flags = 0;
-	signalParams.params.fence.value = synchronization->fenceValue;
-	cudaSignalExternalSemaphoresAsync(&synchronization->waitSemaphore, &signalParams, 1);
 }
 
 auto CudaSurfaceObjectWriteTestRenderer::onInitialize() -> void
