@@ -53,7 +53,6 @@ private:
 		GLuint minMaxTexture;
 
 	} resources_;
-
 	
 	struct ColorMapResources
 	{
@@ -61,6 +60,13 @@ private:
 		GLuint colormapTexture;
 		cudaGraphicsResource_t cudaGraphicsResource;
 	} colorMapResources_;
+
+	struct TransferFunctionResources
+	{
+		GLuint transferFunctionBuffer;
+		cudaGraphicsResource_t cudaGraphicsResource;
+	} transferFunctionResources_;
+
 
 	b3d::renderer::RenderingDataWrapper renderingData_;
 

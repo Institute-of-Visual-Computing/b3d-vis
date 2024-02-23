@@ -19,14 +19,18 @@ namespace b3d::renderer
 		struct ParamsData
 		{
 			//TODO: put your computed params here
+			cudaTextureObject_t transferFunctionTexture{};
+
 		};
 
 		[[nodiscard]] auto getParamsData() -> ParamsData;
 	private:
-		bool skipUpdate{false};
+		bool skipUpdate{ false };
 
 		int selectedCurveHandleIdx_{-1};
 		std::vector<ImVec2> dataPoints_;
 
+		ExternalBuffer* transferFunctionBuffer_;
+		cudaTextureObject_t transferFunctionCudaTexture_{};
 	};
 } // namespace b3d::renderer

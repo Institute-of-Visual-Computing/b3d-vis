@@ -24,7 +24,7 @@ auto b3d::renderer::ColorMapFeature::beginUpdate() -> void
 
 	cudaArray_t colorMapCudaArray{};
 	{
-		OWL_CUDA_CHECK(cudaGraphicsMapResources(1, const_cast<cudaGraphicsResource_t*>(&colorMapTexture_->target)));
+		OWL_CUDA_CHECK(cudaGraphicsMapResources(1, &colorMapTexture_->target));
 
 		OWL_CUDA_CHECK(cudaGraphicsSubResourceGetMappedArray(&colorMapCudaArray, colorMapTexture_->target, 0, 0));
 

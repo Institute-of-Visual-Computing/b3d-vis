@@ -271,6 +271,8 @@ auto NanoRenderer::prepareGeometry() -> void
 			OWLVarDecl{ "coloringInfo.singleColor", OWL_FLOAT4, OWL_OFFSETOF(LaunchParams, coloringInfo.singleColor) },
 			OWLVarDecl{ "coloringInfo.selectedColorMap", OWL_FLOAT,
 						OWL_OFFSETOF(LaunchParams, coloringInfo.selectedColorMap) },
+			OWLVarDecl{ "transferFunctionTexture", OWL_USER_TYPE(cudaTextureObject_t),
+						OWL_OFFSETOF(LaunchParams, transferFunctionTexture) },
 		};
 
 		nanoContext_.launchParams =
@@ -335,6 +337,12 @@ auto NanoRenderer::onRender() -> void
 
 	owlParamsSetRaw(nanoContext_.launchParams, "surfacePointer", &renderTargetFeatureParams.colorRT.surfaces[0]);
 	owlParamsSetRaw(nanoContext_.launchParams, "colormaps", &colorMapParams.colorMapTexture);
+
+
+	auto transferFunctionParams = transferFunctionFeature_->getParamsData();
+
+	owlParamsSetRaw(nanoContext_.launchParams, "transferFunctionTexture",
+					&transferFunctionParams.transferFunctionTexture);
 
 	const auto backgroundColorParams = backgroundColorFeature_->getParamsData();
 	owlParamsSet3f(nanoContext_.launchParams, "bg.color0", backgroundColorParams.colors[0]);

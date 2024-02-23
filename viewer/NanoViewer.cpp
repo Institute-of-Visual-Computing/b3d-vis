@@ -624,14 +624,6 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 		GL_CALL(glObjectLabel(GL_TEXTURE, colorMapResources_.colormapTexture, colormaptexturename.length() + 1,
 							  colormaptexturename.c_str()));
 
-
-
-
-
-
-
-
-
 		// TODO: add cuda error checks
 		auto rc =
 			cudaGraphicsGLRegisterImage(&colorMapResources_.cudaGraphicsResource, colorMapResources_.colormapTexture, GL_TEXTURE_2D, cudaGraphicsRegisterFlagsTextureGather);
@@ -647,6 +639,26 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 										  colorMapResources_.colorMap.colorMapCount,
 										  colorMapResources_.colorMap.firstColorMapYTextureCoordinate,
 										  colorMapResources_.colorMap.colorMapHeightNormalized };
+
+		GL_CALL(glGenBuffers(1, &transferFunctionResources_.transferFunctionBuffer));
+		GL_CALL(glBindBuffer(GL_TEXTURE_BUFFER, transferFunctionResources_.transferFunctionBuffer));
+
+
+		std::array<float, 512> initBufferData;
+		std::ranges::fill(initBufferData, 1.0f);
+		GL_CALL(glBufferData(GL_TEXTURE_BUFFER, sizeof(float) * initBufferData.size(), &initBufferData[0],
+							 GL_DYNAMIC_DRAW));
+
+		std::string transferFunctionBufferName = "TransferFunctionBuffer";
+		GL_CALL(glObjectLabel(GL_BUFFER, transferFunctionResources_.transferFunctionBuffer,
+							  transferFunctionBufferName.length() + 1, transferFunctionBufferName.c_str()));
+
+		rc = cudaGraphicsGLRegisterBuffer(&transferFunctionResources_.cudaGraphicsResource,
+										  transferFunctionResources_.transferFunctionBuffer,
+										  cudaGraphicsRegisterFlagsNone);
+		renderingData_.data.transferFunctionBuffer.extent = { 512, 1, 1 };
+		renderingData_.data.transferFunctionBuffer.target = transferFunctionResources_.cudaGraphicsResource;
+		renderingData_.data.transferFunctionBuffer.nativeHandle = reinterpret_cast<void*>(transferFunctionResources_.transferFunctionBuffer);
 	}
 
 	/*glGenTextures(1, &resources_.colorTexture);
@@ -846,6 +858,9 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 }
 NanoViewer::~NanoViewer()
 {
+	cudaGraphicsUnregisterResource(transferFunctionResources_.cudaGraphicsResource);
+	cudaGraphicsUnregisterResource(colorMapResources_.cudaGraphicsResource);
+	
 	vulkanContext_.device.destroySemaphore(synchronizationResources_.vkSignalSemaphore);
 	vulkanContext_.device.destroySemaphore(synchronizationResources_.vkWaitSemaphore);
 	vulkanContext_.device.destroy();
