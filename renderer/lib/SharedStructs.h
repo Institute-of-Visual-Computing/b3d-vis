@@ -27,6 +27,12 @@ namespace b3d::renderer
 		uint32_t depth;
 	};
 
+	struct CudaStereoRenderTarget
+	{
+		std::array<cudaSurfaceObject_t, 2> surfaces;
+		Extent extent;
+	};
+
 	struct ExternalRenderTarget
 	{
 		cudaGraphicsResource_t target;

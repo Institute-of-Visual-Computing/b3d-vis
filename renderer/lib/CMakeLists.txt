@@ -25,6 +25,8 @@ set(SHARED_HEADERS
 	features/RenderSyncFeature.h
 	features/BackgroundColorFeature.cpp
 	features/BackgroundColorFeature.h
+	features/RenderTargetFeature.cpp
+	features/RenderTargetFeature.h
 	Curve.h
 	Curve.cpp
 )
