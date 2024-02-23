@@ -337,14 +337,9 @@ auto NanoRenderer::onRender() -> void
 
 	owlParamsSet1f(nanoContext_.launchParams, "coloringInfo.selectedColorMap", colorMapParams.selectedColorMap);
 
-	owlMissProgSet3f(nanoContext_.missProgram, "color0",
-					 owl3f{ guiData.rtBackgroundColorPalette.color1[0], guiData.rtBackgroundColorPalette.color1[1],
-							guiData.rtBackgroundColorPalette.color1[2] });
-	owlMissProgSet3f(nanoContext_.missProgram, "color1",
-					 owl3f{ guiData.rtBackgroundColorPalette.color2[0], guiData.rtBackgroundColorPalette.color2[1],
-							guiData.rtBackgroundColorPalette.color2[2] });
 
-
+	
+	
 	const auto fbSize = owl2i{ static_cast<int32_t>(renderTargets->colorRt.extent.width),
 							   static_cast<int32_t>(renderTargets->colorRt.extent.height) };
 	owlRayGenSet2i(nanoContext_.rayGen, "frameBufferSize", fbSize);
@@ -369,12 +364,11 @@ auto NanoRenderer::onRender() -> void
 	owlParamsSetRaw(nanoContext_.launchParams, "surfacePointer", &cudaSurfaceObjects[0]);
 	owlParamsSetRaw(nanoContext_.launchParams, "colormaps", &colorMapParams.colorMapTexture);
 
-	owlParamsSet3f(nanoContext_.launchParams, "bg.color0",
-				   owl3f{ guiData.rtBackgroundColorPalette.color1[0], guiData.rtBackgroundColorPalette.color1[1],
-						  guiData.rtBackgroundColorPalette.color1[2] });
-	owlParamsSet3f(nanoContext_.launchParams, "bg.color1",
-				   owl3f{ guiData.rtBackgroundColorPalette.color2[0], guiData.rtBackgroundColorPalette.color2[1],
-						  guiData.rtBackgroundColorPalette.color2[2] });
+	const auto backgroundColorParams = backgroundColorFeature_->getParamsData();
+	owlParamsSet3f(nanoContext_.launchParams, "bg.color0", backgroundColorParams.colors[0]);
+	owlParamsSet3f(nanoContext_.launchParams, "bg.color1", backgroundColorParams.colors[1]);
+
+
 	owlParamsSet1b(nanoContext_.launchParams, "bg.fillBox", guiData.fillBox);
 	owlParamsSet3f(nanoContext_.launchParams, "bg.fillColor",
 				   owl3f{ guiData.fillColor[0], guiData.fillColor[1], guiData.fillColor[2] });

@@ -12,6 +12,21 @@ namespace owl::extensions
 		owlParamsSet4f(obj, name, val.x, val.y, val.z, val.w);
 	}
 
+	inline auto owlParamsSet3f(OWLParams obj, const char* name, const vec3f& val) -> void
+	{
+		owlParamsSet3f(obj, name, val.x, val.y, val.z);
+	}
+
+	inline auto owlParamsSet3f(OWLParams obj, const char* name, const b3d::renderer::ColorRGB& val) -> void
+	{
+		owlParamsSet3f(obj, name, val.r, val.g, val.b);
+	}
+
+	inline auto owlMissProgSet3f(OWLMissProg obj, const char* name, const b3d::renderer::ColorRGB& val) -> void
+	{
+		owlMissProgSet3f(obj, name, val.r, val.g, val.b);
+	}
+
 	template <typename T>
 	static auto scale(const owl::LinearSpace3<T>& a) -> typename T
 	{

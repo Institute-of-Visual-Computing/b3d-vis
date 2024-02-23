@@ -23,6 +23,8 @@ set(SHARED_HEADERS
 	features/TransferFunctionFeature.cpp
 	features/RenderSyncFeature.cpp
 	features/RenderSyncFeature.h
+	features/BackgroundColorFeature.cpp
+	features/BackgroundColorFeature.h
 	Curve.h
 	Curve.cpp
 )

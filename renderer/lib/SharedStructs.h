@@ -79,7 +79,15 @@ namespace b3d::renderer
 		colormap = 1
 	};
 
-	
+	struct ColorRGB
+	{
+		float r, g, b;
+	};
+
+	struct ColorRGBA
+	{
+		float r, g, b, a;
+	};
 
 	struct ColoringInfo
 	{
