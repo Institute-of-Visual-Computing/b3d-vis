@@ -7,6 +7,7 @@
 #include <CudaGpuTimers.h>
 
 #include "features/ColorMapFeature.h"
+#include "features/RenderSyncFeature.h"
 #include "features/TransferFunctionFeature.h"
 
 namespace b3d::renderer
@@ -25,6 +26,7 @@ namespace b3d::renderer
 	public:
 		NanoRenderer()
 		{
+			renderSyncFeature_ = addFeature<RenderSyncFeature>("Main Synchronization");
 			colorMapFeature_ = addFeature<ColorMapFeature>("Color Filtering");
 			transferFunctionFeature_ = addFeature<TransferFunctionFeature>("Transfer Function");
 		}
@@ -46,6 +48,7 @@ namespace b3d::renderer
 
 		owl::AffineSpace3f renormalizeScale_{};
 
+		RenderSyncFeature* renderSyncFeature_;
 		ColorMapFeature* colorMapFeature_;
 		TransferFunctionFeature* transferFunctionFeature_;
 	};

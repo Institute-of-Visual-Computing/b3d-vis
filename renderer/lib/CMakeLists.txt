@@ -21,6 +21,8 @@ set(SHARED_HEADERS
 	features/ColorMapFeature.cpp
 	features/TransferFunctionFeature.h
 	features/TransferFunctionFeature.cpp
+	features/RenderSyncFeature.cpp
+	features/RenderSyncFeature.h
 	Curve.h
 	Curve.cpp
 )

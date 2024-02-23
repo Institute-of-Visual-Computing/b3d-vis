@@ -244,6 +244,8 @@ auto NanoRenderer::prepareGeometry() -> void
 
 	owlRayGenSetGroup(rayGen, "world", nanoContext_.worldGeometryGroup);
 
+	
+
 	owlGeomTypeSetIntersectProg(geometryType, 0, optixirModule, "nano_intersection");
 	owlGeomTypeSetClosestHit(geometryType, 0, optixirModule, "nano_closestHit");
 
@@ -291,13 +293,7 @@ auto NanoRenderer::onRender() -> void
 {
 	gpuTimers_.nextFrame();
 
-	const auto synchronization = renderData_->get<Synchronization>("synchronization");
 	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
-
-	auto waitParams = cudaExternalSemaphoreWaitParams{};
-	waitParams.flags = 0;
-	waitParams.params.fence.value = synchronization->fenceValue;
-	cudaWaitExternalSemaphoresAsync(&synchronization->signalSemaphore, &waitParams, 1);
 
 	std::array<cudaArray_t, 2> cudaArrays{};
 	std::array<cudaSurfaceObject_t, 2> cudaSurfaceObjects{};
@@ -404,10 +400,6 @@ auto NanoRenderer::onRender() -> void
 			cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&renderTargets->colorRt.target)));
 	}
 
-	auto signalParams = cudaExternalSemaphoreSignalParams{};
-	signalParams.flags = 0;
-	signalParams.params.fence.value = synchronization->fenceValue;
-	cudaSignalExternalSemaphoresAsync(&synchronization->waitSemaphore, &signalParams, 1);
 }
 
 auto NanoRenderer::onInitialize() -> void
