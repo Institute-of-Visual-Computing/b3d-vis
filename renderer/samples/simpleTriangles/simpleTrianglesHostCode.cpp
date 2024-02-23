@@ -37,24 +37,6 @@ namespace
 		return max(max(computeStableEpsilon(v.x), computeStableEpsilon(v.y)), computeStableEpsilon(v.z));
 	}
 
-
-	std::string coloringModeStrings[2] = { "Single", "ColorMap" };
-
-	struct GuiData
-	{
-		struct BackgroundColorPalette
-		{
-			std::array<float, 4> color1{ 0.572f, 0.100f, 0.750f, 1.0f };
-			std::array<float, 4> color2{ 0.0f, 0.3f, 0.3f, 1.0f };
-		};
-
-		BackgroundColorPalette rtBackgroundColorPalette;
-		std::array<float, 4> singleColor{ 0, 1, 0, 1 };
-
-		int coloringModeInt = 0;
-		int selectedColorMap = 0;
-	};
-
 	RayCameraData createRayCameraData(const Camera& camera, const Extent& textureExtent)
 	{
 		const auto origin = vec3f{ camera.origin.x, camera.origin.y, camera.origin.z };
@@ -79,9 +61,6 @@ namespace
 
 		return { origin, lower_left, horizontal, vertical };
 	}
-
-	GuiData guiData{};
-
 
 	const int NUM_VERTICES = 8;
 	vec3f vertices[NUM_VERTICES] = { { -0.5f, -0.5f, -0.5f }, { +0.5f, -0.5f, -0.5f }, { -0.5f, +0.5f, -0.5f },
@@ -118,8 +97,6 @@ auto SimpleTrianglesRenderer::onRender() -> void
 		owlRayGenSet2i(rayGen_, "fbSize", fbSize_);
 		sbtDirty = true;
 	}
-
-	
 
 	if (sbtDirty)
 	{
@@ -307,52 +284,6 @@ auto SimpleTrianglesRenderer::onInitialize() -> void
 
 auto SimpleTrianglesRenderer::onGui() -> void
 {
-	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
-	const auto coloringInfo = renderData_->get<ColoringInfo>("coloringInfo");
-	const auto colorMapInfos = renderData_->get<ColorMapInfos>("colorMapInfos");
-
-	ImGui::Begin("RT Settings");
-
-	ImGui::SeparatorText("Coloring");
-
-	ImGui::Combo("Mode", &guiData.coloringModeInt, "Single\0ColorMap\0\0");
-	if (guiData.coloringModeInt == 0)
-	{
-		ImGui::ColorEdit3("Color", &coloringInfo->singleColor.x);
-	}
-	else
-	{
-		if (ImGui::BeginCombo("combo 1", (*colorMapInfos->colorMapNames)[guiData.selectedColorMap].c_str(), 0))
-		{
-			for (int n = 0; n < colorMapInfos->colorMapNames->size(); n++)
-			{
-				const bool is_selected = (guiData.selectedColorMap == n);
-				if (ImGui::Selectable((*colorMapInfos->colorMapNames)[n].c_str(), is_selected))
-				{
-					guiData.selectedColorMap = n;
-				}
-
-				// Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
-				if (is_selected)
-					ImGui::SetItemDefaultFocus();
-			}
-			ImGui::EndCombo();
-		}
-	}
-
-	if (ImGui::Button("Select"))
-	{
-		ImGui::OpenPopup("FileSelectDialog");
-	}
-
-	ImGui::SeparatorText("Background Color Palette");
-	ImGui::ColorEdit3("Color 1", guiData.rtBackgroundColorPalette.color1.data());
-	ImGui::ColorEdit3("Color 2", guiData.rtBackgroundColorPalette.color2.data());
-	debugInfo_.gizmoHelper->drawGizmo(volumeTransform->worldMatTRS);
-
-	ImGui::End();
-
-	coloringInfo->coloringMode = guiData.coloringModeInt == 0 ? single : colormap;
-	coloringInfo->selectedColorMap = colorMapInfos->firstColorMapYTextureCoordinate +
-		static_cast<float>(guiData.selectedColorMap) * colorMapInfos->colorMapHeightNormalized;
+	// ImGui::Begin("RT Settings");
+	// ImGui::End();
 }

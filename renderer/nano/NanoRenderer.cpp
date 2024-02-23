@@ -39,12 +39,6 @@ namespace
 {
 	struct GuiData
 	{
-		struct BackgroundColorPalette
-		{
-			std::array<float, 3> color1{ 0.572f, 0.100f, 0.750f };
-			std::array<float, 3> color2{ 0.0f, 0.3f, 0.3f };
-		};
-		BackgroundColorPalette rtBackgroundColorPalette;
 		bool fillBox{ false };
 		std::array<float, 3> fillColor{ 0.8f, 0.3f, 0.2f };
 	};
@@ -411,10 +405,6 @@ auto NanoRenderer::onGui() -> void
 			ImGui::TextColored(ImVec4{ 0.9f, 0.1f, 0.1f, 1.0f }, "Error: Can't load file!");
 		}
 	}
-
-	ImGui::SeparatorText("Background Color Palette");
-	ImGui::ColorEdit3("Color 1", guiData.rtBackgroundColorPalette.color1.data());
-	ImGui::ColorEdit3("Color 2", guiData.rtBackgroundColorPalette.color2.data());
 
 	ImGui::Checkbox("Fill Box", &guiData.fillBox);
 
