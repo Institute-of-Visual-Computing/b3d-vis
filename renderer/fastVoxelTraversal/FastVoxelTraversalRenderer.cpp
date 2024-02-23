@@ -203,36 +203,19 @@ void FastVoxelTraversalRenderer::onInitialize()
 
 auto FastVoxelTraversalRenderer::onRender() -> void
 {
-	// map/create/set surface
-	std::array<cudaArray_t, 2> cudaArrays{};
-	std::array<cudaSurfaceObject_t, 2> cudaSurfaceObjects{};
-
-	const auto renderTargets = renderData_->get<RenderTargets>("renderTargets");
-
-	auto cudaRet = cudaSuccess;
-	// Map and createSurface
-	{
-		cudaRet = cudaGraphicsMapResources(1, const_cast<cudaGraphicsResource_t*>(&renderTargets->colorRt.target));
-		for (auto i = 0; i < renderTargets->colorRt.extent.depth; i++)
-		{
-			cudaRet = cudaGraphicsSubResourceGetMappedArray(&cudaArrays[i], renderTargets->colorRt.target, i, 0);
-
-			cudaResourceDesc resDesc{};
-			resDesc.resType = cudaResourceTypeArray;
-			resDesc.res.array.array = cudaArrays[i];
-			cudaRet = cudaCreateSurfaceObject(&cudaSurfaceObjects[i], &resDesc);
-		}
-	}
-
+	
 	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
 	const auto transferOffset = renderData_->get<float>("transferOffset");
-
 	const auto view = renderData_->get<View>("view");
+	
+	auto renderTargetFeatureParams = renderTargetFeature_->getParamsData();
 
-	if (fbSize_.x != renderTargets->colorRt.extent.width || fbSize_.y != renderTargets->colorRt.extent.height)
+
+	if (fbSize_.x != renderTargetFeatureParams.colorRT.extent.width ||
+		fbSize_.y != renderTargetFeatureParams.colorRT.extent.height)
 	{
-		fbSize_ = { static_cast<int32_t>(renderTargets->colorRt.extent.width),
-					static_cast<int32_t>(renderTargets->colorRt.extent.height) };
+		fbSize_ = { static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.width),
+					static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.height) };
 		owlRayGenSet2i(rayGen_, "fbSize", fbSize_);
 		sbtDirty = true;
 	}
@@ -256,25 +239,16 @@ auto FastVoxelTraversalRenderer::onRender() -> void
 		}
 		else
 		{
-			rcd = createRayCameraData(view->cameras[0], renderTargets->colorRt.extent);
+			rcd = createRayCameraData(view->cameras[0], renderTargetFeatureParams.colorRT.extent);
 		}
 
 		owlParamsSetRaw(launchParameters_, "cameraData", &rcd);
-		owlParamsSetRaw(launchParameters_, "surfacePointer", &cudaSurfaceObjects[0]);
+		owlParamsSetRaw(launchParameters_, "surfacePointer", &renderTargetFeatureParams.colorRT.surfaces[0]);
 		owlParamsSet1f(launchParameters_, "transferOffset", *transferOffset);
 	}
 	
-	owlAsyncLaunch2D(rayGen_, renderTargets->colorRt.extent.width, renderTargets->colorRt.extent.height,
+	owlAsyncLaunch2D(rayGen_, fbSize_.x, fbSize_.y,
 					 launchParameters_);
-
-	// Destroy and unmap surface
-	{
-		for (auto i = 0; i < renderTargets->colorRt.extent.depth; i++)
-		{
-			cudaRet = cudaDestroySurfaceObject(cudaSurfaceObjects[i]);
-		}
-		cudaRet = cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&renderTargets->colorRt.target));
-	}
 }
 
 void FastVoxelTraversalRenderer::onDeinitialize()

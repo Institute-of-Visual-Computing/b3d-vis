@@ -17,6 +17,8 @@
 
 #include "ColorMap.h"
 
+#include <OwlExtensions.h>
+
 #include "deviceCode.h"
 
 using namespace b3d::renderer;
@@ -103,77 +105,21 @@ namespace
 auto SimpleTrianglesRenderer::onRender() -> void
 {
 
-	const auto synchronization = renderData_->get<Synchronization>("synchronization");
-
-	auto waitParams = cudaExternalSemaphoreWaitParams{};
-	waitParams.flags = 0;
-	waitParams.params.fence.value = synchronization->fenceValue;
-	cudaWaitExternalSemaphoresAsync(&synchronization->signalSemaphore, &waitParams, 1);
-
-	// map/create/set surface
-	std::array<cudaArray_t, 2> cudaArrays{};
-	std::array<cudaSurfaceObject_t, 2> cudaSurfaceObjects{};
-
-	
-	const auto renderTargets = renderData_->get<RenderTargets>("renderTargets");
-
-	auto cudaRet = cudaSuccess;
-	// Map and createSurface
-	{
-		cudaRet = cudaGraphicsMapResources(1, &renderTargets->colorRt.target);
-		for (auto i = 0; i < renderTargets->colorRt.extent.depth; i++)
-		{
-			cudaRet = cudaGraphicsSubResourceGetMappedArray(&cudaArrays[i], renderTargets->colorRt.target, i, 0);
-
-			cudaResourceDesc resDesc{};
-			resDesc.resType = cudaResourceTypeArray;
-			resDesc.res.array.array = cudaArrays[i];
-			cudaRet = cudaCreateSurfaceObject(&cudaSurfaceObjects[i], &resDesc);
-		}
-	}
-
 	const auto colorMapTexture = renderData_->get<ExternalTexture>("colorMapTexture");
 	const auto coloringInfo = renderData_->get<ColoringInfo>("coloringInfo");
-	cudaArray_t colorMapCudaArray{};
-	cudaTextureObject_t colorMapCudaTexture{};
+
+	auto renderTargetFeatureParams = renderTargetFeature_->getParamsData();
+
+	if (fbSize_.x != renderTargetFeatureParams.colorRT.extent.width ||
+		fbSize_.y != renderTargetFeatureParams.colorRT.extent.height)
 	{
-		OWL_CUDA_CHECK(cudaGraphicsMapResources(1, &colorMapTexture->target));
-
-		OWL_CUDA_CHECK(cudaGraphicsSubResourceGetMappedArray(&colorMapCudaArray, colorMapTexture->target, 0, 0));
-
-		// Create texture
-		auto resDesc = cudaResourceDesc{};
-		resDesc.resType = cudaResourceTypeArray;
-		resDesc.res.array.array = colorMapCudaArray;
-
-		auto texDesc = cudaTextureDesc{};
-		texDesc.addressMode[0] = cudaAddressModeClamp;
-		texDesc.addressMode[1] = cudaAddressModeClamp;
-
-		texDesc.filterMode = cudaFilterModePoint;
-		texDesc.readMode = cudaReadModeElementType; // cudaReadModeNormalizedFloat
-
-		texDesc.normalizedCoords = 1;
-		texDesc.maxAnisotropy = 1;
-		texDesc.maxMipmapLevelClamp = 0;
-		texDesc.minMipmapLevelClamp = 0;
-		texDesc.mipmapFilterMode = cudaFilterModePoint;
-		texDesc.borderColor[0] = 1.0f;
-		texDesc.borderColor[1] = 1.0f;
-		texDesc.borderColor[2] = 1.0f;
-		texDesc.borderColor[3] = 1.0f;
-		texDesc.sRGB = 0;
-
-		OWL_CUDA_CHECK(cudaCreateTextureObject(&colorMapCudaTexture, &resDesc, &texDesc, nullptr));
-	}
-
-	if (fbSize_.x != renderTargets->colorRt.extent.width || fbSize_.y != renderTargets->colorRt.extent.height)
-	{
-		fbSize_ = { static_cast<int32_t>(renderTargets->colorRt.extent.width),
-					static_cast<int32_t>(renderTargets->colorRt.extent.height) };
+		fbSize_ = { static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.width),
+					static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.height) };
 		owlRayGenSet2i(rayGen_, "fbSize", fbSize_);
 		sbtDirty = true;
 	}
+
+	
 
 	if (sbtDirty)
 	{
@@ -197,16 +143,18 @@ auto SimpleTrianglesRenderer::onRender() -> void
 					 coloringInfo->singleColor.w });
 	owlParamsSet1f(launchParameters_, "coloringInfo.selectedColorMap", coloringInfo->selectedColorMap);
 
+	
+	const auto colorMapParams = colorMapFeature_->getParamsData();
+	using namespace owl::extensions;
+	owlParamsSetRaw(launchParameters_, "coloringInfo.colorMode", &colorMapParams.mode);
+	owlParamsSet4f(launchParameters_, "coloringInfo.singleColor", colorMapParams.uniformColor);
+	owlParamsSet1f(launchParameters_, "coloringInfo.selectedColorMap", colorMapParams.selectedColorMap);
+	owlParamsSetRaw(launchParameters_, "colormaps", &colorMapParams.colorMapTexture);
 
-	// Regular use would be to use owlParamsSet4f but im to lazy to cast color1 to owl4f
 
-	owlParamsSet4f(launchParameters_, "backgroundColor0",
-				   { guiData.rtBackgroundColorPalette.color1[0], guiData.rtBackgroundColorPalette.color1[1],
-					 guiData.rtBackgroundColorPalette.color1[2], guiData.rtBackgroundColorPalette.color1[3] });
-	owlParamsSet4f(launchParameters_, "backgroundColor1",
-				   { guiData.rtBackgroundColorPalette.color2[0], guiData.rtBackgroundColorPalette.color2[1],
-					 guiData.rtBackgroundColorPalette.color2[2], guiData.rtBackgroundColorPalette.color2[3] });
-	owlParamsSetRaw(launchParameters_, "colormaps", &colorMapCudaTexture);
+	const auto backgroundColorParams = backgroundColorFeature_->getParamsData();
+	owlParamsSet3f(launchParameters_, "backgroundColor0", backgroundColorParams.colors[0]);
+	owlParamsSet3f(launchParameters_, "backgroundColor1", backgroundColorParams.colors[1]);
 
 	const auto view = renderData_->get<View>("view");
 	{
@@ -217,17 +165,17 @@ auto SimpleTrianglesRenderer::onRender() -> void
 		}
 		else
 		{
-			rcd = createRayCameraData(view->cameras[0], renderTargets->colorRt.extent);
+			rcd = createRayCameraData(view->cameras[0], renderTargetFeatureParams.colorRT.extent);
 		}
 
 		owlParamsSetRaw(launchParameters_, "cameraData", &rcd);
-		owlParamsSetRaw(launchParameters_, "surfacePointer", &cudaSurfaceObjects[0]);
+		owlParamsSetRaw(launchParameters_, "surfacePointer", &renderTargetFeatureParams.colorRT.surfaces[0]);
 
-		owlAsyncLaunch2D(rayGen_, renderTargets->colorRt.extent.width, renderTargets->colorRt.extent.height,
+		owlAsyncLaunch2D(rayGen_, fbSize_.x, fbSize_.y,
 						 launchParameters_);
 	}
 
-	if (view->mode == RenderMode::stereo && renderTargets->colorRt.extent.depth > 1)
+	if (view->mode == RenderMode::stereo && renderTargetFeatureParams.colorRT.extent.depth > 1)
 	{
 		RayCameraData rcd;
 		if (view->cameras[1].directionsAvailable)
@@ -236,32 +184,13 @@ auto SimpleTrianglesRenderer::onRender() -> void
 		}
 		else
 		{
-			rcd = createRayCameraData(view->cameras[1], renderTargets->colorRt.extent);
+			rcd = createRayCameraData(view->cameras[1], renderTargetFeatureParams.colorRT.extent);
 		}
 		owlParamsSetRaw(launchParameters_, "cameraData", &rcd);
-		owlParamsSetRaw(launchParameters_, "surfacePointer", &cudaSurfaceObjects[1]);
-		owlAsyncLaunch2D(rayGen_, renderTargets->colorRt.extent.width, renderTargets->colorRt.extent.height,
+		owlParamsSetRaw(launchParameters_, "surfacePointer", &renderTargetFeatureParams.colorRT.surfaces[1]);
+		owlAsyncLaunch2D(rayGen_, fbSize_.x, fbSize_.y,
 						 launchParameters_);
 	}
-
-
-	{
-		for (auto i = 0; i < renderTargets->colorRt.extent.depth; i++)
-		{
-			cudaRet = cudaDestroySurfaceObject(cudaSurfaceObjects[i]);
-		}
-		cudaRet = cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&renderTargets->colorRt.target));
-	}
-
-	{
-		OWL_CUDA_CHECK(cudaDestroyTextureObject(colorMapCudaTexture));
-		cudaGraphicsUnmapResources(1, &colorMapTexture->target);
-	}
-
-	auto signalParams = cudaExternalSemaphoreSignalParams{};
-	signalParams.flags = 0;
-	signalParams.params.fence.value = synchronization->fenceValue;
-	cudaSignalExternalSemaphoresAsync(&synchronization->waitSemaphore, &signalParams, 1);
 }
 
 auto SimpleTrianglesRenderer::onInitialize() -> void
@@ -363,8 +292,8 @@ auto SimpleTrianglesRenderer::onInitialize() -> void
 			{ "coloringInfo.colorMode", OWL_USER_TYPE(ColoringMode), OWL_OFFSETOF(MyLaunchParams, coloringInfo.coloringMode) },
 			{ "coloringInfo.singleColor", OWL_FLOAT4, OWL_OFFSETOF(MyLaunchParams, coloringInfo.singleColor) },
 			{ "coloringInfo.selectedColorMap", OWL_FLOAT, OWL_OFFSETOF(MyLaunchParams, coloringInfo.selectedColorMap) },
-			{ "backgroundColor0", OWL_FLOAT4, OWL_OFFSETOF(MyLaunchParams, backgroundColor0) },
-			{ "backgroundColor1", OWL_FLOAT4, OWL_OFFSETOF(MyLaunchParams, backgroundColor1) },
+			{ "backgroundColor0", OWL_FLOAT3, OWL_OFFSETOF(MyLaunchParams, backgroundColor0) },
+			{ "backgroundColor1", OWL_FLOAT3, OWL_OFFSETOF(MyLaunchParams, backgroundColor1) },
 			{}
 		};
 

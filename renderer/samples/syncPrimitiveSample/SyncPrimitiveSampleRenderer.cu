@@ -38,59 +38,23 @@ __global__ void kernel()
 
 void b3d::renderer::SyncPrimitiveSampleRenderer::onRender()
 {
+	auto renderTargetFeatureParams = renderTargetFeature_->getParamsData();
+
+	const auto fbSize = dim3{
+		renderTargetFeatureParams.colorRT.extent.width,
+		renderTargetFeatureParams.colorRT.extent.height,
+	};
 	auto cudaRet = cudaSuccess;
-
-	std::array<cudaArray_t, 2> cudaArrays{};
-	std::array<cudaSurfaceObject_t, 2> cudaSurfaceObjects{};
-
-	const auto renderTargets = renderData_->get<RenderTargets>("renderTargets");
-
-	// Map and createSurface
-	{
-		cudaRet = cudaGraphicsMapResources(1, const_cast<cudaGraphicsResource_t*>(&renderTargets->colorRt.target));
-		for (auto i = 0; i < renderTargets->colorRt.extent.depth; i++)
-		{
-			cudaRet = cudaGraphicsSubResourceGetMappedArray(&cudaArrays[i], renderTargets->colorRt.target, i, 0);
-			 
-			cudaResourceDesc resDesc{};
-			resDesc.resType = cudaResourceTypeArray;
-			resDesc.res.array.array = cudaArrays[i];
-			cudaRet = cudaCreateSurfaceObject(&cudaSurfaceObjects[i], &resDesc);
-		}
-	}
-
 	// Execute Kernel
 	{
-		const auto gridDimXAdd = renderTargets->colorRt.extent.width % 2 == 0 ? 0 : 1;
-		const auto gridDimYAdd = renderTargets->colorRt.extent.height % 2 == 0 ? 0 : 1;
-		auto gridDim = dim3{ renderTargets->colorRt.extent.width / 32 + gridDimXAdd,
-							 renderTargets->colorRt.extent.height / 32 + gridDimYAdd };
+		const auto gridDimXAdd = fbSize.x % 2 == 0 ? 0 : 1;
+		const auto gridDimYAdd = fbSize.y % 2 == 0 ? 0 : 1;
+		auto gridDim = dim3{ fbSize.x / 32 + gridDimXAdd, fbSize.y / 32 + gridDimYAdd };
 		auto blockDim = dim3{ 32, 32 };
-		writeVertexBuffer<<<gridDim, blockDim>>>(cudaSurfaceObjects[0], renderTargets->colorRt.extent.width,
-												 renderTargets->colorRt.extent.height);
+		writeVertexBuffer<<<gridDim, blockDim>>>(renderTargetFeatureParams.colorRT.surfaces[0], fbSize.x, fbSize.y);
 		kernel<<<1, 1>>>();
 		
 		//cudaRet = cudaGetLastError();
-	}
-
-	// test Copy - Uncomment to test
-	if constexpr (false)
-	{
-		std::vector<uint32_t> hostMem;
-		hostMem.resize(renderTargets->colorRt.extent.width * renderTargets->colorRt.extent.height);
-		cudaMemcpy2DFromArray(hostMem.data(), renderTargets->colorRt.extent.width * sizeof(uint32_t), cudaArrays[0], 0,
-							  0, renderTargets->colorRt.extent.width * sizeof(uint32_t),
-							  renderTargets->colorRt.extent.height,
-							  cudaMemcpyDeviceToHost);
-	}
-
-	// Destroy and unmap
-	{
-		for (auto i = 0; i < renderTargets->colorRt.extent.depth; i++)
-		{
-			cudaRet = cudaDestroySurfaceObject(cudaSurfaceObjects[i]);
-		}
-		cudaRet = cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&renderTargets->colorRt.target));
 	}
 }
 

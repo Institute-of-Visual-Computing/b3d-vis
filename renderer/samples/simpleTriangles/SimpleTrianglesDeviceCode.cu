@@ -108,7 +108,5 @@ OPTIX_MISS_PROGRAM(miss)()
 
 	PerRayData& prd = owl::getPRD<PerRayData>();
 	int pattern = (pixelID.x / 8) ^ (pixelID.y / 8);
-
-	prd.color = (pattern & 1) ? optixLaunchParams.backgroundColor0 : optixLaunchParams.backgroundColor1;
-	
+	prd.color = vec4f{ (pattern & 1) ? optixLaunchParams.backgroundColor0 : optixLaunchParams.backgroundColor1, 1 };
 }

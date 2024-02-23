@@ -2,6 +2,7 @@
 #include <RendererBase.h>
 
 #include "features/RenderSyncFeature.h"
+#include "features/RenderTargetFeature.h"
 
 namespace b3d::renderer
 {
@@ -11,6 +12,7 @@ namespace b3d::renderer
 		SyncPrimitiveSampleRenderer()
 		{
 			renderSyncFeature_ = addFeature<RenderSyncFeature>("Main Synchronization");
+			renderTargetFeature_ = addFeature<RenderTargetFeature>("RenderTargets");
 		}
 	protected:
 		auto onRender() -> void override;
@@ -18,6 +20,7 @@ namespace b3d::renderer
 		auto onDeinitialize() -> void override;
 		auto onGui() -> void override;
 
+		RenderTargetFeature* renderTargetFeature_;
 		RenderSyncFeature* renderSyncFeature_;
 	};
 } // namespace b3d::renderer

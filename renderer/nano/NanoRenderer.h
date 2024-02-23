@@ -9,7 +9,9 @@
 #include "features/BackgroundColorFeature.h"
 #include "features/ColorMapFeature.h"
 #include "features/RenderSyncFeature.h"
+#include "features/RenderTargetFeature.h"
 #include "features/TransferFunctionFeature.h"
+
 
 namespace b3d::renderer
 {
@@ -28,6 +30,7 @@ namespace b3d::renderer
 		NanoRenderer()
 		{
 			renderSyncFeature_ = addFeature<RenderSyncFeature>("Main Synchronization");
+			renderTargetFeature_ = addFeature<RenderTargetFeature>("RenderTargets");
 			colorMapFeature_ = addFeature<ColorMapFeature>("Color Filtering");
 			transferFunctionFeature_ = addFeature<TransferFunctionFeature>("Transfer Function");
 			backgroundColorFeature_ = addFeature<BackgroundColorFeature>(
@@ -52,6 +55,7 @@ namespace b3d::renderer
 
 		owl::AffineSpace3f renormalizeScale_{};
 
+		RenderTargetFeature* renderTargetFeature_;
 		RenderSyncFeature* renderSyncFeature_;
 		ColorMapFeature* colorMapFeature_;
 		TransferFunctionFeature* transferFunctionFeature_;

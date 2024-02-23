@@ -4,10 +4,8 @@
 
 #include "owl/owl_host.h"
 
-#include "features/BackgroundColorFeature.h"
-#include "features/ColorMapFeature.h"
 #include "features/RenderSyncFeature.h"
-#include "features/TransferFunctionFeature.h"
+#include "features/RenderTargetFeature.h"
 
 namespace b3d::renderer
 {
@@ -18,6 +16,7 @@ namespace b3d::renderer
 		FastVoxelTraversalRenderer()
 		{
 			renderSyncFeature_ = addFeature<RenderSyncFeature>("Main Synchronization");
+			renderTargetFeature_ = addFeature<RenderTargetFeature>("RenderTargets");
 		}
 
 	protected:
@@ -47,6 +46,7 @@ namespace b3d::renderer
 		float integral_{ 0 };
 		float invIntegral_{ 0 };
 
+		RenderTargetFeature* renderTargetFeature_;
 		RenderSyncFeature* renderSyncFeature_;
 	};
 } // namespace b3d::renderer

@@ -294,29 +294,7 @@ auto NanoRenderer::onRender() -> void
 	gpuTimers_.nextFrame();
 
 	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
-
-	std::array<cudaArray_t, 2> cudaArrays{};
-	std::array<cudaSurfaceObject_t, 2> cudaSurfaceObjects{};
-
-	const auto renderTargets = renderData_->get<RenderTargets>("renderTargets");
-	{
-		OWL_CUDA_CHECK(
-			cudaGraphicsMapResources(1, const_cast<cudaGraphicsResource_t*>(&renderTargets->colorRt.target)));
-
-		for (auto i = 0; i < renderTargets->colorRt.extent.depth; i++)
-		{
-			OWL_CUDA_CHECK(cudaGraphicsSubResourceGetMappedArray(&cudaArrays[i], renderTargets->colorRt.target, i, 0));
-
-			auto resDesc = cudaResourceDesc{};
-			resDesc.resType = cudaResourceTypeArray;
-			resDesc.res.array.array = cudaArrays[i];
-
-			OWL_CUDA_CHECK(cudaCreateSurfaceObject(&cudaSurfaceObjects[i], &resDesc))
-		}
-	}
-
 	trs_ = volumeTransform->worldMatTRS * renormalizeScale_;
-
 
 	const auto volumeTranslate = AffineSpace3f::translate(-nanoVdbVolume->indexBox.center());
 	const auto groupTransform = trs_ * volumeTranslate;
@@ -337,11 +315,11 @@ auto NanoRenderer::onRender() -> void
 
 	owlParamsSet1f(nanoContext_.launchParams, "coloringInfo.selectedColorMap", colorMapParams.selectedColorMap);
 
-
 	
+	auto renderTargetFeatureParams = renderTargetFeature_->getParamsData();
 	
-	const auto fbSize = owl2i{ static_cast<int32_t>(renderTargets->colorRt.extent.width),
-							   static_cast<int32_t>(renderTargets->colorRt.extent.height) };
+	const auto fbSize = owl2i{ static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.width),
+							   static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.height) };
 	owlRayGenSet2i(nanoContext_.rayGen, "frameBufferSize", fbSize);
 
 	owlBuildSBT(nanoContext_.context);
@@ -356,12 +334,12 @@ auto NanoRenderer::onRender() -> void
 	}
 	else
 	{
-		rcd = createRayCameraData(view->cameras[0], renderTargets->colorRt.extent);
+		rcd = createRayCameraData(view->cameras[0], renderTargetFeatureParams.colorRT.extent);
 	}
 
 	owlParamsSetRaw(nanoContext_.launchParams, "cameraData", &rcd);
 
-	owlParamsSetRaw(nanoContext_.launchParams, "surfacePointer", &cudaSurfaceObjects[0]);
+	owlParamsSetRaw(nanoContext_.launchParams, "surfacePointer", &renderTargetFeatureParams.colorRT.surfaces[0]);
 	owlParamsSetRaw(nanoContext_.launchParams, "colormaps", &colorMapParams.colorMapTexture);
 
 	const auto backgroundColorParams = backgroundColorFeature_->getParamsData();
@@ -381,19 +359,9 @@ auto NanoRenderer::onRender() -> void
 
 	record.start();
 
-	owlAsyncLaunch2D(nanoContext_.rayGen, renderTargets->colorRt.extent.width, renderTargets->colorRt.extent.height,
-					 nanoContext_.launchParams);
+	owlAsyncLaunch2D(nanoContext_.rayGen, fbSize.x, fbSize.y, nanoContext_.launchParams);
+
 	record.stop();
-
-	{
-		for (auto i = 0; i < renderTargets->colorRt.extent.depth; i++)
-		{
-			OWL_CUDA_CHECK(cudaDestroySurfaceObject(cudaSurfaceObjects[i]));
-		}
-		OWL_CUDA_CHECK(
-			cudaGraphicsUnmapResources(1, const_cast<cudaGraphicsResource_t*>(&renderTargets->colorRt.target)));
-	}
-
 }
 
 auto NanoRenderer::onInitialize() -> void

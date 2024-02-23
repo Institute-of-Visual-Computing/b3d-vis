@@ -3,6 +3,7 @@
 #include "RendererBase.h"
 
 #include "features/RenderSyncFeature.h"
+#include "features/RenderTargetFeature.h"
 
 namespace b3d::renderer
 {
@@ -12,6 +13,7 @@ namespace b3d::renderer
 		CudaSurfaceObjectWriteTestRenderer()
 		{
 			renderSyncFeature_ = addFeature<RenderSyncFeature>("Main Synchronization");
+			renderTargetFeature_ = addFeature<RenderTargetFeature>("RenderTargets");
 		}
 	protected:
 		auto onRender() -> void override;
@@ -20,5 +22,6 @@ namespace b3d::renderer
 		auto onGui() -> void override;
 
 		RenderSyncFeature* renderSyncFeature_;
+		RenderTargetFeature* renderTargetFeature_;
 	};
 } // namespace b3d::renderer
