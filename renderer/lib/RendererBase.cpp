@@ -1,6 +1,8 @@
 #include "RendererBase.h"
 #include <vector>
 
+#include <ranges>
+
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui.h"
 
@@ -53,7 +55,7 @@ auto RendererBase::render() -> void
 
 	onRender();
 
-	for (const auto& feature : renderFeatures_)
+	for (const auto& feature : renderFeatures_ | std::views::reverse)
 	{
 		feature->endUpdate();
 	}
