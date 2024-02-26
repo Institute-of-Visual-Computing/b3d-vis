@@ -11,6 +11,8 @@
 
 #include "NanoCutterParser.h"
 #include "OpenFileDialog.h"
+#include "features/RenderSyncFeature.h"
+#include "features/RenderTargetFeature.h"
 
 
 namespace b3d::renderer::nano
@@ -29,7 +31,8 @@ namespace b3d::renderer::nano
 	public:
 		NanoRenderer()
 		{
-			
+			renderSyncFeature_ = addFeature<RenderSyncFeature>("Main Synchronization");
+			renderTargetFeature_ = addFeature<RenderTargetFeature>("RenderTargets");
 		}
 
 	protected:
@@ -52,5 +55,9 @@ namespace b3d::renderer::nano
 
 		std::optional<cutterParser::B3DDataSet> dataSet_{std::nullopt};
 		std::array<int, 2> visibleLevelRange{0, 10};
+
+		
+		RenderTargetFeature* renderTargetFeature_;
+		RenderSyncFeature* renderSyncFeature_;
 	};
 } // namespace b3d::renderer::nano
