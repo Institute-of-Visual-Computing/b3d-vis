@@ -440,6 +440,7 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(vulkanContext_.instance);
 
+	auto cudaProperties = std::vector<cudaDeviceProp>{};
 	{
 		const auto result = vulkanContext_.instance.enumeratePhysicalDevices();
 		assert(result.result == vk::Result::eSuccess);
@@ -449,7 +450,6 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 		auto cudaDeviceCount = 0;
 		cudaGetDeviceCount(&cudaDeviceCount);
 		assert(cudaDeviceCount != 0);
-		auto cudaProperties = std::vector<cudaDeviceProp>{};
 		cudaProperties.resize(cudaDeviceCount);
 
 		for (auto i = 0; i < cudaDeviceCount; i++)
@@ -615,9 +615,9 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 			renderingData_.data.colorMapTexture.nativeHandle = reinterpret_cast<void*>(colorMapResources_.colormapTexture);
 		} else
 		{
-			GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 100, 1, 0, GL_RGBA, GL_FLOAT, nullptr));
+			GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 512, 1, 0, GL_RGBA, GL_FLOAT, nullptr));
 			renderingData_.data.colorMapTexture.extent =
-				b3d::renderer::Extent{ 100, 1, 1 };
+				b3d::renderer::Extent{ 512, 1, 1 };
 		}
 
 		std::string colormaptexturename = "ColorMap";
@@ -640,25 +640,38 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 										  colorMapResources_.colorMap.firstColorMapYTextureCoordinate,
 										  colorMapResources_.colorMap.colorMapHeightNormalized };
 
-		GL_CALL(glGenBuffers(1, &transferFunctionResources_.transferFunctionBuffer));
-		GL_CALL(glBindBuffer(GL_TEXTURE_BUFFER, transferFunctionResources_.transferFunctionBuffer));
+		
+	}
+
+	// Transferfunction
+	{
+		GL_CALL(glGenTextures(1, &transferFunctionResources_.transferFunctionTexture));		
+		GL_CALL(glBindTexture(GL_TEXTURE_2D, transferFunctionResources_.transferFunctionTexture));
+
+		 // Setup filtering parameters for display
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // This is required on WebGL for non power-of-two textures
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Same
+
 
 
 		std::array<float, 512> initBufferData;
-		std::ranges::fill(initBufferData, 1.0f);
-		GL_CALL(glBufferData(GL_TEXTURE_BUFFER, sizeof(float) * initBufferData.size(), &initBufferData[0],
-							 GL_DYNAMIC_DRAW));
+		
+		std::ranges::fill(initBufferData, 1);
+		GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, 512, 1, 0, GL_RED, GL_FLOAT, initBufferData.data()));
 
-		std::string transferFunctionBufferName = "TransferFunctionBuffer";
-		GL_CALL(glObjectLabel(GL_BUFFER, transferFunctionResources_.transferFunctionBuffer,
+		std::string transferFunctionBufferName = "TransferFunctionTexture";
+		GL_CALL(glObjectLabel(GL_TEXTURE, transferFunctionResources_.transferFunctionTexture,
 							  transferFunctionBufferName.length() + 1, transferFunctionBufferName.c_str()));
 
-		rc = cudaGraphicsGLRegisterBuffer(&transferFunctionResources_.cudaGraphicsResource,
-										  transferFunctionResources_.transferFunctionBuffer,
-										  cudaGraphicsRegisterFlagsNone);
-		renderingData_.data.transferFunctionBuffer.extent = { 512, 1, 1 };
-		renderingData_.data.transferFunctionBuffer.target = transferFunctionResources_.cudaGraphicsResource;
-		renderingData_.data.transferFunctionBuffer.nativeHandle = reinterpret_cast<void*>(transferFunctionResources_.transferFunctionBuffer);
+		cudaError rc = cudaGraphicsGLRegisterImage(&transferFunctionResources_.cudaGraphicsResource,
+												   transferFunctionResources_.transferFunctionTexture, GL_TEXTURE_2D, cudaGraphicsRegisterFlagsTextureGather | cudaGraphicsRegisterFlagsWriteDiscard);
+
+		renderingData_.data.transferFunctionTexture.extent = { 512, 1, 1 };
+		renderingData_.data.transferFunctionTexture.target = transferFunctionResources_.cudaGraphicsResource;
+		renderingData_.data.transferFunctionTexture.nativeHandle =
+			reinterpret_cast<void*>(transferFunctionResources_.transferFunctionTexture);
 	}
 
 	/*glGenTextures(1, &resources_.colorTexture);

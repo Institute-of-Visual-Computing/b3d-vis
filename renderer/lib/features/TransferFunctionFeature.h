@@ -15,7 +15,6 @@ namespace b3d::renderer
 		auto beginUpdate() -> void override;
 		auto endUpdate() -> void override;
 		auto gui() -> void override;
-
 		struct ParamsData
 		{
 			//TODO: put your computed params here
@@ -29,8 +28,12 @@ namespace b3d::renderer
 
 		int selectedCurveHandleIdx_{-1};
 		std::vector<ImVec2> dataPoints_;
+		std::vector<float> stagingBuffer_;
+		bool newDataAvailable_{ false };
 
-		ExternalBuffer* transferFunctionBuffer_;
+		ExternalTexture* transferFunctionTexture_;
+
+		cudaArray_t transferFunctionCudaArray_{ nullptr };
 		cudaTextureObject_t transferFunctionCudaTexture_{};
 	};
 } // namespace b3d::renderer

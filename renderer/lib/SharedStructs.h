@@ -43,8 +43,6 @@ namespace b3d::renderer
 	// ExternalTexture is read only
 	using ExternalTexture = ExternalRenderTarget;
 
-	using ExternalBuffer = ExternalRenderTarget;
-
 	enum class RenderMode : int
 	{
 		mono = 0,

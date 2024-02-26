@@ -37,7 +37,7 @@ auto b3d::renderer::ColorMapFeature::beginUpdate() -> void
 		texDesc.addressMode[0] = cudaAddressModeClamp;
 		texDesc.addressMode[1] = cudaAddressModeClamp;
 
-		texDesc.filterMode = cudaFilterModePoint;
+		texDesc.filterMode = cudaFilterModeLinear;
 		texDesc.readMode = cudaReadModeElementType; // cudaReadModeNormalizedFloat
 
 		texDesc.normalizedCoords = 1;

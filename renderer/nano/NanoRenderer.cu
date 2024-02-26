@@ -17,6 +17,30 @@ using namespace owl;
 
 extern "C" __constant__ LaunchParams optixLaunchParams;
 
+
+namespace
+{
+#define PRINT_VEC3F(name, vec)                                                                                         \
+	{                                                                                                                  \
+		printf("%s: x: %.5f, y: %.5f, z: %.5f\n", name, (float)(vec).x, (float)(vec).y, (float)(vec).z);               \
+	}
+
+#define PRINT_VEC4F(name, vec)                                                                                         \
+	{                                                                                                                  \
+		printf("%s: x: %.5f, y: %.5f, z: %.5f, w: %.5f\n", name, (float)(vec).x, (float)(vec).y, (float)(vec).z,       \
+			   (float)(vec).w);                                                                                        \
+	}
+
+#define PRINT_VEC3I(name, vec)                                                                                         \
+	{                                                                                                                  \
+		printf("%s: x: %d, y: %d, z: %d\n", name, (int)(vec).x, (int)(vec).y, (int)(vec).z);                           \
+	}
+
+#define PRINT_NEWLINE() printf("\n");
+#define PRINT_HORIZ_LINE() printf("------------\n");
+} // namespace
+
+
 struct PerRayData
 {
 	vec3f color;
@@ -95,7 +119,8 @@ OPTIX_RAYGEN_PROGRAM(rayGeneration)()
 	const auto bg2 = optixLaunchParams.bg.color0;
 	const auto pattern = (pixelId.x / 8) ^ (pixelId.y / 8);
 	auto bgColor = (pattern & 1) ? bg1 : bg2;
-	const auto a = prd.alpha;
+	//const auto a = prd.alpha;
+	const auto a = tex2D<float>(optixLaunchParams.transferFunctionTexture, prd.alpha, .5f);
 	if (optixLaunchParams.bg.fillBox && !prd.isBackground)
 	{
 		bgColor = optixLaunchParams.bg.fillColor;

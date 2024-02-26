@@ -63,7 +63,7 @@ private:
 
 	struct TransferFunctionResources
 	{
-		GLuint transferFunctionBuffer;
+		GLuint transferFunctionTexture;
 		cudaGraphicsResource_t cudaGraphicsResource;
 	} transferFunctionResources_;
 

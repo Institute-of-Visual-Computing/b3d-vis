@@ -19,7 +19,7 @@ namespace b3d::renderer
 		ExternalTexture colorMapTexture;
 		ColoringInfo coloringInfo;
 		ColorMapInfos colorMapInfos;
-		ExternalBuffer transferFunctionBuffer;
+		ExternalTexture transferFunctionTexture;
 	};
 
 	using Schema = std::unordered_map<std::string, size_t>;
@@ -45,7 +45,7 @@ namespace b3d::renderer
 											  SCHEMA_ENTRY("colorMapTexture", colorMapTexture, RenderingData),
 											  SCHEMA_ENTRY("coloringInfo", coloringInfo, RenderingData),
 												SCHEMA_ENTRY("colorMapInfos", colorMapInfos, RenderingData),
-												SCHEMA_ENTRY("transferFunctionBuffer", transferFunctionBuffer, RenderingData)
+												SCHEMA_ENTRY("transferFunctionTexture", transferFunctionTexture, RenderingData)
 										  },
 										  sizeof(RenderingData) };
 
