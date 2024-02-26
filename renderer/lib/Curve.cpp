@@ -804,6 +804,7 @@ namespace ImGui
 				points[0] = rangeMin;
 				points[1] = rangeMax;
 				points[2].x = CurveTerminator;
+				modified = 1;
 			}
 			if (ImGui::Selectable("Flip"))
 			{
@@ -812,6 +813,7 @@ namespace ImGui
 					const float yVal = 1.0f - ImRemap(points[i].y, rangeMin.y, rangeMax.y, 0, 1);
 					points[i].y = ImRemap(yVal, 0, 1, rangeMin.y, rangeMax.y);
 				}
+				modified = 1;
 			}
 			if (ImGui::Selectable("Mirror"))
 			{
@@ -824,6 +826,7 @@ namespace ImGui
 					const float xVal = 1.0f - ImRemap(points[i].x, rangeMin.x, rangeMax.x, 0, 1);
 					points[i].x = ImRemap(xVal, 0, 1, rangeMin.x, rangeMax.x);
 				}
+				modified = 1;
 			}
 			ImGui::Separator();
 			if (ImGui::BeginMenu("Presets"))
@@ -840,6 +843,8 @@ namespace ImGui
 
 							points[i] = ImRemap(ImVec2(px, py), ImVec2(0, 0), ImVec2(1, 1), rangeMin, rangeMax);
 						}
+						modified = 1;
+
 					}
 				}
 				ImGui::PopID();
