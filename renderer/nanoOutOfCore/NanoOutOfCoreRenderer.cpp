@@ -426,7 +426,9 @@ auto NanoRenderer::onInitialize() -> void
 	foo[0].x = ImGui::CurveTerminator;
 	RendererBase::onInitialize();
 	prepareGeometry();
-	dataSet_ = cutterParser::load(std::filesystem::path{ "D:/datacubes/n4565_cut_2/project.b3d" });
+	const auto testProjectFile = std::filesystem::path{ "D:/datacubes/n4565_cut_2/project.b3d" };
+	assert(std::filesystem::exists(testProjectFile));
+	dataSet_ = cutterParser::load(testProjectFile);
 }
 
 auto NanoRenderer::onDeinitialize() -> void

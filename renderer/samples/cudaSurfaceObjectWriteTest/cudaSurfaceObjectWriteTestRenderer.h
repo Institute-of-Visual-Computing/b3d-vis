@@ -12,9 +12,11 @@ namespace b3d::renderer
 	public:
 		CudaSurfaceObjectWriteTestRenderer()
 		{
-			renderSyncFeature_ = addFeature<RenderSyncFeature>("Main Synchronization");
 			renderTargetFeature_ = addFeature<RenderTargetFeature>("RenderTargets");
+			renderSyncFeature_ =
+				addFeatureWithDependency<RenderSyncFeature>({ renderTargetFeature_ }, "Main Synchronization");
 		}
+
 	protected:
 		auto onRender() -> void override;
 		auto onInitialize() -> void override;

@@ -29,13 +29,12 @@ namespace b3d::renderer
 	public:
 		NanoRenderer()
 		{
-			renderSyncFeature_ = addFeature<RenderSyncFeature>("Main Synchronization");
 			renderTargetFeature_ = addFeature<RenderTargetFeature>("RenderTargets");
 			colorMapFeature_ = addFeature<ColorMapFeature>("Color Filtering");
 			transferFunctionFeature_ = addFeature<TransferFunctionFeature>("Transfer Function");
 			backgroundColorFeature_ = addFeature<BackgroundColorFeature>(
 				"Background Color", std::array<ColorRGB, 2>{ { { 0.572f, 0.100f, 0.750f }, { 0.0f, 0.3f, 0.3f } } });
-			
+			renderSyncFeature_ = addFeatureWithDependency<RenderSyncFeature>({renderTargetFeature_, colorMapFeature_, transferFunctionFeature_, backgroundColorFeature_},"Main Synchronization");
 		}
 	protected:
 		auto onRender() -> void override;

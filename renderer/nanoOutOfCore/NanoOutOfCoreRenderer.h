@@ -31,8 +31,9 @@ namespace b3d::renderer::nano
 	public:
 		NanoRenderer()
 		{
-			renderSyncFeature_ = addFeature<RenderSyncFeature>("Main Synchronization");
 			renderTargetFeature_ = addFeature<RenderTargetFeature>("RenderTargets");
+			renderSyncFeature_ =
+				addFeatureWithDependency<RenderSyncFeature>({ renderTargetFeature_ }, "Main Synchronization");
 		}
 
 	protected:
@@ -51,12 +52,12 @@ namespace b3d::renderer::nano
 
 		CudaGpuTimers<100, 4> gpuTimers_{};
 
-		OpenFileDialog openFileDialog_{ SelectMode::singleFile, {".b3d"}};
+		OpenFileDialog openFileDialog_{ SelectMode::singleFile, { ".b3d" } };
 
-		std::optional<cutterParser::B3DDataSet> dataSet_{std::nullopt};
-		std::array<int, 2> visibleLevelRange{0, 10};
+		std::optional<cutterParser::B3DDataSet> dataSet_{ std::nullopt };
+		std::array<int, 2> visibleLevelRange{ 0, 10 };
 
-		
+
 		RenderTargetFeature* renderTargetFeature_;
 		RenderSyncFeature* renderSyncFeature_;
 	};

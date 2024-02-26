@@ -50,13 +50,33 @@ namespace b3d::renderer
 
 		std::vector<std::unique_ptr<RenderFeature>> renderFeatures_{};
 
-		template<typename Feature, class... Args>
-		auto addFeature(Args&&... args) -> std::enable_if_t<std::is_base_of_v<RenderFeature, Feature>, Feature*>
+		template <typename Feature, class... Args>
+		auto addFeature(Args&&... args)
+			-> std::enable_if_t<std::is_base_of_v<RenderFeature, Feature>, Feature*>
 		{
 			renderFeatures_.push_back(std::make_unique<Feature>(std::forward<Args>(args)...));
 			return static_cast<Feature*>(renderFeatures_.back().get());
 		}
 
+		template <typename Feature, class... Args>
+		auto addFeatureWithDependency(const std::vector<RenderFeature*> before, Args&&... args)
+			-> std::enable_if_t<std::is_base_of_v<RenderFeature, Feature>, Feature*>
+		{
+			auto bestInsertionPosition = renderFeatures_.end();
+
+			for (const auto dependency : before)
+			{
+				const auto position = std::find_if(renderFeatures_.begin(), renderFeatures_.end(),
+											  [&](const std::unique_ptr<RenderFeature>& feature)
+											  { return feature.get() == dependency; });
+				bestInsertionPosition = position < bestInsertionPosition ? position : bestInsertionPosition;
+			}
+
+			auto insertPosition = renderFeatures_.insert(bestInsertionPosition, std::make_unique<Feature>(std::forward<Args>(args)...));
+
+			//renderFeatures_.push_back(std::make_unique<Feature>(std::forward<Args>(args)...));
+			return static_cast<Feature*>((*insertPosition).get());
+		}
 	};
 
 	auto addRenderer(std::shared_ptr<RendererBase> renderer, const std::string& name) -> void;
@@ -78,9 +98,9 @@ namespace b3d::renderer
 	inline auto getRendererIndex(const std::string& name) -> int
 	{
 		auto index = -1;
-		for(auto i = 0; i < registry.size(); i++ )
+		for (auto i = 0; i < registry.size(); i++)
 		{
-			if(registry[i].name == name)
+			if (registry[i].name == name)
 			{
 				index = i;
 				break;

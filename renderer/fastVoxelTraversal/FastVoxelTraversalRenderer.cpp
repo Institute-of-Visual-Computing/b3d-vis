@@ -71,6 +71,11 @@ void FastVoxelTraversalRenderer::onInitialize()
 		std::filesystem::path{ "D:/data/work/b3d_data/datacubes/n4565/sofia_output/outname_cat.xml" };
 	const auto transferFunction1DFilePath = std::filesystem::path{ "resources/transfer1d.png" };
 
+	assert(std::filesystem::exists(catalogFilePathS));
+	assert(std::filesystem::exists(fitsFilePathS));
+	assert(std::filesystem::exists(transferFunction1DFilePath));
+
+
 	context_ = owlContextCreate(nullptr, 1);
 	auto module = owlModuleCreate(context_, FastVoxelTraversalDeviceCode_ptx);
 
@@ -203,11 +208,11 @@ void FastVoxelTraversalRenderer::onInitialize()
 
 auto FastVoxelTraversalRenderer::onRender() -> void
 {
-	
+
 	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
 	const auto transferOffset = renderData_->get<float>("transferOffset");
 	const auto view = renderData_->get<View>("view");
-	
+
 	auto renderTargetFeatureParams = renderTargetFeature_->getParamsData();
 
 
@@ -230,7 +235,7 @@ auto FastVoxelTraversalRenderer::onRender() -> void
 	owlInstanceGroupSetTransform(world_, 0, (const float*)&volumeTransform->worldMatTRS);
 	owlGroupRefitAccel(world_);
 
-	// Set Launch Params for this run. 
+	// Set Launch Params for this run.
 	{
 		RayCameraData rcd;
 		if (view->cameras[0].directionsAvailable)
@@ -246,9 +251,8 @@ auto FastVoxelTraversalRenderer::onRender() -> void
 		owlParamsSetRaw(launchParameters_, "surfacePointer", &renderTargetFeatureParams.colorRT.surfaces[0]);
 		owlParamsSet1f(launchParameters_, "transferOffset", *transferOffset);
 	}
-	
-	owlAsyncLaunch2D(rayGen_, fbSize_.x, fbSize_.y,
-					 launchParameters_);
+
+	owlAsyncLaunch2D(rayGen_, fbSize_.x, fbSize_.y, launchParameters_);
 }
 
 void FastVoxelTraversalRenderer::onDeinitialize()
