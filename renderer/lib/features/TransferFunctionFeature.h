@@ -23,6 +23,8 @@ namespace b3d::renderer
 		};
 
 		[[nodiscard]] auto getParamsData() -> ParamsData;
+		[[nodiscard]] auto hasGui() const -> bool override;
+
 	private:
 		bool skipUpdate{ false };
 

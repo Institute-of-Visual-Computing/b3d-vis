@@ -19,6 +19,7 @@ namespace b3d::renderer
 		}
 
 		auto gui() -> void override;
+		[[nodiscard]] auto hasGui() const -> bool override;
 
 		struct ParamsData
 		{

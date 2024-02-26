@@ -37,9 +37,12 @@ auto RendererBase::gui() -> void
 
 	for (const auto& feature : renderFeatures_)
 	{
-		if (ImGui::CollapsingHeader(feature->featureName().c_str()))
+		if (feature->hasGui())
 		{
-			feature->gui();
+			if (ImGui::CollapsingHeader(feature->featureName().c_str()))
+			{
+				feature->gui();
+			}
 		}
 	}
 

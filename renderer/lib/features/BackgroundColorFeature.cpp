@@ -19,5 +19,8 @@ auto b3d::renderer::BackgroundColorFeature::gui() -> void
 	*/
 	ImGui::ColorEdit3("Color 1", &colors_[0].r);
 	ImGui::ColorEdit3("Color 2", &colors_[1].r);
-
+}
+auto b3d::renderer::BackgroundColorFeature::hasGui() const -> bool
+{
+	return true;
 }

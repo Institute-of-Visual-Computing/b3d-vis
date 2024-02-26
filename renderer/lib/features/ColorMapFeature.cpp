@@ -123,6 +123,10 @@ auto b3d::renderer::ColorMapFeature::gui() -> void
 		}
 	}
 }
+auto b3d::renderer::ColorMapFeature::hasGui() const -> bool
+{
+	return true;
+}
 auto b3d::renderer::ColorMapFeature::getParamsData() -> ParamsData
 {
 	assert(coloringInfo_ != nullptr && colorMapInfos_ != nullptr);

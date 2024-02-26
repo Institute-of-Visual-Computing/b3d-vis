@@ -110,3 +110,7 @@ auto TransferFunctionFeature::getParamsData() -> ParamsData
 {
 	return { transferFunctionCudaTexture_ };
 }
+auto TransferFunctionFeature::hasGui() const -> bool
+{
+	return true;
+}

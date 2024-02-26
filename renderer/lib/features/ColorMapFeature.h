@@ -15,6 +15,7 @@ namespace b3d::renderer
 		auto beginUpdate() -> void override;
 		auto endUpdate() -> void override;
 		auto gui() -> void override;
+		[[nodiscard]] auto hasGui() const -> bool override;
 
 		struct ParamsData
 		{

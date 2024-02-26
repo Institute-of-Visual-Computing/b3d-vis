@@ -32,9 +32,15 @@ namespace b3d::renderer
 		{
 		}
 
+
 		[[nodiscard]] inline auto featureName() const -> std::string
 		{
 			return name_;
+		}
+
+		[[nodiscard]] virtual auto hasGui() const -> bool
+		{
+			return false;
 		}
 
 	protected:
