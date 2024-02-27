@@ -607,9 +607,10 @@ namespace ImGui
 					// select
 					currentSelection = left + 1;
 
-					++pointCount;
 					for (i = pointCount; i > left; --i)
 						points[i] = points[i - 1];
+
+					++pointCount;
 
 					points[left + 1] = pos;
 
