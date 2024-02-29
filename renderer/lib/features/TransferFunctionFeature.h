@@ -1,10 +1,10 @@
 #pragma once
-#define IMGUI_DEFINE_MATH_OPERATORS
-#include "imgui.h"
+
 #include "RenderFeature.h"
 
 #include <vector>
 
+#include "imgui.h"
 
 namespace b3d::renderer
 {
@@ -29,8 +29,10 @@ namespace b3d::renderer
 		bool skipUpdate{ false };
 
 		int selectedCurveHandleIdx_{-1};
+
 		std::vector<ImVec2> dataPoints_;
 		std::vector<float> stagingBuffer_;
+
 		bool newDataAvailable_{ false };
 
 		ExternalTexture* transferFunctionTexture_;

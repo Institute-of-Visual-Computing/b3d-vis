@@ -5,6 +5,9 @@
 #include "Curve.h"
 #include "owl/helper/cuda.h"
 
+#define IMGUI_DEFINE_MATH_OPERATORS
+#include "imgui.h"
+
 using namespace b3d::renderer;
 
 TransferFunctionFeature::TransferFunctionFeature(const std::string& name, const size_t dataPointsCount)
@@ -94,6 +97,10 @@ auto TransferFunctionFeature::gui() -> void
 		// curve changed
 		// TODO: maybe trigger an event to refit/recreate data
 		b3d::renderer::log("Params changed");
+		newDataAvailable_ = true;
+	}
+	if (newDataAvailable_)
+	{
 		stagingBuffer_.resize(transferFunctionTexture_->extent.width);
 
 		const auto inc = 1.0f / (stagingBuffer_.size() - 1);
@@ -101,8 +108,6 @@ auto TransferFunctionFeature::gui() -> void
 		{
 			stagingBuffer_[i] = ImGui::CurveValue(i * inc, dataPoints_.size(), dataPoints_.data());
 		}
-
-		newDataAvailable_ = true;
 	}
 }
 
