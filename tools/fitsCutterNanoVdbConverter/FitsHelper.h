@@ -31,7 +31,7 @@ struct ExtractedData
 	std::vector<float> data;
 };
 
-[[nodiscard]] auto extractData(const std::filesystem::path& file, const Box3I& searchBox = Box3I::maxBox()) -> ExtractedData;
+[[nodiscard]] auto extractData(const std::filesystem::path& file, const Box3I& searchBox = Box3I::maxBox(),const uint8_t hduIndex = 0) -> ExtractedData;
 
 [[nodiscard]] auto applyMask(const std::vector<float>& data, const std::vector<bool>& mask, const float maskedValue = 0.0f) -> std::vector<float>;
 

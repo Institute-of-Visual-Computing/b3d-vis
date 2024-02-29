@@ -352,20 +352,32 @@ auto extractBinaryClusterMask(const std::filesystem::path& file, std::vector<Clu
 }
 
 auto extractClusterMask(const std::filesystem::path& file, ClusterId cluster, const Box3I& searchBox)
-	-> std::vector<uint32_t>
+-> std::vector<uint32_t>
 {
 	return std::vector<uint32_t>();
 }
 
 
-auto extractData(const std::filesystem::path& file, const Box3I& searchBox) -> ExtractedData
+auto extractData(const std::filesystem::path& file, const Box3I& searchBox, const uint8_t hduIndex) -> ExtractedData
 {
 	fitsfile* fitsFilePtr{ nullptr };
 	auto fitsError = int{};
 	ffopen(&fitsFilePtr, file.generic_string().c_str(), READONLY, &fitsError);
 	assert(fitsError == 0);
 
+
+
 	const auto fitsFile = UniqueFitsfile(fitsFilePtr, &fitsDeleter);
+
+	auto hduCount = 0;
+	fits_get_num_hdus(fitsFile.get(), &hduCount, &fitsError);
+	assert(fitsError == 0);
+
+	assert(hduCount > 0);
+
+	assert(hduIndex < hduCount);
+	fits_movabs_hdu(fitsFile.get(), hduIndex+1, nullptr, &fitsError);
+	assert(fitsError == 0);
 
 	auto axisCount = 0;
 	auto imgType = 0;
@@ -406,11 +418,11 @@ auto extractData(const std::filesystem::path& file, const Box3I& searchBox) -> E
 	max[0] = newSearchBox.upper.x;
 	max[1] = newSearchBox.upper.y;
 	max[2] = newSearchBox.upper.z;
-
+	auto nan = 0l;
 	{
 		auto error = int{};
 		fits_read_subset(fitsFile.get(), TFLOAT, min.data(), max.data(), samplingInterval.data(), &nan,
-						 dataBuffer.data(), nullptr, &error);
+			dataBuffer.data(), nullptr, &error);
 		if (error != 0)
 		{
 			std::array<char, 30> txt;
