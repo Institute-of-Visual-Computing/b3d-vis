@@ -37,6 +37,7 @@ namespace b3d
 				cudaTextureObject_t colorMaps;
 				b3d::renderer::ColoringInfo coloringInfo;
 				cudaTextureObject_t transferFunctionTexture;
+				owl::vec2f sampleRemapping;
 			};
 
 			struct NanoVdbVolume

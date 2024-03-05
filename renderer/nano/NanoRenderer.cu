@@ -119,23 +119,8 @@ OPTIX_RAYGEN_PROGRAM(rayGeneration)()
 	const auto bg2 = optixLaunchParams.bg.color0;
 	const auto pattern = (pixelId.x / 8) ^ (pixelId.y / 8);
 	auto bgColor = (pattern & 1) ? bg1 : bg2;
-	//const auto a = prd.alpha;
-	const auto a = tex2D<float>(optixLaunchParams.transferFunctionTexture, prd.alpha, .5f);
-	if (optixLaunchParams.bg.fillBox && !prd.isBackground)
-	{
-		bgColor = optixLaunchParams.bg.fillColor;
-	}
-	
-	auto col = vec3f{ optixLaunchParams.coloringInfo.singleColor };
 
-	if (optixLaunchParams.coloringInfo.coloringMode == b3d::renderer::ColoringMode::colormap && !prd.isBackground)
-	{
-		vec4f bla = tex2D<float4>(optixLaunchParams.colorMaps, a, optixLaunchParams.coloringInfo.selectedColorMap); // 
-		col = vec3f{ bla };
-	}
-
-	const auto color = prd.isBackground ? bgColor : col * (1 - a) + a * bgColor;
-	
+	const auto color = prd.isBackground ? bgColor : bgColor * (1 - prd.alpha) + prd.alpha * prd.color;
 	surf2Dwrite(owl::make_rgba(color), optixLaunchParams.surfacePointer, sizeof(uint32_t) * pixelId.x, pixelId.y);
 }
 
@@ -149,6 +134,11 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 {
 	const auto& geometry = owl::getProgramData<GeometryData>();
 	const auto* grid = reinterpret_cast<nanovdb::FloatGrid*>(geometry.volume.grid);
+	const auto transferMap = [](float a) { return tex2D<float>(optixLaunchParams.transferFunctionTexture, a, 0.5f); };
+	const auto colorMap = [](float value)
+		{
+			return optixLaunchParams.coloringInfo.coloringMode == b3d::renderer::single ? vec3f{ optixLaunchParams.coloringInfo.singleColor } : vec3f{ tex2D<float4>(optixLaunchParams.colorMaps, value, optixLaunchParams.coloringInfo.selectedColorMap) };
+		};
 
 	float transform[12];
 	optixGetWorldToObjectTransformMatrix(transform);
@@ -175,7 +165,7 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 	const auto t1 = getPRD<float>();
 
 	const auto rayWorld = nanovdb::Ray<float>(reinterpret_cast<const nanovdb::Vec3f&>(rayOrigin),
-											  reinterpret_cast<const nanovdb::Vec3f&>(rayDirection));
+		reinterpret_cast<const nanovdb::Vec3f&>(rayDirection));
 
 	const auto startWorld = rayWorld(t0);
 	const auto endWorld = rayWorld(t1);
@@ -198,25 +188,50 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 
 	auto hdda = nanovdb::HDDA<nanovdb::Ray<float>>(ray, accessor.getDim(ijk, ray));
 
-	const auto opacity = 0.6f; // 0.01f;//1.0.f;
-	auto transmittance = 1.0f;
-	auto t = 0.0f;
-	auto density = accessor.getValue(ijk) * opacity;
+	auto colorAcc = vec3f{ 0.0f,0.0f,0.0f };
+	auto opacityAcc = 0.0f;
+
+	auto remapSample = [](float value) { return optixLaunchParams.sampleRemapping.x + value / (optixLaunchParams.sampleRemapping.y - optixLaunchParams.sampleRemapping.x); };
+
+	auto transferFunctionIntegration = [&](vec3f& colorAccumulator, float& opacityAccumulator, const float& value)
+		{
+			const auto colorValue = colorMap(value);
+			const auto opacityValue = transferMap(value);
+			const auto weight = (1.0f - opacityAcc) * opacityValue;
+			colorAccumulator += weight * colorValue;
+			opacityAccumulator += weight / 500.0f;
+		};
+
+	auto maximumIntensityMapping = [&](vec3f& colorAccumulator, float& opacityAccumulator, const float& value)
+		{
+			const auto weightValue = transferMap(value);
+			opacityAccumulator = max(opacityAccumulator, weightValue);
+			colorAccumulator = colorMap(opacityAccumulator);
+		};
+
+
+	auto accumulationOperator = maximumIntensityMapping;
+
 	while (hdda.step())
 	{
-		const auto dt = hdda.time() - t;
-		transmittance *= expf(-density * dt);
-		t = hdda.time();
 		ijk = hdda.voxel();
-		const auto value = accessor.getValue(ijk);
-		density = value * opacity;
+
+		const auto value = remapSample(accessor.getValue(ijk));
+
+		accumulationOperator(colorAcc, opacityAcc, value);
+		/*colorAcc += weight * colorValue;
+		opacityAcc += weight/ 500.0f;*/
+		/*if(opacityAcc >= 1.0f)
+		{
+			break;
+		}*/
+
 		hdda.update(ray, accessor.getDim(ijk, ray));
 	}
-
 	auto& prd = owl::getPRD<PerRayData>();
 
-	prd.color = vec3f(0.8, 0.3, 0.2) * transmittance;
-	prd.alpha = transmittance;
+	prd.color = colorAcc;
+	prd.alpha = opacityAcc;
 }
 
 OPTIX_INTERSECT_PROGRAM(nano_intersection)()
@@ -231,7 +246,7 @@ OPTIX_INTERSECT_PROGRAM(nano_intersection)()
 	auto t0 = optixGetRayTmin();
 	auto t1 = optixGetRayTmax();
 	const auto ray = nanovdb::Ray<float>(reinterpret_cast<const nanovdb::Vec3f&>(rayOrigin),
-										 reinterpret_cast<const nanovdb::Vec3f&>(rayDirection), t0, t1);
+		reinterpret_cast<const nanovdb::Vec3f&>(rayDirection), t0, t1);
 
 	if (ray.intersects(bbox, t0, t1))
 	{
