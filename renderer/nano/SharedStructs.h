@@ -29,8 +29,8 @@ namespace b3d
 				cudaSurfaceObject_t surfacePointer;
 				struct BG
 				{
-					owl::vec3f color0;
-					owl::vec3f color1;
+					owl::vec4f color0;
+					owl::vec4f color1;
 					bool fillBox;
 					owl::vec3f fillColor;
 				} bg;

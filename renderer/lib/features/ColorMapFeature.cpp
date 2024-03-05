@@ -122,6 +122,9 @@ auto b3d::renderer::ColorMapFeature::gui() -> void
 			}
 		}
 	}
+	coloringInfo_->coloringMode = selectedColoringMode_ == 0 ? single : colormap;
+	coloringInfo_->selectedColorMap = colorMapInfos_->firstColorMapYTextureCoordinate +
+		static_cast<float>(selectedColoringMap_) * colorMapInfos_->colorMapHeightNormalized;
 }
 auto b3d::renderer::ColorMapFeature::hasGui() const -> bool
 {
@@ -130,9 +133,6 @@ auto b3d::renderer::ColorMapFeature::hasGui() const -> bool
 auto b3d::renderer::ColorMapFeature::getParamsData() -> ParamsData
 {
 	assert(coloringInfo_ != nullptr && colorMapInfos_ != nullptr);
-	coloringInfo_->coloringMode = selectedColoringMode_ == 0 ? single : colormap;
-	coloringInfo_->selectedColorMap = colorMapInfos_->firstColorMapYTextureCoordinate +
-		static_cast<float>(selectedColoringMap_) * colorMapInfos_->colorMapHeightNormalized;
 
 	return { colorMapCudaTexture_, coloringInfo_->singleColor, coloringInfo_->selectedColorMap,
 			 coloringInfo_->coloringMode };

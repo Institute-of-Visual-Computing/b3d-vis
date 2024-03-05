@@ -140,6 +140,8 @@ namespace B3D
 				public UnityColoringMode coloringMode;
 				public Vector4 singleColor;
 				public float selectedColorMap;
+				[MarshalAs(UnmanagedType.ByValArray, SizeConst = 2)]
+				public Vector4[] backgroundColors;
 			};
 
 			// defined in Action.h - struct UnityTexture
@@ -182,7 +184,7 @@ namespace B3D
 				public UnityVolumeTransform volumeTransform;
 				public UnityTexture colorMapsTexture;
 				public UnityColoringInfo coloringInfo;
-
+				public UnityTexture transferFunctionTexture;
 			}
 		}
     }

@@ -119,11 +119,12 @@ OPTIX_RAYGEN_PROGRAM(rayGeneration)()
 	const auto bg2 = optixLaunchParams.bg.color0;
 	const auto pattern = (pixelId.x / 8) ^ (pixelId.y / 8);
 	auto bgColor = (pattern & 1) ? bg1 : bg2;
+
 	//const auto a = prd.alpha;
 	const auto a = tex2D<float>(optixLaunchParams.transferFunctionTexture, prd.alpha, .5f);
 	if (optixLaunchParams.bg.fillBox && !prd.isBackground)
 	{
-		bgColor = optixLaunchParams.bg.fillColor;
+		bgColor = vec4f(optixLaunchParams.bg.fillColor, 1.f);
 	}
 	
 	auto col = vec3f{ optixLaunchParams.coloringInfo.singleColor };
@@ -134,8 +135,8 @@ OPTIX_RAYGEN_PROGRAM(rayGeneration)()
 		col = vec3f{ bla };
 	}
 
-	const auto color = prd.isBackground ? bgColor : col * (1 - a) + a * bgColor;
-	
+	const auto color = prd.isBackground ? bgColor : vec4f(col * (1 - a) + a * vec3f(bgColor), 1.0f);
+
 	surf2Dwrite(owl::make_rgba(color), optixLaunchParams.surfacePointer, sizeof(uint32_t) * pixelId.x, pixelId.y);
 }
 

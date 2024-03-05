@@ -17,7 +17,8 @@ namespace b3d::unity_cuda_interop
 	using UnityView = renderer::View;
 	using UnityColoringMode = renderer::ColoringMode;
 	using UnityColoringInfo = renderer::ColoringInfo;
-
+	using UnityColorRGBA = renderer::ColorRGBA;
+	
 	struct UnityTexture
 	{
 		void* texturePointer;
@@ -43,7 +44,8 @@ namespace b3d::unity_cuda_interop
 		UnityView view;
 		UnityVolumeTransform volumeTransform;
 		UnityTexture colorMapsTexture;
-		UnityColoringInfo coloringInfo;			
+		UnityColoringInfo coloringInfo;
+		UnityTexture transferFunctionTexture;
 	};
 
 	static const renderer::SchemaData unityDataSchema { {
@@ -52,6 +54,7 @@ namespace b3d::unity_cuda_interop
 			SCHEMA_ENTRY("volumeTransform", volumeTransform, UnityRenderingData),
 			SCHEMA_ENTRY("colorMapsTexture", colorMapsTexture, UnityRenderingData),
 			SCHEMA_ENTRY("coloringInfo", coloringInfo, UnityRenderingData),
+			SCHEMA_ENTRY("transferFunctionTexture", transferFunctionTexture, UnityRenderingData),
 										  },
 		sizeof(UnityRenderingData)
 	};

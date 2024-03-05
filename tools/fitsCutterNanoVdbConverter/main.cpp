@@ -154,6 +154,15 @@ auto main(int argc, char** argv) -> int
 			return EXIT_FAILURE;
 		}
 	}
+	/*
+	const auto data = extractData(cutterConfig.src);
+	const auto& box = data.box;
+	const auto& boxSize = box.size();
+	auto nvdb = generateNanoVdb(boxSize, -100.0f, 0.0f, data.data);
+	const auto path = (cutterConfig.dst / cutterConfig.src.filename()).string();
+	nanovdb::io::writeGrid(path + ".nvdb", nvdb, nanovdb::io::Codec::NONE);
+	*/
+	return EXIT_SUCCESS;
 
 	if (vm.count("masks"))
 	{

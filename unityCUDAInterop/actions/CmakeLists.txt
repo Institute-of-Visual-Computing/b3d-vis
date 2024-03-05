@@ -1,3 +1,3 @@
 # add_subdirectory(actionSyncPrimitiveSample)
 add_subdirectory(actionSimpleTriangles)
-# add_subdirectory(actionNanoRenderer)
+add_subdirectory(actionNanoRenderer)

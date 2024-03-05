@@ -41,8 +41,8 @@ struct MyLaunchParams
 	cudaSurfaceObject_t surfacePointer;
 	cudaTextureObject_t colorMaps;
     b3d::renderer::ColoringInfo coloringInfo;
-	vec3f backgroundColor0;
-	vec3f backgroundColor1;
+	vec4f backgroundColor0;
+	vec4f backgroundColor1;
 };
 
 /* variables for the triangle mesh geometry */

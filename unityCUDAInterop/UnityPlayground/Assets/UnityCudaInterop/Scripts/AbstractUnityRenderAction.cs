@@ -57,6 +57,8 @@ namespace B3D
 
 			protected List<Tuple<CameraEvent, CommandBuffer>> renderingCommandBuffers_;
 
+			protected bool readyForUpdate_ = false;
+
 			#endregion Members
 
 			#region Unity Methods
@@ -73,19 +75,23 @@ namespace B3D
 
 			protected virtual void Update()
 			{
-				if (textureProvider_.renderTextureDescriptorChanged())
-				{
-					SetTextures();
-				}
-				else
-				{
-					FillNativeRenderingData();
-					Marshal.StructureToPtr(unityRenderingData, unityRenderingDataPtr, true);
+				if(readyForUpdate_)
+				{ 
+					if (textureProvider_.renderTextureDescriptorChanged())
+					{
+						SetTextures();
+					}
+					else
+					{
+						FillNativeRenderingData();
+						Marshal.StructureToPtr(unityRenderingData, unityRenderingDataPtr, true);
+					}
 				}
 			}
 
 			protected virtual void OnDestroy()
 			{
+				readyForUpdate_ = false;
 				RemoveRenderingCommandBuffersFromCamera();
 
 				NativeAction.TeardownAction();
@@ -135,6 +141,7 @@ namespace B3D
 				yield return new WaitForEndOfFrame();
 				yield return new WaitForEndOfFrame();
 				AddRenderingCommandBuffersToCamera();
+				readyForUpdate_ = true;
 			}
 
 			protected virtual IEnumerator WaitEndOfFrameAfterImmediateCommandBufferExec()
@@ -142,6 +149,7 @@ namespace B3D
 				yield return new WaitForEndOfFrame();
 				// yield return new WaitForSeconds(1);
 				AddRenderingCommandBuffersToCamera();
+				readyForUpdate_ = true;
 			}
 
 			protected virtual void InitAllObjects()
@@ -178,6 +186,8 @@ namespace B3D
 
 				// Execute only if we're updating the texture. 
 				if(!init) {
+
+					readyForUpdate_ = false;
 					RemoveRenderingCommandBuffersFromCamera();
 
 					Marshal.StructureToPtr(unityRenderingData, unityRenderingDataPtr, true);
@@ -263,7 +273,7 @@ namespace B3D
 				{
 					foreach (var (evt, cb) in renderingCommandBuffers_)
 					{
-						targetCamera.AddCommandBuffer(evt, cb);
+						targetCamera.RemoveCommandBuffer(evt, cb);
 					}
 				}
 			}

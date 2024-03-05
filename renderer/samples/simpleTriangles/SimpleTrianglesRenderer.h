@@ -18,11 +18,11 @@ namespace b3d::renderer
 		{
 			renderTargetFeature_ = addFeature<RenderTargetFeature>("RenderTargets");
 			colorMapFeature_ = addFeature<ColorMapFeature>("Color Filtering");
-			transferFunctionFeature_ = addFeature<TransferFunctionFeature>("Transfer Function");
+			//transferFunctionFeature_ = addFeature<TransferFunctionFeature>("Transfer Function");
 			backgroundColorFeature_ = addFeature<BackgroundColorFeature>(
 				"Background Color", std::array<ColorRGB, 2>{ { { 0.572f, 0.100f, 0.750f }, { 0.0f, 0.3f, 0.3f } } });
 			renderSyncFeature_ = addFeatureWithDependency<RenderSyncFeature>(
-				{ renderTargetFeature_, colorMapFeature_, transferFunctionFeature_, backgroundColorFeature_ },
+				{ renderTargetFeature_, colorMapFeature_,/* transferFunctionFeature_,*/ backgroundColorFeature_ },
 				"Main Synchronization");
 		}
 
@@ -45,7 +45,7 @@ namespace b3d::renderer
 		RenderTargetFeature* renderTargetFeature_;
 		RenderSyncFeature* renderSyncFeature_;
 		ColorMapFeature* colorMapFeature_;
-		TransferFunctionFeature* transferFunctionFeature_;
+		//TransferFunctionFeature* transferFunctionFeature_;
 		BackgroundColorFeature* backgroundColorFeature_;
 	};
 } // namespace b3d::renderer

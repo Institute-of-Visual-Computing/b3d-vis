@@ -44,6 +44,7 @@ protected:
 	std::unique_ptr<Texture> depthTexture_;
 
 	std::unique_ptr<Texture> colorMapsTexture_;
+	std::unique_ptr<Texture> transferFunctionTexture_;
 
 	// explicite. can be generic
 	std::unique_ptr<SimpleTrianglesRenderer> renderer_;
@@ -62,7 +63,7 @@ auto ActionSimpleTriangles::initialize(void* data) -> void
 	{
 		return;
 	}
-	
+
 	const RenderingDataBuffer rdb{ unityDataSchema, 1, data };
 	setTextures(rdb);
 
@@ -84,19 +85,28 @@ auto ActionSimpleTriangles::initialize(void* data) -> void
 	colorMapsTexture_ = renderAPI_->createTexture(colorMapsTexture->texturePointer);
 	colorMapsTexture_->registerCUDA();
 	cudaDeviceSynchronize();
-	renderingDataWrapper_.data.colorMapTexture = {
-		.target = colorMapsTexture_->getCudaGraphicsResource(),
-														  .extent = {
-															  static_cast<uint32_t>(colorMapsTexture_->getWidth()),
-															  static_cast<uint32_t>(colorMapsTexture_->getHeight()),
-															  static_cast<uint32_t>(colorMapsTexture_->getDepth()) }
-	};
-	
+	renderingDataWrapper_.data.colorMapTexture = { .target = colorMapsTexture_->getCudaGraphicsResource(),
+												   .extent = { static_cast<uint32_t>(colorMapsTexture_->getWidth()),
+															   static_cast<uint32_t>(colorMapsTexture_->getHeight()),
+															   static_cast<uint32_t>(colorMapsTexture_->getDepth()) } };
+
 	renderingDataWrapper_.data.coloringInfo = *coloringInfo;
+
+	const auto transferFunctionTexture = rdb.get<UnityTexture>("transferFunctionTexture");
+	transferFunctionTexture_ = renderAPI_->createTexture(transferFunctionTexture->texturePointer);
+	transferFunctionTexture_->registerCUDA();
+	cudaDeviceSynchronize();
+	renderingDataWrapper_.data.transferFunctionTexture = {
+		.target = transferFunctionTexture_->getCudaGraphicsResource(),
+		.extent = { static_cast<uint32_t>(transferFunctionTexture_->getWidth()),
+					static_cast<uint32_t>(transferFunctionTexture_->getHeight()),
+					static_cast<uint32_t>(transferFunctionTexture_->getDepth()) }
+	};
 
 	renderer_->initialize(
 		&renderingDataWrapper_.buffer,
 		DebugInitializationInfo{ std::make_shared<NullDebugDrawList>(), std::make_shared<NullGizmoHelper>() });
+	cudaDeviceSynchronize();
 	isInitialized_ = true;
 }
 
@@ -107,13 +117,13 @@ auto ActionSimpleTriangles::customRenderEvent(int eventId, void* data) -> void
 	{
 		const RenderingDataBuffer rdb{ unityDataSchema, 1, data };
 
-		logger_->log("Render");
 		renderingDataWrapper_.data.renderTargets.colorRt = { .target = colorTexture_->getCudaGraphicsResource(),
-					  .extent = { static_cast<uint32_t>(colorTexture_->getWidth()),
-								  static_cast<uint32_t>(colorTexture_->getHeight()),
-								  static_cast<uint32_t>(colorTexture_->getDepth()) } };
+															 .extent = {
+																 static_cast<uint32_t>(colorTexture_->getWidth()),
+																 static_cast<uint32_t>(colorTexture_->getHeight()),
+																 static_cast<uint32_t>(colorTexture_->getDepth()) } };
 
-		
+
 		const auto coloringInfo = rdb.get<UnityColoringInfo>("coloringInfo");
 		renderingDataWrapper_.data.coloringInfo = *coloringInfo;
 
@@ -139,18 +149,16 @@ auto ActionSimpleTriangles::customRenderEvent(int eventId, void* data) -> void
 
 		renderingDataWrapper_.data.view.mode = view->mode;
 
-		
+
 		const auto& volumeTransform = rdb.get<UnityVolumeTransform>("volumeTransform");
 		renderingDataWrapper_.data.volumeTransform.worldMatTRS.p = volumeTransform->position * owl::vec3f{ 1, 1, -1 };
-		
-		renderingDataWrapper_.data.volumeTransform.worldMatTRS.l = owl::LinearSpace3f{
-			 owl::Quaternion3f{  volumeTransform->rotation.k,
-			owl::vec3f{ -volumeTransform->rotation.r, -volumeTransform->rotation.i, volumeTransform->rotation.j }
-			 }
-		};
-		
+
+		renderingDataWrapper_.data.volumeTransform.worldMatTRS.l = owl::LinearSpace3f{ owl::Quaternion3f{
+			volumeTransform->rotation.k,
+			owl::vec3f{ -volumeTransform->rotation.r, -volumeTransform->rotation.i, volumeTransform->rotation.j } } };
+
 		renderingDataWrapper_.data.volumeTransform.worldMatTRS.l *= owl::LinearSpace3f::scale(volumeTransform->scale);
-		
+
 		currFenceValue += 1;
 		renderingDataWrapper_.data.synchronization.fenceValue = currFenceValue;
 
@@ -162,6 +170,7 @@ auto ActionSimpleTriangles::customRenderEvent(int eventId, void* data) -> void
 	else if (eventId == static_cast<int>(CustomActionRenderEventTypes::initializeEvent))
 	{
 		initialize(data);
+		cudaDeviceSynchronize();
 	}
 	else if (eventId == static_cast<int>(CustomActionRenderEventTypes::setTexturesEvent))
 	{
@@ -173,9 +182,9 @@ auto ActionSimpleTriangles::customRenderEvent(int eventId, void* data) -> void
 auto ActionSimpleTriangles::setTextures(const RenderingDataBuffer& renderingDataBuffer) -> void
 {
 	isReady_ = false;
-	
+
 	const auto& unityRenderTargets = renderingDataBuffer.get<UnityRenderTargets>("renderTargets");
-	
+
 	if (unityRenderTargets->colorTexture.textureExtent.depth > 0)
 	{
 		auto newColorTexture = renderAPI_->createTexture(unityRenderTargets->colorTexture.texturePointer);
@@ -204,6 +213,7 @@ auto ActionSimpleTriangles::teardown() -> void
 	cudaDeviceSynchronize();
 	renderer_.reset();
 
+	transferFunctionTexture_.reset();
 	colorMapsTexture_.reset();
 	depthTexture_.reset();
 	colorTexture_.reset();

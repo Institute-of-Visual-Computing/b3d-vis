@@ -16,7 +16,7 @@ namespace b3d::renderer
 		{
 		}
 
-		auto initialize(b3d::renderer::RenderingDataBuffer& sharedParameters)
+		virtual auto initialize(b3d::renderer::RenderingDataBuffer& sharedParameters) -> void
 		{
 			sharedParameters_ = &sharedParameters;
 		}

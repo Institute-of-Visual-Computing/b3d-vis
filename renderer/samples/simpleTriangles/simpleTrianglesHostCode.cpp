@@ -130,8 +130,8 @@ auto SimpleTrianglesRenderer::onRender() -> void
 
 
 	const auto backgroundColorParams = backgroundColorFeature_->getParamsData();
-	owlParamsSet3f(launchParameters_, "backgroundColor0", backgroundColorParams.colors[0]);
-	owlParamsSet3f(launchParameters_, "backgroundColor1", backgroundColorParams.colors[1]);
+	owlParamsSet4f(launchParameters_, "backgroundColor0", backgroundColorParams.colors[0]);
+	owlParamsSet4f(launchParameters_, "backgroundColor1", backgroundColorParams.colors[1]);
 
 	const auto view = renderData_->get<View>("view");
 	{
@@ -269,8 +269,8 @@ auto SimpleTrianglesRenderer::onInitialize() -> void
 			{ "coloringInfo.colorMode", OWL_USER_TYPE(ColoringMode), OWL_OFFSETOF(MyLaunchParams, coloringInfo.coloringMode) },
 			{ "coloringInfo.singleColor", OWL_FLOAT4, OWL_OFFSETOF(MyLaunchParams, coloringInfo.singleColor) },
 			{ "coloringInfo.selectedColorMap", OWL_FLOAT, OWL_OFFSETOF(MyLaunchParams, coloringInfo.selectedColorMap) },
-			{ "backgroundColor0", OWL_FLOAT3, OWL_OFFSETOF(MyLaunchParams, backgroundColor0) },
-			{ "backgroundColor1", OWL_FLOAT3, OWL_OFFSETOF(MyLaunchParams, backgroundColor1) },
+			{ "backgroundColor0", OWL_FLOAT4, OWL_OFFSETOF(MyLaunchParams, backgroundColor0) },
+			{ "backgroundColor1", OWL_FLOAT4, OWL_OFFSETOF(MyLaunchParams, backgroundColor1) },
 			{}
 		};
 

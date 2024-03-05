@@ -9,27 +9,26 @@ namespace b3d::renderer
 	class BackgroundColorFeature final : public RenderFeature
 	{
 	public:
-		explicit BackgroundColorFeature(const std::string& name) : RenderFeature{ name }
-		{
-		}
+		explicit BackgroundColorFeature(const std::string& name);
 
-		explicit BackgroundColorFeature(const std::string& name, std::array<ColorRGB, 2> colors)
-			: RenderFeature{ name }, colors_{ colors }
-		{
-		}
+		explicit BackgroundColorFeature(const std::string& name, std::array<ColorRGB, 2> colors);
 
+		auto beginUpdate() -> void override;
+		auto initialize(b3d::renderer::RenderingDataBuffer& sharedParameters) -> void override;
 		auto gui() -> void override;
 		[[nodiscard]] auto hasGui() const -> bool override;
 
 		struct ParamsData
 		{
-			std::array<ColorRGB, 2> colors;
+			std::array<ColorRGBA, 2> colors;
 		};
 
 		[[nodiscard]] auto getParamsData() -> ParamsData;
 
 	private:
-		std::array<ColorRGB, 2> colors_ {};
+		std::array<ColorRGBA, 2> defaultColors_;
+
+		ColoringInfo* coloringInfo_{ nullptr };
 	};
 
 } // namespace b3d::renderer

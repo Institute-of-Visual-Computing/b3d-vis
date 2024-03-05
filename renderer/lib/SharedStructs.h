@@ -100,6 +100,7 @@ namespace b3d::renderer
 		ColoringMode coloringMode;
 		owl::vec4f singleColor;
 		float selectedColorMap;
+		std::array<ColorRGBA, 2> backgroundColors; 
 	};
 
 	struct ColorMapInfos

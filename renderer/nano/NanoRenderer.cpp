@@ -62,7 +62,7 @@ namespace
 	{
 		// const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
 		const auto testFile =
-			std::filesystem::path{ "D:/datacubes/n4565_cut/filtered_level_0_224_257_177_id_7_upscale.fits.nvdb" };
+			std::filesystem::path{ "D:/data/work/b3d_data/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" };
 		// const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" };
 		// const auto testFile = std::filesystem::path{ "D:/datacubes/ska/40gb/sky_ldev_v2.nvdb" };
 
@@ -261,8 +261,8 @@ auto NanoRenderer::prepareGeometry() -> void
 			OWLVarDecl{ "cameraData", OWL_USER_TYPE(RayCameraData), OWL_OFFSETOF(LaunchParams, cameraData) },
 			OWLVarDecl{ "surfacePointer", OWL_USER_TYPE(cudaSurfaceObject_t),
 						OWL_OFFSETOF(LaunchParams, surfacePointer) },
-			OWLVarDecl{ "bg.color0", OWL_FLOAT3, OWL_OFFSETOF(LaunchParams, bg.color0) },
-			OWLVarDecl{ "bg.color1", OWL_FLOAT3, OWL_OFFSETOF(LaunchParams, bg.color1) },
+			OWLVarDecl{ "bg.color0", OWL_FLOAT4, OWL_OFFSETOF(LaunchParams, bg.color0) },
+			OWLVarDecl{ "bg.color1", OWL_FLOAT4, OWL_OFFSETOF(LaunchParams, bg.color1) },
 			OWLVarDecl{ "bg.fillBox", OWL_BOOL, OWL_OFFSETOF(LaunchParams, bg.fillBox) },
 			OWLVarDecl{ "bg.fillColor", OWL_FLOAT3, OWL_OFFSETOF(LaunchParams, bg.fillColor) },
 			OWLVarDecl{ "colormaps", OWL_USER_TYPE(cudaTextureObject_t), OWL_OFFSETOF(LaunchParams, colorMaps) },
@@ -320,22 +320,8 @@ auto NanoRenderer::onRender() -> void
 
 	owlBuildSBT(nanoContext_.context);
 
-	auto rcd = RayCameraData{};
+	
 
-	const auto view = renderData_->get<View>("view");
-
-	if (view->cameras[0].directionsAvailable)
-	{
-		rcd = { view->cameras[0].origin, view->cameras[0].dir00, view->cameras[0].dirDu, view->cameras[0].dirDv };
-	}
-	else
-	{
-		rcd = createRayCameraData(view->cameras[0], renderTargetFeatureParams.colorRT.extent);
-	}
-
-	owlParamsSetRaw(nanoContext_.launchParams, "cameraData", &rcd);
-
-	owlParamsSetRaw(nanoContext_.launchParams, "surfacePointer", &renderTargetFeatureParams.colorRT.surfaces[0]);
 	owlParamsSetRaw(nanoContext_.launchParams, "colormaps", &colorMapParams.colorMapTexture);
 
 
@@ -345,23 +331,60 @@ auto NanoRenderer::onRender() -> void
 					&transferFunctionParams.transferFunctionTexture);
 
 	const auto backgroundColorParams = backgroundColorFeature_->getParamsData();
-	owlParamsSet3f(nanoContext_.launchParams, "bg.color0", backgroundColorParams.colors[0]);
-	owlParamsSet3f(nanoContext_.launchParams, "bg.color1", backgroundColorParams.colors[1]);
-
+	owlParamsSet4f(nanoContext_.launchParams, "bg.color0", backgroundColorParams.colors[0]);
+	owlParamsSet4f(nanoContext_.launchParams, "bg.color1", backgroundColorParams.colors[1]);
 
 	owlParamsSet1b(nanoContext_.launchParams, "bg.fillBox", guiData.fillBox);
 	owlParamsSet3f(nanoContext_.launchParams, "bg.fillColor",
 				   owl3f{ guiData.fillColor[0], guiData.fillColor[1], guiData.fillColor[2] });
 
 
+
 	constexpr auto deviceId = 0;
 	const auto stream = owlParamsGetCudaStream(nanoContext_.launchParams, deviceId);
-
 	const auto record = gpuTimers_.record("basic owl rt", stream);
+
+
+	auto rcd0 = RayCameraData{};
+	const auto view = renderData_->get<View>("view");
+
+	if (view->cameras[0].directionsAvailable)
+	{
+		rcd0 = { view->cameras[0].origin, view->cameras[0].dir00, view->cameras[0].dirDu, view->cameras[0].dirDv };
+	}
+	else
+	{
+		rcd0 = createRayCameraData(view->cameras[0], renderTargetFeatureParams.colorRT.extent);
+	}
+
+	owlParamsSetRaw(nanoContext_.launchParams, "cameraData", &rcd0);
+	owlParamsSetRaw(nanoContext_.launchParams, "surfacePointer", &renderTargetFeatureParams.colorRT.surfaces[0]);
+
+	auto rcd1 = RayCameraData{};
+	if (view->mode == RenderMode::stereo && renderTargetFeatureParams.colorRT.extent.depth > 1)
+	{
+		if (view->cameras[1].directionsAvailable)
+		{
+			rcd1 = { view->cameras[1].origin, view->cameras[1].dir00, view->cameras[1].dirDu, view->cameras[1].dirDv };
+		}
+		else
+		{
+			rcd1 = createRayCameraData(view->cameras[1], renderTargetFeatureParams.colorRT.extent);
+		}
+	}
 
 	record.start();
 
 	owlAsyncLaunch2D(nanoContext_.rayGen, fbSize.x, fbSize.y, nanoContext_.launchParams);
+
+	if (view->mode == RenderMode::stereo && renderTargetFeatureParams.colorRT.extent.depth > 1)
+	{
+		owlParamsSetRaw(nanoContext_.launchParams, "cameraData", &rcd1);
+		owlParamsSetRaw(nanoContext_.launchParams, "surfacePointer", &renderTargetFeatureParams.colorRT.surfaces[1]);
+
+		owlAsyncLaunch2D(nanoContext_.rayGen, fbSize.x, fbSize.y, nanoContext_.launchParams);
+	}
+
 
 	record.stop();
 }

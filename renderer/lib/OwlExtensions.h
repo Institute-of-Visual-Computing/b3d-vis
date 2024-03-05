@@ -22,6 +22,11 @@ namespace owl::extensions
 		owlParamsSet3f(obj, name, val.r, val.g, val.b);
 	}
 
+	inline auto owlParamsSet4f(OWLParams obj, const char* name, const b3d::renderer::ColorRGBA& val) -> void
+	{
+		owlParamsSet4f(obj, name, val.r, val.g, val.b, val.a);
+	}
+
 	inline auto owlMissProgSet3f(OWLMissProg obj, const char* name, const b3d::renderer::ColorRGB& val) -> void
 	{
 		owlMissProgSet3f(obj, name, val.r, val.g, val.b);

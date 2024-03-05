@@ -19,6 +19,7 @@ public class UnityActionSimpleTriangles : AbstractUnityRenderAction
 	private ActionSimpleTriangles action;
 
 	public Texture2D colorMapsTexture;
+	Texture2D transferFunctionTexture;
 
 	public TextAsset colorMapsDescription;
 
@@ -62,12 +63,17 @@ public class UnityActionSimpleTriangles : AbstractUnityRenderAction
 	protected override void Start()
 	{
 		base.Start();
+		transferFunctionTexture = new Texture2D(512, 1, TextureFormat.RFloat, false, true, false);
+		transferFunctionTexture.Apply();
+		unityRenderingData.transferFunctionTexture = new(transferFunctionTexture.GetNativeTexturePtr(), new((uint)transferFunctionTexture.width, (uint)transferFunctionTexture.height, 1));
+
 		colorMaps = ColorMaps.load(colorMapsDescription.text);
 		unityRenderingData.colorMapsTexture = new(colorMapsTexture.GetNativeTexturePtr(), new((uint)colorMaps.width, (uint)colorMaps.height, 1));
 
 		unityRenderingData.coloringInfo.coloringMode = UnityColoringMode.Single;
 		unityRenderingData.coloringInfo.singleColor = new Vector4(0, 1, 0, 1);
 		unityRenderingData.coloringInfo.selectedColorMap = colorMaps.firstColorMapYTextureCoordinate;
+		unityRenderingData.coloringInfo.backgroundColors = new Vector4[2] { Vector4.zero, Vector4.zero };
 	}
 
 	protected override void Update()

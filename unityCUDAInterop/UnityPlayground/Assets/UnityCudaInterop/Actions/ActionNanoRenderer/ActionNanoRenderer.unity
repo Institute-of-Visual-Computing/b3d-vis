@@ -406,6 +406,9 @@ MonoBehaviour:
   volumeCube: {fileID: 1656037655}
   objectRenderer: {fileID: 1656037657}
   objectMaterial: {fileID: 2100000, guid: d76b311f8f5d13d47b3954dfed6abd71, type: 2}
+  colorMapsTexture: {fileID: 2800000, guid: d418c6c0049473543922dd7e83d6b1e7, type: 3}
+  colorMapsDescription: {fileID: 4900000, guid: d6f2b72c12ab8af4b99f75c6639dbcdc, type: 3}
+  coloringMode: 0
 --- !u!1 &846200985
 GameObject:
   m_ObjectHideFlags: 0
