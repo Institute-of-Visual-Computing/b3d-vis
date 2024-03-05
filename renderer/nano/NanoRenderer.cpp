@@ -41,6 +41,8 @@ namespace
 	{
 		bool fillBox{ false };
 		std::array<float, 3> fillColor{ 0.8f, 0.3f, 0.2f };
+
+		std::array<float, 2> sampleRemapping{0.0f,0.1f};
 	};
 
 	GuiData guiData{};
@@ -61,10 +63,12 @@ namespace
 	auto createVolume() -> NanoVdbVolume
 	{
 		// const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
-		const auto testFile =
-			std::filesystem::path{ "D:/data/work/b3d_data/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" };
-		// const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" };
-		// const auto testFile = std::filesystem::path{ "D:/datacubes/ska/40gb/sky_ldev_v2.nvdb" };
+		// const auto testFile =
+			std::filesystem::path{ "D:/datacubes/n4565_cut/filtered_level_0_224_257_177_id_7_upscale.fits.nvdb" };
+		//std::filesystem::path{ "C:/Users/anton/Downloads/chameleon_1024x1024x1080_uint16.nvdb" };
+		//std::filesystem::path{ "C:/Users/anton/Downloads/carp_256x256x512_uint16.nvdb" };
+	const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" };
+	// const auto testFile = std::filesystem::path{ "D:/datacubes/ska/40gb/sky_ldev_v2.nvdb" };
 
 
 		assert(std::filesystem::exists(testFile));
@@ -74,7 +78,7 @@ namespace
 		const auto gridVolume = nanovdb::io::readGrid(testFile.string());
 		OWL_CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&volume.grid), gridVolume.size()));
 		OWL_CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(volume.grid), gridVolume.data(), gridVolume.size(),
-								  cudaMemcpyHostToDevice));
+			cudaMemcpyHostToDevice));
 
 		const auto gridHandle = gridVolume.grid<float>();
 		const auto& map = gridHandle->mMap;
@@ -195,7 +199,7 @@ auto NanoRenderer::prepareGeometry() -> void
 	const auto geometryVars =
 		std::array{ OWLVarDecl{ "volume", OWL_USER_TYPE(NanoVdbVolume), OWL_OFFSETOF(GeometryData, volume) }
 
-		};
+	};
 
 	const auto geometryType =
 		owlGeomTypeCreate(context, OWL_GEOM_USER, sizeof(GeometryData), geometryVars.data(), geometryVars.size());
@@ -206,7 +210,7 @@ auto NanoRenderer::prepareGeometry() -> void
 	};
 
 	const auto rayGen = owlRayGenCreate(context, optixirModule, "rayGeneration", sizeof(RayGenerationData),
-										rayGenerationVars.data(), rayGenerationVars.size());
+		rayGenerationVars.data(), rayGenerationVars.size());
 
 	nanoContext_.rayGen = rayGen;
 
@@ -224,7 +228,7 @@ auto NanoRenderer::prepareGeometry() -> void
 
 	const auto geometryGroup = owlUserGeomGroupCreate(context, 1, &geometry);
 	nanoContext_.worldGeometryGroup = owlInstanceGroupCreate(context, 1, &geometryGroup, nullptr, nullptr,
-															 OWL_MATRIX_FORMAT_OWL, OPTIX_BUILD_FLAG_ALLOW_UPDATE);
+		OWL_MATRIX_FORMAT_OWL, OPTIX_BUILD_FLAG_ALLOW_UPDATE);
 
 	owlGeomSetRaw(geometry, "volume", nanoVdbVolume.get());
 
@@ -238,7 +242,7 @@ auto NanoRenderer::prepareGeometry() -> void
 
 	owlRayGenSetGroup(rayGen, "world", nanoContext_.worldGeometryGroup);
 
-	
+
 
 	owlGeomTypeSetIntersectProg(geometryType, 0, optixirModule, "nano_intersection");
 	owlGeomTypeSetClosestHit(geometryType, 0, optixirModule, "nano_closestHit");
@@ -250,7 +254,7 @@ auto NanoRenderer::prepareGeometry() -> void
 
 	// ----------- create object  ----------------------------
 	nanoContext_.missProgram = owlMissProgCreate(context, optixirModule, "miss", sizeof(MissProgramData),
-												 missProgramVars.data(), missProgramVars.size());
+		missProgramVars.data(), missProgramVars.size());
 
 	// ----------- set variables  ----------------------------
 	owlMissProgSet3f(nanoContext_.missProgram, "color0", owl3f{ .8f, 0.f, 0.f });
@@ -273,11 +277,12 @@ auto NanoRenderer::prepareGeometry() -> void
 						OWL_OFFSETOF(LaunchParams, coloringInfo.selectedColorMap) },
 			OWLVarDecl{ "transferFunctionTexture", OWL_USER_TYPE(cudaTextureObject_t),
 						OWL_OFFSETOF(LaunchParams, transferFunctionTexture) },
+						OWLVarDecl{ "sampleRemapping", OWL_FLOAT2, OWL_OFFSETOF(LaunchParams, sampleRemapping)}
 		};
 
 		nanoContext_.launchParams =
 			owlParamsCreate(nanoContext_.context, sizeof(LaunchParams), launchParamsVarsWithStruct.data(),
-							launchParamsVarsWithStruct.size());
+				launchParamsVarsWithStruct.size());
 	}
 
 	owlBuildPrograms(context);
@@ -298,7 +303,7 @@ auto NanoRenderer::onRender() -> void
 	owlGroupRefitAccel(nanoContext_.worldGeometryGroup);
 	{
 		debugDraw().drawBox(trs_.p / 2, trs_.p, nanoVdbVolume->indexBox.size(), owl::vec4f(0.1f, 0.82f, 0.15f, 1.0f),
-							trs_.l);
+			trs_.l);
 
 		const auto aabbSize = orientedBoxToBox(nanoVdbVolume->indexBox, volumeTransform->worldMatTRS.l).size();
 		debugDraw().drawBox(trs_.p / 2, trs_.p, aabbSize, owl::vec4f(0.9f, 0.4f, 0.2f, 0.4f), renormalizeScale_.l);
@@ -311,9 +316,9 @@ auto NanoRenderer::onRender() -> void
 
 	owlParamsSet1f(nanoContext_.launchParams, "coloringInfo.selectedColorMap", colorMapParams.selectedColorMap);
 
-	
+
 	auto renderTargetFeatureParams = renderTargetFeature_->getParamsData();
-	
+
 	const auto fbSize = owl2i{ static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.width),
 							   static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.height) };
 	owlRayGenSet2i(nanoContext_.rayGen, "frameBufferSize", fbSize);
@@ -323,12 +328,15 @@ auto NanoRenderer::onRender() -> void
 	
 
 	owlParamsSetRaw(nanoContext_.launchParams, "colormaps", &colorMapParams.colorMapTexture);
-
+	owlParamsSet2f(nanoContext_.launchParams, "sampleRemapping",
+		owl2f{guiData.sampleRemapping[0], guiData.sampleRemapping[1]});
 
 	auto transferFunctionParams = transferFunctionFeature_->getParamsData();
 
 	owlParamsSetRaw(nanoContext_.launchParams, "transferFunctionTexture",
-					&transferFunctionParams.transferFunctionTexture);
+		&transferFunctionParams.transferFunctionTexture);
+
+	
 
 	const auto backgroundColorParams = backgroundColorFeature_->getParamsData();
 	owlParamsSet4f(nanoContext_.launchParams, "bg.color0", backgroundColorParams.colors[0]);
@@ -336,7 +344,7 @@ auto NanoRenderer::onRender() -> void
 
 	owlParamsSet1b(nanoContext_.launchParams, "bg.fillBox", guiData.fillBox);
 	owlParamsSet3f(nanoContext_.launchParams, "bg.fillColor",
-				   owl3f{ guiData.fillColor[0], guiData.fillColor[1], guiData.fillColor[2] });
+		owl3f{ guiData.fillColor[0], guiData.fillColor[1], guiData.fillColor[2] });
 
 
 
@@ -410,13 +418,15 @@ auto NanoRenderer::onGui() -> void
 
 	ImGui::Begin("RT Settings");
 
+	ImGui::DragFloatRange2("Sample Remapping", &guiData.sampleRemapping[0], &guiData.sampleRemapping[1], 0.0001, -1.0f,1.0f, "%.4f");
+
 	if (ImGui::Button("Reset Model Transform"))
 	{
 		volumeTransform->worldMatTRS = AffineSpace3f{};
 	}
 	ImGui::SeparatorText("Data File (.b3d)");
 	ImGui::InputText("##source", const_cast<char*>(b3dFilePath.string().c_str()), b3dFilePath.string().size(),
-					 ImGuiInputTextFlags_ReadOnly);
+		ImGuiInputTextFlags_ReadOnly);
 	ImGui::SameLine();
 	if (ImGui::Button("Select"))
 	{
@@ -463,7 +473,7 @@ auto NanoRenderer::onGui() -> void
 		average /= static_cast<float>(IM_ARRAYSIZE(values));
 		ImGui::SetNextItemWidth(-1);
 		ImGui::PlotHistogram("##perfGraph", values, IM_ARRAYSIZE(values), valuesOffset,
-							 std::format("avg {:3.2f} ms", average).c_str(), 0.0f, 16.0f, ImVec2(0, 200.0f));
+			std::format("avg {:3.2f} ms", average).c_str(), 0.0f, 16.0f, ImVec2(0, 200.0f));
 	}
 
 	ImGui::Text("%1.3f", timing);
