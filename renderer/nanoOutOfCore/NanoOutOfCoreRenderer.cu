@@ -24,7 +24,7 @@ struct PerRayData
 	bool isBackground{ false };
 };
 
-inline __device__ void confine(const nanovdb::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& iVec)
+inline __device__ void confine(const nanovdb::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& sample)
 {
 	// NanoVDB's voxels and tiles are formed from half-open intervals, i.e.
 	// voxel[0, 0, 0] spans the set [0, 1) x [0, 1) x [0, 1). To find a point's voxel,
@@ -42,24 +42,24 @@ inline __device__ void confine(const nanovdb::BBox<nanovdb::Coord>& bbox, nanovd
 
 	// move the start and end points into the bbox
 	float eps = 1e-7f;
-	if (iVec[0] < iMin[0])
-		iVec[0] = iMin[0];
-	if (iVec[1] < iMin[1])
-		iVec[1] = iMin[1];
-	if (iVec[2] < iMin[2])
-		iVec[2] = iMin[2];
-	if (iVec[0] >= iMax[0])
-		iVec[0] = iMax[0] - fmaxf(1.0f, fabsf(iVec[0])) * eps;
-	if (iVec[1] >= iMax[1])
-		iVec[1] = iMax[1] - fmaxf(1.0f, fabsf(iVec[1])) * eps;
-	if (iVec[2] >= iMax[2])
-		iVec[2] = iMax[2] - fmaxf(1.0f, fabsf(iVec[2])) * eps;
+	if (sample[0] < iMin[0])
+		sample[0] = iMin[0];
+	if (sample[1] < iMin[1])
+		sample[1] = iMin[1];
+	if (sample[2] < iMin[2])
+		sample[2] = iMin[2];
+	if (sample[0] >= iMax[0])
+		sample[0] = iMax[0] - fmaxf(1.0f, fabsf(sample[0])) * eps;
+	if (sample[1] >= iMax[1])
+		sample[1] = iMax[1] - fmaxf(1.0f, fabsf(sample[1])) * eps;
+	if (sample[2] >= iMax[2])
+		sample[2] = iMax[2] - fmaxf(1.0f, fabsf(sample[2])) * eps;
 }
 
-inline __hostdev__ void confine(const nanovdb::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& iStart, nanovdb::Vec3f& iEnd)
+inline __hostdev__ void confine(const nanovdb::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& start, nanovdb::Vec3f& end)
 {
-	confine(bbox, iStart);
-	confine(bbox, iEnd);
+	confine(bbox, start);
+	confine(bbox, end);
 }
 
 

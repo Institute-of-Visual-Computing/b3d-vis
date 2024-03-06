@@ -1,6 +1,9 @@
+#include <cuda/std/cstddef>
 #include <device_launch_parameters.h>
 #include <optix_device.h>
 #include <owl/owl.h>
+
+#include <cuda/std/array>
 
 #include <nanovdb/util/HDDA.h>
 #include <nanovdb/util/Ray.h>
@@ -10,36 +13,23 @@
 
 #include "owl/owl_device.h"
 
-#include <array>
+#include "SampleAccumulators.h"
+#include "SamplerMapper.h"
 
 using namespace b3d::renderer::nano;
 using namespace owl;
 
 extern "C" __constant__ LaunchParams optixLaunchParams;
 
-
-namespace
+#ifndef __CUDACC__
+template <typename T>
+auto tex2D(cudaTextureObject_t, float, float) -> T
 {
-#define PRINT_VEC3F(name, vec)                                                                                         \
-	{                                                                                                                  \
-		printf("%s: x: %.5f, y: %.5f, z: %.5f\n", name, (float)(vec).x, (float)(vec).y, (float)(vec).z);               \
-	}
+	return {};
+}
 
-#define PRINT_VEC4F(name, vec)                                                                                         \
-	{                                                                                                                  \
-		printf("%s: x: %.5f, y: %.5f, z: %.5f, w: %.5f\n", name, (float)(vec).x, (float)(vec).y, (float)(vec).z,       \
-			   (float)(vec).w);                                                                                        \
-	}
-
-#define PRINT_VEC3I(name, vec)                                                                                         \
-	{                                                                                                                  \
-		printf("%s: x: %d, y: %d, z: %d\n", name, (int)(vec).x, (int)(vec).y, (int)(vec).z);                           \
-	}
-
-#define PRINT_NEWLINE() printf("\n");
-#define PRINT_HORIZ_LINE() printf("------------\n");
-} // namespace
-
+auto surf2Dwrite(uint32_t, cudaSurfaceObject_t, size_t, int) -> void {}
+#endif
 
 struct PerRayData
 {
@@ -48,44 +38,64 @@ struct PerRayData
 	bool isBackground{ false };
 };
 
-inline __device__ void confine(const nanovdb::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& iVec)
+__device__ inline auto confine(const nanovdb::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& sample) -> void
 {
-	// NanoVDB's voxels and tiles are formed from half-open intervals, i.e.
-	// voxel[0, 0, 0] spans the set [0, 1) x [0, 1) x [0, 1). To find a point's voxel,
-	// its coordinates are simply truncated to integer. Ray-box intersections yield
-	// pairs of points that, because of numerical errors, fall randomly on either side
-	// of the voxel boundaries.
-	// This confine method, given a point and a (integer-based/Coord-based) bounding
-	// box, moves points outside the bbox into it. That means coordinates at lower
-	// boundaries are snapped to the integer boundary, and in case of the point being
-	// close to an upper boundary, it is move one EPS below that bound and into the volume.
 
-	// get the tighter box around active values
 	auto iMin = nanovdb::Vec3f(bbox.min());
 	auto iMax = nanovdb::Vec3f(bbox.max()) + nanovdb::Vec3f(1.0f);
 
-	// move the start and end points into the bbox
-	float eps = 1e-7f;
-	if (iVec[0] < iMin[0])
-		iVec[0] = iMin[0];
-	if (iVec[1] < iMin[1])
-		iVec[1] = iMin[1];
-	if (iVec[2] < iMin[2])
-		iVec[2] = iMin[2];
-	if (iVec[0] >= iMax[0])
-		iVec[0] = iMax[0] - fmaxf(1.0f, fabsf(iVec[0])) * eps;
-	if (iVec[1] >= iMax[1])
-		iVec[1] = iMax[1] - fmaxf(1.0f, fabsf(iVec[1])) * eps;
-	if (iVec[2] >= iMax[2])
-		iVec[2] = iMax[2] - fmaxf(1.0f, fabsf(iVec[2])) * eps;
+	constexpr auto eps = 1e-7f;
+	if (sample[0] < iMin[0])
+	{
+		sample[0] = iMin[0];
+	}
+	if (sample[1] < iMin[1])
+	{
+		sample[1] = iMin[1];
+	}
+	if (sample[2] < iMin[2])
+	{
+		sample[2] = iMin[2];
+	}
+	if (sample[0] >= iMax[0])
+	{
+		sample[0] = iMax[0] - fmaxf(1.0f, fabsf(sample[0])) * eps;
+	}
+	if (sample[1] >= iMax[1])
+	{
+		sample[1] = iMax[1] - fmaxf(1.0f, fabsf(sample[1])) * eps;
+	}
+	if (sample[2] >= iMax[2])
+	{
+		sample[2] = iMax[2] - fmaxf(1.0f, fabsf(sample[2])) * eps;
+	}
 }
 
-inline __hostdev__ void confine(const nanovdb::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& iStart, nanovdb::Vec3f& iEnd)
+__device__ inline auto confine(const nanovdb::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& start, nanovdb::Vec3f& end)
+-> void
 {
-	confine(bbox, iStart);
-	confine(bbox, iEnd);
+	confine(bbox, start);
+	confine(bbox, end);
 }
 
+__host__ __device__ auto b3d::renderer::nano::colorMap(const float value) -> owl::vec3f
+{
+	if (optixLaunchParams.coloringInfo.coloringMode == ColoringMode::single)
+	{
+		return owl::vec3f{ optixLaunchParams.coloringInfo.singleColor };
+	}
+	else
+	{
+		const auto result = tex2D<float4>(optixLaunchParams.colorMaps, value,
+			optixLaunchParams.coloringInfo.selectedColorMap);
+		return owl::vec3f{ result.x, result.y, result.z };
+	}
+}
+
+__host__ __device__ auto b3d::renderer::nano::transferMap(const float a) -> float
+{
+	return tex2D<float>(optixLaunchParams.transferFunctionTexture, a, 0.5f);
+}
 
 OPTIX_BOUNDS_PROGRAM(volumeBounds)
 (const void* geometryData, owl::box3f& primitiveBounds, const int primitiveID)
@@ -134,27 +144,25 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 {
 	const auto& geometry = owl::getProgramData<GeometryData>();
 	const auto* grid = reinterpret_cast<nanovdb::FloatGrid*>(geometry.volume.grid);
-	const auto transferMap = [](float a) { return tex2D<float>(optixLaunchParams.transferFunctionTexture, a, 0.5f); };
-	const auto colorMap = [](float value)
+
+	auto transform = cuda::std::array<float, 12>{};
+
+	optixGetWorldToObjectTransformMatrix(transform.data());
+
+	auto indexToWorldTransform = cuda::std::array<float, 9>{
 		{
-			return optixLaunchParams.coloringInfo.coloringMode == b3d::renderer::single ? vec3f{ optixLaunchParams.coloringInfo.singleColor } : vec3f{ tex2D<float4>(optixLaunchParams.colorMaps, value, optixLaunchParams.coloringInfo.selectedColorMap) };
-		};
-
-	float transform[12];
-	optixGetWorldToObjectTransformMatrix(transform);
-
-	float indexToWorldTransform[9];
-	indexToWorldTransform[0] = transform[0];
-	indexToWorldTransform[1] = transform[1];
-	indexToWorldTransform[2] = transform[2];
-	indexToWorldTransform[3] = transform[4];
-	indexToWorldTransform[4] = transform[5];
-	indexToWorldTransform[5] = transform[6];
-	indexToWorldTransform[6] = transform[8];
-	indexToWorldTransform[7] = transform[9];
-	indexToWorldTransform[8] = transform[10];
+			transform[0],
+				transform[1],
+				transform[2],
+				transform[4],
+				transform[5],
+				transform[6],
+				transform[8],
+				transform[9],
+				transform[10]
+		}
+	};
 	const auto translate = nanovdb::Vec3f{ transform[3], transform[7], transform[11] };
-
 
 	const auto& accessor = grid->getAccessor();
 
@@ -171,14 +179,10 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 	const auto endWorld = rayWorld(t1);
 	const auto a = nanovdb::Vec3f(startWorld[0], startWorld[1], startWorld[2]);
 	const auto b = nanovdb::Vec3f(endWorld[0], endWorld[1], endWorld[2]);
-	auto start = nanovdb::matMult(&indexToWorldTransform[0], a) + translate;
-	auto end = nanovdb::matMult(&indexToWorldTransform[0], b) + translate;
+	auto start = nanovdb::matMult(indexToWorldTransform.data(), a) + translate;
+	auto end = nanovdb::matMult(indexToWorldTransform.data(), b) + translate;
 
-
-
-
-
-	const auto bbox = grid->indexBBox();
+	const auto& bbox = grid->indexBBox();
 	confine(bbox, start, end);
 
 	const auto direction = end - start;
@@ -188,50 +192,27 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 
 	auto hdda = nanovdb::HDDA<nanovdb::Ray<float>>(ray, accessor.getDim(ijk, ray));
 
-	auto colorAcc = vec3f{ 0.0f,0.0f,0.0f };
-	auto opacityAcc = 0.0f;
+	auto remapSample = [](const float value) { return optixLaunchParams.sampleRemapping.x + value / (optixLaunchParams.sampleRemapping.y - optixLaunchParams.sampleRemapping.x); };
 
-	auto remapSample = [](float value) { return optixLaunchParams.sampleRemapping.x + value / (optixLaunchParams.sampleRemapping.y - optixLaunchParams.sampleRemapping.x); };
+	auto sampleAccumulator = MaximumIntensityProjection{};
 
-	auto transferFunctionIntegration = [&](vec3f& colorAccumulator, float& opacityAccumulator, const float& value)
-		{
-			const auto colorValue = colorMap(value);
-			const auto opacityValue = transferMap(value);
-			const auto weight = (1.0f - opacityAcc) * opacityValue;
-			colorAccumulator += weight * colorValue;
-			opacityAccumulator += weight / 500.0f;
-		};
-
-	auto maximumIntensityMapping = [&](vec3f& colorAccumulator, float& opacityAccumulator, const float& value)
-		{
-			const auto weightValue = transferMap(value);
-			opacityAccumulator = max(opacityAccumulator, weightValue);
-			colorAccumulator = colorMap(opacityAccumulator);
-		};
-
-
-	auto accumulationOperator = maximumIntensityMapping;
+	sampleAccumulator.preAccumulate();
 
 	while (hdda.step())
 	{
 		ijk = hdda.voxel();
-
 		const auto value = remapSample(accessor.getValue(ijk));
-
-		accumulationOperator(colorAcc, opacityAcc, value);
-		/*colorAcc += weight * colorValue;
-		opacityAcc += weight/ 500.0f;*/
-		/*if(opacityAcc >= 1.0f)
-		{
-			break;
-		}*/
-
+		sampleAccumulator.accumulate(value);
 		hdda.update(ray, accessor.getDim(ijk, ray));
 	}
+
+	sampleAccumulator.postAccumulate();
 	auto& prd = owl::getPRD<PerRayData>();
 
-	prd.color = colorAcc;
-	prd.alpha = opacityAcc;
+	const auto& result = sampleAccumulator.getAccumulator();
+
+	prd.color = vec3f{ result.x, result.y, result.z };
+	prd.alpha = result.w;
 }
 
 OPTIX_INTERSECT_PROGRAM(nano_intersection)()

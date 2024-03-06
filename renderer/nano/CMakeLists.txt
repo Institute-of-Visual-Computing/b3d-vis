@@ -6,6 +6,8 @@ embed_ptx(
 		B3D::Renderer::Library
 	SOURCES
 		NanoRenderer.cu
+		SampleAccumulators.h
+		SamplerMapper.h
 	#DEVICE_DEBUG
 )
 
@@ -21,6 +23,8 @@ embed_optixir(
 		B3D::Renderer::Library
 	SOURCES
 		NanoRenderer.cu
+		SampleAccumulators.h
+		SamplerMapper.h
 	#DEVICE_DEBUG
 )
 

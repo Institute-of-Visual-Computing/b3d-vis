@@ -3,6 +3,7 @@
 #include <owl/common/math/AffineSpace.h>
 #include <owl/common/math/box.h>
 #include <owl/common/math/vec.h>
+
 #include <SharedStructs.h>
 
 #include <optix_types.h>

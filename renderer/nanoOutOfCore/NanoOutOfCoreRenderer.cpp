@@ -41,17 +41,25 @@ namespace
 	std::array<ImVec2, 10> foo{};
     int selectionIdx = -1;
 
-	vec3f spectral_jet(float x)
+	vec3f spectralJet(float x)
 	{
 		vec3f c;
 		if (x < 0.25)
+		{
 			c = vec3f(0.0, 4.0 * x, 1.0);
+		}
 		else if (x < 0.5)
+		{
 			c = vec3f(0.0, 1.0, 1.0 + 4.0 * (0.25 - x));
+		}
 		else if (x < 0.75)
+		{
 			c = vec3f(4.0 * (x - 0.5), 1.0, 0.0);
+		}
 		else
+		{
 			c = vec3f(1.0, 1.0 + 4.0 * (0.75 - x), 0.0);
+		}
 		return clamp(c, vec3f(0.0), vec3f(1.0));
 	}
 
@@ -88,8 +96,8 @@ namespace
 		//const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
 		 //const auto testFile =
 		std::filesystem::path{ "D:/datacubes/n4565_cut/filtered_level_0_224_257_177_id_7_upscale.fits.nvdb" };
-		 const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" };
-		// const auto testFile = std::filesystem::path{ "D:/datacubes/ska/40gb/sky_ldev_v2.nvdb" };
+		 // const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" };
+		const auto testFile = std::filesystem::path{ "D:/datacubes/ska/40gb/sky_ldev_v2.nvdb" };
 
 
 		assert(std::filesystem::exists(testFile));
@@ -97,6 +105,7 @@ namespace
 		auto volume = NanoVdbVolume{};
 		// auto gridVolume = nanovdb::createFogVolumeTorus();
 		const auto gridVolume = nanovdb::io::readGrid(testFile.string());
+
 		OWL_CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&volume.grid), gridVolume.size()));
 		OWL_CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(volume.grid), gridVolume.data(), gridVolume.size(),
 								  cudaMemcpyHostToDevice));
@@ -357,7 +366,7 @@ auto NanoRenderer::onRender() -> void
 				if (visibleLevelRange[0] <= node.level && node.level <= visibleLevelRange[1])
 				{
 					debugDraw().drawBox(trs_.p, aabbBox.center(), aabbBox.size(),
-										owl::vec4f(spectral_jet(node.level / 10.0f), 1.0f), trs_.l);
+										owl::vec4f(spectralJet(node.level / 10.0f), 1.0f), trs_.l);
 				}
 				for (const auto& child : node.node.children)
 				{
@@ -434,6 +443,17 @@ auto NanoRenderer::onInitialize() -> void
 auto NanoRenderer::onDeinitialize() -> void
 {
 }
+auto NanoRenderer::loadDataSet(const cutterParser::B3DDataSet& dataSet) -> void
+{
+	cudaMemPool_t pool;
+	OWL_CUDA_CHECK(cudaDeviceGetDefaultMemPool(&pool, 0));
+
+	for (const auto & clusters : dataSet.clusters)
+	{
+		
+	}
+
+}
 
 auto NanoRenderer::onGui() -> void
 {
@@ -468,6 +488,8 @@ auto NanoRenderer::onGui() -> void
 		if (std::filesystem::exists(b3dFilePath))
 		{
 			dataSet_ = cutterParser::load(b3dFilePath.generic_string());
+			assert(dataSet_.has_value());
+			loadDataSet(dataSet_.value());
 		}
 		else
 		{

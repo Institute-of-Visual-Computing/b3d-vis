@@ -79,7 +79,7 @@ namespace b3d::renderer
 		int deviceIndex;
 	};
 
-	enum ColoringMode
+	enum class ColoringMode
 	{
 		single = 0,
 		colormap = 1

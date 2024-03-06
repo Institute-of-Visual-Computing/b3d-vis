@@ -40,6 +40,7 @@ namespace b3d::renderer::nano
 		auto onRender() -> void override;
 		auto onInitialize() -> void override;
 		auto onDeinitialize() -> void override;
+		auto loadDataSet(const cutterParser::B3DDataSet& dataSet) -> void;
 		auto onGui() -> void override;
 
 	private:
