@@ -24,6 +24,13 @@ namespace b3d
 				owl::vec3f dir_dv;
 			};
 
+			enum class SampleIntegrationMethod
+			{
+				transferIntegration,
+				maximumIntensityProjection,
+				averageIntensityProjection
+			};
+
 			struct LaunchParams
 			{
 				RayCameraData cameraData;
@@ -39,6 +46,7 @@ namespace b3d
 				b3d::renderer::ColoringInfo coloringInfo;
 				cudaTextureObject_t transferFunctionTexture;
 				owl::vec2f sampleRemapping;
+				SampleIntegrationMethod sampleIntegrationMethod;
 			};
 
 			struct NanoVdbVolume
