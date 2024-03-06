@@ -110,7 +110,7 @@ namespace
 
 		auto monitorCount = 0;
 		const auto monitors = glfwGetMonitors(&monitorCount);
-
+		assert(monitorCount > 0);
 		for (auto i = 0; i < monitorCount; i++)
 		{
 			const auto monitor = monitors[i];
@@ -426,7 +426,7 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 												  .applicationVersion = 1,
 												  .pEngineName = "GL_CUDA_interop",
 												  .engineVersion = 1,
-												  .apiVersion = VK_VERSION_1_3 };
+												  .apiVersion = VK_API_VERSION_1_3 };
 
 	{
 		// ReSharper disable once CppVariableCanBeMadeConstexpr

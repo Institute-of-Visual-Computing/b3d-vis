@@ -32,7 +32,7 @@ namespace
 		return max(max(computeStableEpsilon(v.x), computeStableEpsilon(v.y)), computeStableEpsilon(v.z));
 	}
 
-	ColoringInfo coloringInfo = { single, { 0, 1, 0, 1 }, 0 };
+	ColoringInfo coloringInfo = { ColoringMode::single, { 0, 1, 0, 1 }, 0 };
 
 	std::string coloringModeStrings[2] = { "Single", "ColorMap" };
 
