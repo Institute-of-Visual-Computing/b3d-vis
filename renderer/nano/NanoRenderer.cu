@@ -192,24 +192,57 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 
 	auto hdda = nanovdb::HDDA<nanovdb::Ray<float>>(ray, accessor.getDim(ijk, ray));
 
-	auto remapSample = [](const float value) { return optixLaunchParams.sampleRemapping.x + value / (optixLaunchParams.sampleRemapping.y - optixLaunchParams.sampleRemapping.x); };
+	auto remapSample = [](const float value)
+		{
+			return optixLaunchParams.sampleRemapping.x +
+				value / (optixLaunchParams.sampleRemapping.y - optixLaunchParams.sampleRemapping.x);
+		};
 
-	auto sampleAccumulator = MaximumIntensityProjection{};
+	auto result = vec4f{};
 
-	sampleAccumulator.preAccumulate();
+	const auto integrate = [&](auto sampleAccumulator)
+		{
+			sampleAccumulator.preAccumulate();
+			
+			while (hdda.step())
+			{
+				ijk = hdda.voxel();
+				const auto value = remapSample(accessor.getValue(ijk));
+				sampleAccumulator.accumulate(value);
+				hdda.update(ray, accessor.getDim(ijk, ray));
+			}
 
-	while (hdda.step())
+			sampleAccumulator.postAccumulate();
+			return sampleAccumulator.getAccumulator();
+
+		};
+
+	switch (optixLaunchParams.sampleIntegrationMethod)
 	{
-		ijk = hdda.voxel();
-		const auto value = remapSample(accessor.getValue(ijk));
-		sampleAccumulator.accumulate(value);
-		hdda.update(ray, accessor.getDim(ijk, ray));
+
+	case SampleIntegrationMethod::transferIntegration:
+	{
+		auto sampleAccumulator = IntensityIntegration{};
+		result = integrate(sampleAccumulator);
 	}
 
-	sampleAccumulator.postAccumulate();
-	auto& prd = owl::getPRD<PerRayData>();
+	break;
+	case SampleIntegrationMethod::maximumIntensityProjection:
+	{
+		auto sampleAccumulator = MaximumIntensityProjection{};
+		result = integrate(sampleAccumulator);
+	}
 
-	const auto& result = sampleAccumulator.getAccumulator();
+	break;
+	case SampleIntegrationMethod::averageIntensityProjection:
+	{
+		auto sampleAccumulator = AverageIntensityProjection{};
+		result = integrate(sampleAccumulator);
+	}
+	break;
+	}
+
+	auto& prd = owl::getPRD<PerRayData>();
 
 	prd.color = vec3f{ result.x, result.y, result.z };
 	prd.alpha = result.w;

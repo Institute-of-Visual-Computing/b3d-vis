@@ -43,6 +43,10 @@ namespace
 		std::array<float, 3> fillColor{ 0.8f, 0.3f, 0.2f };
 
 		std::array<float, 2> sampleRemapping{0.0f,0.1f};
+
+		
+
+		SampleIntegrationMethod sampleIntegrationMethode{SampleIntegrationMethod::maximumIntensityProjection};
 	};
 
 	GuiData guiData{};
@@ -277,7 +281,9 @@ auto NanoRenderer::prepareGeometry() -> void
 						OWL_OFFSETOF(LaunchParams, coloringInfo.selectedColorMap) },
 			OWLVarDecl{ "transferFunctionTexture", OWL_USER_TYPE(cudaTextureObject_t),
 						OWL_OFFSETOF(LaunchParams, transferFunctionTexture) },
-						OWLVarDecl{ "sampleRemapping", OWL_FLOAT2, OWL_OFFSETOF(LaunchParams, sampleRemapping)}
+						OWLVarDecl{ "sampleRemapping", OWL_FLOAT2, OWL_OFFSETOF(LaunchParams, sampleRemapping)},
+			OWLVarDecl{ "sampleIntegrationMethod", OWL_USER_TYPE(SampleIntegrationMethod),
+						OWL_OFFSETOF(LaunchParams, sampleIntegrationMethod) },
 		};
 
 		nanoContext_.launchParams =
@@ -315,6 +321,8 @@ auto NanoRenderer::onRender() -> void
 	owlParamsSet4f(nanoContext_.launchParams, "coloringInfo.singleColor", colorMapParams.uniformColor);
 
 	owlParamsSet1f(nanoContext_.launchParams, "coloringInfo.selectedColorMap", colorMapParams.selectedColorMap);
+
+	owlParamsSetRaw(nanoContext_.launchParams, "sampleIntegrationMethod", &guiData.sampleIntegrationMethode);
 
 
 	auto renderTargetFeatureParams = renderTargetFeature_->getParamsData();
@@ -394,6 +402,14 @@ auto NanoRenderer::onGui() -> void
 	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
 
 	ImGui::Begin("RT Settings");
+
+	ImGui::SeparatorText("Integration Method");
+	ImGui::BeginGroup();
+	ImGui::RadioButton("Maximum Intensity Projection", reinterpret_cast<int*>(&guiData.sampleIntegrationMethode), static_cast<int>(SampleIntegrationMethod::maximumIntensityProjection));
+	ImGui::RadioButton("Average Intensity Projection", reinterpret_cast<int*>(&guiData.sampleIntegrationMethode), static_cast<int>(SampleIntegrationMethod::averageIntensityProjection));
+	ImGui::RadioButton("Intensity Integration", reinterpret_cast<int*>(&guiData.sampleIntegrationMethode), static_cast<int>(SampleIntegrationMethod::transferIntegration));
+	ImGui::EndGroup();
+	ImGui::Separator();
 
 	ImGui::DragFloatRange2("Sample Remapping", &guiData.sampleRemapping[0], &guiData.sampleRemapping[1], 0.0001, -1.0f,1.0f, "%.4f");
 
