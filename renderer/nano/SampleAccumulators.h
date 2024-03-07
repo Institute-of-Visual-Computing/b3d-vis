@@ -79,7 +79,7 @@ namespace b3d
 				{
 					const auto colorValue = colorMap(value);
 					const auto opacityValue = transferMap(value);
-					const auto weight = (1.0f - opacityAccumulator_) * opacityValue;
+					const auto weight = opacityValue - opacityAccumulator_ * opacityValue;
 					colorAccumulator_ += weight * colorValue;
 					opacityAccumulator_ += weight;
 				}
