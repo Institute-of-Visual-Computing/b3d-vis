@@ -58,7 +58,7 @@ namespace
 	}
 
 	auto keyboardSpecialKey(GLFWwindow* window, const int key, [[maybe_unused]] int scancode, const int action,
-							const int mods) -> void
+		const int mods) -> void
 	{
 		const auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
 		assert(gw);
@@ -87,6 +87,13 @@ namespace
 			const auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
 			assert(gw);
 			gw->mouseButton(button, action, mods);
+		}
+		else
+		{
+			//TODO: It's a hack!! We can complete decouple our viewer from OWLViewer by implementing our own camera.
+			const auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
+			assert(gw);
+			gw->mouseButton(button, GLFW_RELEASE, mods);
 		}
 	}
 
@@ -132,7 +139,7 @@ namespace
 	}
 
 	auto windowContentScaleCallback([[maybe_unused]] GLFWwindow* window, const float scaleX,
-									[[maybe_unused]] float scaleY)
+		[[maybe_unused]] float scaleY)
 	{
 		if (!scaleToFont.contains(scaleX))
 		{
@@ -305,7 +312,7 @@ auto NanoViewer::gui() -> void
 		{
 			const auto error =
 				nvmlDeviceSetGpuLockedClocks(nvmlDevice_, static_cast<unsigned int>(NVML_CLOCK_LIMIT_ID_TDP),
-											 static_cast<unsigned int>(NVML_CLOCK_LIMIT_ID_TDP));
+					static_cast<unsigned int>(NVML_CLOCK_LIMIT_ID_TDP));
 
 			enabledPersistenceMode = true;
 
@@ -385,9 +392,9 @@ auto NanoViewer::onFrameBegin() -> void
 }
 
 NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, const int initWindowHeight,
-					   bool enableVsync, const int rendererIndex)
+	bool enableVsync, const int rendererIndex)
 	: owl::viewer::OWLViewer(title, owl::vec2i(initWindowWidth, initWindowHeight), true, enableVsync), resources_{},
-	  renderingData_{},synchronizationResources_{}, colorMapResources_{}
+	renderingData_{}, synchronizationResources_{}, colorMapResources_{}
 {
 	nvmlInit();
 
@@ -472,7 +479,7 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 			for (auto j = 0; j < cudaProperties.size(); j++)
 			{
 				const auto isEqual = std::equal(idProperties.deviceUUID.begin(), idProperties.deviceUUID.end(),
-												cudaProperties[j].uuid.bytes);
+					cudaProperties[j].uuid.bytes);
 				if (isEqual)
 				{
 					found = true;
@@ -516,7 +523,7 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 
 	const auto semaphoreCreateInfo = vk::StructureChain{
 		vk::SemaphoreCreateInfo{},
-		vk::ExportSemaphoreCreateInfo{ .handleTypes = vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueWin32 }
+		vk::ExportSemaphoreCreateInfo{.handleTypes = vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueWin32 }
 	};
 
 	{
@@ -553,10 +560,10 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 
 	GL_CALL(glGenSemaphoresEXT(1, &synchronizationResources_.glWaitSemaphore));
 	GL_CALL(glImportSemaphoreWin32HandleEXT(synchronizationResources_.glSignalSemaphore,
-											GL_HANDLE_TYPE_OPAQUE_WIN32_EXT,
-											synchronizationResources_.signalSemaphoreHandle));
+		GL_HANDLE_TYPE_OPAQUE_WIN32_EXT,
+		synchronizationResources_.signalSemaphoreHandle));
 	GL_CALL(glImportSemaphoreWin32HandleEXT(synchronizationResources_.glWaitSemaphore, GL_HANDLE_TYPE_OPAQUE_WIN32_EXT,
-											synchronizationResources_.waitSemaphoreHandle));
+		synchronizationResources_.waitSemaphoreHandle));
 
 	auto externalSemaphoreHandleDesc = cudaExternalSemaphoreHandleDesc{};
 	externalSemaphoreHandleDesc.type = cudaExternalSemaphoreHandleTypeOpaqueWin32;
@@ -564,13 +571,13 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 	{
 		externalSemaphoreHandleDesc.handle.win32.handle = synchronizationResources_.waitSemaphoreHandle;
 		const auto error = cudaImportExternalSemaphore(&renderingData_.data.synchronization.waitSemaphore,
-													   &externalSemaphoreHandleDesc);
+			&externalSemaphoreHandleDesc);
 		assert(error == cudaError::cudaSuccess);
 	}
 	{
 		externalSemaphoreHandleDesc.handle.win32.handle = synchronizationResources_.signalSemaphoreHandle;
 		const auto result = cudaImportExternalSemaphore(&renderingData_.data.synchronization.signalSemaphore,
-														&externalSemaphoreHandleDesc);
+			&externalSemaphoreHandleDesc);
 		assert(result == cudaError::cudaSuccess);
 	}
 
@@ -579,15 +586,15 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 		GL_CALL(glGenTextures(1, &colorMapResources_.colormapTexture));
 		GL_CALL(glBindTexture(GL_TEXTURE_2D, colorMapResources_.colormapTexture));
 
-		 // Setup filtering parameters for display
+		// Setup filtering parameters for display
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE); // This is required on WebGL for non power-of-two textures
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // This is required on WebGL for non power-of-two textures
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Same
 
 		// Load default colormap
 		auto filePath = std::filesystem::path{ "resources/colormaps" };
-		if(std::filesystem::exists(filePath / "defaultColorMap.json"))
+		if (std::filesystem::exists(filePath / "defaultColorMap.json"))
 		{
 			colorMapResources_.colorMap = b3d::tools::colormap::load(filePath / "defaultColorMap.json");
 
@@ -613,7 +620,8 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 			renderingData_.data.colorMapTexture.extent =
 				b3d::renderer::Extent{ static_cast<uint32_t>(x), static_cast<uint32_t>(y), 1 };
 			renderingData_.data.colorMapTexture.nativeHandle = reinterpret_cast<void*>(colorMapResources_.colormapTexture);
-		} else
+		}
+		else
 		{
 			GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 512, 1, 0, GL_RGBA, GL_FLOAT, nullptr));
 			renderingData_.data.colorMapTexture.extent =
@@ -622,7 +630,7 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 
 		std::string colormaptexturename = "ColorMap";
 		GL_CALL(glObjectLabel(GL_TEXTURE, colorMapResources_.colormapTexture, colormaptexturename.length() + 1,
-							  colormaptexturename.c_str()));
+			colormaptexturename.c_str()));
 
 		// TODO: add cuda error checks
 		auto rc =
@@ -640,15 +648,15 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 										  colorMapResources_.colorMap.firstColorMapYTextureCoordinate,
 										  colorMapResources_.colorMap.colorMapHeightNormalized };
 
-		
+
 	}
 
 	// Transferfunction
 	{
-		GL_CALL(glGenTextures(1, &transferFunctionResources_.transferFunctionTexture));		
+		GL_CALL(glGenTextures(1, &transferFunctionResources_.transferFunctionTexture));
 		GL_CALL(glBindTexture(GL_TEXTURE_2D, transferFunctionResources_.transferFunctionTexture));
 
-		 // Setup filtering parameters for display
+		// Setup filtering parameters for display
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // This is required on WebGL for non power-of-two textures
@@ -657,16 +665,16 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 
 
 		std::array<float, 512> initBufferData;
-		
+
 		std::ranges::fill(initBufferData, 1);
 		GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, 512, 1, 0, GL_RED, GL_FLOAT, initBufferData.data()));
 
 		std::string transferFunctionBufferName = "TransferFunctionTexture";
 		GL_CALL(glObjectLabel(GL_TEXTURE, transferFunctionResources_.transferFunctionTexture,
-							  transferFunctionBufferName.length() + 1, transferFunctionBufferName.c_str()));
+			transferFunctionBufferName.length() + 1, transferFunctionBufferName.c_str()));
 
 		cudaError rc = cudaGraphicsGLRegisterImage(&transferFunctionResources_.cudaGraphicsResource,
-												   transferFunctionResources_.transferFunctionTexture, GL_TEXTURE_2D, cudaGraphicsRegisterFlagsTextureGather | cudaGraphicsRegisterFlagsWriteDiscard);
+			transferFunctionResources_.transferFunctionTexture, GL_TEXTURE_2D, cudaGraphicsRegisterFlagsTextureGather | cudaGraphicsRegisterFlagsWriteDiscard);
 
 		renderingData_.data.transferFunctionTexture.extent = { 512, 1, 1 };
 		renderingData_.data.transferFunctionTexture.target = transferFunctionResources_.cudaGraphicsResource;
@@ -715,10 +723,10 @@ auto NanoViewer::showAndRunWithGui() -> void
 auto NanoViewer::drawGizmos(const CameraMatrices& cameraMatrices) -> void
 {
 	ImGui::Begin("##GizmoOverlay", nullptr,
-				 ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoScrollbar |
-					 ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar |
-					 ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus |
-					 ImGuiWindowFlags_NoNavFocus);
+		ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoScrollbar |
+		ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar |
+		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus |
+		ImGuiWindowFlags_NoNavFocus);
 	{
 		ImGui::SetWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y), 0);
 		ImGui::SetWindowPos(ImVec2(0, 0));
@@ -751,8 +759,8 @@ auto NanoViewer::drawGizmos(const CameraMatrices& cameraMatrices) -> void
 			mat[10] = transform->l.vz.z;
 
 			ImGuizmo::Manipulate(reinterpret_cast<const float*>(&cameraMatrices.view),
-								 reinterpret_cast<const float*>(&cameraMatrices.projection), currentGizmoOperation,
-								 currentGizmoMode, mat, nullptr, nullptr);
+				reinterpret_cast<const float*>(&cameraMatrices.projection), currentGizmoOperation,
+				currentGizmoMode, mat, nullptr, nullptr);
 
 			transform->p.x = mat[12];
 			transform->p.y = mat[13];
@@ -762,19 +770,77 @@ auto NanoViewer::drawGizmos(const CameraMatrices& cameraMatrices) -> void
 			transform->l.vy = owl::vec3f{ mat[4], mat[5], mat[6] };
 			transform->l.vz = owl::vec3f{ mat[8], mat[9], mat[10] };
 		}
+		auto blockInput = false;
+
+		for (const auto& [bound, transform] : gizmoHelper_->getBoundTransforms())
+		{
+			float mat[16];
+
+			mat[3] = 0.0f;
+			mat[7] = 0.0f;
+			mat[11] = 0.0f;
+
+			mat[12] = transform->p.x;
+			mat[13] = transform->p.y;
+			mat[14] = transform->p.z;
+
+			mat[15] = 1.0f;
+
+			mat[0] = transform->l.vx.x;
+			mat[1] = transform->l.vx.y;
+			mat[2] = transform->l.vx.z;
+
+			mat[4] = transform->l.vy.x;
+			mat[5] = transform->l.vy.y;
+			mat[6] = transform->l.vy.z;
+
+			mat[8] = transform->l.vz.x;
+			mat[9] = transform->l.vz.y;
+			mat[10] = transform->l.vz.z;
+
+
+			const auto halfSize = bound / 2.0f;
+
+			const auto bounds = std::array{ halfSize.x, halfSize.y, halfSize.z, -halfSize.x,-halfSize.y,-halfSize.z };
+
+			ImGuizmo::Manipulate(reinterpret_cast<const float*>(&cameraMatrices.view),
+				reinterpret_cast<const float*>(&cameraMatrices.projection), ImGuizmo::OPERATION::BOUNDS,
+				currentGizmoMode, mat, nullptr, nullptr, bounds.data());
+			if (ImGuizmo::IsUsing())
+			{
+				blockInput = true;
+			}
+
+			transform->p.x = mat[12];
+			transform->p.y = mat[13];
+			transform->p.z = mat[14];
+
+			transform->l.vx = owl::vec3f{ mat[0], mat[1], mat[2] };
+			transform->l.vy = owl::vec3f{ mat[4], mat[5], mat[6] };
+			transform->l.vz = owl::vec3f{ mat[8], mat[9], mat[10] };
+		}
+
+		if (blockInput)
+		{
+#if IMGUI_VERSION_NUM >= 18723
+			ImGui::SetNextFrameWantCaptureMouse(true);
+#else
+			ImGui::CaptureMouseFromApp();
+#endif
+		}
 	}
 	ImGui::End();
 }
 auto NanoViewer::computeViewProjectionMatrixFromCamera(const owl::viewer::Camera& camera, const int width,
-													   const int height) -> CameraMatrices
+	const int height) -> CameraMatrices
 {
 	const auto aspect = width / static_cast<float>(height);
 
 	CameraMatrices mat;
 	mat.projection = glm::perspective(glm::radians(camera.getFovyInDegrees()), aspect, 0.01f, 10000.0f);
 	mat.view = glm::lookAt(glm::vec3{ camera.position.x, camera.position.y, camera.position.z },
-						   glm::vec3{ camera.getAt().x, camera.getAt().y, camera.getAt().z },
-						   glm::normalize(glm::vec3{ camera.getUp().x, camera.getUp().y, camera.getUp().z }));
+		glm::vec3{ camera.getAt().x, camera.getAt().y, camera.getAt().z },
+		glm::normalize(glm::vec3{ camera.getUp().x, camera.getUp().y, camera.getUp().z }));
 
 
 	mat.viewProjection = mat.projection * mat.view;
@@ -873,7 +939,7 @@ NanoViewer::~NanoViewer()
 {
 	cudaGraphicsUnregisterResource(transferFunctionResources_.cudaGraphicsResource);
 	cudaGraphicsUnregisterResource(colorMapResources_.cudaGraphicsResource);
-	
+
 	vulkanContext_.device.destroySemaphore(synchronizationResources_.vkSignalSemaphore);
 	vulkanContext_.device.destroySemaphore(synchronizationResources_.vkWaitSemaphore);
 	vulkanContext_.device.destroy();
@@ -904,5 +970,5 @@ auto NanoViewer::selectRenderer(const std::uint32_t index) -> void
 	const auto debugInfo = b3d::renderer::DebugInitializationInfo{ debugDrawList_, gizmoHelper_ };
 
 	currentRenderer_->initialize(&renderingData_.buffer, debugInfo);
-	
+
 }

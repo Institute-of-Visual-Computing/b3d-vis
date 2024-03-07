@@ -42,11 +42,11 @@ namespace
 		bool fillBox{ false };
 		std::array<float, 3> fillColor{ 0.8f, 0.3f, 0.2f };
 
-		std::array<float, 2> sampleRemapping{0.0f,0.1f};
+		std::array<float, 2> sampleRemapping{ 0.0f,0.1f };
 
-		
 
-		SampleIntegrationMethod sampleIntegrationMethode{SampleIntegrationMethod::maximumIntensityProjection};
+
+		SampleIntegrationMethod sampleIntegrationMethode{ SampleIntegrationMethod::maximumIntensityProjection };
 	};
 
 	GuiData guiData{};
@@ -68,11 +68,11 @@ namespace
 	{
 		// const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
 		// const auto testFile =
-			std::filesystem::path{ "D:/datacubes/n4565_cut/filtered_level_0_224_257_177_id_7_upscale.fits.nvdb" };
+		std::filesystem::path{ "D:/datacubes/n4565_cut/filtered_level_0_224_257_177_id_7_upscale.fits.nvdb" };
 		//std::filesystem::path{ "C:/Users/anton/Downloads/chameleon_1024x1024x1080_uint16.nvdb" };
 		//std::filesystem::path{ "C:/Users/anton/Downloads/carp_256x256x512_uint16.nvdb" };
-	const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" };
-	// const auto testFile = std::filesystem::path{ "D:/datacubes/ska/40gb/sky_ldev_v2.nvdb" };
+		const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" };
+		// const auto testFile = std::filesystem::path{ "D:/datacubes/ska/40gb/sky_ldev_v2.nvdb" };
 
 
 		assert(std::filesystem::exists(testFile));
@@ -351,14 +351,14 @@ auto NanoRenderer::onRender() -> void
 	owlParamsSetRaw(nanoContext_.launchParams, "surfacePointer", &renderTargetFeatureParams.colorRT.surfaces[0]);
 	owlParamsSetRaw(nanoContext_.launchParams, "colormaps", &colorMapParams.colorMapTexture);
 	owlParamsSet2f(nanoContext_.launchParams, "sampleRemapping",
-		owl2f{guiData.sampleRemapping[0], guiData.sampleRemapping[1]});
+		owl2f{ guiData.sampleRemapping[0], guiData.sampleRemapping[1] });
 
 	auto transferFunctionParams = transferFunctionFeature_->getParamsData();
 
 	owlParamsSetRaw(nanoContext_.launchParams, "transferFunctionTexture",
 		&transferFunctionParams.transferFunctionTexture);
 
-	
+
 
 	const auto backgroundColorParams = backgroundColorFeature_->getParamsData();
 	owlParamsSet3f(nanoContext_.launchParams, "bg.color0", backgroundColorParams.colors[0]);
@@ -403,6 +403,13 @@ auto NanoRenderer::onGui() -> void
 
 	ImGui::Begin("RT Settings");
 
+
+
+	if (ImGui::Button("spawn box"))
+	{
+		static auto box = owl::box3f{};
+	}
+
 	ImGui::SeparatorText("Integration Method");
 	ImGui::BeginGroup();
 	ImGui::RadioButton("Maximum Intensity Projection", reinterpret_cast<int*>(&guiData.sampleIntegrationMethode), static_cast<int>(SampleIntegrationMethod::maximumIntensityProjection));
@@ -411,7 +418,7 @@ auto NanoRenderer::onGui() -> void
 	ImGui::EndGroup();
 	ImGui::Separator();
 
-	ImGui::DragFloatRange2("Sample Remapping", &guiData.sampleRemapping[0], &guiData.sampleRemapping[1], 0.0001, -1.0f,1.0f, "%.4f");
+	ImGui::DragFloatRange2("Sample Remapping", &guiData.sampleRemapping[0], &guiData.sampleRemapping[1], 0.0001, -1.0f, 1.0f, "%.4f");
 
 	if (ImGui::Button("Reset Model Transform"))
 	{

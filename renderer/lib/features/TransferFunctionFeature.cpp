@@ -8,10 +8,11 @@
 using namespace b3d::renderer;
 
 TransferFunctionFeature::TransferFunctionFeature(const std::string& name, const size_t dataPointsCount)
-	: RenderFeature{ name }, dataPoints_(dataPointsCount), transferFunctionTexture_{ nullptr }, stagingBuffer_(512)
+	: RenderFeature{ name }, dataPoints_(dataPointsCount), stagingBuffer_(512), transferFunctionTexture_{ nullptr }
 {
 	assert(dataPointsCount > 0);
 	dataPoints_[0].x = ImGui::CurveTerminator;
+	newDataAvailable_ = true;
 }
 
 auto TransferFunctionFeature::beginUpdate() -> void
