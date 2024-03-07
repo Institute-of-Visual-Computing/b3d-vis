@@ -122,7 +122,7 @@ auto b3d::renderer::ColorMapFeature::gui() -> void
 			}
 		}
 	}
-	coloringInfo_->coloringMode = selectedColoringMode_ == 0 ? single : colormap;
+	coloringInfo_->coloringMode = selectedColoringMode_ == 0 ? ColoringMode::single : ColoringMode::colormap;
 	coloringInfo_->selectedColorMap = colorMapInfos_->firstColorMapYTextureCoordinate +
 		static_cast<float>(selectedColoringMap_) * colorMapInfos_->colorMapHeightNormalized;
 }

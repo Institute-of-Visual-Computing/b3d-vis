@@ -128,9 +128,9 @@ OPTIX_RAYGEN_PROGRAM(rayGeneration)()
 	const auto bg1 = optixLaunchParams.bg.color1;
 	const auto bg2 = optixLaunchParams.bg.color0;
 	const auto pattern = (pixelId.x / 8) ^ (pixelId.y / 8);
-	auto bgColor = (pattern & 1) ? bg1 : bg2;
+	const auto bgColor = (pattern & 1) ? bg1 : bg2;
 
-	const auto color = prd.isBackground ? bgColor : bgColor * (1 - prd.alpha) + prd.alpha * prd.color;
+	const auto color = prd.isBackground ? bgColor :  bgColor * (1.0f - prd.alpha) + prd.alpha * vec4f(prd.color, 1.0f);
 	surf2Dwrite(owl::make_rgba(color), optixLaunchParams.surfacePointer, sizeof(uint32_t) * pixelId.x, pixelId.y);
 }
 
