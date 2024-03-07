@@ -1,5 +1,7 @@
+
 using System.Runtime.InteropServices;
 
+using System.Collections;
 using B3D.UnityCudaInterop;
 using B3D.UnityCudaInterop.NativeStructs;
 using Unity.Profiling;
@@ -74,16 +76,17 @@ public class UnityActionNanoRenderer : AbstractUnityRenderAction
 	/// TODO: Current approach is to override and call parent methods like shown below. Not nice. Change to smth other
 	#region Unity Methods
 
-	protected override void Start()
+	protected IEnumerator StartAfter()
 	{
+		yield return new WaitForSeconds(10);
 		colorMaps = ColorMaps.load(colorMapsDescription.text);
-		sampler = CustomSampler.Create("NanoRenderSampler", true); 
+		sampler = CustomSampler.Create("NanoRenderSampler", true);
 
 		base.Start();
 
 		transferFunctionTexture = new Texture2D(512, 1, TextureFormat.RFloat, false, true, false);
 		Color[] transferValues = new Color[512];
-		float colStep = 1.0f / (transferValues.Length -1);
+		float colStep = 1.0f / (transferValues.Length - 1);
 		for (int i = 0; i < transferValues.Length; i++)
 		{
 			transferValues[i] = new Color(colStep * i, 0, 0);
@@ -92,20 +95,53 @@ public class UnityActionNanoRenderer : AbstractUnityRenderAction
 		transferFunctionTexture.Apply();
 		unityRenderingData.transferFunctionTexture = new(transferFunctionTexture.GetNativeTexturePtr(), new((uint)transferFunctionTexture.width, (uint)transferFunctionTexture.height, 1));
 
-		
+
 		unityRenderingData.colorMapsTexture = new(colorMapsTexture.GetNativeTexturePtr(), new((uint)colorMaps.width, (uint)colorMaps.height, 1));
 
 		unityRenderingData.coloringInfo.coloringMode = UnityColoringMode.Single;
 		unityRenderingData.coloringInfo.singleColor = new Vector4(0, 1, 0, 1);
 		unityRenderingData.coloringInfo.selectedColorMap = colorMaps.firstColorMapYTextureCoordinate;
-		unityRenderingData.coloringInfo.backgroundColors = new Vector4[2] {Vector4.zero, Vector4.zero}; 
+		unityRenderingData.coloringInfo.backgroundColors = new Vector4[2] { Vector4.zero, Vector4.zero };
+		yield return null;
+	}
+
+	protected override void Start()
+	{
+		StartCoroutine(StartAfter());
+		/*
+		colorMaps = ColorMaps.load(colorMapsDescription.text);
+		sampler = CustomSampler.Create("NanoRenderSampler", true);
+
+		base.Start();
+
+		transferFunctionTexture = new Texture2D(512, 1, TextureFormat.RFloat, false, true, false);
+		Color[] transferValues = new Color[512];
+		float colStep = 1.0f / (transferValues.Length - 1);
+		for (int i = 0; i < transferValues.Length; i++)
+		{
+			transferValues[i] = new Color(colStep * i, 0, 0);
+		}
+		transferFunctionTexture.SetPixels(transferValues);
+		transferFunctionTexture.Apply();
+		unityRenderingData.transferFunctionTexture = new(transferFunctionTexture.GetNativeTexturePtr(), new((uint)transferFunctionTexture.width, (uint)transferFunctionTexture.height, 1));
+
+
+		unityRenderingData.colorMapsTexture = new(colorMapsTexture.GetNativeTexturePtr(), new((uint)colorMaps.width, (uint)colorMaps.height, 1));
+
+		unityRenderingData.coloringInfo.coloringMode = UnityColoringMode.Single;
+		unityRenderingData.coloringInfo.singleColor = new Vector4(0, 1, 0, 1);
+		unityRenderingData.coloringInfo.selectedColorMap = colorMaps.firstColorMapYTextureCoordinate;
+		unityRenderingData.coloringInfo.backgroundColors = new Vector4[2] { Vector4.zero, Vector4.zero };*/
 	}
 
 	protected override void Update()
 	{
 		if (Input.GetKeyDown(KeyCode.T))
 		{
-			SetTextures();
+			if(readyForUpdate_)
+			{ 
+				SetTextures();
+			}
 		}
 		base.Update();
 		
