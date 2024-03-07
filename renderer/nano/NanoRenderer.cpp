@@ -64,8 +64,9 @@ namespace
 
 	unique_volume_ptr nanoVdbVolume;
 
-	auto createVolume() -> NanoVdbVolume
+	auto createVolume(const std::filesystem::path& file) -> NanoVdbVolume
 	{
+		//TODO: Let's use shared parameters to grab an initial volume path from the viewer
 		// const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
 		// const auto testFile =
 		std::filesystem::path{ "D:/datacubes/n4565_cut/filtered_level_0_224_257_177_id_7_upscale.fits.nvdb" };
@@ -221,7 +222,8 @@ auto NanoRenderer::prepareGeometry() -> void
 	auto geometry = owlGeomCreate(context, geometryType);
 
 	nanoVdbVolume = unique_volume_ptr(new NanoVdbVolume());
-	*nanoVdbVolume.get() = createVolume();
+
+	*nanoVdbVolume.get() = createVolume({});
 
 	const auto volumeSize = nanoVdbVolume->indexBox.size();
 	const auto longestAxis = std::max({ volumeSize.x, volumeSize.y, volumeSize.z });
