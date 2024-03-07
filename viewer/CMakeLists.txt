@@ -41,12 +41,20 @@ target_link_libraries(viewer
 	B3D::Renderer::SimpleTriangles
 	B3D::Renderer::Nano
 	B3D::Renderer::FastVoxelTraversal
+	B3D::Renderer::NanoOutOfCore
 	OpenGL::GL
 	glad::glad
 	Vulkan::Vulkan
 	Vulkan::Headers
 	imguizmo::imguizmo
+	B3D::Tools::ColorMap
 	${CUDA_nvml_LIBRARY}
+)
+
+
+target_include_directories(viewer
+	PRIVATE
+		${Stb_INCLUDE_DIR}
 )
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/resources")

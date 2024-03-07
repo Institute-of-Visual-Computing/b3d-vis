@@ -4,6 +4,8 @@
 #include <owl/common/math/box.h>
 #include <owl/common/math/vec.h>
 
+#include <SharedStructs.h>
+
 #include <optix_types.h>
 #include <surface_types.h>
 
@@ -22,18 +24,29 @@ namespace b3d
 				owl::vec3f dir_dv;
 			};
 
+			enum class SampleIntegrationMethod
+			{
+				transferIntegration,
+				maximumIntensityProjection,
+				averageIntensityProjection
+			};
+
 			struct LaunchParams
 			{
 				RayCameraData cameraData;
 				cudaSurfaceObject_t surfacePointer;
 				struct BG
 				{
-					owl::vec3f color0;
-					owl::vec3f color1;
+					owl::vec4f color0;
+					owl::vec4f color1;
 					bool fillBox;
 					owl::vec3f fillColor;
 				} bg;
-				owl::vec3f color;
+				cudaTextureObject_t colorMaps;
+				b3d::renderer::ColoringInfo coloringInfo;
+				cudaTextureObject_t transferFunctionTexture;
+				owl::vec2f sampleRemapping;
+				SampleIntegrationMethod sampleIntegrationMethod;
 			};
 
 			struct NanoVdbVolume

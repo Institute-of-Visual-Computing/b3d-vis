@@ -4,25 +4,23 @@
 
 #include "owl/owl_host.h"
 
+#include "features/RenderSyncFeature.h"
+#include "features/RenderTargetFeature.h"
+
 namespace b3d::renderer
 {
-
-	struct FastVoxelTraversalNativeRenderingData : RendererState
-	{
-		float transferOffset{ 0.5f };
-	};
-
 	class FastVoxelTraversalRenderer final : public RendererBase
 	{
 
 	public:
 		FastVoxelTraversalRenderer()
 		{
-			rendererState_ = std::make_unique<FastVoxelTraversalNativeRenderingData>();
+			renderSyncFeature_ = addFeature<RenderSyncFeature>("Main Synchronization");
+			renderTargetFeature_ = addFeature<RenderTargetFeature>("RenderTargets");
 		}
 
 	protected:
-		auto onRender(const View& view) -> void override;
+		auto onRender() -> void override;
 		auto onInitialize() -> void override;
 		auto onDeinitialize() -> void override;
 		auto onGui() -> void override;
@@ -48,5 +46,7 @@ namespace b3d::renderer
 		float integral_{ 0 };
 		float invIntegral_{ 0 };
 
+		RenderTargetFeature* renderTargetFeature_;
+		RenderSyncFeature* renderSyncFeature_;
 	};
 } // namespace b3d::renderer

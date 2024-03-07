@@ -6,10 +6,12 @@
 
 #include <CudaGpuTimers.h>
 
-struct NanoNativeRenderingData : b3d::renderer::RendererState
-{
-	b3d::renderer::VolumeTransform volumeTransform;
-};
+#include "features/BackgroundColorFeature.h"
+#include "features/ColorMapFeature.h"
+#include "features/RenderSyncFeature.h"
+#include "features/RenderTargetFeature.h"
+#include "features/TransferFunctionFeature.h"
+
 
 namespace b3d::renderer
 {
@@ -27,10 +29,15 @@ namespace b3d::renderer
 	public:
 		NanoRenderer()
 		{
-			rendererState_ = std::make_unique<NanoNativeRenderingData>();
+			renderTargetFeature_ = addFeature<RenderTargetFeature>("RenderTargets");
+			colorMapFeature_ = addFeature<ColorMapFeature>("Color Filtering");
+			transferFunctionFeature_ = addFeature<TransferFunctionFeature>("Transfer Function");
+			backgroundColorFeature_ = addFeature<BackgroundColorFeature>(
+				"Background Color", std::array<ColorRGB, 2>{ { { 0.572f, 0.100f, 0.750f }, { 0.0f, 0.3f, 0.3f } } });
+			renderSyncFeature_ = addFeatureWithDependency<RenderSyncFeature>({renderTargetFeature_, colorMapFeature_, transferFunctionFeature_, backgroundColorFeature_},"Main Synchronization");
 		}
 	protected:
-		auto onRender(const View& view) -> void override;
+		auto onRender() -> void override;
 		auto onInitialize() -> void override;
 		auto onDeinitialize() -> void override;
 		auto onGui() -> void override;
@@ -44,5 +51,13 @@ namespace b3d::renderer
 		nanovdb::Map currentMap_{};
 
 		CudaGpuTimers<100, 4> gpuTimers_{};
+
+		owl::AffineSpace3f renormalizeScale_{};
+
+		RenderTargetFeature* renderTargetFeature_;
+		RenderSyncFeature* renderSyncFeature_;
+		ColorMapFeature* colorMapFeature_;
+		TransferFunctionFeature* transferFunctionFeature_;
+		BackgroundColorFeature* backgroundColorFeature_;
 	};
 } // namespace b3d::renderer

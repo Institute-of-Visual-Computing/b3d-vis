@@ -5,19 +5,9 @@
 using namespace b3d::renderer;
 
 
-auto NullRenderer::onRender(const View& view) -> void
+auto NullRenderer::onRender() -> void
 {
 	log("[NullRenderer] onRender!");
-
-	auto waitParams = cudaExternalSemaphoreWaitParams{};
-	waitParams.flags = 0;
-	waitParams.params.fence.value = view.fenceValue;
-	cudaWaitExternalSemaphoresAsync(&initializationInfo_.signalSemaphore, &waitParams, 1);
-
-	auto signalParams = cudaExternalSemaphoreSignalParams{};
-	signalParams.flags = 0;
-	signalParams.params.fence.value = view.fenceValue;
-	cudaSignalExternalSemaphoresAsync(&initializationInfo_.waitSemaphore, &signalParams, 1);
 }
 
 auto NullRenderer::onInitialize() -> void

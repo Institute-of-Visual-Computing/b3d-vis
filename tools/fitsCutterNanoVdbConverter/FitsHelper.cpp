@@ -14,13 +14,12 @@ auto writeFitsFile(const std::filesystem::path& file, const Vec3I boxSize, const
 	int status;
 	constexpr auto pixel = 1l;
 	constexpr auto axisCount = 3l;
-	auto exposure = 0l;
 	auto axis = std::array{ static_cast<long>(boxSize.x), static_cast<long>(boxSize.y), static_cast<long>(boxSize.z) };
 
 	status = 0;
 	fits_create_file(&fitsFile, file.generic_string().c_str(), &status);
 	fits_create_img(fitsFile, LONG_IMG, axisCount, axis.data(), &status);
-	exposure = 1500.;
+	auto exposure = 1500l;
 	fits_update_key(fitsFile, TLONG, "EXPOSURE", &exposure, "Total Exposure Time", &status);
 	fits_write_img(fitsFile, TLONG, pixel, data.size(), (void*)data.data(), &status);
 
@@ -34,13 +33,12 @@ auto writeFitsFile(const std::filesystem::path& file, const Vec3I boxSize, const
 	int status;
 	constexpr auto pixel = 1l;
 	constexpr auto axisCount = 3l;
-	auto exposure = 0l;
 	auto axis = std::array{ static_cast<long>(boxSize.x), static_cast<long>(boxSize.y), static_cast<long>(boxSize.z) };
 
 	status = 0;
 	fits_create_file(&fitsFile, file.generic_string().c_str(), &status);
 	fits_create_img(fitsFile, FLOAT_IMG, axisCount, axis.data(), &status);
-	exposure = 1500.;
+	auto exposure = 1500l;
 	fits_update_key(fitsFile, TLONG, "EXPOSURE", &exposure, "Total Exposure Time", &status);
 	fits_write_img(fitsFile, TLONG, pixel, data.size(), (void*)data.data(), &status);
 
@@ -92,17 +90,20 @@ auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& sea
 		const auto bytesPerRow = searchBoxSize.x * elementSize;
 		const auto columns = (bytesPerBatch) / bytesPerRow;
 
-		const auto maxConcurrency = static_cast<int>(std::thread::hardware_concurrency());
-		const auto uniformBatching = (searchBoxSize.z + maxConcurrency - 1) / maxConcurrency;
+		
 
-		constexpr auto batchesPerThread = 16;
-
-		const auto uniformBatchingPerThread = (uniformBatching + batchesPerThread - 1) / batchesPerThread;
+		
 
 		newBatchSize = Vec3I{ searchBoxSize.x, columns, 1 }; // benchmark 3
-		// newBatchSize = Vec3I{ searchBoxSize.x, searchBoxSize.x, 1 };							//benchmark 2
-		// newBatchSize = Vec3I{ searchBoxSize.x, searchBoxSize.x, uniformBatchingPerThread };	//benchmark 4
-		// newBatchSize = Vec3I{ 64, 64, 64 };												//benchmark 1
+#if 0
+		newBatchSize = Vec3I{ searchBoxSize.x, searchBoxSize.x, 1 };							//benchmark 2
+		const auto maxConcurrency = static_cast<int>(std::thread::hardware_concurrency());
+		const auto uniformBatching = (searchBoxSize.z + maxConcurrency - 1) / maxConcurrency;
+		constexpr auto batchesPerThread = 16;
+		const auto uniformBatchingPerThread = (uniformBatching + batchesPerThread - 1) / batchesPerThread;
+		newBatchSize = Vec3I{ searchBoxSize.x, searchBoxSize.x, uniformBatchingPerThread };		//benchmark 4
+		newBatchSize = Vec3I{ 64, 64, 64 };														//benchmark 1
+#endif
 	}
 	else
 	{
@@ -127,9 +128,10 @@ auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& sea
 			for (auto k = 0; k != batchSize.z /*boxSpan.extent(2)*/; k++)
 			{
 				const auto index = batchSize.x * batchSize.y * k + batchSize.x * j + i;
-				batchBoxes[index] = clip(
-					Box3I{ perSearchBatchBoxSize * Vec3I(i, j, k), perSearchBatchBoxSize * Vec3I(i + 1, j + 1, k + 1) },
-					newSearchBox);
+				batchBoxes[index] =
+					clip(Box3I{ newSearchBox.lower + perSearchBatchBoxSize * Vec3I(i, j, k),
+								newSearchBox.lower + perSearchBatchBoxSize * Vec3I(i + 1, j + 1, k + 1) },
+						 newSearchBox);
 			}
 		}
 	}
@@ -215,7 +217,6 @@ auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& sea
 	{
 		auto last = progressCounter.load();
 		auto total = batchItemCount;
-		auto run = true;
 		std::cout << std::format("processing: {}/{}\r", last, total);
 
 		while (last != total)
@@ -351,20 +352,32 @@ auto extractBinaryClusterMask(const std::filesystem::path& file, std::vector<Clu
 }
 
 auto extractClusterMask(const std::filesystem::path& file, ClusterId cluster, const Box3I& searchBox)
-	-> std::vector<uint32_t>
+-> std::vector<uint32_t>
 {
 	return std::vector<uint32_t>();
 }
 
 
-auto extractData(const std::filesystem::path& file, const Box3I& searchBox) -> ExtractedData
+auto extractData(const std::filesystem::path& file, const Box3I& searchBox, const uint8_t hduIndex) -> ExtractedData
 {
 	fitsfile* fitsFilePtr{ nullptr };
 	auto fitsError = int{};
 	ffopen(&fitsFilePtr, file.generic_string().c_str(), READONLY, &fitsError);
 	assert(fitsError == 0);
 
+
+
 	const auto fitsFile = UniqueFitsfile(fitsFilePtr, &fitsDeleter);
+
+	auto hduCount = 0;
+	fits_get_num_hdus(fitsFile.get(), &hduCount, &fitsError);
+	assert(fitsError == 0);
+
+	assert(hduCount > 0);
+
+	assert(hduIndex < hduCount);
+	fits_movabs_hdu(fitsFile.get(), hduIndex+1, nullptr, &fitsError);
+	assert(fitsError == 0);
 
 	auto axisCount = 0;
 	auto imgType = 0;
@@ -405,11 +418,11 @@ auto extractData(const std::filesystem::path& file, const Box3I& searchBox) -> E
 	max[0] = newSearchBox.upper.x;
 	max[1] = newSearchBox.upper.y;
 	max[2] = newSearchBox.upper.z;
-
+	auto nan = 0l;
 	{
 		auto error = int{};
 		fits_read_subset(fitsFile.get(), TFLOAT, min.data(), max.data(), samplingInterval.data(), &nan,
-						 dataBuffer.data(), nullptr, &error);
+			dataBuffer.data(), nullptr, &error);
 		if (error != 0)
 		{
 			std::array<char, 30> txt;
@@ -482,5 +495,28 @@ auto upscaleFitsData(const std::string& srcFile, const std::string& dstFile, con
 	}
 
 	writeFitsFile(dstFile, dstBoxSize, upscaleData);
-	generateNanoVdb(dstFile + ".nvdb", dstBoxSize, -100.0f, 0.0, upscaleData);
+	generateNanoVdb(dstBoxSize, -100.0f, 0.0, upscaleData);
+}
+
+auto extractBounds(const std::filesystem::path& srcFile) -> Box3I
+{
+	fitsfile* fitsFilePtr{ nullptr };
+	auto fitsError = int{};
+	ffopen(&fitsFilePtr, srcFile.generic_string().c_str(), READONLY, &fitsError);
+	assert(fitsError == 0);
+
+	const auto fitsFile = UniqueFitsfile(fitsFilePtr, &fitsDeleter);
+
+	int axisCount;
+	int imgType;
+	long axis[3];
+	fits_get_img_param(fitsFile.get(), 3, &imgType, &axisCount, &axis[0], &fitsError);
+
+	assert(fitsError == 0);
+	assert(axisCount == 3);
+
+	const auto srcBox =
+		Box3I{ { 0, 0, 0 },
+			   { static_cast<int>(axis[0]) - 1, static_cast<int>(axis[1]) - 1, static_cast<int>(axis[2]) - 1 } };
+	return srcBox;
 }

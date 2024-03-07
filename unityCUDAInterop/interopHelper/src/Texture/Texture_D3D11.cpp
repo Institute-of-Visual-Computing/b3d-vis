@@ -7,7 +7,11 @@ using namespace b3d::unity_cuda_interop;
 
 TextureD3D11::TextureD3D11(void* unityNativeTexturePointer) : Texture(unityNativeTexturePointer)
 {
-	assert(unityNativeTexturePointer != nullptr);
+	if (unityNativeTexturePointer ==  nullptr)
+	{
+		isValid_ = false;
+		return;
+	}
 
 	d3d11GraphicsResource_ = static_cast<ID3D11Texture2D*>(unityNativeTexturePointer);
 

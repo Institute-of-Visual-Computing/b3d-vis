@@ -6,13 +6,14 @@
 #include "Common.h"
 #include "util/CreateNanoGrid.h"
 
-using ClusterId = int;
 
 struct MinMaxBounds
 {
 	float min;
 	float max;
 };
+
+[[nodiscard]] auto extractBounds(const std::filesystem::path& srcFile) -> Box3I;
 
 [[nodiscard]] auto extractPerClusterBox(const std::filesystem::path& srcFile, const Box3I& searchBox = Box3I::maxBox(),
 										const Vec3I& perBatchSearchSize = Vec3I{}) -> std::map<ClusterId, Box3I>;
@@ -30,7 +31,7 @@ struct ExtractedData
 	std::vector<float> data;
 };
 
-[[nodiscard]] auto extractData(const std::filesystem::path& file, const Box3I& searchBox = Box3I::maxBox()) -> ExtractedData;
+[[nodiscard]] auto extractData(const std::filesystem::path& file, const Box3I& searchBox = Box3I::maxBox(),const uint8_t hduIndex = 0) -> ExtractedData;
 
 [[nodiscard]] auto applyMask(const std::vector<float>& data, const std::vector<bool>& mask, const float maskedValue = 0.0f) -> std::vector<float>;
 
@@ -41,6 +42,14 @@ auto writeFitsFile(const std::filesystem::path& file, const Vec3I boxSize, const
 auto writeFitsFile(const std::filesystem::path& file, const Vec3I boxSize, const std::vector<float>& data)-> void;
 
 
-auto generateNanoVdb(const Vec3I boxSize, float maskedValues, float emptySpaceValue, const std::vector<float>& data) -> nanovdb::GridHandle<>;
+inline auto flattenIndex(const Vec3I boxSize, const uint64_t i, const uint64_t j, const uint64_t k) -> uint64_t
+{
+	return static_cast<uint64_t>(boxSize.x) * static_cast<uint64_t>(boxSize.y) * i+
+			static_cast<uint64_t>(boxSize.x) * j + k;
+}
+
+auto generateNanoVdb(const Vec3I boxSize, const float maskedValues, const float emptySpaceValue, const std::vector<float>& data) -> nanovdb::GridHandle<>;
+auto generateNanoVdb(const Vec3I boxSize, const float emptySpaceValue, const std::vector<float>& data,
+								   const std::function<float(const uint64_t i, const uint64_t j, const uint64_t k)>& f) -> nanovdb::GridHandle<>;
 
 auto upscaleFitsData(const std::filesystem::path& srcFile, const std::filesystem::path& dstFile, const Vec3I& axisScaleFactor, const std::function<float(const float, const Vec3I&, const Vec3I&)>& filter) -> void;
