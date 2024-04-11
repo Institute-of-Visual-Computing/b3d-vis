@@ -4,10 +4,9 @@
 #include <owl/common/math/box.h>
 #include <owl/common/math/vec.h>
 
-#include <SharedStructs.h>
-
 #include <optix_types.h>
 #include <surface_types.h>
+#include <Common.h>
 
 
 namespace b3d
@@ -31,6 +30,14 @@ namespace b3d
 				averageIntensityProjection
 			};
 
+			struct NanoVdbVolume
+			{
+				owl::box3f indexBox;
+				owl::box3f worldAabb;
+				owl::AffineSpace3f transform;
+				CUdeviceptr grid = 0;
+			};
+
 			struct LaunchParams
 			{
 				RayCameraData cameraData;
@@ -43,18 +50,11 @@ namespace b3d
 					owl::vec3f fillColor;
 				} bg;
 				cudaTextureObject_t colorMaps;
-				b3d::renderer::ColoringInfo coloringInfo;
+				ColoringInfo coloringInfo;
 				cudaTextureObject_t transferFunctionTexture;
 				owl::vec2f sampleRemapping;
 				SampleIntegrationMethod sampleIntegrationMethod;
-			};
-
-			struct NanoVdbVolume
-			{
-				owl::box3f indexBox;
-				owl::box3f worldAabb;
-				owl::AffineSpace3f transform;
-				CUdeviceptr grid = 0;
+				NanoVdbVolume volume;
 			};
 
 			struct Volume

@@ -64,8 +64,10 @@ add_b3d_renderer(
 		Nano
 	SOURCES
 		NanoRenderer.cpp
+		RuntimeDataSet.cpp
 	HEADERS
 		NanoRenderer.h
+		RuntimeDataSet.h
 	LIBRARIES
 		cudaCode
 		nano-ptx

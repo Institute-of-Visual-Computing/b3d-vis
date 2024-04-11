@@ -15,7 +15,7 @@ set(SHARED_HEADERS
 	NullGizmoHelper.h
 	CudaGpuTimers.h
 	OwlExtensions.h
-	SharedStructs.h
+	"Common.h"
 	RenderFeature.h
 	features/ColorMapFeature.h
 	features/ColorMapFeature.cpp
