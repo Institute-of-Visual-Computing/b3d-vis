@@ -51,73 +51,6 @@ namespace
 
 	GuiData guiData{};
 
-	struct NanoVdbVolumeDeleter
-	{
-		auto operator()(const NanoVdbVolume* volume) const noexcept -> void
-		{
-			OWL_CUDA_CHECK(cudaFree(reinterpret_cast<void*>(volume->grid)));
-			delete volume;
-		}
-	};
-
-	using unique_volume_ptr = std::unique_ptr<NanoVdbVolume, NanoVdbVolumeDeleter>;
-
-	unique_volume_ptr nanoVdbVolume;
-
-	auto createVolume(const std::filesystem::path& file) -> NanoVdbVolume
-	{
-		//TODO: Let's use shared parameters to grab an initial volume path from the viewer
-		// const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
-		// const auto testFile =
-		std::filesystem::path{ "D:/datacubes/n4565_cut/filtered_level_0_224_257_177_id_7_upscale.fits.nvdb" };
-		//std::filesystem::path{ "C:/Users/anton/Downloads/chameleon_1024x1024x1080_uint16.nvdb" };
-		//std::filesystem::path{ "C:/Users/anton/Downloads/carp_256x256x512_uint16.nvdb" };
-		const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" };
-		// const auto testFile = std::filesystem::path{ "D:/datacubes/ska/40gb/sky_ldev_v2.nvdb" };
-
-
-		assert(std::filesystem::exists(testFile));
-		// owlInstanceGroupSetTransform
-		auto volume = NanoVdbVolume{};
-		// auto gridVolume = nanovdb::createFogVolumeTorus();
-		const auto gridVolume = nanovdb::io::readGrid(testFile.string());
-		OWL_CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&volume.grid), gridVolume.size()));
-		OWL_CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(volume.grid), gridVolume.data(), gridVolume.size(),
-			cudaMemcpyHostToDevice));
-
-		const auto gridHandle = gridVolume.grid<float>();
-		const auto& map = gridHandle->mMap;
-		const auto orientation =
-			owl::LinearSpace3f{ map.mMatF[0], map.mMatF[1], map.mMatF[2], map.mMatF[3], map.mMatF[4],
-								map.mMatF[5], map.mMatF[6], map.mMatF[7], map.mMatF[8] };
-		const auto position = vec3f{ 0.0, 0.0, 0.0 };
-
-		volume.transform = AffineSpace3f{ orientation, position };
-
-		{
-			const auto& box = gridVolume.gridMetaData()->worldBBox();
-			const auto min = owl::vec3f{ static_cast<float>(box.min()[0]), static_cast<float>(box.min()[1]),
-										 static_cast<float>(box.min()[2]) };
-			const auto max = owl::vec3f{ static_cast<float>(box.max()[0]), static_cast<float>(box.max()[1]),
-										 static_cast<float>(box.max()[2]) };
-			volume.worldAabb = owl::box3f{ min, max };
-		}
-
-		{
-			const auto indexBox = gridHandle->indexBBox();
-			const auto boundsMin = nanovdb::Coord{ indexBox.min() };
-			const auto boundsMax = nanovdb::Coord{ indexBox.max() + nanovdb::Coord(1) };
-
-			const auto min = owl::vec3f{ static_cast<float>(boundsMin[0]), static_cast<float>(boundsMin[1]),
-										 static_cast<float>(boundsMin[2]) };
-			const auto max = owl::vec3f{ static_cast<float>(boundsMax[0]), static_cast<float>(boundsMax[1]),
-										 static_cast<float>(boundsMax[2]) };
-
-			volume.indexBox = owl::box3f{ min, max };
-		}
-
-		return volume;
-	}
 
 	auto computeStableEpsilon(const float f) -> float
 	{
@@ -221,22 +154,13 @@ auto NanoRenderer::prepareGeometry() -> void
 
 	auto geometry = owlGeomCreate(context, geometryType);
 
-	nanoVdbVolume = unique_volume_ptr(new NanoVdbVolume());
-
-	*nanoVdbVolume.get() = createVolume({});
-
-	const auto volumeSize = nanoVdbVolume->indexBox.size();
-	const auto longestAxis = std::max({ volumeSize.x, volumeSize.y, volumeSize.z });
-
-	const auto scale = 1.0f / longestAxis;
-
-	renormalizeScale_ = AffineSpace3f::scale(vec3f{ scale, scale, scale });
+	
 
 	const auto geometryGroup = owlUserGeomGroupCreate(context, 1, &geometry);
 	nanoContext_.worldGeometryGroup = owlInstanceGroupCreate(context, 1, &geometryGroup, nullptr, nullptr,
 		OWL_MATRIX_FORMAT_OWL, OPTIX_BUILD_FLAG_ALLOW_UPDATE);
 
-	owlGeomSetRaw(geometry, "volume", nanoVdbVolume.get());
+	//owlGeomSetRaw(geometry, "volume", nanoVdbVolume.get());
 
 	owlGeomTypeSetBoundsProg(geometryType, module, "volumeBounds");
 	owlBuildPrograms(context);
@@ -286,6 +210,7 @@ auto NanoRenderer::prepareGeometry() -> void
 						OWLVarDecl{ "sampleRemapping", OWL_FLOAT2, OWL_OFFSETOF(LaunchParams, sampleRemapping)},
 			OWLVarDecl{ "sampleIntegrationMethod", OWL_USER_TYPE(SampleIntegrationMethod),
 						OWL_OFFSETOF(LaunchParams, sampleIntegrationMethod) },
+			OWLVarDecl{ "volume", OWL_USER_TYPE(NanoVdbVolume), OWL_OFFSETOF(LaunchParams, volume)}
 		};
 
 		nanoContext_.launchParams =
@@ -302,19 +227,21 @@ auto NanoRenderer::onRender() -> void
 {
 	gpuTimers_.nextFrame();
 
+	auto runtimeVolume = runtimeDataSet_.getSelectedData();
+	auto& nanoVdbVolume = runtimeVolume.volume;
 	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
-	trs_ = volumeTransform->worldMatTRS * renormalizeScale_;
+	trs_ = volumeTransform->worldMatTRS * runtimeVolume.renormalizeScale;
 
-	const auto volumeTranslate = AffineSpace3f::translate(-nanoVdbVolume->indexBox.center());
+	const auto volumeTranslate = AffineSpace3f::translate(-nanoVdbVolume.indexBox.center());
 	const auto groupTransform = trs_ * volumeTranslate;
 	owlInstanceGroupSetTransform(nanoContext_.worldGeometryGroup, 0, reinterpret_cast<const float*>(&groupTransform));
 	owlGroupRefitAccel(nanoContext_.worldGeometryGroup);
 	{
-		debugDraw().drawBox(trs_.p / 2, trs_.p, nanoVdbVolume->indexBox.size(), owl::vec4f(0.1f, 0.82f, 0.15f, 1.0f),
+		debugDraw().drawBox(trs_.p / 2, trs_.p, nanoVdbVolume.indexBox.size(), owl::vec4f(0.1f, 0.82f, 0.15f, 1.0f),
 			trs_.l);
 
-		const auto aabbSize = orientedBoxToBox(nanoVdbVolume->indexBox, volumeTransform->worldMatTRS.l).size();
-		debugDraw().drawBox(trs_.p / 2, trs_.p, aabbSize, owl::vec4f(0.9f, 0.4f, 0.2f, 0.4f), renormalizeScale_.l);
+		const auto aabbSize = orientedBoxToBox(nanoVdbVolume.indexBox, volumeTransform->worldMatTRS.l).size();
+		debugDraw().drawBox(trs_.p / 2, trs_.p, aabbSize, owl::vec4f(0.9f, 0.4f, 0.2f, 0.4f), runtimeVolume.renormalizeScale.l);
 	}
 
 	const auto colorMapParams = colorMapFeature_->getParamsData();
@@ -326,6 +253,7 @@ auto NanoRenderer::onRender() -> void
 
 	owlParamsSetRaw(nanoContext_.launchParams, "sampleIntegrationMethod", &guiData.sampleIntegrationMethode);
 
+	owlParamsSetRaw(nanoContext_.launchParams, "volume", &nanoVdbVolume);
 
 	auto renderTargetFeatureParams = renderTargetFeature_->getParamsData();
 
@@ -335,7 +263,7 @@ auto NanoRenderer::onRender() -> void
 
 	owlBuildSBT(nanoContext_.context);
 
-	
+
 
 	owlParamsSetRaw(nanoContext_.launchParams, "colormaps", &colorMapParams.colorMapTexture);
 	owlParamsSet2f(nanoContext_.launchParams, "sampleRemapping",
@@ -414,6 +342,8 @@ auto NanoRenderer::onInitialize() -> void
 	const auto context = owlContextCreate(nullptr, 1);
 
 	nanoContext_.context = context;
+
+	//runtimeDataSet_.loadedVolumes_.push_back(RuntimeVolume{createVolume(""), RuntimeVolumeState::ready});
 
 	prepareGeometry();
 }

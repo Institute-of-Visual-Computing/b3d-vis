@@ -6,6 +6,7 @@
 
 #include <CudaGpuTimers.h>
 
+#include "RuntimeDataSet.h"
 #include "features/BackgroundColorFeature.h"
 #include "features/ColorMapFeature.h"
 #include "features/RenderSyncFeature.h"
@@ -52,12 +53,12 @@ namespace b3d::renderer
 
 		CudaGpuTimers<100, 4> gpuTimers_{};
 
-		owl::AffineSpace3f renormalizeScale_{};
-
 		RenderTargetFeature* renderTargetFeature_;
 		RenderSyncFeature* renderSyncFeature_;
 		ColorMapFeature* colorMapFeature_;
 		TransferFunctionFeature* transferFunctionFeature_;
 		BackgroundColorFeature* backgroundColorFeature_;
+
+		nano::RuntimeDataSet runtimeDataSet_{};
 	};
 } // namespace b3d::renderer

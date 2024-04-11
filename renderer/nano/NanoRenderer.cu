@@ -142,8 +142,8 @@ OPTIX_MISS_PROGRAM(miss)()
 
 OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 {
-	const auto& geometry = owl::getProgramData<GeometryData>();
-	const auto* grid = reinterpret_cast<nanovdb::FloatGrid*>(geometry.volume.grid);
+	//const auto& geometry = owl::getProgramData<GeometryData>();
+	const auto* grid = reinterpret_cast<nanovdb::FloatGrid*>(optixLaunchParams.volume.grid);
 
 	auto transform = cuda::std::array<float, 12>{};
 
