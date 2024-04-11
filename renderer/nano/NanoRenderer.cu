@@ -97,6 +97,11 @@ OPTIX_BOUNDS_PROGRAM(volumeBounds)
 {
 	const auto& self = *static_cast<const GeometryData*>(geometryData);
 	primitiveBounds = self.volume.indexBox;
+	printf("%.2f ___ %.2f ___  %.2f \n", primitiveBounds.lower.x, primitiveBounds.lower.y, primitiveBounds.lower.z);
+	printf("%.2f ___ %.2f ___  %.2f \n", primitiveBounds.upper.x, primitiveBounds.upper.y, primitiveBounds.upper.z);
+
+	primitiveBounds = box3f{{-1000.0f,-1000.0f,-1000.0f},{1000.0f,1000.0f,1000.0f}};
+	//TODO: need better solution
 }
 
 OPTIX_RAYGEN_PROGRAM(hitCountRayGen)()
@@ -231,7 +236,6 @@ OPTIX_MISS_PROGRAM(miss)()
 
 OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 {
-	//const auto& geometry = owl::getProgramData<GeometryData>();
 	const auto* grid = reinterpret_cast<nanovdb::FloatGrid*>(optixLaunchParams.volume.grid);
 
 	auto transform = cuda::std::array<float, 12>{};
@@ -350,8 +354,7 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 
 OPTIX_INTERSECT_PROGRAM(nano_intersection)()
 {
-	const auto& geometry = owl::getProgramData<GeometryData>();
-	const auto* grid = reinterpret_cast<const nanovdb::FloatGrid*>(geometry.volume.grid);
+	const auto* grid = reinterpret_cast<nanovdb::FloatGrid*>(optixLaunchParams.volume.grid);
 
 	const auto rayOrigin = optixGetObjectRayOrigin();
 	const auto rayDirection = optixGetObjectRayDirection();

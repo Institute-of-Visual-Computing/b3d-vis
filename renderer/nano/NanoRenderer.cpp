@@ -176,13 +176,12 @@ auto NanoRenderer::prepareGeometry() -> void
 
 	auto geometry = owlGeomCreate(context, geometryType);
 
-	
-
 	const auto geometryGroup = owlUserGeomGroupCreate(context, 1, &geometry);
 	nanoContext_.worldGeometryGroup = owlInstanceGroupCreate(context, 1, &geometryGroup, nullptr, nullptr,
 		OWL_MATRIX_FORMAT_OWL, OPTIX_BUILD_FLAG_ALLOW_UPDATE);
 
-	//owlGeomSetRaw(geometry, "volume", nanoVdbVolume.get());
+	//TODO: need better solution, see also bounds kernel in NanoRenderer.cu
+	owlGeomSetRaw(geometry, "volume", &runtimeDataSet_.getSelectedData().volume);
 
 	owlGeomTypeSetBoundsProg(geometryType, module, "volumeBounds");
 	owlBuildPrograms(context);
@@ -382,6 +381,9 @@ auto NanoRenderer::onInitialize() -> void
 	const auto context = owlContextCreate(nullptr, 1);
 
 	nanoContext_.context = context;
+
+	runtimeDataSet_.addNanoVdb(std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" });
+
 	prepareGeometry();
 }
 
@@ -395,6 +397,22 @@ auto NanoRenderer::onGui() -> void
 	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
 
 	ImGui::Begin("RT Settings");
+
+	ImGui::SeparatorText("data set");
+
+	if(ImGui::Button("set1"))
+	{
+		runtimeDataSet_.select(0);
+	}
+
+	ImGui::SameLine();
+
+	if(ImGui::Button("set2"))
+	{
+		runtimeDataSet_.select(1);
+	}
+
+	ImGui::Separator();
 
 	if (ImGui::Button("spawn box"))
 	{

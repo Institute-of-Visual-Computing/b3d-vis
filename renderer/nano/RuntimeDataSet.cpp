@@ -64,26 +64,17 @@ namespace
 		const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" };
 		// const auto testFile = std::filesystem::path{ "D:/datacubes/ska/40gb/sky_ldev_v2.nvdb" };
 
-		assert(std::filesystem::exists(testFile));
-		const auto gridVolume = nanovdb::io::readGrid(testFile.string());
+		assert(std::filesystem::exists(file));
+		const auto gridVolume = nanovdb::io::readGrid(file.string());
 		return createVolume(gridVolume);
 	}
 }
 
 b3d::renderer::nano::RuntimeDataSet::RuntimeDataSet()
 {
-	const auto volume = createVolume(nanovdb::createFogVolumeTorus());
-	const auto volumeSize = volume.indexBox.size();
-	const auto longestAxis = std::max({ volumeSize.x, volumeSize.y, volumeSize.z });
-
-	const auto scale = 1.0f / longestAxis;
-
-	const auto renormalizeScale = owl::AffineSpace3f::scale(owl::vec3f{ scale, scale, scale });
-
-	runtimeVolumes_.push_back(
-		RuntimeVolume{ volume, RuntimeVolumeState::ready, renormalizeScale });
+	addNanoVdb(createVolume(nanovdb::createFogVolumeTorus()));
 }
-auto RuntimeDataSet::select(std::size_t index) -> void
+auto RuntimeDataSet::select(const std::size_t index) -> void
 {
 	assert(index < runtimeVolumes_.size());
 	activeVolume_ = index;
@@ -91,4 +82,27 @@ auto RuntimeDataSet::select(std::size_t index) -> void
 auto RuntimeDataSet::getSelectedData() -> RuntimeVolume&
 {
 	return runtimeVolumes_[activeVolume_];
+}
+auto RuntimeDataSet::addNanoVdb(const std::filesystem::path& path) -> void
+{
+	addNanoVdb(createVolumeFromFile(path));
+}
+auto RuntimeDataSet::addNanoVdb(const NanoVdbVolume& volume) -> void
+{
+	const auto volumeSize = volume.indexBox.size();
+	const auto longestAxis = std::max({ volumeSize.x, volumeSize.y, volumeSize.z });
+
+	const auto scale = 1.0f / longestAxis;
+
+	const auto renormalizeScale = owl::AffineSpace3f::scale(owl::vec3f{ scale, scale, scale });
+
+	runtimeVolumes_.push_back(RuntimeVolume{ volume, RuntimeVolumeState::ready, renormalizeScale });
+}
+RuntimeDataSet::~RuntimeDataSet()
+{
+	for(auto& volume : runtimeVolumes_)
+	{
+		OWL_CUDA_CHECK(cudaFree(reinterpret_cast<void*>(volume.volume.grid)));
+		volume.volume.grid = {};
+	}
 }
