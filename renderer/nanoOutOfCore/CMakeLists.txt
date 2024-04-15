@@ -3,8 +3,10 @@ embed_ptx(
 		nanoOutOfCore-ptx
 	PTX_LINK_LIBRARIES
 		owl::owl
+		B3D::Renderer::Library
 	SOURCES
 		NanoOutOfCoreRenderer.cu
+
 	#DEVICE_DEBUG
 )
 
@@ -17,6 +19,7 @@ embed_optixir(
 		nanoOutOfCore-optixir
 	OPTIXIR_LINK_LIBRARIES
 		owl::owl
+		B3D::Renderer::Library
 	SOURCES
 		NanoOutOfCoreRenderer.cu
 	#DEVICE_DEBUG
@@ -31,6 +34,7 @@ set_source_files_properties(NanoRenderer.cu
   )
 
 find_package(OpenVDB CONFIG REQUIRED COMPONENTS nanovdb)
+
 find_package(imgui CONFIG REQUIRED)
 
 add_b3d_renderer(
