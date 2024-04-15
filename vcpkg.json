@@ -4,47 +4,49 @@
       "./triplets"
     ]
   },
-	"dependencies": [
-		"args",
-		"glfw3",
-		"tinyxml2",
-		{
-			"name": "cfitsio",
-			"default-features": false,
-			"features": [ "pthreads" ]
-		},
-		"glew",
-		"glm",
-		"nlohmann-json",
-		{
-			"name": "openvdb",
-			"default-features": false,
-			"features": [
-				"nanovdb",
-				"tools"
-			]
-		},
-		{
-			"name": "imgui",
-			"default-features": false,
-			"features": [
-				"opengl3-binding",
-				"glfw-binding"
-			]
-		},
-		"tbb",
-		"opengl",
-		{
-			"name": "glad",
-			"features": [
-				"extensions"
-			]
-		},
-		"vulkan",
-		"vulkan-headers",
-		"stb",
-		"boost-program-options",
-		"imguizmo"
-	],
-  "builtin-baseline": "83444c57754d01d584a4a371a070c5147e8a5aae"
+  "dependencies": [
+    "args",
+    "glfw3",
+    "tinyxml2",
+    {
+      "name": "cfitsio",
+      "default-features": false,
+      "features": [
+        "pthreads"
+      ]
+    },
+    "glew",
+    "glm",
+    "nlohmann-json",
+    {
+      "name": "openvdb",
+      "default-features": false,
+      "features": [
+        "nanovdb",
+        "tools"
+      ]
+    },
+    {
+      "name": "imgui",
+      "default-features": false,
+      "features": [
+        "opengl3-binding",
+        "glfw-binding"
+      ]
+    },
+    "tbb",
+    "opengl",
+    {
+      "name": "glad",
+      "features": [
+        "extensions"
+      ]
+    },
+    "vulkan",
+    "vulkan-headers",
+    "stb",
+    "boost-program-options",
+    "imguizmo"
+  ],
+  "builtin-baseline": "ad3bae57455a3c3ce528fcd47d8e8027d0498add"
 }
