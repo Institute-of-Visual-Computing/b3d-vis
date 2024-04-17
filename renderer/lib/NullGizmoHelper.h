@@ -8,6 +8,7 @@ namespace b3d::renderer
 	{
 	public:
 		inline auto drawGizmo(owl::AffineSpace3f& transform)  -> void override{}
-		inline auto drawBoundGizmo(owl::AffineSpace3f& transform, const owl::vec3f& boxSize) -> void override{};
+		inline auto drawBoundGizmo(owl::AffineSpace3f& transform, const owl::AffineSpace3f& worldTransform, const owl::vec3f& boxSize)
+			-> void override{};
 	};
 } // namespace b3d::renderer

@@ -37,6 +37,11 @@ namespace b3d::renderer
 			return *debugInfo_.debugDrawList;
 		}
 
+		[[nodiscard]] auto gizmoHelperBase() const -> GizmoHelperBase&
+		{
+			return *debugInfo_.gizmoHelper;
+		}
+
 	protected:
 		virtual auto onInitialize() -> void{};
 		virtual auto onDeinitialize() -> void{};
