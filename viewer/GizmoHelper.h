@@ -9,6 +9,7 @@ class GizmoHelper final : public b3d::renderer::GizmoHelperBase
 	{
 		owl::vec3f bound{};
 		owl::AffineSpace3f* transform{nullptr};
+		owl::AffineSpace3f worldTransform{};
 	};
 public:
 	auto drawGizmo(owl::AffineSpace3f& transform) -> void override;
@@ -22,7 +23,7 @@ public:
 		return boundTransforms_;
 	}
 
-	auto drawBoundGizmo(owl::AffineSpace3f& transform, const owl::vec3f& boxSize) -> void override;
+	auto drawBoundGizmo(owl::AffineSpace3f& transform, const owl::AffineSpace3f& worldTransform, const owl::vec3f& boxSize) -> void override;
 
 	inline auto clear() -> void
 	{

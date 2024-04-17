@@ -156,6 +156,7 @@ namespace
 	{
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
+		ImGuizmo::AllowAxisFlip(false);
 		auto& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad; // Enable Gamepad Controls
@@ -262,10 +263,6 @@ auto NanoViewer::gui() -> void
 		ImGui::ColorEdit3("Color", viewerSettings.gridColor.data());
 		ImGui::Separator();
 	}
-
-
-
-
 
 	ImGui::Checkbox("Enable Debug Draw", &viewerSettings.enableDebugDraw);
 
@@ -757,7 +754,6 @@ auto NanoViewer::drawGizmos(const CameraMatrices& cameraMatrices) -> void
 			mat[8] = transform->l.vz.x;
 			mat[9] = transform->l.vz.y;
 			mat[10] = transform->l.vz.z;
-
 			ImGuizmo::Manipulate(reinterpret_cast<const float*>(&cameraMatrices.view),
 				reinterpret_cast<const float*>(&cameraMatrices.projection), currentGizmoOperation,
 				currentGizmoMode, mat, nullptr, nullptr);
@@ -772,7 +768,7 @@ auto NanoViewer::drawGizmos(const CameraMatrices& cameraMatrices) -> void
 		}
 		auto blockInput = false;
 
-		for (const auto& [bound, transform] : gizmoHelper_->getBoundTransforms())
+		for (const auto& [bound, transform, worldTransform] : gizmoHelper_->getBoundTransforms())
 		{
 			float mat[16];
 
@@ -803,7 +799,13 @@ auto NanoViewer::drawGizmos(const CameraMatrices& cameraMatrices) -> void
 
 			const auto bounds = std::array{ halfSize.x, halfSize.y, halfSize.z, -halfSize.x,-halfSize.y,-halfSize.z };
 
-			ImGuizmo::Manipulate(reinterpret_cast<const float*>(&cameraMatrices.view),
+			glm::mat4 worldTransformMat{ { worldTransform.l.vx.x, worldTransform.l.vx.y, worldTransform.l.vx.z, 0.0f },
+										 { worldTransform.l.vy.x, worldTransform.l.vy.y, worldTransform.l.vy.z, 0.0f },
+										 { worldTransform.l.vz.x, worldTransform.l.vz.y, worldTransform.l.vz.z, 0.0f },
+										 { worldTransform.p.x, worldTransform.p.y, worldTransform.p.z, 1.0f } };
+			const auto matX = cameraMatrices.view * worldTransformMat;
+			
+			ImGuizmo::Manipulate(reinterpret_cast<const float*>(&matX),
 				reinterpret_cast<const float*>(&cameraMatrices.projection), ImGuizmo::OPERATION::BOUNDS,
 				currentGizmoMode, mat, nullptr, nullptr, bounds.data());
 			if (ImGuizmo::IsUsing())
