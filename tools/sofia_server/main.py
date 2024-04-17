@@ -5,6 +5,7 @@ import hashlib
 import threading
 import argparse
 import errno, sys
+import shutil
 
 app = Flask(__name__)
 
@@ -119,17 +120,25 @@ class SourceSearch:
         self.overwrite_params['input.data'] = input_file_path.as_posix()
         self.overwrite_params['input.region'] = self.region
 
-        # Add other params
-        if self.sofia_params is not None:
-            for key in self.sofia_params:
-                if key in special_sofia_overwrites:
-                    self.sofia_params.pop(key)
 
-        if self.sofia_params is not None and 'output.directory' in self.sofia_params:
-            self.output_dir = data_path / Path(self.sofia_params['output.directory'])
-            self.sofia_params.pop('output.directory')
+        preprocessed_params = self.sofia_params
+
+        # Remove special overwrites from sofia_params
+        if preprocessed_params is not None:
+            for key in preprocessed_params:
+                if key in special_sofia_overwrites:
+                    preprocessed_params.pop(key)
+
+        if preprocessed_params is not None and 'output.directory' in preprocessed_params:
+            self.output_dir = data_path / Path(preprocessed_params['output.directory'])
+            preprocessed_params.pop('output.directory')
         else:
             self.output_dir = self.default_output_dir_path()
+
+        
+        for dir_param in ['input.gain', 'input.invert', 'input.mask', 'input.noise', 'input.weights']:
+            if preprocessed_params is not None and dir_param in preprocessed_params:
+                preprocessed_params[dir_param] = data_path / Path(preprocessed_params[dir_param])
         
         self.overwrite_params['output.directory'] = self.output_dir.as_posix()
 
@@ -137,9 +146,10 @@ class SourceSearch:
 
         process_args = [sofia_exec_path.as_posix(), sofia_default_config_path.as_posix()]
         process_args.extend(convert_dict_params_to_string_array(self.overwrite_params))
-        if self.sofia_params is not None:
-            process_args.extend(convert_dict_params_to_string_array(self.sofia_params))
+        if preprocessed_params is not None:
+            process_args.extend(convert_dict_params_to_string_array(preprocessed_params))
 
+        print(process_args)
         # TODO: Pipe stdout and err to file.
         self.process = subprocess.Popen(process_args)
         return (True, "")
@@ -225,8 +235,9 @@ if __name__ == '__main__':
 
     if args.sofia_executable:
         if not args.sofia_executable.exists():
-            print(f'Path to sofia executable does not exist: {args.sofia_executable}.')
-            exit(errno.ENOENT)
+            if not Path(shutil.which(args.sofia_executable)).exists():
+                print(f'Path to sofia executable does not exist: {args.sofia_executable}.')
+                exit(errno.ENOENT)
         sofia_exec_path = args.sofia_executable
     
     if args.sofia_config:
@@ -245,4 +256,4 @@ if __name__ == '__main__':
     print(f'sofia executable: {sofia_exec_path}')
     print(f'default config: {sofia_default_config_path}')
 
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=8080, debug=True)
