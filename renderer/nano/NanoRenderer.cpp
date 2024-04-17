@@ -232,6 +232,10 @@ auto NanoRenderer::prepareGeometry() -> void
 
 	renormalizeScale_ = AffineSpace3f::scale(vec3f{ scale, scale, scale });
 
+	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
+	volumeTransform->volumeVoxelBox = nanoVdbVolume->indexBox;
+	volumeTransform->renormalizedScale = renormalizeScale_;
+
 	const auto geometryGroup = owlUserGeomGroupCreate(context, 1, &geometry);
 	nanoContext_.worldGeometryGroup = owlInstanceGroupCreate(context, 1, &geometryGroup, nullptr, nullptr,
 		OWL_MATRIX_FORMAT_OWL, OPTIX_BUILD_FLAG_ALLOW_UPDATE);
