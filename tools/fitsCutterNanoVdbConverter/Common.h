@@ -6,7 +6,6 @@
 
 #include <boost/program_options.hpp>
 
-#include <fitsio.h>
 
 namespace po = boost::program_options;
 
@@ -171,40 +170,8 @@ using Box3d = Box3<double>;
 using Box3I = Box3<int>;
 
 
-inline auto fitsDeleter(fitsfile* file) -> void
-{
-	auto status = int{};
-	ffclos(file, &status);
-	assert(status == 0);
-};
-
-using UniqueFitsfile = std::unique_ptr<fitsfile, decltype(&fitsDeleter)>;
-
-inline auto isFitsFile(const std::filesystem::path& file) -> bool
-{
-	fitsfile* fitsFilePtr{ nullptr };
-	auto fitsError = int{};
-	ffopen(&fitsFilePtr, file.generic_string().c_str(), READONLY, &fitsError);
-
-	if (fitsError == 0)
-	{
-		auto status = int{};
-		ffclos(fitsFilePtr, &status);
-		assert(status == 0);
-		return true;
-	}
-	return false;
-}
 
 
-#define logError(status)                                                                                               \
-	do                                                                                                                 \
-	{                                                                                                                  \
-		std::array<char, 30> errorMsg;                                                                                 \
-		fits_get_errstatus(status, errorMsg.data());                                                                   \
-		std::cout << errorMsg.data() << std::endl;                                                                     \
-	}                                                                                                                  \
-	while (0)
 
 
 enum class CuttingStrategy

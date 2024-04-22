@@ -28,6 +28,7 @@ auto ncConvertFitsToNanoVdbWithMask(const char* fitsFile, const char* muskFile, 
 	const auto maskData = extractBinaryClusterMask(muskFilePath, clusters, Box3I::maxBox());
 	const auto sourceData = extractData(fitsFilePath, Box3I::maxBox());
 
+	//TODO: maybe we should pass it over parameter, or select a "good" value??
 	constexpr auto maskedValue = -100.0f;
 	const auto filteredData = applyMask(sourceData.data, maskData, maskedValue);
 
