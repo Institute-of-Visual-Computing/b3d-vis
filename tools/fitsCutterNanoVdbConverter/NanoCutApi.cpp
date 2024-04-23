@@ -10,7 +10,7 @@ auto ncConvertFitsToNanoVdbWithMask(const char* fitsFile, const char* muskFile, 
 	const auto fitsFilePath = std::filesystem::path{ fitsFile };
 	const auto destinationPath = std::filesystem::path{ destinationNanoVdbFile };
 
-	if(std::filesystem::exists(muskFilePath) || std::filesystem::exists(fitsFilePath) || destinationNanoVdbFile == nullptr)
+	if(!std::filesystem::exists(muskFilePath) || !std::filesystem::exists(fitsFilePath) || destinationNanoVdbFile == nullptr)
 	{
 		return NANOCUT_INVALIDE_ARGUMENT;
 	}
