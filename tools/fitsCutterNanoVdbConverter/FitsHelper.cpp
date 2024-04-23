@@ -40,7 +40,7 @@ auto writeFitsFile(const std::filesystem::path& file, const Vec3I boxSize, const
 	fits_create_img(fitsFile, FLOAT_IMG, axisCount, axis.data(), &status);
 	auto exposure = 1500l;
 	fits_update_key(fitsFile, TLONG, "EXPOSURE", &exposure, "Total Exposure Time", &status);
-	fits_write_img(fitsFile, TLONG, pixel, data.size(), (void*)data.data(), &status);
+	fits_write_img(fitsFile, TFLOAT, pixel, data.size(), (void*)data.data(), &status);
 
 	fits_close_file(fitsFile, &status);
 	fits_report_error(stderr, status);
@@ -305,7 +305,7 @@ auto extractBinaryClusterMask(const std::filesystem::path& file, std::vector<Clu
 
 	const auto srcBox =
 		Box3I{ { 0, 0, 0 },
-			   { static_cast<int>(axis[0]) - 1, static_cast<int>(axis[1]) - 1, static_cast<int>(axis[2]) - 1 } };
+			   { static_cast<int>(axis[0]), static_cast<int>(axis[1]), static_cast<int>(axis[2]) } };
 	const auto box = searchBox != Box3I{} ? clip(searchBox, srcBox) : srcBox;
 	const auto boxSize = box.size();
 	const auto voxels =
@@ -393,7 +393,7 @@ auto extractData(const std::filesystem::path& file, const Box3I& searchBox, cons
 
 	const auto srcBox =
 		Box3I{ { 0, 0, 0 },
-			   { static_cast<int>(axis[0]) - 1, static_cast<int>(axis[1]) - 1, static_cast<int>(axis[2]) - 1 } };
+			   { static_cast<int>(axis[0]), static_cast<int>(axis[1]), static_cast<int>(axis[2]) } };
 	const auto newSearchBox = searchBox != Box3I{} ? clip(searchBox, srcBox) : srcBox;
 	const auto searchBoxSize = newSearchBox.size();
 
