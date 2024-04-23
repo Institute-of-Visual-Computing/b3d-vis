@@ -19,5 +19,16 @@
 #ifdef __cplusplus
 #define NANOCUT_API extern "C" DLL_EXPORT
 #else
+
+
+
 #define NANOCUT_API
 #endif
+typedef enum nanoCutError_enum
+{
+	NANOCUT_OK = 0,
+	NANOCUT_INVALIDE_ARGUMENT = 1,
+	NANOCUT_INTERNAL_ERROR = 2
+} ncResult;
+
+NANOCUT_API ncResult ncConvertFitsToNanoVdbWithMask(const char* fitsFile, const char* muskFile, const char* destinationNanoVdbFile);
