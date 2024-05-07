@@ -1,14 +1,20 @@
 #include "RenderTargetFeature.h"
 
+#include <format>
+
 #include "Logging.h"
 #include "owl/helper/cuda.h"
 
 auto b3d::renderer::RenderTargetFeature::beginUpdate() -> void
 {
+	static int frmIdx = 0;
+	frmIdx++;
 	renderTargets_ = sharedParameters_->get<RenderTargets>("renderTargets");
-
+	
 	skipUpdate = renderTargets_ == nullptr;
 
+	auto id = std::this_thread::get_id();
+	std::cout << "Thread ID: " << id << "\n";
 	if (skipUpdate)
 	{
 		b3d::renderer::log("RenderTargetFeature skips update, because of missing shared parameters!");
@@ -18,8 +24,15 @@ auto b3d::renderer::RenderTargetFeature::beginUpdate() -> void
 	// TODO: minmaxRT not considered yet
 	std::array<cudaArray_t, 2> cudaArrays{};
 	{
+		using namespace std::chrono_literals;
+		if (frmIdx == 1)
+		{
+			std::this_thread::sleep_for(0.6s);
+		}
+		b3d::renderer::log("Map Tex");
 		OWL_CUDA_CHECK(
 			cudaGraphicsMapResources(1, &renderTargets_->colorRt.target));
+			
 
 		for (auto i = 0; i < renderTargets_->colorRt.extent.depth; i++)
 		{

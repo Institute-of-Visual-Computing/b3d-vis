@@ -13,7 +13,10 @@
 
 
 // This line is crucial and must stay. Should be one of the last include. But in any case after the include of Action.
+#include <cuda_d3d11_interop.h>
+
 #include "create_action.h"
+#include "IUnityGraphicsD3D11.h"
 
 using namespace b3d::renderer;
 using namespace b3d::unity_cuda_interop;
@@ -49,6 +52,9 @@ protected:
 	std::unique_ptr<Texture> colorMapsTexture_;
 	std::unique_ptr<Texture> transferFunctionTexture_;
 
+	
+	std::atomic_flag resourceCreated = ATOMIC_FLAG_INIT;
+
 	bool isReady_{ false };
 	uint64_t currFenceValue = 0;
 };
@@ -66,6 +72,31 @@ auto ActionNanoRenderer::initialize(void* data) -> void
 		return;
 	}
 
+	auto device = renderAPI_->getUnityInterfaces()->Get<IUnityGraphicsD3D11>()->GetDevice();
+
+
+	IDXGIDevice* dxgiDevice{ nullptr };
+
+	auto result = device->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&dxgiDevice));
+	if (result != S_OK)
+	{
+		logger_->log("Could not query dxgiDevice");
+	}
+
+	IDXGIAdapter* dxgiAdapter{ nullptr };
+	result = dxgiDevice->GetAdapter(&dxgiAdapter);
+	if (result != S_OK)
+	{
+		logger_->log("Could not get Adapter from dxgiDevice");
+	}
+
+	int cudaDevice;
+	cudaD3D11GetDevice(&cudaDevice, dxgiAdapter);
+
+	cudaSetDevice(cudaDevice);
+	cudaDeviceProp cudaDevProps;
+	cudaGetDeviceProperties(&cudaDevProps, cudaDevice);
+
 	const RenderingDataBuffer rdb{ unityDataSchema, 1, data };
 	setTextures(rdb);
 
@@ -79,7 +110,8 @@ auto ActionNanoRenderer::initialize(void* data) -> void
 
 	renderingDataWrapper_.data.synchronization.waitSemaphore = waitPrimitive_->getCudaSemaphore();
 	renderingDataWrapper_.data.synchronization.signalSemaphore = signalPrimitive_->getCudaSemaphore();
-	renderingDataWrapper_.data.rendererInitializationInfo.deviceUuid = renderAPI_->getCudaUUID();
+	renderingDataWrapper_.data.rendererInitializationInfo.deviceUuid = cudaDevProps.uuid;
+	// renderAPI_->getCudaUUID();
 
 	const auto colorMapsTexture = rdb.get<UnityTexture>("colorMapsTexture");
 	const auto coloringInfo = rdb.get<UnityColoringInfo>("coloringInfo");
@@ -146,6 +178,28 @@ auto ActionNanoRenderer::customRenderEvent(int eventId, void* data) -> void
 	if (isInitialized_ && isReady_ && colorTexture_->isValid() &&
 		eventId == static_cast<int>(NanoRenderEventTypes::renderEvent))
 	{
+		auto device = renderAPI_->getUnityInterfaces()->Get<IUnityGraphicsD3D11>()->GetDevice();
+
+
+		IDXGIDevice* dxgiDevice{ nullptr };
+
+		auto result = device->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&dxgiDevice));
+		if (result != S_OK)
+		{
+			logger_->log("Could not query dxgiDevice");
+		}
+
+		IDXGIAdapter* dxgiAdapter{ nullptr };
+		result = dxgiDevice->GetAdapter(&dxgiAdapter);
+		if (result != S_OK)
+		{
+			logger_->log("Could not get Adapter from dxgiDevice");
+		}
+
+		int cudaDevice;
+		cudaD3D11GetDevice(&cudaDevice, dxgiAdapter);
+
+		cudaSetDevice(cudaDevice);
 		logger_->log("Nano render");
 		const RenderingDataBuffer rdb{ unityDataSchema, 1, data };
 		
