@@ -22,7 +22,7 @@ namespace b3d::renderer
 		ExternalTexture transferFunctionTexture;
 	};
 
-	using Schema = std::unordered_map<std::string, size_t>;
+	using Schema = std::unordered_map<std::string_view, size_t>;
 
 	struct SchemaData
 	{
@@ -60,7 +60,7 @@ namespace b3d::renderer
 		bool isBufferOwned_{ false };
 
 		uint64_t bufferCount_{ 1 };
-		inline auto getSchemaEntry(const std::string& key) const
+		inline auto getSchemaEntry(const std::string_view key) const
 		{
 			return schemaData_.schema.find(key);
 		}
@@ -100,7 +100,7 @@ namespace b3d::renderer
 		
 
 		template <typename T>
-		auto get(const std::string& key) -> T*
+		auto get(const std::string_view key) -> T*
 		{
 			const auto schemaEntry = getSchemaEntry(key);
 			if (schemaData_.schema.end() == schemaEntry)
