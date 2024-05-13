@@ -15,7 +15,7 @@
 
 #include "SampleAccumulators.h"
 #include "SamplerMapper.h"
-//#include "FoveatedHelper.cuh"
+#include "FoveatedHelper.cuh"
 
 
 using namespace b3d::renderer::nano;
@@ -138,35 +138,6 @@ OPTIX_RAYGEN_PROGRAM(rayGeneration)()
 	surf2Dwrite(owl::make_rgba(color), optixLaunchParams.surfacePointer, sizeof(uint32_t) * pixelId.x, pixelId.y);
 }
 
-
-template<typename T>
-__device__ inline auto length(const owl::vec_t<T, 2>& v) -> T
-{
-	return owl::common::polymorphic::sqrt(dot(v, v));
-}
-
-__device__ auto logMap(const float scaleRatio, const vec2f& coordinate, const vec2f& foveal, const vec2f& resolution)
--> vec2f
-{
-	const auto maxL = max(
-		max(
-			length((vec2f(1, 1) - foveal) * resolution),
-			length((vec2f(1, -1) - foveal) * resolution)),
-		max(
-			length((vec2f(-1, 1) - foveal) * resolution),
-			length((vec2f(-1, -1) - foveal) * resolution)));
-	const float L = log(maxL * 0.5);
-	auto uv = scaleRatio * coordinate / resolution;
-
-	uv.x = pow(uv.x, 1.0f / 4.0f);
-	constexpr auto pi2 = nanovdb::pi<float>() * 2.0f;
-	const auto x = exp(uv.x * L) * cos(uv.y * pi2);
-	const auto y = exp(uv.x * L) * sin(uv.y * pi2);
-	auto logCoordinate = vec2f(x, y) + (foveal + vec2f(1.f)) * 0.5f * resolution;
-
-	return logCoordinate;
-}
-
 OPTIX_RAYGEN_PROGRAM(rayGenerationFoveated)()
 {
 	const auto& self = owl::getProgramData<RayGenerationFoveatedData>();
@@ -186,7 +157,7 @@ OPTIX_RAYGEN_PROGRAM(rayGenerationFoveated)()
 
 	const auto& camera = optixLaunchParams.cameraData;
 	const auto pixelIndex = owl::getLaunchIndex();
-	constexpr auto scaleRatio = 1.0f;//TODO: this value should be passed over launch params
+	constexpr auto scaleRatio = 2.0f;//TODO: this value should be passed over launch params
 
 	/*
 	const auto screen = (vec2f(pixelIndex) + vec2f(.5f)) / vec2f(self.frameBufferSize); //*2.0f -1.0f;
@@ -335,19 +306,19 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 
 			const auto acc = grid->tree().getAccessor();
 
-			for (auto t = ray.t0(); t < ray.t1(); t += dt)
+			/*for (auto t = ray.t0(); t < ray.t1(); t += dt)
 			{
 				const auto value = dt * acc.getValue(nanovdb::Coord::Floor(ray(t)));
 				sampleAccumulator.accumulate(value);
-			}
+			}*/
 
-			/*while (hdda.step())
+			while (hdda.step())
 			{
 				ijk = hdda.voxel();
 				const auto value = remapSample(accessor.getValue(ijk));
 				sampleAccumulator.accumulate(value);
 				hdda.update(ray, accessor.getDim(ijk, ray));
-			}*/
+			}
 
 			sampleAccumulator.postAccumulate();
 			return sampleAccumulator.getAccumulator();

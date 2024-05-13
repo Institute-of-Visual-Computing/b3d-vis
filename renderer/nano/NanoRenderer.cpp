@@ -74,11 +74,11 @@ namespace
 	{
 		//TODO: Let's use shared parameters to grab an initial volume path from the viewer
 		// const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
-		const auto testFile =
+		//const auto testFile =
 		std::filesystem::path{ "D:/datacubes/n4565_cut/filtered_level_0_224_257_177_id_7_upscale.fits.nvdb" };
 		//std::filesystem::path{ "C:/Users/anton/Downloads/chameleon_1024x1024x1080_uint16.nvdb" };
 		//std::filesystem::path{ "C:/Users/anton/Downloads/carp_256x256x512_uint16.nvdb" };
-		//const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" };
+		const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" };
 		// const auto testFile = std::filesystem::path{ "D:/datacubes/ska/40gb/sky_ldev_v2.nvdb" };
 
 
@@ -339,6 +339,7 @@ auto NanoRenderer::onRender() -> void
 
 	const auto colorMapParams = colorMapFeature_->getParamsData();
 	using namespace owl::extensions;
+
 	owlParamsSetRaw(nanoContext_.launchParams, "coloringInfo.colorMode", &colorMapParams.mode);
 	owlParamsSet4f(nanoContext_.launchParams, "coloringInfo.singleColor", colorMapParams.uniformColor);
 
@@ -350,8 +351,6 @@ auto NanoRenderer::onRender() -> void
 	auto renderTargetFeatureParams = renderTargetFeature_->getParamsData();
 
 
-	
-
 #ifdef FOVEATED
 	const auto foveal = owl2f{ guiData.fovealPoint[0], guiData.fovealPoint[1] };
 	owlRayGenSet2f(nanoContext_.rayGen, "foveal", foveal);
@@ -359,8 +358,6 @@ auto NanoRenderer::onRender() -> void
 
 
 	owlBuildSBT(nanoContext_.context);
-
-
 
 	owlParamsSetRaw(nanoContext_.launchParams, "colormaps", &colorMapParams.colorMapTexture);
 	owlParamsSet2f(nanoContext_.launchParams, "sampleRemapping",
@@ -370,8 +367,6 @@ auto NanoRenderer::onRender() -> void
 
 	owlParamsSetRaw(nanoContext_.launchParams, "transferFunctionTexture",
 		&transferFunctionParams.transferFunctionTexture);
-
-
 
 	const auto backgroundColorParams = backgroundColorFeature_->getParamsData();
 	owlParamsSet4f(nanoContext_.launchParams, "bg.color0", backgroundColorParams.colors[0]);
@@ -396,15 +391,15 @@ auto NanoRenderer::onRender() -> void
 
 #ifdef FOVEATED
 	const auto r = foveatedFeature_->getLpResources()[0];
-	const auto fbSize = owl2i{static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.width),
-							   static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.height)};
-	const auto lrSize = owl2i{static_cast<int32_t>(r.surface.width),
-							   static_cast<int32_t>(r.surface.height)};
+	const auto fbSize = owl2i{ static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.width),
+							   static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.height) };
+	const auto lrSize = owl2i{ static_cast<int32_t>(r.surface.width),
+							   static_cast<int32_t>(r.surface.height) };
 	owlRayGenSet2i(nanoContext_.rayGen, "frameBufferSize", lrSize);
 
 #else
-	const auto fbSize = owl2i{static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.width),
-							   static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.height)};
+	const auto fbSize = owl2i{ static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.width),
+							   static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.height) };
 	owlRayGenSet2i(nanoContext_.rayGen, "frameBufferSize", fbSize);
 
 #endif
@@ -440,9 +435,9 @@ auto NanoRenderer::onRender() -> void
 
 		owlParamsSetRaw(nanoContext_.launchParams, "surfacePointer", &lpResource.surface.surface);
 		//owlParamsSetRaw(nanoContext_.launchParams, "surfacePointer", &renderTargetFeatureParams.colorRT.surfaces[cameraIndex]);
-		
+
 		owlAsyncLaunch2D(nanoContext_.rayGen, lrSize.x, lrSize.y, nanoContext_.launchParams);
-		
+
 		foveatedFeature_->resolve(renderTargetFeatureParams.colorRT.surfaces[cameraIndex], fbSize.x, fbSize.y, stream, foveal.x, foveal.y);
 	}
 	record.stop();
@@ -455,12 +450,12 @@ auto NanoRenderer::onInitialize() -> void
 	const auto context = owlContextCreate(nullptr, 1);
 
 	nanoContext_.context = context;
-
 	prepareGeometry();
 }
 
 auto NanoRenderer::onDeinitialize() -> void
 {
+	owlContextDestroy(nanoContext_.context);
 }
 
 auto NanoRenderer::onGui() -> void
@@ -484,7 +479,7 @@ auto NanoRenderer::onGui() -> void
 	ImGui::EndGroup();
 	ImGui::Separator();
 	ImGui::Text("Hold SPACE to move foveal point with mouse.");
-	ImGui::Text(std::format("foveal x:{:.2} y:{:.2}", guiData.fovealPoint[0], guiData.fovealPoint[1]).c_str());
+	ImGui::Text("foveal x:%.2f y:%.2f", guiData.fovealPoint[0], guiData.fovealPoint[1]);
 	ImGui::Separator();
 
 	if (ImGui::GetIO().KeysDown[ImGuiKey_Space])

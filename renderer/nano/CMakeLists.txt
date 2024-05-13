@@ -48,7 +48,7 @@ find_package(imgui CONFIG REQUIRED)
 # )
 
 
-add_library(cudaCode FoveatedRendering.cu FoveatedRendering.h FoveatedHelper.cuh FoveatedHelper.cu)
+add_library(cudaCode FoveatedRendering.cu FoveatedRendering.h FoveatedHelper.cuh)
 target_compile_features(cudaCode PUBLIC cxx_std_20)
 target_include_directories(cudaCode PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 

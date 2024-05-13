@@ -12,6 +12,7 @@
 
 #include "nanovdb/NanoVDB.h"
 #include "owl/owl_device.h"
+#include "FoveatedHelper.cuh"
 
 using namespace b3d::renderer;
 
@@ -23,38 +24,55 @@ __global__ auto test() -> void
 
 using namespace owl;
 
-template<typename T>
-inline __device__ auto length(const owl::vec_t<T, 2>& v) -> T
-{
-	return owl::common::polymorphic::sqrt(dot(v, v));
-}
-__device__ auto inverseLogMap(const float scaleRatio, const vec2f& coordinate, const vec2f& foveal,
-	const vec2f& resolution) -> vec2f
-{
-
-	const auto maxL = max(
-		max(length((vec2f(1, 1) - foveal) * resolution),
-			length((vec2f(1, -1) - foveal) * resolution)
-		),
-		max(length((vec2f(-1, 1) - foveal) * resolution),
-			length((vec2f(-1, -1) - foveal) * resolution)
-		)
-	);
-	const float L = log(maxL * 0.5);
-	const auto pq = coordinate / resolution * 2.0f - 1.0f - foveal;
-	const auto lr = pow(log(length(pq * resolution * 0.5f)) / L, 4.0);
-	constexpr auto pi2 = nanovdb::pi<float>() * 2.0f;
-	const float theta = atan2f(pq.y * resolution.y, pq.x * resolution.x) / pi2 + (pq.y < 0.0f ? 1.0f : 0.0);
-	float theta2 = atan2f(pq.y * resolution.y, -abs(pq.x) * resolution.x) / pi2 + (pq.y < 0.0f ? 1.0f : 0.0);
-
-	const auto logCoordinate = vec2f(lr, theta) / scaleRatio;
-	return logCoordinate * resolution;
-}
+//template<typename T>
+//inline __device__ auto length(const owl::vec_t<T, 2>& v) -> T
+//{
+//	return owl::common::polymorphic::sqrt(dot(v, v));
+//}
+//__device__ auto inverseLogMap(const float scaleRatio, const vec2f& coordinateScreenSpace, const vec2f& foveal,
+//	const vec2f& resolution) -> vec2f
+//{
+//
+//	/*const auto maxL = max(
+//		max(length(foveal),
+//			length(resolution - foveal)
+//		),
+//		max(length(vec2f{ foveal.x, resolution.y - foveal.y }),
+//			length(vec2f{ resolution.x - foveal.x, foveal.y })
+//		)
+//	);*/
+//
+//	const auto maxL = max(
+//		max(
+//			length((vec2f(1, 1) - foveal) * resolution),
+//			length((vec2f(1, -1) - foveal) * resolution)),
+//		max(
+//			length((vec2f(-1, 1) - foveal) * resolution),
+//			length((vec2f(-1, -1) - foveal) * resolution)));
+//	const float L = log(maxL * 0.5);
+//	constexpr auto pi2 = nanovdb::pi<float>() * 2.0f;
+//
+//	//const auto uv = coordinateScreenSpace / resolution * 2.0f + 1.0f;
+//
+//
+//	//const auto K = powf(uv.x, 4.0);
+//	//const auto a = expf(K * L);
+//	//const auto b = pi2 * uv.y;
+//	//return vec2f{ a * cosf(b), a * sinf(b) } + (foveal + vec2f(1.f)) * 0.5f;
+//
+//	const auto pq = coordinateScreenSpace / resolution * 2.0f - 1.0f - foveal;
+//	const auto lr = pow(log(length(pq * resolution * 0.5f)) / L, 4.0);
+//	const float theta = atan2f(pq.y * resolution.y, pq.x * resolution.x) / pi2 + (pq.y < 0.0f ? 1.0f : 0.0);
+//	//float theta2 = atan2f(pq.y * resolution.y, -abs(pq.x) * resolution.x) / pi2 + (pq.y < 0.0f ? 1.0f : 0.0);
+//
+//	const auto logCoordinate = vec2f(lr, theta) / scaleRatio;
+//	return logCoordinate * resolution + foveal;
+//}
 
 
 struct FovealParameter
 {
-	vec2f foveal;
+	vec2f fovealScreenSpace;
 	float scaleRatio;
 };
 
@@ -62,8 +80,8 @@ __global__ auto resolveLp(cudaTextureObject_t inputTextureObj, cudaSurfaceObject
 	const int height, const FovealParameter fovealParameter)
 	-> void
 {
-	const auto foveal = fovealParameter.foveal;
-	const auto resolution = vec2f(width, height);
+	const auto foveal = fovealParameter.fovealScreenSpace;
+	const auto resolution = vec2f(width, height) / fovealParameter.scaleRatio;
 
 	const auto x = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -74,7 +92,7 @@ __global__ auto resolveLp(cudaTextureObject_t inputTextureObj, cudaSurfaceObject
 	{
 		return;
 	}
-	const auto uv = vec2f(pixelIndex) / resolution / fovealParameter.scaleRatio;
+	const auto uv = vec2f(pixelIndex) / resolution;
 
 	auto newPixelIndex = vec2f(pixelIndex);
 	/*if (uv.x > 1.0 || uv.y > 1.0) {
@@ -86,21 +104,22 @@ __global__ auto resolveLp(cudaTextureObject_t inputTextureObj, cudaSurfaceObject
 		}
 	}*/
 
-	
 
-	auto screen = (vec2f(newPixelIndex));// + vec2f(.5f)); //*2.0f -1.0f;
+
+	auto screen = (vec2f(newPixelIndex)) + vec2f(.5f);// + vec2f(.5f)); //*2.0f -1.0f;
 
 	screen = inverseLogMap(fovealParameter.scaleRatio, screen, foveal, resolution);
 	screen /= resolution;
 	//printf("hello kernel!\n");
 	//printf("%f , %f \n", screen.x, screen.y);
 
-	const float4 result = tex2D<float4>(inputTextureObj,screen.x, screen.y);
+	const float4 result = tex2D<float4>(inputTextureObj, screen.x, screen.y);
 	//printf("%0.3f , %0.3f , %0.3f , %0.3f \n", result.x, result.y, result.z, result.w);
 
 
-	
+
 	surf2Dwrite(owl::make_rgba(vec4f(result.x, result.y, result.z, result.w))/*owl::make_rgba(vec4f{result})*/, outputSurfObj, sizeof(uint32_t) * pixelIndex.x, pixelIndex.y);
+	//surf2Dwrite(owl::make_rgba(vec4f(screen.x, screen.y, 0.0f, 1.0f))/*owl::make_rgba(vec4f{result})*/, outputSurfObj, sizeof(uint32_t) * pixelIndex.x, pixelIndex.y);
 
 
 }
@@ -123,18 +142,20 @@ auto b3d::renderer::FoveatedRenderingFeature::gui() -> void
 }
 auto b3d::renderer::FoveatedRenderingFeature::resolve(const CudaSurfaceResource& surface, const uint32_t width, const uint32_t height, const CUstream stream, float fovX, float fovY) -> void
 {
-	dim3 threadsperBlock(16, 16);
-	const auto x = (width + threadsperBlock.x - 1) / threadsperBlock.x;
-	const auto y = (height + threadsperBlock.y - 1) / threadsperBlock.y;
+	dim3 threadsPerBlock(16, 16);
+	const auto x = (width + threadsPerBlock.x - 1) / threadsPerBlock.x;
+	const auto y = (height + threadsPerBlock.y - 1) / threadsPerBlock.y;
 	dim3 numBlocks(x, y);
 
+	const auto resolution = vec2f{ static_cast<float>(width), static_cast<float>(height) } / resolutionScaleRatio_;
+	const auto fovealParameter = FovealParameter{ (vec2f{fovX,fovY} / 2.0f + 0.5f) * resolution, resolutionScaleRatio_ };
 
-	resolveLp << <numBlocks, threadsperBlock, 0, stream >> > (
+	resolveLp << <numBlocks, threadsPerBlock, 0, stream >> > (
 		lpResources_.front().texture,
 		surface.surface,
 		width,
 		height,
-		{ vec2f{fovX,fovY},resolutionScaleRatio_ });
+		{ vec2f{fovX,fovY}, resolutionScaleRatio_ });
 
 
 }

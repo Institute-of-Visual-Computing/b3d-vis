@@ -32,13 +32,13 @@ namespace b3d::renderer
 	public:
 		auto beginUpdate() -> void override;
 
-		[[nodiscard]] inline auto getLpResources() const -> std::vector<LpResource>
+		[[nodiscard]] inline auto getLpResources() const -> const std::vector<LpResource>&
 		{
 			return lpResources_;
 		}
 
 	private:
-		float resolutionScaleRatio_{ 1.0 };
+		float resolutionScaleRatio_{ 2.0 };
 
 		std::vector<LpResource> lpResources_{}; // LP - Log Polar
 
