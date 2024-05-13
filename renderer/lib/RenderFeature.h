@@ -42,7 +42,7 @@ namespace b3d::renderer
 		}
 
 
-		[[nodiscard]] inline auto featureName() const -> std::string
+		[[nodiscard]] inline auto featureName() const -> const std::string&
 		{
 			return name_;
 		}

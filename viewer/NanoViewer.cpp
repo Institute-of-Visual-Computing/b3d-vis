@@ -932,6 +932,7 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 	}
 
 	deinitializeGui();
+	currentRenderer_->deinitialize();
 	glfwDestroyWindow(handle);
 	glfwTerminate();
 }
