@@ -5,6 +5,7 @@ find_package(glad CONFIG REQUIRED)
 find_package(Vulkan REQUIRED)
 find_package(VulkanHeaders CONFIG)
 find_package(imguizmo CONFIG REQUIRED)
+find_package(Tracy CONFIG REQUIRED)
 
 add_executable(viewer)
 target_sources(viewer PRIVATE
@@ -51,6 +52,26 @@ target_link_libraries(viewer
 	${CUDA_nvml_LIBRARY}
 )
 
+option(ENABLE_NANO_PROFILE "Enables Tracy profiling" OFF)
+option(ENABLE_NANO_SANITIZERS "Enables address sanitizers" OFF)
+
+if(ENABLE_NANO_PROFILE)
+	target_link_libraries(viewer PRIVATE Tracy::TracyClient)
+	target_compile_definitions(viewer PUBLIC -DNANO_PROFILE -DTRACY_ENABLE)
+	target_sources(viewer PRIVATE
+	main.cpp
+	)
+endif()
+
+if(ENABLE_NANO_SANITIZERS)
+	#target_compile_options(viewer PRIVATE -fsanitize=fuzzer)
+	#target_link_options(viewer PRIVATE -fsanitize=fuzzer)
+	target_compile_options(viewer PRIVATE -fsanitize=address)
+	target_link_options(viewer PRIVATE -fsanitize=address)
+	add_definitions(-D_DISABLE_VECTOR_ANNOTATION)
+	add_definitions(-D_DISABLE_STRING_ANNOTATION)
+	#target_compile_definitions(viewer PRIVATE -D_CRTDBG_MAP_ALLOC)
+endif()
 
 target_include_directories(viewer
 	PRIVATE
