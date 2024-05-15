@@ -13,9 +13,9 @@
 
 #include "owl/owl_device.h"
 
+#include "FoveatedHelper.cuh"
 #include "SampleAccumulators.h"
 #include "SamplerMapper.h"
-#include "FoveatedHelper.cuh"
 
 
 using namespace b3d::renderer::nano;
@@ -157,7 +157,7 @@ OPTIX_RAYGEN_PROGRAM(rayGenerationFoveated)()
 
 	const auto& camera = optixLaunchParams.cameraData;
 	const auto pixelIndex = owl::getLaunchIndex();
-	constexpr auto scaleRatio = 2.0f;//TODO: this value should be passed over launch params
+	const auto scaleRatio = self.resolutionScaleRatio;
 
 	/*
 	const auto screen = (vec2f(pixelIndex) + vec2f(.5f)) / vec2f(self.frameBufferSize); //*2.0f -1.0f;

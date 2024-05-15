@@ -78,6 +78,7 @@ namespace b3d
 				owl::vec2i frameBufferSize;
 				OptixTraversableHandle world;
 				owl::vec2f foveal;
+				float resolutionScaleRatio;
 			};
 
 			struct MissProgramData

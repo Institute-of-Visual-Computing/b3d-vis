@@ -1,8 +1,5 @@
 #pragma once
-#include <crt/math_functions.h>
 #include <owl/common.h>
-
-#include "cuda_runtime.h"
 #include "math_constants.h"
 
 template<typename T>
@@ -13,11 +10,11 @@ inline __device__ auto length(const owl::vec_t<T, 2>& v) -> T
 
 inline __device__ auto maximumLogDistance(const owl::vec2f& foveal, const owl::vec2f& resolution) -> float
 {
-	const auto maxL = max(
-		max(
+	const auto maxL = owl::max(
+		owl::max(
 			length((owl::vec2f(1, 1) - foveal) * resolution),
 			length((owl::vec2f(1, -1) - foveal) * resolution)),
-		max(
+		owl::max(
 			length((owl::vec2f(-1, 1) - foveal) * resolution),
 			length((owl::vec2f(-1, -1) - foveal) * resolution)));
 	const float L = log(maxL * 0.5);

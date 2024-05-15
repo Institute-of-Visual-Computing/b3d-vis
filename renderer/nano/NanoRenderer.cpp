@@ -222,6 +222,7 @@ auto NanoRenderer::prepareGeometry() -> void
 		OWLVarDecl{ "frameBufferSize", OWL_INT2, OWL_OFFSETOF(RayGenerationFoveatedData, frameBufferSize) },
 		OWLVarDecl{ "world", OWL_GROUP, OWL_OFFSETOF(RayGenerationFoveatedData, world) },
 		OWLVarDecl{ "foveal", OWL_FLOAT2, OWL_OFFSETOF(RayGenerationFoveatedData, foveal) },
+		OWLVarDecl{ "resolutionScaleRatio", OWL_FLOAT, OWL_OFFSETOF(RayGenerationFoveatedData, resolutionScaleRatio) }
 	};
 	const auto rayGen = owlRayGenCreate(context, optixirModule, "rayGenerationFoveated", sizeof(RayGenerationFoveatedData),
 		rayGenerationVars.data(), rayGenerationVars.size());
@@ -354,6 +355,7 @@ auto NanoRenderer::onRender() -> void
 #ifdef FOVEATED
 	const auto foveal = owl2f{ guiData.fovealPoint[0], guiData.fovealPoint[1] };
 	owlRayGenSet2f(nanoContext_.rayGen, "foveal", foveal);
+	owlRayGenSet1f(nanoContext_.rayGen, "resolutionScaleRatio", foveatedFeature_->getResolutionScaleRatio());
 #endif
 
 

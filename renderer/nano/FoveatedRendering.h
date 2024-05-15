@@ -4,6 +4,8 @@
 
 namespace b3d::renderer
 {
+
+
 	class FoveatedRenderingFeature final : public RenderFeature
 	{
 	public:
@@ -18,7 +20,12 @@ namespace b3d::renderer
 		{
 			return true;
 		}
-		auto resolve(const CudaSurfaceResource& surface, const uint32_t width, const uint32_t height, const CUstream stream, float fovX, float fovY) -> void;
+		auto resolve(const CudaSurfaceResource& surface, const uint32_t width, const uint32_t height,
+					 const CUstream stream, float fovX, float fovY) -> void;
+		inline auto getResolutionScaleRatio() -> float
+		{
+			return resolutionScaleRatio_;
+		}
 
 	private:
 		auto destroyResources() -> void;
@@ -36,9 +43,8 @@ namespace b3d::renderer
 		{
 			return lpResources_;
 		}
-
 	private:
-		float resolutionScaleRatio_{ 2.0 };
+		float resolutionScaleRatio_{ 1.0 };
 
 		std::vector<LpResource> lpResources_{}; // LP - Log Polar
 
