@@ -73,8 +73,9 @@
 				"CXXFLAGS": "/fsanitize=fuzzer"
 			},
 			"cacheVariables": {
-				"ENABLE_NANO_SANITIZERS" :  true
-			}
+				"ENABLE_NANO_SANITIZERS": true
+			},
+			"hidden": true
 		},
 		{
 			"name": "base",

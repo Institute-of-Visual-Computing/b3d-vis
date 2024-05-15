@@ -870,8 +870,6 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 
 	while (!glfwWindowShouldClose(handle) && keepgoing())
 	{
-		/*_CrtMemState s1;
-		_CrtMemCheckpoint(&s1);*/
 		{
 			ZoneScoped;
 
@@ -933,15 +931,6 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 			glfwPollEvents();
 			FrameMark;
 		}
-		/*_CrtMemState s2;
-		_CrtMemCheckpoint(&s2);
-		_CrtMemState s3;
-
-		if (_CrtMemDifference(&s3, &s1, &s2))
-		{
-			_CrtMemDumpStatistics(&s3);
-			_CrtMemDumpAllObjectsSince(&s1);
-		}*/
 	}
 
 	deinitializeGui();
