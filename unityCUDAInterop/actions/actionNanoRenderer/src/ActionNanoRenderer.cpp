@@ -40,9 +40,9 @@ protected:
 	auto customRenderEvent(int eventId, void* data) -> void override;
 	auto setTextures(const RenderingDataBuffer& renderingDataBuffer) -> void;
 
-	std::unique_ptr<SyncPrimitive> waitPrimitive_;
-	std::unique_ptr<SyncPrimitive> signalPrimitive_;
-	std::unique_ptr<RenderingContext> renderingContext_;
+	// std::unique_ptr<SyncPrimitive> waitPrimitive_;
+	// std::unique_ptr<SyncPrimitive> signalPrimitive_;
+	// std::unique_ptr<RenderingContext> renderingContext_;
 
 	std::unique_ptr<NanoRenderer> renderer_;
 
@@ -101,15 +101,15 @@ auto ActionNanoRenderer::initialize(void* data) -> void
 	setTextures(rdb);
 
 	// Get Sync Primitives
-	waitPrimitive_ = renderAPI_->createSynchronizationPrimitive();
-	signalPrimitive_ = renderAPI_->createSynchronizationPrimitive();
-	waitPrimitive_->importToCUDA();
-	signalPrimitive_->importToCUDA();
+	// waitPrimitive_ = renderAPI_->createSynchronizationPrimitive();
+	// signalPrimitive_ = renderAPI_->createSynchronizationPrimitive();
+	// waitPrimitive_->importToCUDA();
+	// signalPrimitive_->importToCUDA();
 
-	renderingContext_ = renderAPI_->createRenderingContext();
+	// renderingContext_ = renderAPI_->createRenderingContext();
 
-	renderingDataWrapper_.data.synchronization.waitSemaphore = waitPrimitive_->getCudaSemaphore();
-	renderingDataWrapper_.data.synchronization.signalSemaphore = signalPrimitive_->getCudaSemaphore();
+	// renderingDataWrapper_.data.synchronization.waitSemaphore = waitPrimitive_->getCudaSemaphore();
+	// renderingDataWrapper_.data.synchronization.signalSemaphore = signalPrimitive_->getCudaSemaphore();
 	renderingDataWrapper_.data.rendererInitializationInfo.deviceUuid = cudaDevProps.uuid;
 	// renderAPI_->getCudaUUID();
 
@@ -168,8 +168,8 @@ auto ActionNanoRenderer::teardown() -> void
 	colorMapsTexture_.reset();
 	depthTexture_.reset();
 	colorTexture_.reset();
-	waitPrimitive_.reset();
-	signalPrimitive_.reset();
+	// waitPrimitive_.reset();
+	// signalPrimitive_.reset();
 }
 
 auto ActionNanoRenderer::customRenderEvent(int eventId, void* data) -> void
@@ -202,7 +202,7 @@ auto ActionNanoRenderer::customRenderEvent(int eventId, void* data) -> void
 		cudaSetDevice(cudaDevice);
 		logger_->log("Nano render");
 		const RenderingDataBuffer rdb{ unityDataSchema, 1, data };
-		
+// 		
 		renderingDataWrapper_.data.renderTargets.colorRt = { .target = colorTexture_->getCudaGraphicsResource(),
 					  .extent = { static_cast<uint32_t>(colorTexture_->getWidth()),
 								  static_cast<uint32_t>(colorTexture_->getHeight()),
@@ -245,10 +245,10 @@ auto ActionNanoRenderer::customRenderEvent(int eventId, void* data) -> void
 		currFenceValue += 1;
 		renderingDataWrapper_.data.synchronization.fenceValue = currFenceValue;
 
-		renderingContext_->signal(signalPrimitive_.get(), currFenceValue);
+		// renderingContext_->signal(signalPrimitive_.get(), currFenceValue);
 
 		renderer_->render();
-		renderingContext_->wait(waitPrimitive_.get(), currFenceValue);
+		// renderingContext_->wait(waitPrimitive_.get(), currFenceValue);
 	}
 	else if (eventId == static_cast<int>(NanoRenderEventTypes::initializeEvent))
 	{

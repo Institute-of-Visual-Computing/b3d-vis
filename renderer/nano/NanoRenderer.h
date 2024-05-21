@@ -34,7 +34,7 @@ namespace b3d::renderer
 			transferFunctionFeature_ = addFeature<TransferFunctionFeature>("Transfer Function");
 			backgroundColorFeature_ = addFeature<BackgroundColorFeature>(
 				"Background Color", std::array<ColorRGB, 2>{ { { 0.572f, 0.100f, 0.750f }, { 0.0f, 0.3f, 0.3f } } });
-			renderSyncFeature_ = addFeatureWithDependency<RenderSyncFeature>({renderTargetFeature_, colorMapFeature_, transferFunctionFeature_, backgroundColorFeature_},"Main Synchronization");
+			// renderSyncFeature_ = addFeatureWithDependency<RenderSyncFeature>({renderTargetFeature_, colorMapFeature_, transferFunctionFeature_, backgroundColorFeature_},"Main Synchronization");
 		}
 	protected:
 		auto onRender() -> void override;
@@ -55,7 +55,7 @@ namespace b3d::renderer
 		owl::AffineSpace3f renormalizeScale_{};
 
 		RenderTargetFeature* renderTargetFeature_;
-		RenderSyncFeature* renderSyncFeature_;
+		// RenderSyncFeature* renderSyncFeature_;
 		ColorMapFeature* colorMapFeature_;
 		TransferFunctionFeature* transferFunctionFeature_;
 		BackgroundColorFeature* backgroundColorFeature_;
