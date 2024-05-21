@@ -24,6 +24,7 @@ inline __device__ auto maximumLogDistance(const owl::vec2f& foveal, const owl::v
 inline __device__ auto inverseLogMap(const float scaleRatio, const owl::vec2f& coordinateScreenSpace, const owl::vec2f& foveal,
 	const owl::vec2f& resolution) -> owl::vec2f
 {
+
 	const auto L = maximumLogDistance(foveal, resolution);
 	constexpr auto pi2 = CUDART_PI_F * 2.0f;
 

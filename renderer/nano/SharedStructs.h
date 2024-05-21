@@ -79,6 +79,7 @@ namespace b3d
 				OptixTraversableHandle world;
 				owl::vec2f foveal;
 				float resolutionScaleRatio;
+				float kernelParameter;
 			};
 
 			struct MissProgramData

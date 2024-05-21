@@ -121,10 +121,11 @@ namespace b3d::renderer
 
 	struct FoveatedRenderingControl
 	{
-		owl::vec2f leftEyeGazeScreenSpace{ 0.5f, 0.5f };
-		owl::vec2f rightEyeGazeScreenSpace{ 0.5f, 0.5f };
-		bool enable{ true };
+		owl::vec2f leftEyeGazeScreenSpace{ 0.0f, 0.0f };
+		owl::vec2f rightEyeGazeScreenSpace{ 0.0f, 0.0f };
+		bool isEnabled{ false };
 		float temporalBufferResolutionRelativeScale{ 1.0f };
+		float kernelParameter{ 1.0f };
 	};
 
 }

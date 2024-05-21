@@ -9,7 +9,7 @@ namespace b3d::renderer
 	class FoveatedRenderingFeature final : public RenderFeature
 	{
 	public:
-		explicit FoveatedRenderingFeature() : RenderFeature{ "FoveatedRendering" }
+		explicit FoveatedRenderingFeature() : RenderFeature{ "FoveatedRendering" }, controlData_{ nullptr }
 		{
 		}
 
@@ -22,7 +22,7 @@ namespace b3d::renderer
 		}
 		auto resolve(const CudaSurfaceResource& surface, const uint32_t width, const uint32_t height,
 					 const CUstream stream, float fovX, float fovY) -> void;
-		inline auto getResolutionScaleRatio() -> float
+		inline auto getResolutionScaleRatio() const -> float
 		{
 			return resolutionScaleRatio_;
 		}
@@ -44,7 +44,7 @@ namespace b3d::renderer
 			return lpResources_;
 		}
 
-		[[nodiscard]] inline auto getControlData() const -> const FoveatedRenderingControl
+		[[nodiscard]] inline auto getControlData() const -> FoveatedRenderingControl
 		{
 			return *controlData_;
 		}
@@ -61,5 +61,3 @@ namespace b3d::renderer
 		FoveatedRenderingControl* controlData_;
 	};
 }
-
-auto testCall(CUstream stream) -> void;

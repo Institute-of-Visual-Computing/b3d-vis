@@ -216,27 +216,30 @@ auto NanoRenderer::prepareGeometry() -> void
 		owlGeomTypeCreate(context, OWL_GEOM_USER, sizeof(GeometryData), geometryVars.data(), geometryVars.size());
 
 
+	{
 
-#ifdef FOVEATED
-	const auto rayGenerationVars = std::array{
-		OWLVarDecl{ "frameBufferSize", OWL_INT2, OWL_OFFSETOF(RayGenerationFoveatedData, frameBufferSize) },
-		OWLVarDecl{ "world", OWL_GROUP, OWL_OFFSETOF(RayGenerationFoveatedData, world) },
-		OWLVarDecl{ "foveal", OWL_FLOAT2, OWL_OFFSETOF(RayGenerationFoveatedData, foveal) },
-		OWLVarDecl{ "resolutionScaleRatio", OWL_FLOAT, OWL_OFFSETOF(RayGenerationFoveatedData, resolutionScaleRatio) }
-	};
-	const auto rayGen = owlRayGenCreate(context, optixirModule, "rayGenerationFoveated", sizeof(RayGenerationFoveatedData),
-		rayGenerationVars.data(), rayGenerationVars.size());
-#else
-	const auto rayGenerationVars = std::array{
+
+		const auto rayGenerationVars = std::array{
+			OWLVarDecl{ "frameBufferSize", OWL_INT2, OWL_OFFSETOF(RayGenerationFoveatedData, frameBufferSize) },
+			OWLVarDecl{ "world", OWL_GROUP, OWL_OFFSETOF(RayGenerationFoveatedData, world) },
+			OWLVarDecl{ "foveal", OWL_FLOAT2, OWL_OFFSETOF(RayGenerationFoveatedData, foveal) },
+			OWLVarDecl{ "resolutionScaleRatio", OWL_FLOAT, OWL_OFFSETOF(RayGenerationFoveatedData, resolutionScaleRatio) },
+			OWLVarDecl{ "kernelParameter", OWL_FLOAT, OWL_OFFSETOF(RayGenerationFoveatedData, kernelParameter)}
+		};
+		const auto rayGen = owlRayGenCreate(context, optixirModule, "rayGenerationFoveated", sizeof(RayGenerationFoveatedData),
+			rayGenerationVars.data(), rayGenerationVars.size());
+		nanoContext_.rayGenFoveated = rayGen;
+	}
+	{
+		const auto rayGenerationVars = std::array{
 		OWLVarDecl{ "frameBufferSize", OWL_INT2, OWL_OFFSETOF(RayGenerationData, frameBufferSize) },
 		OWLVarDecl{ "world", OWL_GROUP, OWL_OFFSETOF(RayGenerationData, world) },
-	};
-	const auto rayGen = owlRayGenCreate(context, optixirModule, "rayGeneration", sizeof(RayGenerationData),
-		rayGenerationVars.data(), rayGenerationVars.size());
-#endif
+		};
+		const auto rayGen = owlRayGenCreate(context, optixirModule, "rayGeneration", sizeof(RayGenerationData),
+			rayGenerationVars.data(), rayGenerationVars.size());
+		nanoContext_.rayGen = rayGen;
+	}
 
-
-	nanoContext_.rayGen = rayGen;
 
 	auto geometry = owlGeomCreate(context, geometryType);
 
@@ -265,7 +268,8 @@ auto NanoRenderer::prepareGeometry() -> void
 	owlGroupBuildAccel(geometryGroup);
 	owlGroupBuildAccel(nanoContext_.worldGeometryGroup);
 
-	owlRayGenSetGroup(rayGen, "world", nanoContext_.worldGeometryGroup);
+	owlRayGenSetGroup(nanoContext_.rayGen, "world", nanoContext_.worldGeometryGroup);
+	owlRayGenSetGroup(nanoContext_.rayGenFoveated, "world", nanoContext_.worldGeometryGroup);
 
 
 
@@ -321,8 +325,6 @@ auto NanoRenderer::onRender() -> void
 {
 	gpuTimers_.nextFrame();
 
-
-
 	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
 	trs_ = volumeTransform->worldMatTRS * renormalizeScale_;
 
@@ -349,14 +351,7 @@ auto NanoRenderer::onRender() -> void
 
 	owlParamsSetRaw(nanoContext_.launchParams, "sampleIntegrationMethod", &guiData.sampleIntegrationMethode);
 
-
 	auto renderTargetFeatureParams = renderTargetFeature_->getParamsData();
-
-
-
-
-
-	owlBuildSBT(nanoContext_.context);
 
 	owlParamsSetRaw(nanoContext_.launchParams, "colormaps", &colorMapParams.colorMapTexture);
 	owlParamsSet2f(nanoContext_.launchParams, "sampleRemapping",
@@ -375,8 +370,6 @@ auto NanoRenderer::onRender() -> void
 	owlParamsSet3f(nanoContext_.launchParams, "bg.fillColor",
 		owl3f{ guiData.fillColor[0], guiData.fillColor[1], guiData.fillColor[2] });
 
-
-
 	constexpr auto deviceId = 0; //TODO: Research on device id, in multi gpu system it might be tricky
 	const auto stream = owlParamsGetCudaStream(nanoContext_.launchParams, deviceId);
 	const auto record = gpuTimers_.record("basic owl rt", stream);
@@ -388,20 +381,8 @@ auto NanoRenderer::onRender() -> void
 	const auto cameraIndices = view->mode == RenderMode::stereo ? std::vector{ 0,1 } : std::vector{ 0 };
 	assert(view->mode == RenderMode::stereo ? renderTargetFeatureParams.colorRT.extent.depth > 1: true);
 
-#ifdef FOVEATED
-	const auto r = foveatedFeature_->getLpResources()[0];
-	const auto fbSize = owl2i{ static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.width),
+	const auto framebufferSize = owl2i{ static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.width),
 							   static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.height) };
-	const auto lrSize = owl2i{ static_cast<int32_t>(r.surface.width),
-							   static_cast<int32_t>(r.surface.height) };
-	owlRayGenSet2i(nanoContext_.rayGen, "frameBufferSize", lrSize);
-
-#else
-	const auto fbSize = owl2i{ static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.width),
-							   static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.height) };
-	owlRayGenSet2i(nanoContext_.rayGen, "frameBufferSize", fbSize);
-
-#endif
 
 	for (const auto cameraIndex : cameraIndices)
 	{
@@ -417,41 +398,50 @@ auto NanoRenderer::onRender() -> void
 			rayCameraData[cameraIndex] = createRayCameraData(camera,
 				Extent
 				{
-					static_cast<uint32_t>(fbSize.x),
-					static_cast<uint32_t>(fbSize.y),
+					static_cast<uint32_t>(framebufferSize.x),
+					static_cast<uint32_t>(framebufferSize.y),
 					1
 				}/*renderTargetFeatureParams.colorRT.extent*/);
 		}
 	}
 
-
-#ifdef FOVEATED
 	const auto foveatedRenderingParams = foveatedFeature_->getControlData();
-	assert(foveatedRenderingParams);
-	
-	owlRayGenSet1f(nanoContext_.rayGen, "resolutionScaleRatio", foveatedFeature_->getResolutionScaleRatio());
 
 	const auto foveatedGaze = std::array{
 		owl2f{ foveatedRenderingParams.leftEyeGazeScreenSpace.x, foveatedRenderingParams.leftEyeGazeScreenSpace.y },
 		owl2f{ foveatedRenderingParams.rightEyeGazeScreenSpace.x, foveatedRenderingParams.rightEyeGazeScreenSpace.y }
 	};
-#endif
 
 	record.start();
 	for (const auto cameraIndex : cameraIndices)
 	{
 		assert(cameraIndex < renderTargetFeatureParams.colorRT.surfaces.size());
 		owlParamsSetRaw(nanoContext_.launchParams, "cameraData", &rayCameraData[cameraIndex]);
-		owlRayGenSet2f(nanoContext_.rayGen, "foveal", foveatedGaze[cameraIndex]);
 
-		const auto lpResource = foveatedFeature_->getLpResources()[cameraIndex];
+		if (foveatedRenderingParams.isEnabled)
+		{
+			owlRayGenSet2f(nanoContext_.rayGenFoveated, "foveal", foveatedGaze[cameraIndex]);
+			owlRayGenSet1f(nanoContext_.rayGenFoveated, "resolutionScaleRatio", foveatedFeature_->getResolutionScaleRatio());
+			owlRayGenSet1f(nanoContext_.rayGenFoveated, "kernelParameter", foveatedRenderingParams.kernelParameter);
+			const auto lpResource = foveatedFeature_->getLpResources()[cameraIndex];
 
-		owlParamsSetRaw(nanoContext_.launchParams, "surfacePointer", &lpResource.surface.surface);
-		//owlParamsSetRaw(nanoContext_.launchParams, "surfacePointer", &renderTargetFeatureParams.colorRT.surfaces[cameraIndex]);
+			const auto lrSize = owl2i{ static_cast<int32_t>(lpResource.surface.width),
+								   static_cast<int32_t>(lpResource.surface.height) };
+			owlRayGenSet2i(nanoContext_.rayGenFoveated, "frameBufferSize", lrSize);
+			owlParamsSetRaw(nanoContext_.launchParams, "surfacePointer", &lpResource.surface.surface);
+			owlBuildSBT(nanoContext_.context);
+			owlAsyncLaunch2D(nanoContext_.rayGenFoveated, lrSize.x, lrSize.y, nanoContext_.launchParams);
 
-		owlAsyncLaunch2D(nanoContext_.rayGen, lrSize.x, lrSize.y, nanoContext_.launchParams);
-
-		foveatedFeature_->resolve(renderTargetFeatureParams.colorRT.surfaces[cameraIndex], fbSize.x, fbSize.y, stream, foveatedGaze[cameraIndex].x, foveatedGaze[cameraIndex].y);
+			foveatedFeature_->resolve(renderTargetFeatureParams.colorRT.surfaces[cameraIndex], framebufferSize.x, framebufferSize.y, stream, foveatedGaze[cameraIndex].x, foveatedGaze[cameraIndex].y);
+		}
+		else
+		{
+			//TODO: pass enable foveated flag to the kernel!
+			owlParamsSetRaw(nanoContext_.launchParams, "surfacePointer", &renderTargetFeatureParams.colorRT.surfaces[cameraIndex].surface);
+			owlRayGenSet2i(nanoContext_.rayGen, "frameBufferSize", framebufferSize);
+			owlBuildSBT(nanoContext_.context);
+			owlAsyncLaunch2D(nanoContext_.rayGen, framebufferSize.x, framebufferSize.y, nanoContext_.launchParams);
+		}
 	}
 	record.stop();
 }
@@ -476,8 +466,6 @@ auto NanoRenderer::onGui() -> void
 	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
 
 	ImGui::Begin("RT Settings");
-
-
 
 	if (ImGui::Button("spawn box"))
 	{

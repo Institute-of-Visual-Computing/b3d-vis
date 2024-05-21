@@ -20,6 +20,7 @@ namespace b3d::renderer
 	{
 		OWLContext context;
 		OWLRayGen rayGen;
+		OWLRayGen rayGenFoveated;
 		OWLMissProg missProgram;
 		OWLGroup worldGeometryGroup;
 		OWLLaunchParams launchParams;
