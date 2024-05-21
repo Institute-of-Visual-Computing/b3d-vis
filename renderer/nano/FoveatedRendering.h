@@ -43,6 +43,11 @@ namespace b3d::renderer
 		{
 			return lpResources_;
 		}
+
+		[[nodiscard]] inline auto getControlData() const -> const FoveatedRenderingControl
+		{
+			return *controlData_;
+		}
 	private:
 		float resolutionScaleRatio_{ 1.0 };
 
@@ -52,6 +57,8 @@ namespace b3d::renderer
 		size_t lpHeight_{};
 		size_t inputWidth_{};
 		size_t inputHeight_{};
+
+		FoveatedRenderingControl* controlData_;
 	};
 }
 

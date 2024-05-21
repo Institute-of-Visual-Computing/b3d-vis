@@ -20,6 +20,7 @@ namespace b3d::renderer
 		ColoringInfo coloringInfo;
 		ColorMapInfos colorMapInfos;
 		ExternalTexture transferFunctionTexture;
+		FoveatedRenderingControl foveatedRenderingControl;
 	};
 
 	using Schema = std::unordered_map<std::string_view, size_t>;
@@ -45,7 +46,8 @@ namespace b3d::renderer
 											  SCHEMA_ENTRY("colorMapTexture", colorMapTexture, RenderingData),
 											  SCHEMA_ENTRY("coloringInfo", coloringInfo, RenderingData),
 												SCHEMA_ENTRY("colorMapInfos", colorMapInfos, RenderingData),
-												SCHEMA_ENTRY("transferFunctionTexture", transferFunctionTexture, RenderingData)
+												SCHEMA_ENTRY("transferFunctionTexture", transferFunctionTexture, RenderingData),
+		SCHEMA_ENTRY("foveatedRenderingControl", foveatedRenderingControl, RenderingData)
 										  },
 										  sizeof(RenderingData) };
 
@@ -64,7 +66,7 @@ namespace b3d::renderer
 		{
 			return schemaData_.schema.find(key);
 		}
-			
+
 
 	public:
 		RenderingDataBuffer()
@@ -97,7 +99,7 @@ namespace b3d::renderer
 		{
 			return dataPtr_;
 		}
-		
+
 
 		template <typename T>
 		auto get(const std::string_view key) -> T*
@@ -120,38 +122,38 @@ namespace b3d::renderer
 			}
 			return reinterpret_cast<T*>(&dataPtr_[schemaEntry->second]);
 		}
-	/*
-		template <typename T>
-		auto getOpt(const std::string& key) -> std::optional<T&>
-		{
-			const auto schemaEntry = getSchemaEntry(key);
-			if (schemaData_.schema.end() == schemaEntry)
+		/*
+			template <typename T>
+			auto getOpt(const std::string& key) -> std::optional<T&>
 			{
-				return std::nullopt;
+				const auto schemaEntry = getSchemaEntry(key);
+				if (schemaData_.schema.end() == schemaEntry)
+				{
+					return std::nullopt;
+				}
+				return static_cast<T>(dataPtr_[schemaEntry->second]);
 			}
-			return static_cast<T>(dataPtr_[schemaEntry->second]);
-		}
 
-		template <typename T>
-		auto tryGet(const std::string& key, T& t) -> bool
-		{
-			const auto schemaEntry = getSchemaEntry(key);
-			if (schemaData_.schema.end() == schemaEntry)
+			template <typename T>
+			auto tryGet(const std::string& key, T& t) -> bool
 			{
-				return false;
+				const auto schemaEntry = getSchemaEntry(key);
+				if (schemaData_.schema.end() == schemaEntry)
+				{
+					return false;
+				}
+				t = static_cast<T>(dataPtr_[schemaEntry->second]);
+				return true;
 			}
-			t = static_cast<T>(dataPtr_[schemaEntry->second]);
-			return true;
-		}
 
-		
 
-		template <typename T>
-		auto operator[](const std::string& key) -> T&
-		{
-			return static_cast<T>(dataPtr_[schemaData_.schema[key]]);
-		}
-		*/
+
+			template <typename T>
+			auto operator[](const std::string& key) -> T&
+			{
+				return static_cast<T>(dataPtr_[schemaData_.schema[key]]);
+			}
+			*/
 	};
 
 	struct RenderingDataWrapper
@@ -160,7 +162,7 @@ namespace b3d::renderer
 		RenderingDataBuffer buffer;
 		RenderingDataWrapper() : buffer{ schemaData_0, 1, static_cast<void*>(&data) }
 		{
-			
+
 		}
 	};
 } // namespace b3d::renderer

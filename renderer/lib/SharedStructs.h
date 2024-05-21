@@ -119,4 +119,12 @@ namespace b3d::renderer
 		float colorMapHeightNormalized;
 	};
 
+	struct FoveatedRenderingControl
+	{
+		owl::vec2f leftEyeGazeScreenSpace{ 0.5f, 0.5f };
+		owl::vec2f rightEyeGazeScreenSpace{ 0.5f, 0.5f };
+		bool enable{ true };
+		float temporalBufferResolutionRelativeScale{ 1.0f };
+	};
+
 }

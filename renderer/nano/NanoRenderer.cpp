@@ -339,6 +339,7 @@ auto NanoRenderer::onRender() -> void
 	}
 
 	const auto colorMapParams = colorMapFeature_->getParamsData();
+
 	using namespace owl::extensions;
 
 	owlParamsSetRaw(nanoContext_.launchParams, "coloringInfo.colorMode", &colorMapParams.mode);
@@ -352,11 +353,7 @@ auto NanoRenderer::onRender() -> void
 	auto renderTargetFeatureParams = renderTargetFeature_->getParamsData();
 
 
-#ifdef FOVEATED
-	const auto foveal = owl2f{ guiData.fovealPoint[0], guiData.fovealPoint[1] };
-	owlRayGenSet2f(nanoContext_.rayGen, "foveal", foveal);
-	owlRayGenSet1f(nanoContext_.rayGen, "resolutionScaleRatio", foveatedFeature_->getResolutionScaleRatio());
-#endif
+
 
 
 	owlBuildSBT(nanoContext_.context);
@@ -427,11 +424,25 @@ auto NanoRenderer::onRender() -> void
 		}
 	}
 
+
+#ifdef FOVEATED
+	const auto foveatedRenderingParams = foveatedFeature_->getControlData();
+	assert(foveatedRenderingParams);
+	
+	owlRayGenSet1f(nanoContext_.rayGen, "resolutionScaleRatio", foveatedFeature_->getResolutionScaleRatio());
+
+	const auto foveatedGaze = std::array{
+		owl2f{ foveatedRenderingParams.leftEyeGazeScreenSpace.x, foveatedRenderingParams.leftEyeGazeScreenSpace.y },
+		owl2f{ foveatedRenderingParams.rightEyeGazeScreenSpace.x, foveatedRenderingParams.rightEyeGazeScreenSpace.y }
+	};
+#endif
+
 	record.start();
 	for (const auto cameraIndex : cameraIndices)
 	{
 		assert(cameraIndex < renderTargetFeatureParams.colorRT.surfaces.size());
 		owlParamsSetRaw(nanoContext_.launchParams, "cameraData", &rayCameraData[cameraIndex]);
+		owlRayGenSet2f(nanoContext_.rayGen, "foveal", foveatedGaze[cameraIndex]);
 
 		const auto lpResource = foveatedFeature_->getLpResources()[cameraIndex];
 
@@ -440,7 +451,7 @@ auto NanoRenderer::onRender() -> void
 
 		owlAsyncLaunch2D(nanoContext_.rayGen, lrSize.x, lrSize.y, nanoContext_.launchParams);
 
-		foveatedFeature_->resolve(renderTargetFeatureParams.colorRT.surfaces[cameraIndex], fbSize.x, fbSize.y, stream, foveal.x, foveal.y);
+		foveatedFeature_->resolve(renderTargetFeatureParams.colorRT.surfaces[cameraIndex], fbSize.x, fbSize.y, stream, foveatedGaze[cameraIndex].x, foveatedGaze[cameraIndex].y);
 	}
 	record.stop();
 }
@@ -479,21 +490,7 @@ auto NanoRenderer::onGui() -> void
 	ImGui::RadioButton("Average Intensity Projection", reinterpret_cast<int*>(&guiData.sampleIntegrationMethode), static_cast<int>(SampleIntegrationMethod::averageIntensityProjection));
 	ImGui::RadioButton("Intensity Integration", reinterpret_cast<int*>(&guiData.sampleIntegrationMethode), static_cast<int>(SampleIntegrationMethod::transferIntegration));
 	ImGui::EndGroup();
-	ImGui::Separator();
-	ImGui::Text("Hold SPACE to move foveal point with mouse.");
-	ImGui::Text("foveal x:%.2f y:%.2f", guiData.fovealPoint[0], guiData.fovealPoint[1]);
-	ImGui::Separator();
 
-	if (ImGui::GetIO().KeysDown[ImGuiKey_Space])
-	{
-		const auto mousePosition = ImGui::GetMousePos();
-
-		const auto displaySize = ImGui::GetIO().DisplaySize;
-
-		guiData.fovealPoint[0] = mousePosition.x / static_cast<float>(displaySize.x) * 2.0f - 1.0f;
-		guiData.fovealPoint[1] = (1.0 - mousePosition.y / static_cast<float>(displaySize.y)) * 2.0f - 1.0f;
-
-	}
 
 	ImGui::DragFloatRange2("Sample Remapping", &guiData.sampleRemapping[0], &guiData.sampleRemapping[1], 0.0001, -1.0f, 1.0f, "%.4f");
 

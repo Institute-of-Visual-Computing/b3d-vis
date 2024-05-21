@@ -14,24 +14,16 @@
 #include "owl/owl_device.h"
 
 #include "FoveatedHelper.cuh"
+#include "OptixHelper.cuh"
 #include "SampleAccumulators.h"
 #include "SamplerMapper.h"
-
 
 using namespace b3d::renderer::nano;
 using namespace owl;
 
 extern "C" __constant__ LaunchParams optixLaunchParams;
 
-#ifndef __CUDACC__
-template <typename T>
-auto tex2D(cudaTextureObject_t, float, float) -> T
-{
-	return {};
-}
 
-auto surf2Dwrite(uint32_t, cudaSurfaceObject_t, size_t, int) -> void {}
-#endif
 
 struct PerRayData
 {

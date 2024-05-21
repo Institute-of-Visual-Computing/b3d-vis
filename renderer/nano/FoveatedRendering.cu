@@ -10,65 +10,14 @@
 #include <cuda/std/cmath>
 
 
+#include "FoveatedHelper.cuh"
+#include "OptixHelper.cuh"
+#include "imgui.h"
 #include "nanovdb/NanoVDB.h"
 #include "owl/owl_device.h"
-#include "FoveatedHelper.cuh"
 
 using namespace b3d::renderer;
-
-
-__global__ auto test() -> void
-{
-	printf("hello kernel!\n");
-}
-
 using namespace owl;
-
-//template<typename T>
-//inline __device__ auto length(const owl::vec_t<T, 2>& v) -> T
-//{
-//	return owl::common::polymorphic::sqrt(dot(v, v));
-//}
-//__device__ auto inverseLogMap(const float scaleRatio, const vec2f& coordinateScreenSpace, const vec2f& foveal,
-//	const vec2f& resolution) -> vec2f
-//{
-//
-//	/*const auto maxL = max(
-//		max(length(foveal),
-//			length(resolution - foveal)
-//		),
-//		max(length(vec2f{ foveal.x, resolution.y - foveal.y }),
-//			length(vec2f{ resolution.x - foveal.x, foveal.y })
-//		)
-//	);*/
-//
-//	const auto maxL = max(
-//		max(
-//			length((vec2f(1, 1) - foveal) * resolution),
-//			length((vec2f(1, -1) - foveal) * resolution)),
-//		max(
-//			length((vec2f(-1, 1) - foveal) * resolution),
-//			length((vec2f(-1, -1) - foveal) * resolution)));
-//	const float L = log(maxL * 0.5);
-//	constexpr auto pi2 = nanovdb::pi<float>() * 2.0f;
-//
-//	//const auto uv = coordinateScreenSpace / resolution * 2.0f + 1.0f;
-//
-//
-//	//const auto K = powf(uv.x, 4.0);
-//	//const auto a = expf(K * L);
-//	//const auto b = pi2 * uv.y;
-//	//return vec2f{ a * cosf(b), a * sinf(b) } + (foveal + vec2f(1.f)) * 0.5f;
-//
-//	const auto pq = coordinateScreenSpace / resolution * 2.0f - 1.0f - foveal;
-//	const auto lr = pow(log(length(pq * resolution * 0.5f)) / L, 4.0);
-//	const float theta = atan2f(pq.y * resolution.y, pq.x * resolution.x) / pi2 + (pq.y < 0.0f ? 1.0f : 0.0);
-//	//float theta2 = atan2f(pq.y * resolution.y, -abs(pq.x) * resolution.x) / pi2 + (pq.y < 0.0f ? 1.0f : 0.0);
-//
-//	const auto logCoordinate = vec2f(lr, theta) / scaleRatio;
-//	return logCoordinate * resolution + foveal;
-//}
-
 
 struct FovealParameter
 {
@@ -86,8 +35,6 @@ __global__ auto resolveLp(cudaTextureObject_t inputTextureObj, cudaSurfaceObject
 	const auto x = blockIdx.x * blockDim.x + threadIdx.x;
 	const auto y = blockIdx.y * blockDim.y + threadIdx.y;
 	const auto pixelIndex = vec2f(x, y);
-
-	//const auto pixelIndex = vec2f(blockIdx.x * blockDim.x + threadIdx.x, blockIdx.y * blockDim.y + threadIdx.y);
 	if (pixelIndex.x >= width || pixelIndex.y >= height)
 	{
 		return;
@@ -95,33 +42,15 @@ __global__ auto resolveLp(cudaTextureObject_t inputTextureObj, cudaSurfaceObject
 	const auto uv = vec2f(pixelIndex) / resolution;
 
 	auto newPixelIndex = vec2f(pixelIndex);
-	/*if (uv.x > 1.0 || uv.y > 1.0) {
-		if (uv.y > 1.0 && uv.y < 1.0 + 1.0 / resolution.y) {
-			newPixelIndex -= resolution / fovealParameter.scaleRatio;
-		}
-		else {
-			return;
-		}
-	}*/
 
-
-
-	auto screen = (vec2f(newPixelIndex)) + vec2f(.5f);// + vec2f(.5f)); //*2.0f -1.0f;
+	auto screen = (vec2f(newPixelIndex)) + vec2f(.5f);
 
 	screen = inverseLogMap(fovealParameter.scaleRatio, screen, foveal, resolution);
 	screen /= resolution;
-	//printf("hello kernel!\n");
-	//printf("%f , %f \n", screen.x, screen.y);
 
-	const float4 result = tex2D<float4>(inputTextureObj, screen.x, screen.y);
-	//printf("%0.3f , %0.3f , %0.3f , %0.3f \n", result.x, result.y, result.z, result.w);
+	const auto result = tex2D<float4>(inputTextureObj, screen.x, screen.y);
 
-
-
-	surf2Dwrite(owl::make_rgba(vec4f(result.x, result.y, result.z, result.w))/*owl::make_rgba(vec4f{result})*/, outputSurfObj, sizeof(uint32_t) * pixelIndex.x, pixelIndex.y);
-	//surf2Dwrite(owl::make_rgba(vec4f(screen.x, screen.y, 0.0f, 1.0f))/*owl::make_rgba(vec4f{result})*/, outputSurfObj, sizeof(uint32_t) * pixelIndex.x, pixelIndex.y);
-
-
+	surf2Dwrite(owl::make_rgba(vec4f(result.x, result.y, result.z, result.w)), outputSurfObj, sizeof(uint32_t) * pixelIndex.x, pixelIndex.y);
 }
 
 auto init(const uint32_t width, const uint32_t height, const float scaleRation = 2.0f)
@@ -132,6 +61,8 @@ auto init(const uint32_t width, const uint32_t height, const float scaleRation =
 auto b3d::renderer::FoveatedRenderingFeature::onInitialize() -> void
 {
 	createResources();
+	const auto foveatedControlData = sharedParameters_->get<FoveatedRenderingControl>("foveatedRenderingControl");
+	controlData_ = foveatedControlData;
 }
 auto b3d::renderer::FoveatedRenderingFeature::onDeinitialize() -> void
 {
@@ -139,6 +70,34 @@ auto b3d::renderer::FoveatedRenderingFeature::onDeinitialize() -> void
 }
 auto b3d::renderer::FoveatedRenderingFeature::gui() -> void
 {
+	ImGui::TextWrapped("Hold SPACE to move both foveal points with mouse. Hold LEFT ARROW KEY/RIGHT ARROW KEY to move left/right foveal points with mouse.");
+	ImGui::Text("Left Foveal x:%.2f y:%.2f", controlData_->leftEyeGazeScreenSpace.x, controlData_->leftEyeGazeScreenSpace.y);
+	ImGui::Text("Right Foveal x:%.2f y:%.2f", controlData_->rightEyeGazeScreenSpace.x, controlData_->rightEyeGazeScreenSpace.y);
+
+	const auto mousePosition = ImGui::GetMousePos();
+
+	const auto displaySize = ImGui::GetIO().DisplaySize;
+
+	auto mouseScreenSpace = owl::vec2f{};
+	mouseScreenSpace.x = mousePosition.x / static_cast<float>(displaySize.x) * 2.0f - 1.0f;
+	mouseScreenSpace.y = (1.0 - mousePosition.y / static_cast<float>(displaySize.y)) * 2.0f - 1.0f;
+
+	if (ImGui::GetIO().KeysDown[ImGuiKey_LeftArrow])
+	{
+		controlData_->leftEyeGazeScreenSpace = mouseScreenSpace;
+	}
+
+	if (ImGui::GetIO().KeysDown[ImGuiKey_RightArrow])
+	{
+		controlData_->rightEyeGazeScreenSpace = mouseScreenSpace;
+	}
+
+	if (ImGui::GetIO().KeysDown[ImGuiKey_Space])
+	{
+		controlData_->leftEyeGazeScreenSpace = mouseScreenSpace;
+		controlData_->rightEyeGazeScreenSpace = mouseScreenSpace;
+
+	}
 }
 auto b3d::renderer::FoveatedRenderingFeature::resolve(const CudaSurfaceResource& surface, const uint32_t width, const uint32_t height, const CUstream stream, float fovX, float fovY) -> void
 {
@@ -219,7 +178,11 @@ auto b3d::renderer::FoveatedRenderingFeature::createResources() -> void
 auto b3d::renderer::FoveatedRenderingFeature::beginUpdate() -> void
 {
 	const auto renderTargets = sharedParameters_->get<RenderTargets>("renderTargets");
-	assert(renderTargets);
+	
+	if (!renderTargets)
+	{
+		throw std::runtime_error("Missing shared parameters for foveated rendering feature!");
+	}
 	const auto width = renderTargets->colorRt.extent.width;
 	const auto height = renderTargets->colorRt.extent.height;
 	if (inputWidth_ != width || inputHeight_ != height)
@@ -228,12 +191,7 @@ auto b3d::renderer::FoveatedRenderingFeature::beginUpdate() -> void
 		destroyResources();
 		createResources();
 	}
+
+
 	assert(inputWidth_ > 0 && inputHeight_ > 0);
-}
-auto testCall(CUstream stream) -> void
-{
-	auto gridDim =
-		dim3{ 1, 1 };
-	auto blockDim = dim3{ 1, 1 };
-	test << <gridDim, blockDim >> > ();
 }
