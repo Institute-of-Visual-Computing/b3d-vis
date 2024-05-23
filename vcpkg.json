@@ -1,9 +1,9 @@
 {
-  "vcpkg-configuration": {
-    "overlay-triplets": [
-      "./triplets"
-    ]
-  },
+	"vcpkg-configuration": {
+		"overlay-triplets": [
+			"./triplets"
+		]
+	},
 	"dependencies": [
 		"args",
 		"glfw3",
@@ -47,7 +47,10 @@
 		"stb",
 		"boost-program-options",
 		"imguizmo",
-		"catch2"
+		{
+			"name": "tracy",
+			"features": [ "gui-tools" ]
+		}
 	],
-  "builtin-baseline": "ad3bae57455a3c3ce528fcd47d8e8027d0498add"
+	"builtin-baseline": "ad3bae57455a3c3ce528fcd47d8e8027d0498add"
 }

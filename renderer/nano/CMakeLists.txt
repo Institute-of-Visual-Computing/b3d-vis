@@ -49,14 +49,14 @@ find_package(imgui CONFIG REQUIRED)
 
 
 add_library(cudaCode FoveatedRendering.cu FoveatedRendering.h FoveatedHelper.cuh)
-target_compile_features(cudaCode PUBLIC cxx_std_20)
+target_compile_features(cudaCode PUBLIC cxx_std_17)
 target_include_directories(cudaCode PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(cudaCode
 	PRIVATE
 		B3D::Renderer::Library
 )
-set_property(TARGET cudaCode PROPERTY CUDA_STANDARD 20)
+set_property(TARGET cudaCode PROPERTY CUDA_STANDARD 17)
 
 
 add_b3d_renderer(

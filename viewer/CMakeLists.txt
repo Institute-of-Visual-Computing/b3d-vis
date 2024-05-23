@@ -5,7 +5,7 @@ find_package(glad CONFIG REQUIRED)
 find_package(Vulkan REQUIRED)
 find_package(VulkanHeaders CONFIG)
 find_package(imguizmo CONFIG REQUIRED)
-find_package(Tracy CONFIG REQUIRED)
+
 
 add_executable(viewer)
 target_sources(viewer PRIVATE
@@ -56,6 +56,7 @@ option(ENABLE_NANO_PROFILE "Enables Tracy profiling" OFF)
 option(ENABLE_NANO_SANITIZERS "Enables address sanitizers" OFF)
 
 if(ENABLE_NANO_PROFILE)
+	find_package(Tracy CONFIG REQUIRED)
 	target_link_libraries(viewer PRIVATE Tracy::TracyClient)
 	target_compile_definitions(viewer PUBLIC -DNANO_PROFILE -DTRACY_ENABLE)
 	target_sources(viewer PRIVATE

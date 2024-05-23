@@ -1,3 +1,5 @@
+
+
 #include "FoveatedRendering.h"
 
 #include <owl/common.h>
@@ -49,10 +51,10 @@ __global__ auto resolveLp(cudaTextureObject_t inputTextureObj, cudaSurfaceObject
 
 	const auto result = tex2D<float4>(inputTextureObj, screen.x, screen.y);
 
-	surf2Dwrite(owl::make_rgba(vec4f(result.x, result.y, result.z, result.w)), outputSurfObj, sizeof(uint32_t) * pixelIndex.x, pixelIndex.y);
+	surf2Dwrite(make_rgba(vec4f(result.x, result.y, result.z, result.w)), outputSurfObj, sizeof(uint32_t) * pixelIndex.x, pixelIndex.y);
 }
 
-auto b3d::renderer::FoveatedRenderingFeature::onInitialize() -> void
+auto FoveatedRenderingFeature::onInitialize() -> void
 {
 	createResources();
 	const auto foveatedControlData = sharedParameters_->get<FoveatedRenderingControl>("foveatedRenderingControl");
@@ -63,11 +65,11 @@ auto b3d::renderer::FoveatedRenderingFeature::onInitialize() -> void
 	controlData_ = foveatedControlData;
 	resolutionScaleRatio_ = controlData_->temporalBufferResolutionRelativeScale;
 }
-auto b3d::renderer::FoveatedRenderingFeature::onDeinitialize() -> void
+auto FoveatedRenderingFeature::onDeinitialize() -> void
 {
 	destroyResources();
 }
-auto b3d::renderer::FoveatedRenderingFeature::gui() -> void
+auto FoveatedRenderingFeature::gui() -> void
 {
 	ImGui::Checkbox("Enable Feature", &controlData_->isEnabled);
 	ImGui::BeginDisabled(! controlData_->isEnabled);
@@ -96,7 +98,7 @@ auto b3d::renderer::FoveatedRenderingFeature::gui() -> void
 
 	const auto displaySize = ImGui::GetIO().DisplaySize;
 
-	auto mouseScreenSpace = owl::vec2f{};
+	auto mouseScreenSpace = vec2f{};
 	mouseScreenSpace.x = mousePosition.x / static_cast<float>(displaySize.x) * 2.0f - 1.0f;
 	mouseScreenSpace.y = (1.0 - mousePosition.y / static_cast<float>(displaySize.y)) * 2.0f - 1.0f;
 
@@ -117,7 +119,7 @@ auto b3d::renderer::FoveatedRenderingFeature::gui() -> void
 
 	}
 }
-auto b3d::renderer::FoveatedRenderingFeature::resolve(const CudaSurfaceResource& surface, const uint32_t width, const uint32_t height, const CUstream stream, float fovX, float fovY) -> void
+auto FoveatedRenderingFeature::resolve(const CudaSurfaceResource& surface, const uint32_t width, const uint32_t height, const CUstream stream, float fovX, float fovY) -> void
 {
 	dim3 threadsPerBlock(16, 16);
 	const auto x = (width + threadsPerBlock.x - 1) / threadsPerBlock.x;
@@ -136,7 +138,7 @@ auto b3d::renderer::FoveatedRenderingFeature::resolve(const CudaSurfaceResource&
 
 
 }
-auto b3d::renderer::FoveatedRenderingFeature::destroyResources() -> void
+auto FoveatedRenderingFeature::destroyResources() -> void
 {
 	for (const auto& resource : lpResources_)
 	{
@@ -147,7 +149,7 @@ auto b3d::renderer::FoveatedRenderingFeature::destroyResources() -> void
 
 	lpResources_.clear();
 }
-auto b3d::renderer::FoveatedRenderingFeature::createResources() -> void
+auto FoveatedRenderingFeature::createResources() -> void
 {
 	const auto renderTargets = sharedParameters_->get<RenderTargets>("renderTargets");
 	assert(renderTargets);
@@ -193,7 +195,7 @@ auto b3d::renderer::FoveatedRenderingFeature::createResources() -> void
 		lpResources_.push_back({ { lpBuffer, lpSurfaceObject, newWidth, newHeight }, lpTexture });
 	}
 }
-auto b3d::renderer::FoveatedRenderingFeature::beginUpdate() -> void
+auto FoveatedRenderingFeature::beginUpdate() -> void
 {
 	const auto renderTargets = sharedParameters_->get<RenderTargets>("renderTargets");
 	
