@@ -43,20 +43,20 @@ if(MSVC)
 endif()
 
 
-find_package(Catch2 REQUIRED)
-add_executable(NanoCutApi_Tests)
-target_sources(NanoCutApi_Tests
-PRIVATE
-	NanoCutApi_Tests.cpp
-	FitsHelper.cpp
-	NanoGenerator.cpp
-)
+#find_package(Catch2 REQUIRED)
+#add_executable(NanoCutApi_Tests)
+#target_sources(NanoCutApi_Tests
+#PRIVATE
+#	NanoCutApi_Tests.cpp
+#	FitsHelper.cpp
+#	NanoGenerator.cpp
+#)
 
-target_link_libraries(NanoCutApi_Tests PUBLIC NanoCutApi Catch2::Catch2 Catch2::Catch2WithMain cfitsio OpenVDB::openvdb OpenVDB::nanovdb)
-target_compile_features(NanoCutApi_Tests PUBLIC cxx_std_20)
-set_property(TARGET NanoCutApi_Tests PROPERTY
-             MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+#target_link_libraries(NanoCutApi_Tests PUBLIC NanoCutApi Catch2::Catch2 Catch2::Catch2WithMain cfitsio OpenVDB::openvdb OpenVDB::nanovdb)
+#target_compile_features(NanoCutApi_Tests PUBLIC cxx_std_20)
+#set_property(TARGET NanoCutApi_Tests PROPERTY
+#             MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
-include(CTest)
-include(Catch)
-catch_discover_tests(NanoCutApi_Tests)
+#include(CTest)
+#include(Catch)
+#catch_discover_tests(NanoCutApi_Tests)

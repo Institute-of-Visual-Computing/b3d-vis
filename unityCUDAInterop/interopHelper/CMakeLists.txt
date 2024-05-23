@@ -23,6 +23,7 @@ target_include_directories(${MODULE_NAME}
 
 set_target_properties(${MODULE_NAME} PROPERTIES CXX_STANDARD 20)
 
+find_package(CUDAToolkit)
 
 target_link_libraries(${MODULE_NAME}
 	PRIVATE

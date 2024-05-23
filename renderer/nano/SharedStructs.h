@@ -73,6 +73,15 @@ namespace b3d
 				OptixTraversableHandle world;
 			};
 
+			struct RayGenerationFoveatedData
+			{
+				owl::vec2i frameBufferSize;
+				OptixTraversableHandle world;
+				owl::vec2f foveal;
+				float resolutionScaleRatio;
+				float kernelParameter;
+			};
+
 			struct MissProgramData
 			{
 				owl::vec3f color0;

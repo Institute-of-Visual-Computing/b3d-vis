@@ -16,9 +16,18 @@ namespace b3d::renderer
 		{
 		}
 
-		virtual auto initialize(b3d::renderer::RenderingDataBuffer& sharedParameters) -> void
+		virtual auto onInitialize() -> void{}
+		virtual auto onDeinitialize() -> void{}
+
+		auto initialize(b3d::renderer::RenderingDataBuffer& sharedParameters) -> void
 		{
 			sharedParameters_ = &sharedParameters;
+			onInitialize();
+		}
+
+		auto deinitialize() -> void
+		{
+			onDeinitialize();
 		}
 
 		virtual auto beginUpdate() -> void
@@ -33,7 +42,7 @@ namespace b3d::renderer
 		}
 
 
-		[[nodiscard]] inline auto featureName() const -> std::string
+		[[nodiscard]] inline auto featureName() const -> const std::string&
 		{
 			return name_;
 		}
