@@ -33,7 +33,7 @@ target_compile_features(viewer PUBLIC cxx_std_20)
 target_link_libraries(viewer
   PRIVATE
 	owl_viewer
-	#owl::owl
+	owl::owl
 	glfw
 	imgui::imgui
 	B3D::Renderer::Library

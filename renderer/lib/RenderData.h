@@ -4,7 +4,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "SharedStructs.h"
+#include "Common.h"
 
 namespace b3d::renderer
 {

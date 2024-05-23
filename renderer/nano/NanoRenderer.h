@@ -6,12 +6,14 @@
 
 #include <CudaGpuTimers.h>
 
+#include "RuntimeDataSet.h"
 #include <FoveatedRendering.h>
 #include "features/BackgroundColorFeature.h"
 #include "features/ColorMapFeature.h"
 #include "features/RenderSyncFeature.h"
 #include "features/RenderTargetFeature.h"
 #include "features/TransferFunctionFeature.h"
+#include "..//nanoOutOfCore/OpenFileDialog.h"
 
 
 namespace b3d::renderer
@@ -55,13 +57,14 @@ namespace b3d::renderer
 
 		CudaGpuTimers<100, 4> gpuTimers_{};
 
-		owl::AffineSpace3f renormalizeScale_{};
-
 		RenderTargetFeature* renderTargetFeature_;
 		RenderSyncFeature* renderSyncFeature_;
 		ColorMapFeature* colorMapFeature_;
 		TransferFunctionFeature* transferFunctionFeature_;
 		BackgroundColorFeature* backgroundColorFeature_;
 		FoveatedRenderingFeature* foveatedFeature_;
+
+		nano::RuntimeDataSet runtimeDataSet_{};
+		nano::OpenFileDialog openFileDialog_{ nano::SelectMode::singleFile, { ".nvdb" } };//TODO: add multiselect mode
 	};
 } // namespace b3d::renderer
