@@ -30,6 +30,7 @@ namespace b3d::renderer::nano
 		auto getSelectedData() -> RuntimeVolume&;
 		auto addNanoVdb(const std::filesystem::path& path) -> void;
 		auto addNanoVdb(const NanoVdbVolume& volume) -> void;
+		[[nodiscard]] auto getValideVolumeIndicies() const -> std::vector<size_t>;
 
 		RuntimeDataSet(RuntimeDataSet&) = delete;
 		RuntimeDataSet(RuntimeDataSet&&) = default;
@@ -38,6 +39,7 @@ namespace b3d::renderer::nano
 		std::vector<std::filesystem::path> loadableVolumes_{};
 		std::vector<RuntimeVolume> runtimeVolumes_{};
 		std::size_t activeVolume_{ 0 };
+		RuntimeVolume dummyVolume_{};
 	};
 
 }

@@ -17,7 +17,7 @@ namespace
 		auto volume = NanoVdbVolume{};
 		OWL_CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&volume.grid), gridVolume.size()));
 		OWL_CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(volume.grid), gridVolume.data(), gridVolume.size(),
-			cudaMemcpyHostToDevice));
+								  cudaMemcpyHostToDevice));
 
 		const auto gridHandle = gridVolume.grid<float>();
 		const auto& map = gridHandle->mMap;
@@ -55,24 +55,34 @@ namespace
 
 	auto createVolumeFromFile(const std::filesystem::path& file) -> NanoVdbVolume
 	{
-		//TODO: Let's use shared parameters to grab an initial volume path from the viewer
-		// const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
-		// const auto testFile =
-		std::filesystem::path{ "D:/datacubes/n4565_cut/filtered_level_0_224_257_177_id_7_upscale.fits.nvdb" };
-		//std::filesystem::path{ "C:/Users/anton/Downloads/chameleon_1024x1024x1080_uint16.nvdb" };
-		//std::filesystem::path{ "C:/Users/anton/Downloads/carp_256x256x512_uint16.nvdb" };
-		const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" };
+		// TODO: Let's use shared parameters to grab an initial volume path from the viewer
+		//  const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
+		//  const auto testFile =
+		//std::filesystem::path{ "D:/datacubes/n4565_cut/filtered_level_0_224_257_177_id_7_upscale.fits.nvdb" };
+		// std::filesystem::path{ "C:/Users/anton/Downloads/chameleon_1024x1024x1080_uint16.nvdb" };
+		// std::filesystem::path{ "C:/Users/anton/Downloads/carp_256x256x512_uint16.nvdb" };
+		//const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" };
 		// const auto testFile = std::filesystem::path{ "D:/datacubes/ska/40gb/sky_ldev_v2.nvdb" };
 
 		assert(std::filesystem::exists(file));
 		const auto gridVolume = nanovdb::io::readGrid(file.string());
 		return createVolume(gridVolume);
 	}
-}
+} // namespace
 
 b3d::renderer::nano::RuntimeDataSet::RuntimeDataSet()
 {
-	addNanoVdb(createVolume(nanovdb::createFogVolumeTorus()));
+	//TODO: use cudaMemGetInfo(), add LRU eviction strategy, pass data pool size via parameter
+
+	//addNanoVdb(createVolume(nanovdb::createFogVolumeTorus()));
+	const auto volume = createVolume(nanovdb::createFogVolumeSphere());
+	const auto volumeSize = volume.indexBox.size();
+	const auto longestAxis = std::max({ volumeSize.x, volumeSize.y, volumeSize.z });
+
+	const auto scale = 1.0f / longestAxis;
+
+	const auto renormalizeScale = owl::AffineSpace3f::scale(owl::vec3f{ scale, scale, scale });
+	dummyVolume_ = RuntimeVolume{ volume, RuntimeVolumeState::ready, renormalizeScale };
 }
 auto RuntimeDataSet::select(const std::size_t index) -> void
 {
@@ -81,6 +91,10 @@ auto RuntimeDataSet::select(const std::size_t index) -> void
 }
 auto RuntimeDataSet::getSelectedData() -> RuntimeVolume&
 {
+	if(runtimeVolumes_.empty())
+	{
+		return dummyVolume_;
+	}
 	return runtimeVolumes_[activeVolume_];
 }
 auto RuntimeDataSet::addNanoVdb(const std::filesystem::path& path) -> void
@@ -100,9 +114,24 @@ auto RuntimeDataSet::addNanoVdb(const NanoVdbVolume& volume) -> void
 }
 RuntimeDataSet::~RuntimeDataSet()
 {
-	for(auto& volume : runtimeVolumes_)
+	for (auto& volume : runtimeVolumes_)
 	{
 		OWL_CUDA_CHECK(cudaFree(reinterpret_cast<void*>(volume.volume.grid)));
 		volume.volume.grid = {};
 	}
+}
+
+auto RuntimeDataSet::getValideVolumeIndicies() const -> std::vector<size_t>
+{
+	auto indicies = std::vector<size_t>{};
+
+	for (auto i = 0u; i < runtimeVolumes_.size(); i++)
+	{
+		const auto& runtimeVolume = runtimeVolumes_[i];
+		if (runtimeVolume.state == RuntimeVolumeState::ready)
+		{
+			indicies.push_back(i);
+		}
+	}
+	return indicies;
 }

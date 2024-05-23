@@ -13,6 +13,7 @@
 #include "features/RenderSyncFeature.h"
 #include "features/RenderTargetFeature.h"
 #include "features/TransferFunctionFeature.h"
+#include "..//nanoOutOfCore/OpenFileDialog.h"
 
 
 namespace b3d::renderer
@@ -64,5 +65,6 @@ namespace b3d::renderer
 		FoveatedRenderingFeature* foveatedFeature_;
 
 		nano::RuntimeDataSet runtimeDataSet_{};
+		nano::OpenFileDialog openFileDialog_{ nano::SelectMode::singleFile, { ".nvdb" } };//TODO: add multiselect mode
 	};
 } // namespace b3d::renderer
