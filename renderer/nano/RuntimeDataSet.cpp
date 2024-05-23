@@ -17,7 +17,7 @@ namespace
 		auto volume = NanoVdbVolume{};
 		OWL_CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&volume.grid), gridVolume.size()));
 		OWL_CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(volume.grid), gridVolume.data(), gridVolume.size(),
-								  cudaMemcpyHostToDevice));
+			cudaMemcpyHostToDevice));
 
 		const auto gridHandle = gridVolume.grid<float>();
 		const auto& map = gridHandle->mMap;
