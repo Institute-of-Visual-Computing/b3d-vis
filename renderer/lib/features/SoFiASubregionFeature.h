@@ -48,7 +48,7 @@ namespace b3d::renderer
 	public:
 		explicit SoFiASubregionFeature(const std::string& name, b3d::renderer::RendererBase	*renderer);
 
-		auto initialize(b3d::renderer::RenderingDataBuffer& sharedParameters) -> void override;
+		auto onInitialize() -> void override;
 		
 		auto gui() -> void override;
 

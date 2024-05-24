@@ -1,5 +1,4 @@
 {
-    "tinyxml2",
 	"vcpkg-configuration": {
 		"overlay-triplets": [
 			"./triplets"
