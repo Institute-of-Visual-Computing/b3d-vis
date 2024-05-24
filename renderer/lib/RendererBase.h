@@ -37,7 +37,7 @@ namespace b3d::renderer
 			return *debugInfo_.debugDrawList;
 		}
 
-		[[nodiscard]] auto gizmoHelperBase() const -> GizmoHelperBase&
+		[[nodiscard]] auto gizmoDraw() const -> GizmoHelperBase&
 		{
 			return *debugInfo_.gizmoHelper;
 		}

@@ -16,7 +16,7 @@
 
 #include <optix_device.h>
 
-#include "SharedStructs.h"
+#include "Common.h"
 #include "deviceCode.h"
 
 #include "owl/owl_device.h"

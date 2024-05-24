@@ -19,6 +19,10 @@ namespace b3d::renderer::nano
 		}
 		static auto open() -> void;
 		auto gui() -> void;
+		inline auto clearSelection() -> void
+		{
+			selectedItems_.clear();
+		}
 
 		[[nodiscard]] inline auto getSelectedItems() const -> std::vector<std::filesystem::path>
 		{
