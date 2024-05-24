@@ -1,54 +1,58 @@
 {
-  "vcpkg-configuration": {
-    "overlay-triplets": [
-      "./triplets"
-    ]
-  },
-  "dependencies": [
-    "args",
-    "glfw3",
     "tinyxml2",
-    {
-      "name": "cfitsio",
-      "default-features": false,
-      "features": [
-        "pthreads"
-      ]
-    },
-    "glew",
-    "glm",
-    "nlohmann-json",
-    {
-      "name": "openvdb",
-      "default-features": false,
-      "features": [
-        "nanovdb",
-        "tools"
-      ]
-    },
-    {
-      "name": "imgui",
-      "default-features": false,
-      "features": [
-        "opengl3-binding",
-        "glfw-binding"
-      ]
-    },
-    "tbb",
-    "opengl",
-    {
-      "name": "glad",
-      "features": [
-        "extensions"
-      ]
-    },
-    "vulkan",
-    "vulkan-headers",
-    "stb",
-    "boost-program-options",
-    "imguizmo",
-	"cpp-httplib",
-	"catch2"
-  ],
-  "builtin-baseline": "ad3bae57455a3c3ce528fcd47d8e8027d0498add"
+	"vcpkg-configuration": {
+		"overlay-triplets": [
+			"./triplets"
+		]
+	},
+	"dependencies": [
+		"args",
+		"glfw3",
+		"tinyxml2",
+		{
+			"name": "cfitsio",
+			"default-features": false,
+			"features": [
+				"pthreads"
+			]
+		},
+		"glew",
+		"glm",
+		"nlohmann-json",
+		{
+			"name": "openvdb",
+			"default-features": false,
+			"features": [
+				"nanovdb",
+				"tools"
+			]
+		},
+		{
+			"name": "imgui",
+			"default-features": false,
+			"features": [
+				"opengl3-binding",
+				"glfw-binding"
+			]
+		},
+		"tbb",
+		"opengl",
+		{
+			"name": "glad",
+			"features": [
+				"extensions"
+			]
+		},
+		"vulkan",
+		"vulkan-headers",
+		"stb",
+		"boost-program-options",
+		"imguizmo",
+		{
+			"name": "tracy",
+			"features": [ "gui-tools" ]
+		},
+        "cpp-httplib"
+	],
+	"builtin-baseline": "ad3bae57455a3c3ce528fcd47d8e8027d0498add"
 }

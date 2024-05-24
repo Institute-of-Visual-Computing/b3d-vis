@@ -37,7 +37,7 @@ namespace b3d::renderer
 		};
 
 		auto nextFrame() -> void;
-		[[nodiscard]] auto get(const std::string& label) -> float
+		[[nodiscard]] auto get(std::string_view label) -> float
 		{
 			if(results_[completedPoolIndex_].contains(label))
 			{
@@ -46,7 +46,7 @@ namespace b3d::renderer
 			return 0.0f;
 		}
 
-		[[nodiscard]] auto record(std::string label, CUstream stream) -> Record;
+		[[nodiscard]] auto record(std::string_view label, CUstream stream) -> Record;
 
 		CudaGpuTimers();
 		virtual ~CudaGpuTimers();
@@ -54,8 +54,8 @@ namespace b3d::renderer
 	private:
 		friend Record;
 		std::array<std::array<cudaEvent_t, PoolSize>, DoubleBufferedFrames> eventsPool_;
-		std::array<std::unordered_map<std::string, std::pair<cudaEvent_t, cudaEvent_t>>, DoubleBufferedFrames> labeledTimestamps_;
-		std::array<std::unordered_map<std::string, float>, DoubleBufferedFrames> results_;
+		std::array<std::unordered_map<std::string_view, std::pair<cudaEvent_t, cudaEvent_t>>, DoubleBufferedFrames> labeledTimestamps_;
+		std::array<std::unordered_map<std::string_view, float>, DoubleBufferedFrames> results_;
 		int currentFrameIndex_{ 0 };
 		int completedPoolIndex_{ 0 };
 		int currentPoolIndex_{ 0 };
@@ -86,7 +86,8 @@ namespace b3d::renderer
 
 		nextFreeEvent_ = 0;
 
-		results_[completedPoolIndex_].clear();
+		//TODO: Investigate: do we require previews result clearing??
+		//results_[completedPoolIndex_].clear();
 
 		for (auto event : labeledTimestamps_[completedPoolIndex_])
 		{
@@ -113,10 +114,10 @@ namespace b3d::renderer
 			auto invalid = r1 != cudaSuccess && r1 != cudaErrorNotReady && r2 != cudaSuccess && r2 != cudaErrorNotReady;
 			assert(!invalid);
 		}
-		labeledTimestamps_[completedPoolIndex_].clear();
+		//labeledTimestamps_[completedPoolIndex_].clear();
 	}
 	template <int PoolSize, int DoubleBufferedFrames, bool WaitOnNotReady>
-	inline auto CudaGpuTimers<PoolSize, DoubleBufferedFrames, WaitOnNotReady>::record(std::string label,
+	inline auto CudaGpuTimers<PoolSize, DoubleBufferedFrames, WaitOnNotReady>::record(std::string_view label,
 																					  CUstream stream) -> Record
 	{
 		assert(nextFreeEvent_ < eventsPool_[currentPoolIndex_].size() - 1);

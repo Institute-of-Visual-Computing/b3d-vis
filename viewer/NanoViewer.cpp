@@ -30,6 +30,7 @@
 #include <nvml.h>
 
 #include "stb_image.h"
+#include "tracy/Tracy.hpp"
 
 using namespace owl;
 using namespace owl::viewer;
@@ -848,6 +849,7 @@ auto NanoViewer::computeViewProjectionMatrixFromCamera(const owl::viewer::Camera
 	mat.viewProjection = mat.projection * mat.view;
 	return mat;
 }
+
 auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> void
 {
 	gladLoadGL();
@@ -874,66 +876,71 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 
 	while (!glfwWindowShouldClose(handle) && keepgoing())
 	{
-		//TODO: if windows minimized or not visible -> skip rendering
-
-		onFrameBegin();
-		glClear(GL_COLOR_BUFFER_BIT);
-		static double lastCameraUpdate = -1.f;
-		if (camera.lastModified != lastCameraUpdate)
 		{
-			cameraChanged();
-			lastCameraUpdate = camera.lastModified;
+			ZoneScoped;
+
+			//TODO: if windows minimized or not visible -> skip rendering
+			onFrameBegin();
+			glClear(GL_COLOR_BUFFER_BIT);
+			static double lastCameraUpdate = -1.f;
+			if (camera.lastModified != lastCameraUpdate)
+			{
+				cameraChanged();
+				lastCameraUpdate = camera.lastModified;
+			}
+			gizmoHelper_->clear();
+
+			ImGui_ImplOpenGL3_NewFrame();
+			ImGui_ImplGlfw_NewFrame();
+			ImGui::NewFrame();
+			ImGui::PushFont(defaultFonts[currentFontIndex]);
+			gui();
+
+			const auto cameraMatrices = computeViewProjectionMatrixFromCamera(camera, fbSize.x, fbSize.y);
+
+			if (viewerSettings.enableDebugDraw)
+			{
+				drawGizmos(cameraMatrices);
+			}
+
+			ImGui::PopFont();
+			ImGui::EndFrame();
+
+			render();
+
+			fsPass->setViewport(fbSize.x, fbSize.y);
+			fsPass->setSourceTexture(fbTexture);
+			fsPass->execute();
+
+
+			if (viewerSettings.enableGridFloor)
+			{
+				igPass->setViewProjectionMatrix(cameraMatrices.viewProjection);
+				igPass->setViewport(fbSize.x, fbSize.y);
+				igPass->setGridColor(
+					glm::vec3{ viewerSettings.gridColor[0], viewerSettings.gridColor[1], viewerSettings.gridColor[2] });
+				igPass->execute();
+			}
+
+			if (viewerSettings.enableDebugDraw)
+			{
+				ddPass->setViewProjectionMatrix(cameraMatrices.viewProjection);
+				ddPass->setViewport(fbSize.x, fbSize.y);
+				ddPass->setLineWidth(viewerSettings.lineWidth);
+				ddPass->execute();
+			}
+
+			ImGui::Render();
+			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+			glfwSwapBuffers(handle);
+			glfwPollEvents();
+			FrameMark;
 		}
-		gizmoHelper_->clear();
-
-		ImGui_ImplOpenGL3_NewFrame();
-		ImGui_ImplGlfw_NewFrame();
-		ImGui::NewFrame();
-		ImGui::PushFont(defaultFonts[currentFontIndex]);
-		gui();
-
-		const auto cameraMatrices = computeViewProjectionMatrixFromCamera(camera, fbSize.x, fbSize.y);
-
-		if (viewerSettings.enableDebugDraw)
-		{
-			drawGizmos(cameraMatrices);
-		}
-
-		ImGui::PopFont();
-		ImGui::EndFrame();
-
-		render();
-
-		fsPass->setViewport(fbSize.x, fbSize.y);
-		fsPass->setSourceTexture(fbTexture);
-		fsPass->execute();
-
-
-		if (viewerSettings.enableGridFloor)
-		{
-			igPass->setViewProjectionMatrix(cameraMatrices.viewProjection);
-			igPass->setViewport(fbSize.x, fbSize.y);
-			igPass->setGridColor(
-				glm::vec3{ viewerSettings.gridColor[0], viewerSettings.gridColor[1], viewerSettings.gridColor[2] });
-			igPass->execute();
-		}
-
-		if (viewerSettings.enableDebugDraw)
-		{
-			ddPass->setViewProjectionMatrix(cameraMatrices.viewProjection);
-			ddPass->setViewport(fbSize.x, fbSize.y);
-			ddPass->setLineWidth(viewerSettings.lineWidth);
-			ddPass->execute();
-		}
-
-		ImGui::Render();
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-		glfwSwapBuffers(handle);
-		glfwPollEvents();
 	}
 
 	deinitializeGui();
+	currentRenderer_->deinitialize();
 	glfwDestroyWindow(handle);
 	glfwTerminate();
 }
