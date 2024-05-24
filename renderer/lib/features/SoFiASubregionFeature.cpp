@@ -31,7 +31,7 @@ SoFiASubregionFeature::SoFiASubregionFeature(const std::string& name, b3d::rende
 
 void SoFiASubregionFeature::onInitialize()
 {
-	debugDrawlist_ = &renderer_->gizmoHelperBase();
+	debugDrawlist_ = &renderer_->gizmoDraw();
 }
 
 

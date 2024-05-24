@@ -58,7 +58,7 @@ namespace b3d::renderer
 		CudaGpuTimers<100, 4> gpuTimers_{};
 
 		RenderTargetFeature* renderTargetFeature_;
-		// RenderSyncFeature* renderSyncFeature_;
+		RenderSyncFeature* renderSyncFeature_;
 		ColorMapFeature* colorMapFeature_;
 		TransferFunctionFeature* transferFunctionFeature_;
 		BackgroundColorFeature* backgroundColorFeature_;
