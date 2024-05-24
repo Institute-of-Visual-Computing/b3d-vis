@@ -37,7 +37,7 @@ namespace b3d::unity_cuda_interop
 			return isValid_;
 		}
 
-		virtual auto registerCUDA() -> void = 0;
+		virtual auto registerCUDA(unsigned registerFlags = cudaGraphicsRegisterFlagsNone, unsigned mapFlags = cudaGraphicsMapFlagsNone) -> void = 0;
 		virtual auto unregisterCUDA() -> void;
 
 		auto getUnityNativeTexturePointer() const -> void*

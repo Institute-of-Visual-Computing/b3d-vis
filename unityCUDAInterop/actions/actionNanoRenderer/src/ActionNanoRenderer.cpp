@@ -40,10 +40,6 @@ protected:
 	auto customRenderEvent(int eventId, void* data) -> void override;
 	auto setTextures(const RenderingDataBuffer& renderingDataBuffer) -> void;
 
-	// std::unique_ptr<SyncPrimitive> waitPrimitive_;
-	// std::unique_ptr<SyncPrimitive> signalPrimitive_;
-	// std::unique_ptr<RenderingContext> renderingContext_;
-
 	std::unique_ptr<NanoRenderer> renderer_;
 
 	std::unique_ptr<Texture> colorTexture_;
@@ -100,18 +96,7 @@ auto ActionNanoRenderer::initialize(void* data) -> void
 	const RenderingDataBuffer rdb{ unityDataSchema, 1, data };
 	setTextures(rdb);
 
-	// Get Sync Primitives
-	// waitPrimitive_ = renderAPI_->createSynchronizationPrimitive();
-	// signalPrimitive_ = renderAPI_->createSynchronizationPrimitive();
-	// waitPrimitive_->importToCUDA();
-	// signalPrimitive_->importToCUDA();
-
-	// renderingContext_ = renderAPI_->createRenderingContext();
-
-	// renderingDataWrapper_.data.synchronization.waitSemaphore = waitPrimitive_->getCudaSemaphore();
-	// renderingDataWrapper_.data.synchronization.signalSemaphore = signalPrimitive_->getCudaSemaphore();
 	renderingDataWrapper_.data.rendererInitializationInfo.deviceUuid = cudaDevProps.uuid;
-	// renderAPI_->getCudaUUID();
 
 	const auto colorMapsTexture = rdb.get<UnityTexture>("colorMapsTexture");
 	const auto coloringInfo = rdb.get<UnityColoringInfo>("coloringInfo");
@@ -119,7 +104,8 @@ auto ActionNanoRenderer::initialize(void* data) -> void
 	colorMapsTexture_ = renderAPI_->createTexture(colorMapsTexture->texturePointer);
 	if (colorMapsTexture_->isValid())
 	{
-		colorMapsTexture_->registerCUDA();
+		colorMapsTexture_->registerCUDA(cudaGraphicsRegisterFlagsTextureGather,
+										cudaGraphicsMapFlagsReadOnly);
 		cudaDeviceSynchronize();
 		renderingDataWrapper_.data.colorMapTexture = { .target = colorMapsTexture_->getCudaGraphicsResource(),
 													   .extent = {
@@ -138,14 +124,14 @@ auto ActionNanoRenderer::initialize(void* data) -> void
 	transferFunctionTexture_ = renderAPI_->createTexture(transferFunctionTexture->texturePointer);
 		if (transferFunctionTexture_->isValid())
 		{
-			
-		transferFunctionTexture_->registerCUDA();
-		cudaDeviceSynchronize();
-		renderingDataWrapper_.data.transferFunctionTexture = {
-			.target = transferFunctionTexture_->getCudaGraphicsResource(),
-			.extent = { static_cast<uint32_t>(transferFunctionTexture_->getWidth()),
-						static_cast<uint32_t>(transferFunctionTexture_->getHeight()),
-						static_cast<uint32_t>(transferFunctionTexture_->getDepth()) }
+			transferFunctionTexture_->registerCUDA(cudaGraphicsRegisterFlagsTextureGather,
+												   cudaGraphicsMapFlagsReadOnly);
+			cudaDeviceSynchronize();
+			renderingDataWrapper_.data.transferFunctionTexture = {
+				.target = transferFunctionTexture_->getCudaGraphicsResource(),
+				.extent = { static_cast<uint32_t>(transferFunctionTexture_->getWidth()),
+							static_cast<uint32_t>(transferFunctionTexture_->getHeight()),
+							static_cast<uint32_t>(transferFunctionTexture_->getDepth()) }
 		};
 	}
 	renderer_->initialize(
@@ -168,8 +154,6 @@ auto ActionNanoRenderer::teardown() -> void
 	colorMapsTexture_.reset();
 	depthTexture_.reset();
 	colorTexture_.reset();
-	// waitPrimitive_.reset();
-	// signalPrimitive_.reset();
 }
 
 auto ActionNanoRenderer::customRenderEvent(int eventId, void* data) -> void
@@ -200,9 +184,8 @@ auto ActionNanoRenderer::customRenderEvent(int eventId, void* data) -> void
 		cudaD3D11GetDevice(&cudaDevice, dxgiAdapter);
 
 		cudaSetDevice(cudaDevice);
-		logger_->log("Nano render");
 		const RenderingDataBuffer rdb{ unityDataSchema, 1, data };
-// 		
+
 		renderingDataWrapper_.data.renderTargets.colorRt = { .target = colorTexture_->getCudaGraphicsResource(),
 					  .extent = { static_cast<uint32_t>(colorTexture_->getWidth()),
 								  static_cast<uint32_t>(colorTexture_->getHeight()),
@@ -210,6 +193,28 @@ auto ActionNanoRenderer::customRenderEvent(int eventId, void* data) -> void
 
 		const auto coloringInfo = rdb.get<UnityColoringInfo>("coloringInfo");
 		renderingDataWrapper_.data.coloringInfo = *coloringInfo;
+
+
+
+		if (transferFunctionTexture_->isValid())
+		{
+			renderingDataWrapper_.data.transferFunctionTexture = {
+				.target = transferFunctionTexture_->getCudaGraphicsResource(),
+				.extent = { static_cast<uint32_t>(transferFunctionTexture_->getWidth()),
+							static_cast<uint32_t>(transferFunctionTexture_->getHeight()),
+							static_cast<uint32_t>(transferFunctionTexture_->getDepth()) }
+			};
+		}
+
+		if (colorMapsTexture_->isValid())
+		{
+			renderingDataWrapper_.data.colorMapTexture = { .target = colorMapsTexture_->getCudaGraphicsResource(),
+														   .extent = {
+															   static_cast<uint32_t>(colorMapsTexture_->getWidth()),
+															   static_cast<uint32_t>(colorMapsTexture_->getHeight()),
+															   static_cast<uint32_t>(colorMapsTexture_->getDepth()) } };
+		}
+
 
 		const auto& view = rdb.get<View>("view");
 		renderingDataWrapper_.data.view.cameras[0] = view->cameras[0];
@@ -243,12 +248,8 @@ auto ActionNanoRenderer::customRenderEvent(int eventId, void* data) -> void
 		renderingDataWrapper_.data.volumeTransform.worldMatTRS.l *= owl::LinearSpace3f::scale(volumeTransform->scale);
 
 		currFenceValue += 1;
-		renderingDataWrapper_.data.synchronization.fenceValue = currFenceValue;
-
-		// renderingContext_->signal(signalPrimitive_.get(), currFenceValue);
 
 		renderer_->render();
-		// renderingContext_->wait(waitPrimitive_.get(), currFenceValue);
 	}
 	else if (eventId == static_cast<int>(NanoRenderEventTypes::initializeEvent))
 	{
@@ -272,7 +273,7 @@ auto ActionNanoRenderer::setTextures(const RenderingDataBuffer& renderingDataBuf
 		auto newColorTexture = renderAPI_->createTexture(unityRenderTargets->colorTexture.texturePointer);
 		if (newColorTexture->isValid())
 		{
-			newColorTexture->registerCUDA();
+			newColorTexture->registerCUDA(cudaGraphicsRegisterFlagsNone, cudaGraphicsMapFlagsWriteDiscard);
 			cudaDeviceSynchronize();
 			colorTexture_.swap(newColorTexture);
 			cudaDeviceSynchronize();	
@@ -284,7 +285,7 @@ auto ActionNanoRenderer::setTextures(const RenderingDataBuffer& renderingDataBuf
 		auto newDepthTexture = renderAPI_->createTexture(unityRenderTargets->depthTexture.texturePointer);
 		if (newDepthTexture->isValid())
 		{
-			newDepthTexture->registerCUDA();
+			newDepthTexture->registerCUDA(cudaGraphicsRegisterFlagsNone, cudaGraphicsMapFlagsWriteDiscard);
 			cudaDeviceSynchronize();
 			depthTexture_.swap(newDepthTexture);
 			cudaDeviceSynchronize();

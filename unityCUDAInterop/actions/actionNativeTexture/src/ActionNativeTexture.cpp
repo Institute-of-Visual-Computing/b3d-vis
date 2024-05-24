@@ -265,12 +265,8 @@ auto ActionNativeTexture::customRenderEvent(int eventId, void* data) -> void
 			currFenceValue += 1;
 			renderingDataWrapper_.data.synchronization.fenceValue = currFenceValue;
 
-			renderingContext_->signal(signalPrimitive_.get(), currFenceValue);
-			id3d11multiThread->Enter();
-			renderer_->render();
-			id3d11multiThread->Leave();
 
-			renderingContext_->wait(waitPrimitive_.get(), currFenceValue);
+			renderer_->render();
 		}
 		else
 		{

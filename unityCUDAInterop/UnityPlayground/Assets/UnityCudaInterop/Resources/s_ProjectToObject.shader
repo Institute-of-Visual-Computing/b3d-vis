@@ -67,7 +67,7 @@ Shader "UnityCudaInterop/ProjectToObject"
 				
                 fixed4 col = UNITY_SAMPLE_TEX2DARRAY(_MainTex, texPos);
 				float lineDepth = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, texPos));
-				if((col.r+col.g+col.b)<0.001f)
+				if((col.a)<0.001f)
                 {
 					col.r = 1;
                     float abc = lineDepth;
