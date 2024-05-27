@@ -8,12 +8,15 @@
 
 #include "owl/helper/cuda.h"
 
-auto b3d::renderer::ColorMapFeature::beginUpdate() -> void
+void b3d::renderer::ColorMapFeature::onInitialize()
 {
 	colorMapTexture_ = sharedParameters_->get<ExternalTexture>("colorMapTexture");
 	coloringInfo_ = sharedParameters_->get<ColoringInfo>("coloringInfo");
 	colorMapInfos_ = sharedParameters_->get<ColorMapInfos>("colorMapInfos");
+}
 
+auto b3d::renderer::ColorMapFeature::beginUpdate() -> void
+{
 	skipUpdate = colorMapTexture_ == nullptr || coloringInfo_ == nullptr || colorMapInfos_ == nullptr;
 
 	if (skipUpdate)
@@ -49,7 +52,7 @@ auto b3d::renderer::ColorMapFeature::beginUpdate() -> void
 		texDesc.borderColor[1] = 1.0f;
 		texDesc.borderColor[2] = 1.0f;
 		texDesc.borderColor[3] = 1.0f;
-		texDesc.sRGB = 0;
+		texDesc.sRGB = 1;
 
 		OWL_CUDA_CHECK(cudaCreateTextureObject(&colorMapCudaTexture_, &resDesc, &texDesc, nullptr));
 	}
@@ -133,10 +136,6 @@ auto b3d::renderer::ColorMapFeature::hasGui() const -> bool
 auto b3d::renderer::ColorMapFeature::getParamsData() -> ParamsData
 {
 	assert(coloringInfo_ != nullptr && colorMapInfos_ != nullptr);
-	coloringInfo_->coloringMode = selectedColoringMode_ == 0 ? ColoringMode::single : ColoringMode::colormap;
-	coloringInfo_->selectedColorMap = colorMapInfos_->firstColorMapYTextureCoordinate +
-		static_cast<float>(selectedColoringMap_) * colorMapInfos_->colorMapHeightNormalized;
-
 	return { colorMapCudaTexture_, coloringInfo_->singleColor, coloringInfo_->selectedColorMap,
 			 coloringInfo_->coloringMode };
 }

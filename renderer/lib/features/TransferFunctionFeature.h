@@ -12,6 +12,8 @@ namespace b3d::renderer
 	{
 	public:
 		explicit TransferFunctionFeature(const std::string& name, const size_t dataPointsCount = 32);
+
+		auto onInitialize() -> void override;
 		auto beginUpdate() -> void override;
 		auto endUpdate() -> void override;
 		auto gui() -> void override;
@@ -19,7 +21,6 @@ namespace b3d::renderer
 		{
 			//TODO: put your computed params here
 			cudaTextureObject_t transferFunctionTexture{};
-
 		};
 
 		[[nodiscard]] auto getParamsData() -> ParamsData;
@@ -28,16 +29,18 @@ namespace b3d::renderer
 	private:
 		bool skipUpdate{ false };
 
-		int selectedCurveHandleIdx_{-1};
-
-		std::vector<ImVec2> dataPoints_;
-		std::vector<float> stagingBuffer_;
-
-		bool newDataAvailable_{ false };
-
 		ExternalTexture* transferFunctionTexture_;
 
 		cudaArray_t transferFunctionCudaArray_{ nullptr };
 		cudaTextureObject_t transferFunctionCudaTexture_{};
+
+		// Use only in gui
+		std::vector<ImVec2> dataPoints_;
+		// Use only in gui
+		std::vector<float> stagingBuffer_;
+		// Use only in gui
+		int selectedCurveHandleIdx_{ -1 };
+		// Use only in gui
+		bool newDataAvailable_{ true };
 	};
 } // namespace b3d::renderer
