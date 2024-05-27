@@ -362,13 +362,13 @@ auto NanoViewer::render() -> void
 		.minMaxRt = { cuDisplayTexture, { static_cast<uint32_t>(fbSize.x), static_cast<uint32_t>(fbSize.y), 1 } },
 	};
 
-	GL_CALL(glSignalSemaphoreEXT(synchronizationResources_.glSignalSemaphore, 0, nullptr, 0, nullptr, &layout));
+	// GL_CALL(glSignalSemaphoreEXT(synchronizationResources_.glSignalSemaphore, 0, nullptr, 0, nullptr, &layout));
 
 	currentRenderer_->render();
 
 	// NOTE: this function call return error, when the semaphore wasn't used before (or it could be in the wrong initial
 	// state)
-	GL_CALL(glWaitSemaphoreEXT(synchronizationResources_.glWaitSemaphore, 0, nullptr, 0, nullptr, nullptr));
+	// GL_CALL(glWaitSemaphoreEXT(synchronizationResources_.glWaitSemaphore, 0, nullptr, 0, nullptr, nullptr));
 }
 auto NanoViewer::resize(const owl::vec2i& newSize) -> void
 {

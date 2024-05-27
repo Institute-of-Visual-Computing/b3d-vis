@@ -63,9 +63,9 @@ protected:
 	std::unique_ptr<Texture> myWrappedTexture_;
 
 	
-	std::unique_ptr<RenderingContext> renderingContext_;
-	std::unique_ptr<SyncPrimitive> waitPrimitive_;
-	std::unique_ptr<SyncPrimitive> signalPrimitive_;
+	// std::unique_ptr<RenderingContext> renderingContext_;
+	// std::unique_ptr<SyncPrimitive> waitPrimitive_;
+	// std::unique_ptr<SyncPrimitive> signalPrimitive_;
 
 	std::unique_ptr<b3d::renderer::TextureFillerSyncSample> renderer_;
 	std::atomic_uint64_t currFenceValue = 0;
@@ -164,15 +164,15 @@ auto ActionNativeTexture::initialize(void* data) -> void
 
 
 		// Get Sync Primitives
-		waitPrimitive_ = renderAPI_->createSynchronizationPrimitive();
-		signalPrimitive_ = renderAPI_->createSynchronizationPrimitive();
-		waitPrimitive_->importToCUDA();
-		signalPrimitive_->importToCUDA();
+		// waitPrimitive_ = renderAPI_->createSynchronizationPrimitive();
+		// signalPrimitive_ = renderAPI_->createSynchronizationPrimitive();
+		// waitPrimitive_->importToCUDA();
+		// signalPrimitive_->importToCUDA();
 
-		renderingContext_ = renderAPI_->createRenderingContext();
+		// renderingContext_ = renderAPI_->createRenderingContext();
 
-		renderingDataWrapper_.data.synchronization.waitSemaphore = waitPrimitive_->getCudaSemaphore();
-		renderingDataWrapper_.data.synchronization.signalSemaphore = signalPrimitive_->getCudaSemaphore();
+		// renderingDataWrapper_.data.synchronization.waitSemaphore = waitPrimitive_->getCudaSemaphore();
+		// renderingDataWrapper_.data.synchronization.signalSemaphore = signalPrimitive_->getCudaSemaphore();
 
 		renderingDataWrapper_.data.rendererInitializationInfo.deviceUuid = cudaDevProps.uuid; //renderAPI_->getCudaUUID();
 
@@ -205,9 +205,9 @@ auto ActionNativeTexture::teardown() -> void
 	cudaDeviceSynchronize();
 	renderer_.reset();
 	myTexture_->Release();
-	waitPrimitive_.reset();
-	signalPrimitive_.reset();
-	renderingContext_.reset();
+	// waitPrimitive_.reset();
+	// signalPrimitive_.reset();
+	// renderingContext_.reset();
 }
 
 auto ActionNativeTexture::customRenderEvent(int eventId, void* data) -> void

@@ -32,8 +32,7 @@ namespace b3d::renderer::nano
 		NanoRenderer()
 		{
 			renderTargetFeature_ = addFeature<RenderTargetFeature>("RenderTargets");
-			renderSyncFeature_ =
-				addFeatureWithDependency<RenderSyncFeature>({ renderTargetFeature_ }, "Main Synchronization");
+			// renderSyncFeature_ = addFeatureWithDependency<RenderSyncFeature>({ renderTargetFeature_ }, "Main Synchronization");
 		}
 
 	protected:
@@ -60,6 +59,6 @@ namespace b3d::renderer::nano
 
 
 		RenderTargetFeature* renderTargetFeature_;
-		RenderSyncFeature* renderSyncFeature_;
+		// RenderSyncFeature* renderSyncFeature_;
 	};
 } // namespace b3d::renderer::nano
