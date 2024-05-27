@@ -32,9 +32,9 @@ namespace b3d
 
 			struct NanoVdbVolume
 			{
-				owl::box3f indexBox;
-				owl::box3f worldAabb;
-				owl::AffineSpace3f transform;
+				owl::box3f indexBox{};
+				owl::box3f worldAabb{};
+				owl::AffineSpace3f transform{};
 				CUdeviceptr grid = 0;
 			};
 

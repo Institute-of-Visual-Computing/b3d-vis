@@ -2,7 +2,7 @@
 #include <filesystem>
 #include <vector>
 
-#include <SharedStructs.h>
+#include "SharedStructs.h"
 
 namespace b3d::renderer::nano
 {
