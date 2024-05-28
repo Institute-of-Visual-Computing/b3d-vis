@@ -24,13 +24,12 @@ using namespace owl;
 extern "C" __constant__ LaunchParams optixLaunchParams;
 
 
-
 struct PerRayData
 {
 	vec3f color;
 	float alpha;
 	bool isBackground{ false };
-	float stepsScale{1.0};
+	float stepsScale{ 1.0 };
 };
 
 __device__ inline auto confine(const nanovdb::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& sample) -> void
@@ -67,7 +66,7 @@ __device__ inline auto confine(const nanovdb::BBox<nanovdb::Coord>& bbox, nanovd
 }
 
 __device__ inline auto confine(const nanovdb::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& start, nanovdb::Vec3f& end)
--> void
+	-> void
 {
 	confine(bbox, start);
 	confine(bbox, end);
@@ -81,8 +80,8 @@ __host__ __device__ auto b3d::renderer::nano::colorMap(const float value) -> owl
 	}
 	else
 	{
-		const auto result = tex2D<float4>(optixLaunchParams.colorMaps, value,
-			optixLaunchParams.coloringInfo.selectedColorMap);
+		const auto result =
+			tex2D<float4>(optixLaunchParams.colorMaps, value, optixLaunchParams.coloringInfo.selectedColorMap);
 		return owl::vec3f{ result.x, result.y, result.z };
 	}
 }
@@ -100,14 +99,13 @@ OPTIX_BOUNDS_PROGRAM(volumeBounds)
 	printf("%.2f ___ %.2f ___  %.2f \n", primitiveBounds.lower.x, primitiveBounds.lower.y, primitiveBounds.lower.z);
 	printf("%.2f ___ %.2f ___  %.2f \n", primitiveBounds.upper.x, primitiveBounds.upper.y, primitiveBounds.upper.z);
 
-	primitiveBounds = box3f{{-1000.0f,-1000.0f,-1000.0f},{1000.0f,1000.0f,1000.0f}};
-	//TODO: need better solution
+	primitiveBounds = box3f{ { -1000.0f, -1000.0f, -1000.0f }, { 1000.0f, 1000.0f, 1000.0f } };
+	// TODO: need better solution
 }
 
 OPTIX_RAYGEN_PROGRAM(hitCountRayGen)()
 {
 }
-
 
 
 OPTIX_RAYGEN_PROGRAM(rayGeneration)()
@@ -167,8 +165,8 @@ OPTIX_RAYGEN_PROGRAM(rayGenerationFoveated)()
 	float theta2 = atan2f(pq.y * resolution.y, -abs(pq.x) * resolution.x)/pi2 + (pq.y < 0.0f ? 1.0f : 0.0);
 
 	const auto logCoord = vec2f(lr, theta) / scaleRatio;
-	surf2Dwrite(owl::make_rgba(vec3f(logCoord.x, logCoord.y, 0.0f)), optixLaunchParams.surfacePointer, sizeof(uint32_t) * pixelIndex.x, pixelIndex.y);
-	return;
+	surf2Dwrite(owl::make_rgba(vec3f(logCoord.x, logCoord.y, 0.0f)), optixLaunchParams.surfacePointer, sizeof(uint32_t)
+	* pixelIndex.x, pixelIndex.y); return;
 	*/
 	/*const auto uv = vec2f(pixelIndex) / resolution * scaleRatio;
 
@@ -183,14 +181,13 @@ OPTIX_RAYGEN_PROGRAM(rayGenerationFoveated)()
 	}*/
 
 
-
-	//auto screen = (vec2f(newPixelIndex) + vec2f(.5f)); //*2.0f -1.0f;
+	// auto screen = (vec2f(newPixelIndex) + vec2f(.5f)); //*2.0f -1.0f;
 	auto screen = (vec2f(pixelIndex) + vec2f(.5f)); //*2.0f -1.0f;
 
 	screen = logMap(scaleRatio, screen, foveal, resolution);
-	//screen = inverseLogMap(scaleRatio, screen, foveal, resolution);
-	/*surf2Dwrite(owl::make_rgba(vec3f(screen.x, screen.y, 0.0f)), optixLaunchParams.surfacePointer, sizeof(uint32_t) * pixelIndex.x, pixelIndex.y);
-	return;*/
+	// screen = inverseLogMap(scaleRatio, screen, foveal, resolution);
+	/*surf2Dwrite(owl::make_rgba(vec3f(screen.x, screen.y, 0.0f)), optixLaunchParams.surfacePointer, sizeof(uint32_t) *
+	pixelIndex.x, pixelIndex.y); return;*/
 	screen /= vec2f(self.frameBufferSize);
 
 	owl::Ray ray;
@@ -198,22 +195,15 @@ OPTIX_RAYGEN_PROGRAM(rayGenerationFoveated)()
 	ray.direction = normalize(camera.dir_00 + screen.x * camera.dir_du + screen.y * camera.dir_dv);
 
 	screen = (vec2f(pixelIndex) + vec2f(.5f));
-	const auto maxL = max(
-		max(
-			length((vec2f(1, 1) - foveal) * resolution),
-			length((vec2f(1, -1) - foveal) * resolution)),
-		max(
-			length((vec2f(-1, 1) - foveal) * resolution),
-			length((vec2f(-1, -1) - foveal) * resolution)));
+	const auto maxL =
+		max(max(length((vec2f(1, 1) - foveal) * resolution), length((vec2f(1, -1) - foveal) * resolution)),
+			max(length((vec2f(-1, 1) - foveal) * resolution), length((vec2f(-1, -1) - foveal) * resolution)));
 	const float L = log(maxL * 0.5);
 	auto uv = scaleRatio * screen / resolution;
 
 	uv.x = pow(uv.x, 1.0f / 4.0f);
 
-
-
 	screen /= vec2f(self.frameBufferSize);
-
 
 	PerRayData prd;
 	prd.stepsScale = exp((uv.x * L));
@@ -242,19 +232,9 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 
 	optixGetWorldToObjectTransformMatrix(transform.data());
 
-	auto indexToWorldTransform = cuda::std::array<float, 9>{
-		{
-			transform[0],
-				transform[1],
-				transform[2],
-				transform[4],
-				transform[5],
-				transform[6],
-				transform[8],
-				transform[9],
-				transform[10]
-		}
-	};
+	auto indexToWorldTransform =
+		cuda::std::array<float, 9>{ { transform[0], transform[1], transform[2], transform[4], transform[5],
+									  transform[6], transform[8], transform[9], transform[10] } };
 	const auto translate = nanovdb::Vec3f{ transform[3], transform[7], transform[11] };
 
 	const auto& accessor = grid->getAccessor();
@@ -266,7 +246,7 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 	const auto t1 = getPRD<float>();
 
 	const auto rayWorld = nanovdb::Ray<float>(reinterpret_cast<const nanovdb::Vec3f&>(rayOrigin),
-		reinterpret_cast<const nanovdb::Vec3f&>(rayDirection));
+											  reinterpret_cast<const nanovdb::Vec3f&>(rayDirection));
 
 	const auto startWorld = rayWorld(t0);
 	const auto endWorld = rayWorld(t1);
@@ -285,68 +265,60 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 
 	auto hdda = nanovdb::HDDA<nanovdb::Ray<float>>(ray, accessor.getDim(ijk, ray));
 
-	auto remapSample = [](const float value)
-		{
-			return optixLaunchParams.sampleRemapping.x +
-				value / (optixLaunchParams.sampleRemapping.y - optixLaunchParams.sampleRemapping.x);
-		};
-
 	auto result = vec4f{};
 	auto& prd = owl::getPRD<PerRayData>();
-	//printf("%f \n", prd.stepsScale);
-	const auto steps = 10.0f* prd.stepsScale;
-	const auto dt = clamp((ray.t1() - ray.t0())/steps, 1.0f, 1000.0f);
+
+	auto remapSample = [](const float value)
+	{
+		return optixLaunchParams.sampleRemapping.x +
+			value / (optixLaunchParams.sampleRemapping.y - optixLaunchParams.sampleRemapping.x);
+	};
+
+	const auto steps = 10.0f * prd.stepsScale;
 	const auto integrate = [&](auto sampleAccumulator)
+	{
+		sampleAccumulator.preAccumulate();
+
+		const auto acc = grid->tree().getAccessor();
+
+		while (hdda.step())
 		{
-			sampleAccumulator.preAccumulate();
+			// TODO: can we remove step and update? Investigate examples in optix sdk
+			const auto tt = hdda.next();
+			ijk = hdda.voxel();
+			const auto value = remapSample(accessor.getValue(nanovdb::Coord::Floor(ray(tt))));
+			sampleAccumulator.accumulate(value);
+			hdda.update(ray, accessor.getDim(ijk, ray));
+		}
 
-			const auto acc = grid->tree().getAccessor();
-
-			/*for (auto t = ray.t0(); t < ray.t1(); t += dt)
-			{
-				const auto value = dt * acc.getValue(nanovdb::Coord::Floor(ray(t)));
-				sampleAccumulator.accumulate(value);
-			}*/
-
-			while (hdda.step())
-			{
-				ijk = hdda.voxel();
-				const auto value = remapSample(accessor.getValue(ijk));
-				sampleAccumulator.accumulate(value);
-				hdda.update(ray, accessor.getDim(ijk, ray));
-			}
-
-			sampleAccumulator.postAccumulate();
-			return sampleAccumulator.getAccumulator();
-
-		};
+		sampleAccumulator.postAccumulate();
+		return sampleAccumulator.getAccumulator();
+	};
 
 	switch (optixLaunchParams.sampleIntegrationMethod)
 	{
 
 	case SampleIntegrationMethod::transferIntegration:
-	{
-		auto sampleAccumulator = IntensityIntegration{};
-		result = integrate(sampleAccumulator);
-	}
+		{
+			auto sampleAccumulator = IntensityIntegration{};
+			result = integrate(sampleAccumulator);
+		}
 
-	break;
+		break;
 	case SampleIntegrationMethod::maximumIntensityProjection:
-	{
-		auto sampleAccumulator = MaximumIntensityProjection{};
-		result = integrate(sampleAccumulator);
-	}
+		{
+			auto sampleAccumulator = MaximumIntensityProjection{};
+			result = integrate(sampleAccumulator);
+		}
 
-	break;
+		break;
 	case SampleIntegrationMethod::averageIntensityProjection:
-	{
-		auto sampleAccumulator = AverageIntensityProjection{};
-		result = integrate(sampleAccumulator);
+		{
+			auto sampleAccumulator = AverageIntensityProjection{};
+			result = integrate(sampleAccumulator);
+		}
+		break;
 	}
-	break;
-	}
-
-	//auto& prd = owl::getPRD<PerRayData>();
 
 	prd.color = vec3f{ result.x, result.y, result.z };
 	prd.alpha = result.w;
@@ -363,7 +335,7 @@ OPTIX_INTERSECT_PROGRAM(nano_intersection)()
 	auto t0 = optixGetRayTmin();
 	auto t1 = optixGetRayTmax();
 	const auto ray = nanovdb::Ray<float>(reinterpret_cast<const nanovdb::Vec3f&>(rayOrigin),
-		reinterpret_cast<const nanovdb::Vec3f&>(rayDirection), t0, t1);
+										 reinterpret_cast<const nanovdb::Vec3f&>(rayDirection), t0, t1);
 
 	if (ray.intersects(bbox, t0, t1))
 	{
