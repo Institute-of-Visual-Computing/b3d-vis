@@ -79,6 +79,8 @@ namespace b3d::renderer
 	struct VolumeTransform
 	{
 		owl::affine3f worldMatTRS{};
+		owl::box3f volumeVoxelBox{};
+		owl::AffineSpace3f renormalizedScale = owl::AffineSpace3f::scale(owl::vec3f{ 1, 1, 1 });
 	};
 
 	struct RendererInitializationInfo

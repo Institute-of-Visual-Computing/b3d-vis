@@ -455,7 +455,6 @@ auto NanoRenderer::onGui() -> void
 	ImGui::RadioButton("Intensity Integration", reinterpret_cast<int*>(&guiData.sampleIntegrationMethode),
 					   static_cast<int>(SampleIntegrationMethod::transferIntegration));
 	ImGui::EndGroup();
-	ImGui::Separator();
 
 	ImGui::DragFloatRange2("Sample Remapping", &guiData.sampleRemapping[0], &guiData.sampleRemapping[1], 0.0001, -1.0f,
 						   1.0f, "%.4f");

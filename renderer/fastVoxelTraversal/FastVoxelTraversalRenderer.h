@@ -15,7 +15,7 @@ namespace b3d::renderer
 	public:
 		FastVoxelTraversalRenderer()
 		{
-			renderSyncFeature_ = addFeature<RenderSyncFeature>("Main Synchronization");
+			// renderSyncFeature_ = addFeature<RenderSyncFeature>("Main Synchronization");
 			renderTargetFeature_ = addFeature<RenderTargetFeature>("RenderTargets");
 		}
 
@@ -47,6 +47,6 @@ namespace b3d::renderer
 		float invIntegral_{ 0 };
 
 		RenderTargetFeature* renderTargetFeature_;
-		RenderSyncFeature* renderSyncFeature_;
+		// RenderSyncFeature* renderSyncFeature_;
 	};
 } // namespace b3d::renderer

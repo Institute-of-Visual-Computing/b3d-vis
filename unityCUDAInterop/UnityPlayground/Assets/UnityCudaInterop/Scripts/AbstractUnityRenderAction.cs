@@ -235,6 +235,23 @@ namespace B3D
 				{
 					unityRenderingData.view.mode = UnityRenderMode.mono;
 					SetNativeRenderingCameraData(targetCamera.transform.position, targetCamera.transform.forward, targetCamera.transform.up, targetCamera.fieldOfView, 0);
+
+					Vector3 cameraWorldPosition = targetCamera.transform.position;
+					var eyePos = cameraWorldPosition;
+
+					var upperLeft = targetCamera.ScreenToWorldPoint(new Vector3(0, textureProvider_.ExternalTargetTextureExtent.Height - 1, 1));
+					var upperRight = targetCamera.ScreenToWorldPoint(new Vector3(textureProvider_.ExternalTargetTextureExtent.Width - 1, textureProvider_.ExternalTargetTextureExtent.Height - 1, 1));
+					var lowerLeft = targetCamera.ScreenToWorldPoint(new Vector3(0, 0, 1));
+
+					var onePxDirectionU = (upperRight - upperLeft); // / action.TextureProvider.ExternalTargetTextureExtent.Width;
+					var onePxDirectionV = (upperLeft - lowerLeft); //  / action.TextureProvider.ExternalTargetTextureExtent.Height;
+					var camLowerLeft = (lowerLeft - eyePos);
+
+
+					unityRenderingData.view.UnityCameras[0].dir00 = camLowerLeft;
+					unityRenderingData.view.UnityCameras[0].dirDu = onePxDirectionU;
+					unityRenderingData.view.UnityCameras[0].dirDv = onePxDirectionV;
+					unityRenderingData.view.UnityCameras[0].directionsAvailable = true;
 				}
 			}
 
@@ -247,7 +264,7 @@ namespace B3D
 					Up = up,
 					CosFovY = Mathf.Cos(Mathf.Deg2Rad * fovYDegree),
 					FovY = Mathf.Deg2Rad * fovYDegree,
-					directionsAvailable = false
+					directionsAvailable = true
 				};
 				unityRenderingData.view.UnityCameras[eyeIndex] = nativeCameraData;
 			}

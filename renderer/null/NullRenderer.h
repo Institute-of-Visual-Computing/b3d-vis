@@ -10,7 +10,7 @@ namespace b3d::renderer
 	public:
 		NullRenderer()
 		{
-			renderSyncFeature_ = addFeature<RenderSyncFeature>("Main Synchronization");
+			// renderSyncFeature_ = addFeature<RenderSyncFeature>("Main Synchronization");
 		}
 
 	protected:
@@ -20,6 +20,6 @@ namespace b3d::renderer
 		auto onGui() -> void override;
 
 		
-		RenderSyncFeature* renderSyncFeature_;
+		// RenderSyncFeature* renderSyncFeature_;
 	};
 } // namespace b3d

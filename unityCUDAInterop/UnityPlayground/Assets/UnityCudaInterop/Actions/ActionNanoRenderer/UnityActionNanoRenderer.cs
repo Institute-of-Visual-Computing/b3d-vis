@@ -24,8 +24,6 @@ public class UnityActionNanoRenderer : AbstractUnityRenderAction
 
 	private ActionNanoRenderer action_;
 
-	public Texture2D colorMapsTexture;
-	Texture2D transferFunctionTexture;
 
 	public TextAsset colorMapsDescription;
 
@@ -34,6 +32,10 @@ public class UnityActionNanoRenderer : AbstractUnityRenderAction
 	public UnityColoringMode coloringMode = UnityColoringMode.Single;
 
 	CustomSampler sampler;
+
+	Texture2D testColorTex;
+
+	public ColoringChanger coloringChanger;
 
 	#region AbstractUnityAction Overrides
 
@@ -62,8 +64,10 @@ public class UnityActionNanoRenderer : AbstractUnityRenderAction
 	protected override void FillAdditionalNativeRenderingData()
 	{
 		// Fill struct with custom data and copy struct to unmanaged code.
-		unityRenderingData.coloringInfo.coloringMode = coloringMode;
-		unityRenderingData.coloringInfo.selectedColorMap = colorMaps.firstColorMapYTextureCoordinate;
+		unityRenderingData.coloringInfo.coloringMode = coloringChanger.useColormap ? UnityColoringMode.Colormap : UnityColoringMode.Single;
+		unityRenderingData.coloringInfo.singleColor = coloringChanger.colorToUse;
+		unityRenderingData.coloringInfo.selectedColorMap = coloringChanger.SelectedColorMapFloat;
+		unityRenderingData.coloringInfo.backgroundColors = new Vector4[2] { Vector4.zero, Vector4.zero };
 
 		unityRenderingData.volumeTransform.position = volumeCube.transform.position;
 		unityRenderingData.volumeTransform.scale = volumeCube.transform.localScale;
@@ -78,35 +82,38 @@ public class UnityActionNanoRenderer : AbstractUnityRenderAction
 
 	protected IEnumerator StartAfter()
 	{
-		yield return new WaitForSeconds(10);
+		yield return new WaitForSeconds(1);
 		colorMaps = ColorMaps.load(colorMapsDescription.text);
 		sampler = CustomSampler.Create("NanoRenderSampler", true);
 
 		base.Start();
+				
+		unityRenderingData.transferFunctionTexture = new(coloringChanger.TransferRenderTex.GetNativeTexturePtr(), new((uint)coloringChanger.TransferRenderTex.width, (uint)coloringChanger.TransferRenderTex.height, 1));
 
-		transferFunctionTexture = new Texture2D(512, 1, TextureFormat.RFloat, false, true, false);
-		Color[] transferValues = new Color[512];
-		float colStep = 1.0f / (transferValues.Length - 1);
-		for (int i = 0; i < transferValues.Length; i++)
-		{
-			transferValues[i] = new Color(colStep * i, 0, 0);
-		}
-		transferFunctionTexture.SetPixels(transferValues);
-		transferFunctionTexture.Apply();
-		unityRenderingData.transferFunctionTexture = new(transferFunctionTexture.GetNativeTexturePtr(), new((uint)transferFunctionTexture.width, (uint)transferFunctionTexture.height, 1));
-
-
-		unityRenderingData.colorMapsTexture = new(colorMapsTexture.GetNativeTexturePtr(), new((uint)colorMaps.width, (uint)colorMaps.height, 1));
-
-		unityRenderingData.coloringInfo.coloringMode = UnityColoringMode.Single;
-		unityRenderingData.coloringInfo.singleColor = new Vector4(0, 1, 0, 1);
-		unityRenderingData.coloringInfo.selectedColorMap = colorMaps.firstColorMapYTextureCoordinate;
+		unityRenderingData.colorMapsTexture = new(coloringChanger.colormapsTexture.GetNativeTexturePtr(), new((uint)coloringChanger.colormapsTexture.width, (uint)coloringChanger.colormapsTexture.height, 1));
+		//unityRenderingData.colorMapsTexture = new(testColorTex.GetNativeTexturePtr(), new((uint)testColorTex.width, (uint)testColorTex.height, 1));
+		
+		unityRenderingData.coloringInfo.coloringMode = coloringChanger.useColormap ? UnityColoringMode.Colormap : UnityColoringMode.Single;
+		unityRenderingData.coloringInfo.singleColor = coloringChanger.colorToUse;
+		unityRenderingData.coloringInfo.selectedColorMap = coloringChanger.SelectedColorMapFloat;
 		unityRenderingData.coloringInfo.backgroundColors = new Vector4[2] { Vector4.zero, Vector4.zero };
 		yield return null;
 	}
 
 	protected override void Start()
 	{
+		testColorTex = new(1024, 512, TextureFormat.RGBA32, false, false);
+		Color[] colors = new Color[1024 * 512];
+		for(int i = 0; i < colors.Length; i++)
+		{
+			colors[i] = Color.red; 
+		}
+		testColorTex.SetPixels(colors);
+		testColorTex.Apply();
+
+
+
+
 		StartCoroutine(StartAfter());
 		/*
 		colorMaps = ColorMaps.load(colorMapsDescription.text);
@@ -143,6 +150,10 @@ public class UnityActionNanoRenderer : AbstractUnityRenderAction
 				SetTextures();
 			}
 		}
+
+
+
+
 		base.Update();
 		
 	}

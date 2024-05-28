@@ -157,6 +157,7 @@ namespace
 	{
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
+		ImGuizmo::AllowAxisFlip(false);
 		auto& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad; // Enable Gamepad Controls
@@ -361,13 +362,13 @@ auto NanoViewer::render() -> void
 		.minMaxRt = { cuDisplayTexture, { static_cast<uint32_t>(fbSize.x), static_cast<uint32_t>(fbSize.y), 1 } },
 	};
 
-	GL_CALL(glSignalSemaphoreEXT(synchronizationResources_.glSignalSemaphore, 0, nullptr, 0, nullptr, &layout));
+	// GL_CALL(glSignalSemaphoreEXT(synchronizationResources_.glSignalSemaphore, 0, nullptr, 0, nullptr, &layout));
 
 	currentRenderer_->render();
 
 	// NOTE: this function call return error, when the semaphore wasn't used before (or it could be in the wrong initial
 	// state)
-	GL_CALL(glWaitSemaphoreEXT(synchronizationResources_.glWaitSemaphore, 0, nullptr, 0, nullptr, nullptr));
+	// GL_CALL(glWaitSemaphoreEXT(synchronizationResources_.glWaitSemaphore, 0, nullptr, 0, nullptr, nullptr));
 }
 auto NanoViewer::resize(const owl::vec2i& newSize) -> void
 {
@@ -754,7 +755,6 @@ auto NanoViewer::drawGizmos(const CameraMatrices& cameraMatrices) -> void
 			mat[8] = transform->l.vz.x;
 			mat[9] = transform->l.vz.y;
 			mat[10] = transform->l.vz.z;
-
 			ImGuizmo::Manipulate(reinterpret_cast<const float*>(&cameraMatrices.view),
 				reinterpret_cast<const float*>(&cameraMatrices.projection), currentGizmoOperation,
 				currentGizmoMode, mat, nullptr, nullptr);
@@ -769,7 +769,7 @@ auto NanoViewer::drawGizmos(const CameraMatrices& cameraMatrices) -> void
 		}
 		auto blockInput = false;
 
-		for (const auto& [bound, transform] : gizmoHelper_->getBoundTransforms())
+		for (const auto& [bound, transform, worldTransform] : gizmoHelper_->getBoundTransforms())
 		{
 			float mat[16];
 
@@ -800,7 +800,13 @@ auto NanoViewer::drawGizmos(const CameraMatrices& cameraMatrices) -> void
 
 			const auto bounds = std::array{ halfSize.x, halfSize.y, halfSize.z, -halfSize.x,-halfSize.y,-halfSize.z };
 
-			ImGuizmo::Manipulate(reinterpret_cast<const float*>(&cameraMatrices.view),
+			glm::mat4 worldTransformMat{ { worldTransform.l.vx.x, worldTransform.l.vx.y, worldTransform.l.vx.z, 0.0f },
+										 { worldTransform.l.vy.x, worldTransform.l.vy.y, worldTransform.l.vy.z, 0.0f },
+										 { worldTransform.l.vz.x, worldTransform.l.vz.y, worldTransform.l.vz.z, 0.0f },
+										 { worldTransform.p.x, worldTransform.p.y, worldTransform.p.z, 1.0f } };
+			const auto matX = cameraMatrices.view * worldTransformMat;
+			
+			ImGuizmo::Manipulate(reinterpret_cast<const float*>(&matX),
 				reinterpret_cast<const float*>(&cameraMatrices.projection), ImGuizmo::OPERATION::BOUNDS,
 				currentGizmoMode, mat, nullptr, nullptr, bounds.data());
 			if (ImGuizmo::IsUsing())

@@ -36,6 +36,11 @@ namespace b3d::unity_cuda_interop
 				return cudaUUID_;
 			}
 
+			auto getUnityInterfaces() -> IUnityInterfaces*
+			{
+				return unityInterfaces_;
+			}
+
 		protected:
 			RenderAPI(PluginLogger* logger) : logger_(logger)
 			{
@@ -46,5 +51,6 @@ namespace b3d::unity_cuda_interop
 			cudaUUID_t cudaUUID_{};
 			PluginLogger* logger_;
 			UnityGfxRenderer unityGfxRendererType_;
+			IUnityInterfaces* unityInterfaces_;
 		};
 } // namespace b3d::unity_cuda_interop

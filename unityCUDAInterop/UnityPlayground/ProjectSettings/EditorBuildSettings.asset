@@ -5,14 +5,11 @@ EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Scenes:
-  - enabled: 0
-    path: Assets/Scenes/GrabNano.unity
-    guid: 05d113c5904407e4aac433ba4f9f5b1e
   - enabled: 1
-    path: Assets/UnityCudaInterop/Actions/ActionNanoRenderer/ActionNanoRenderer.unity
-    guid: a7eb3153201c9444da86f1bd39784163
+    path: Assets/UnityCudaInterop/Actions/ActionNanoRenderer/ActionNanoRendererMRTK.unity
+    guid: 7cea6ab7616b6314192ebb7802be1635
   m_configObjects:
-    Unity.XR.Oculus.Settings: {fileID: 11400000, guid: f579b644e95a6f54eb5251a386cd7a1f, type: 2}
-    com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 97a5862e580252c4e94a3c2644ba5c5e, type: 2}
-    com.unity.xr.openxr.settings4: {fileID: 11400000, guid: 9c9a7c4a26e8ee447a72047c325b3801, type: 2}
-    xr.sdk.mock-hmd.settings: {fileID: 11400000, guid: 29674da4a2d2bd247b88e1079fa2e852, type: 2}
+    com.unity.xr.arfoundation.simulation_settings: {fileID: 11400000, guid: cefb17ca5377e8f4c987458e72b1d6e6, type: 2}
+    com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 774e9a004b53d32479935b40bdb27cec, type: 2}
+    com.unity.xr.openxr.settings4: {fileID: 11400000, guid: b318b44b2c28a884ab3e4b6704851349, type: 2}
+    xr.sdk.mock-hmd.settings: {fileID: 11400000, guid: 47d0d073828e5cf42bd61cdf7ba8b53f, type: 2}

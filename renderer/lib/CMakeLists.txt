@@ -27,10 +27,12 @@ set(SHARED_HEADERS
 	features/BackgroundColorFeature.h
 	features/RenderTargetFeature.cpp
 	features/RenderTargetFeature.h
+	features/SoFiASubregionFeature.cpp
+	features/SoFiASubregionFeature.h
 	Curve.h
 	Curve.cpp
 )
-
+find_package(httplib CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 add_library(${MODULE_NAME} ${SRC} ${SHARED_HEADERS})
 target_include_directories(${MODULE_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
@@ -39,6 +41,8 @@ target_link_libraries(${MODULE_NAME}
   PUBLIC
 	owl::owl
 	imgui::imgui
+  PRIVATE
+	httplib::httplib
 )
 add_library(B3D::Renderer::Library ALIAS ${MODULE_NAME})
 

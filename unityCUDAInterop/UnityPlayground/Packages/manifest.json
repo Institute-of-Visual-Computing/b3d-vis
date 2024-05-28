@@ -1,10 +1,25 @@
 {
   "dependencies": {
-    "com.meta.xr.sdk.all": "62.0.0",
-    "com.unity.ext.nunit": "2.0.5",
-    "com.unity.xr.management": "4.4.1",
-    "com.unity.xr.mock-hmd": "1.3.1-preview.1",
-    "com.unity.xr.oculus": "4.1.2",
+    "com.microsoft.mixedreality.openxr": "file:MixedReality/com.microsoft.mixedreality.openxr-1.10.1.tgz",
+    "com.microsoft.mrtk.graphicstools.unity": "file:MixedReality/com.microsoft.mrtk.graphicstools.unity-0.7.0.tgz",
+    "com.unity.cloud.gltfast": "6.5.0",
+    "com.unity.cloud.ktx": "3.4.1",
+    "com.unity.collab-proxy": "2.3.1",
+    "com.unity.feature.development": "1.0.1",
+    "com.unity.shadergraph": "14.0.10",
+    "com.unity.textmeshpro": "3.0.9",
+    "com.unity.timeline": "1.7.6",
+    "com.unity.ugui": "1.0.0",
+    "com.unity.visualscripting": "1.9.1",
+    "com.unity.xr.mock-hmd": "1.4.0-preview.2",
+    "com.unity.xr.openxr": "1.10.0",
+    "org.mixedrealitytoolkit.core": "file:MixedReality/org.mixedrealitytoolkit.core-3.2.0.tgz",
+    "org.mixedrealitytoolkit.input": "file:MixedReality/org.mixedrealitytoolkit.input-3.2.0.tgz",
+    "org.mixedrealitytoolkit.spatialmanipulation": "file:MixedReality/org.mixedrealitytoolkit.spatialmanipulation-3.2.0.tgz",
+    "org.mixedrealitytoolkit.standardassets": "file:MixedReality/org.mixedrealitytoolkit.standardassets-3.1.0.tgz",
+    "org.mixedrealitytoolkit.uxcomponents": "file:MixedReality/org.mixedrealitytoolkit.uxcomponents-3.2.0.tgz",
+    "org.mixedrealitytoolkit.uxcomponents.noncanvas": "file:MixedReality/org.mixedrealitytoolkit.uxcomponents.noncanvas-3.1.2.tgz",
+    "org.mixedrealitytoolkit.uxcore": "file:MixedReality/org.mixedrealitytoolkit.uxcore-3.2.0.tgz",
     "com.unity.modules.ai": "1.0.0",
     "com.unity.modules.androidjni": "1.0.0",
     "com.unity.modules.animation": "1.0.0",
@@ -36,5 +51,14 @@
     "com.unity.modules.vr": "1.0.0",
     "com.unity.modules.wind": "1.0.0",
     "com.unity.modules.xr": "1.0.0"
-  }
+  },
+  "scopedRegistries": [
+    {
+      "name": "OpenUPM",
+      "url": "https://package.openupm.com",
+      "scopes": [
+        "com.atteneder"
+      ]
+    }
+  ]
 }

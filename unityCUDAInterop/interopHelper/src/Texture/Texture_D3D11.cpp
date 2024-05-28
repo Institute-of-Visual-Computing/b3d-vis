@@ -60,16 +60,18 @@ TextureD3D11::~TextureD3D11()
 	d3d11GraphicsResource_ = nullptr;
 }
 
-auto TextureD3D11::registerCUDA() -> void
+auto TextureD3D11::registerCUDA(unsigned registerFlags,
+								unsigned mapFlags) -> void
 {
 	assert(d3d11GraphicsResource_ != nullptr);
 	// TODO: Error handling
-	auto cudaErr = cudaGraphicsD3D11RegisterResource(&cudaGraphicsResource_, d3d11GraphicsResource_, cudaGraphicsRegisterFlagsNone);
+	auto cudaErr = cudaGraphicsD3D11RegisterResource(&cudaGraphicsResource_, d3d11GraphicsResource_, registerFlags);
 	if (cudaErr != cudaSuccess)
 	{
 		this->isValid_ = false;
 	}
-	cudaErr = cudaGraphicsResourceSetMapFlags(cudaGraphicsResource_, cudaGraphicsMapFlagsWriteDiscard);
+	
+	cudaErr = cudaGraphicsResourceSetMapFlags(cudaGraphicsResource_, mapFlags);
 	if (cudaErr != cudaSuccess)
 	{
 		this->isValid_ = false;

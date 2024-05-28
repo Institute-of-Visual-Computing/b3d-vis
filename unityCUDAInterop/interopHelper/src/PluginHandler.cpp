@@ -122,6 +122,7 @@ auto PluginHandler::registerAction(Action* action) -> void
 	}
 	else
 	{
+		logger_->log("Register action");
 		action->registerAction(unityGraphics_->ReserveEventIDRange(Action::eventIdCount), logger_.get(),
 							   renderAPI_.get());
 	}

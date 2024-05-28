@@ -12,6 +12,7 @@ namespace b3d::renderer
 		explicit ColorMapFeature(const std::string& name) : RenderFeature{ name }
 		{
 		}
+		auto onInitialize() -> void override;
 		auto beginUpdate() -> void override;
 		auto endUpdate() -> void override;
 		auto gui() -> void override;
@@ -33,9 +34,10 @@ namespace b3d::renderer
 		ExternalTexture* colorMapTexture_{nullptr};
 		cudaTextureObject_t colorMapCudaTexture_{};
 
-		int selectedColoringMode_{0};
-		int selectedColoringMap_{0};
-
+		// For use with imgui only.
+		int selectedColoringMode_{ 0 };
+		// For use with imgui only.
+		int selectedColoringMap_{ 0 };
 	};
 
 } // namespace b3d::renderer

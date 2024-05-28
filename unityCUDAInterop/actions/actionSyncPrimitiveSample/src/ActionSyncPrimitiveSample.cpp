@@ -48,9 +48,9 @@ protected:
 	auto customRenderEvent(int eventId, void* data) -> void override;
 	auto setTextures(const NativeTextureData* nativeTextureData) -> void;
 
-	std::unique_ptr<SyncPrimitive> waitPrimitive_;
-	std::unique_ptr<SyncPrimitive> signalPrimitive_;
-	std::unique_ptr<RenderingContext> renderingContext_;
+	// std::unique_ptr<SyncPrimitive> waitPrimitive_;
+	// std::unique_ptr<SyncPrimitive> signalPrimitive_;
+	// std::unique_ptr<RenderingContext> renderingContext_;
 	std::unique_ptr<Texture> testTexture_;
 	
 
@@ -77,15 +77,15 @@ auto ActionSyncPrimitiveSample::initialize(void* data) -> void
 	testTexture_->registerCUDA();
 
 	// Get Sync Primitives
-	waitPrimitive_ = renderAPI_->createSynchronizationPrimitive();
-	signalPrimitive_ = renderAPI_->createSynchronizationPrimitive();
+	// waitPrimitive_ = renderAPI_->createSynchronizationPrimitive();
+	// signalPrimitive_ = renderAPI_->createSynchronizationPrimitive();
 	waitPrimitive_->importToCUDA();
 	signalPrimitive_->importToCUDA();
 
 	renderingContext_ = renderAPI_->createRenderingContext();
 
-	renderingDataWrapper_.data.synchronization.waitSemaphore = waitPrimitive_->getCudaSemaphore();
-	renderingDataWrapper_.data.synchronization.signalSemaphore = signalPrimitive_->getCudaSemaphore();
+	// renderingDataWrapper_.data.synchronization.waitSemaphore = waitPrimitive_->getCudaSemaphore();
+	// renderingDataWrapper_.data.synchronization.signalSemaphore = signalPrimitive_->getCudaSemaphore();
 	renderingDataWrapper_.data.rendererInitializationInfo.deviceUuid = renderAPI_->getCudaUUID();
 
 	renderer_->initialize(
@@ -121,11 +121,11 @@ auto ActionSyncPrimitiveSample::customRenderEvent(int eventId, void* data) -> vo
 		currFenceValue += 1;
 		renderingDataWrapper_.data.synchronization.fenceValue = currFenceValue;
 
-		renderingContext_->signal(signalPrimitive_.get(), currFenceValue);
+		// renderingContext_->signal(signalPrimitive_.get(), currFenceValue);
 
 		renderer_->render();
 
-		renderingContext_->wait(waitPrimitive_.get(), currFenceValue);
+		// renderingContext_->wait(waitPrimitive_.get(), currFenceValue);
 		
 	}
 	else if (eventId == static_cast<int>(CustomActionRenderEventTypes::initialize))

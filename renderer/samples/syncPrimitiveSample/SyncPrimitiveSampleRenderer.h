@@ -12,8 +12,7 @@ namespace b3d::renderer
 		SyncPrimitiveSampleRenderer()
 		{
 			renderTargetFeature_ = addFeature<RenderTargetFeature>("RenderTargets");
-			renderSyncFeature_ =
-				addFeatureWithDependency<RenderSyncFeature>({ renderTargetFeature_ }, "Main Synchronization");
+			// renderSyncFeature_ = addFeatureWithDependency<RenderSyncFeature>({ renderTargetFeature_ }, "Main Synchronization");
 		}
 
 	protected:
@@ -23,6 +22,6 @@ namespace b3d::renderer
 		auto onGui() -> void override;
 
 		RenderTargetFeature* renderTargetFeature_;
-		RenderSyncFeature* renderSyncFeature_;
+		// RenderSyncFeature* renderSyncFeature_;
 	};
 } // namespace b3d::renderer
