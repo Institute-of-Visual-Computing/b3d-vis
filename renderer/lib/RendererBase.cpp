@@ -43,7 +43,7 @@ auto RendererBase::gui() -> void
 	{
 		if (feature->hasGui())
 		{
-			if (ImGui::CollapsingHeader(feature->featureName().c_str()))
+			if (ImGui::CollapsingHeader(feature->featureName().c_str(), ImGuiTreeNodeFlags_DefaultOpen))
 			{
 				feature->gui();
 			}

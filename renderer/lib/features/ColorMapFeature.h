@@ -35,7 +35,7 @@ namespace b3d::renderer
 		cudaTextureObject_t colorMapCudaTexture_{};
 
 		// For use with imgui only.
-		int selectedColoringMode_{ 0 };
+		int selectedColoringMode_{ 1 };
 		// For use with imgui only.
 		int selectedColoringMap_{ 0 };
 	};

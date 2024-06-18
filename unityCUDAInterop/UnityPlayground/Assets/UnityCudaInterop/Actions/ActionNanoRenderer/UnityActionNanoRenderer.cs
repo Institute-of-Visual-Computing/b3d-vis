@@ -72,6 +72,10 @@ public class UnityActionNanoRenderer : AbstractUnityRenderAction
 		unityRenderingData.volumeTransform.position = volumeCube.transform.position;
 		unityRenderingData.volumeTransform.scale = volumeCube.transform.localScale;
 		unityRenderingData.volumeTransform.rotation = volumeCube.transform.rotation;
+
+		unityRenderingData.unityNanoVdbLoading = new();
+		unityRenderingData.unityNanoVdbLoading.selectedDataset = 0;
+		unityRenderingData.unityNanoVdbLoading.newVolumeAvailable = false;
 	}
 
 	#endregion AbstractUnityAction Overrides
