@@ -247,6 +247,17 @@ auto ActionNanoRenderer::customRenderEvent(int eventId, void* data) -> void
 
 		renderingDataWrapper_.data.volumeTransform.worldMatTRS.l *= owl::LinearSpace3f::scale(volumeTransform->scale);
 
+		const auto& nanovdbLoadingData = rdb.get<UnityNanoVdbLoading>("nanovdbData");
+
+		if (nanovdbLoadingData->newVolumeAvailable)
+		{
+			const auto pathToNanoVdb = std::filesystem::path{ nanovdbLoadingData->f1 };
+			renderer_->addNanoVdb(pathToNanoVdb);
+		}
+
+		renderer_->selectDataSet(nanovdbLoadingData->selectedDataset);
+
+
 		currFenceValue += 1;
 
 		renderer_->render();

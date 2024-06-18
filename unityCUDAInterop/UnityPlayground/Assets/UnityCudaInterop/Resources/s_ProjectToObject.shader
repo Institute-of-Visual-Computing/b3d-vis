@@ -9,6 +9,7 @@ Shader "UnityCudaInterop/ProjectToObject"
         ZWrite Off
         ColorMask RGBA
 		Cull Off
+		Blend SrcAlpha OneMinusSrcAlpha
 
 		Tags { "Queue" = "Transparent" "RenderType"="Transparent" "ForceNoShadowCasting"="True" }
         LOD 100
