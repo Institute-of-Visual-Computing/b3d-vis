@@ -1,7 +1,5 @@
-#it is a hack, otherwise it will be included by owl package with wrong settings
 find_package(glfw3 CONFIG REQUIRED)
 set(owl_dir ${CMAKE_CURRENT_LIST_DIR}/owl)
-# option(OWL_BUILD_SAMPLES OFF)
 add_subdirectory(${owl_dir} EXCLUDE_FROM_ALL)
 add_subdirectory(${owl_dir}/samples/common)
 
