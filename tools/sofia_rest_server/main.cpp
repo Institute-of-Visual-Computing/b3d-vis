@@ -9,15 +9,23 @@
 #include <filesystem>
 
 #include <future>
-
+#include <algorithm>
+#include <args.hxx>
 
 #include <boost/process.hpp>
 
 namespace bp = boost::process;
 
-auto sofiaPath = boost::process::search_path("sofia");
+// https://stackoverflow.com/questions/2989810/which-cross-platform-preprocessor-defines-win32-or-win32-or-win32
+#if !defined(_WIN32) && (defined(__unix__) || defined(__unix))
+	auto sofiaPath = boost::process::search_path("sofia");
+#else
+	auto sofiaPath = boost::process::search_path("sofia.exe");
+#endif
 
-const std::vector<std::string> sofia_return_code_messages = {
+auto commonRootPath = boost::process::filesystem::path("");
+
+const std::array<std::string, 9> sofia_return_code_messages = {
 	"The pipeline successfully completed without any error.",
 	"An unclassified failure occurred.",
 	"A NULL pointer was encountered.",
@@ -28,6 +36,123 @@ const std::vector<std::string> sofia_return_code_messages = {
 	"The pipeline had to be aborted due to invalid user input. This could, e.g., be due to an invalid parameter setting or the wrong input file being provided.",
 	"No specific error occurred, but sources were not detected either."
 };
+
+const std::array<std::string, 102> sofia_parameter_keys = { "pipeline.verbose",
+														"pipeline.pedantic",
+														"pipeline.threads",
+														"input.data",
+														"input.region",
+														"input.gain",
+														"input.noise",
+														"input.weights",
+														"input.primaryBeam",
+														"input.mask",
+														"input.invert",
+														"flag.region",
+														"flag.catalog",
+														"flag.radius",
+														"flag.auto",
+														"flag.threshold",
+														"flag.log",
+														"contsub.enable",
+														"contsub.order",
+														"contsub.threshold",
+														"contsub.shift",
+														"contsub.padding",
+														"scaleNoise.enable",
+														"scaleNoise.mode",
+														"scaleNoise.statistic",
+														"scaleNoise.fluxRange",
+														"scaleNoise.windowXY",
+														"scaleNoise.windowZ",
+														"scaleNoise.gridXY",
+														"scaleNoise.gridZ",
+														"scaleNoise.interpolate",
+														"scaleNoise.scfind",
+														"rippleFilter.enable",
+														"rippleFilter.statistic",
+														"rippleFilter.windowXY",
+														"rippleFilter.windowZ",
+														"rippleFilter.gridXY",
+														"rippleFilter.gridZ",
+														"rippleFilter.interpolate",
+														"scfind.enable",
+														"scfind.kernelsXY",
+														"scfind.kernelsZ",
+														"scfind.threshold",
+														"scfind.replacement",
+														"scfind.statistic",
+														"scfind.fluxRange",
+														"threshold.enable",
+														"threshold.threshold",
+														"threshold.mode",
+														"threshold.statistic",
+														"threshold.fluxRange",
+														"linker.enable",
+														"linker.radiusXY",
+														"linker.radiusZ",
+														"linker.minSizeXY",
+														"linker.minSizeZ",
+														"linker.maxSizeXY",
+														"linker.maxSizeZ",
+														"linker.minPixels",
+														"linker.maxPixels",
+														"linker.minFill",
+														"linker.maxFill",
+														"linker.positivity",
+														"linker.keepNegative",
+														"reliability.enable",
+														"reliability.parameters",
+														"reliability.threshold",
+														"reliability.scaleKernel",
+														"reliability.minSNR",
+														"reliability.minPixels",
+														"reliability.autoKernel",
+														"reliability.iterations",
+														"reliability.tolerance",
+														"reliability.catalog",
+														"reliability.plot",
+														"reliability.debug",
+														"dilation.enable",
+														"dilation.iterationsXY",
+														"dilation.iterationsZ",
+														"dilation.threshold",
+														"parameter.enable",
+														"parameter.wcs",
+														"parameter.physical",
+														"parameter.prefix",
+														"parameter.offset",
+														"output.directory",
+														"output.filename",
+														"output.writeCatASCII",
+														"output.writeCatXML",
+														"output.writeCatSQL",
+														"output.writeNoise",
+														"output.writeFiltered",
+														"output.writeMask",
+														"output.writeMask2d",
+														"output.writeRawMask",
+														"output.writeMoments",
+														"output.writeCubelets",
+														"output.writePV",
+														"output.writeKarma",
+														"output.marginCubelets",
+														"output.thresholdMom12",
+														"output.overwrite" };
+
+
+const std::array<std::string, 9> sofia_path_parameter_keys = {
+	"input.data",
+	"input.gain",
+	"input.mask",
+	"input.noise",
+	"input.primaryBeam",
+	"input.weights",
+	"flag.catalog",
+	"reliability.catalog",
+	"output.directory",
+};
+
 
 struct SofiaResult
 {
@@ -247,17 +372,60 @@ auto processCurrentRequest()-> void
 
 auto main(const int argc, char** argv) -> int
 {
-	
-	if (sofiaPath.empty())
+	args::ArgumentParser parser("SoFiA-2 Wrapper Server", "");
+	args::HelpFlag help(parser, "help", "Display this help menu", { 'h', "help" });
+
+	args::ValueFlag<std::string> sofiaPathArgument(parser, "path/to/sofia/executable", "Absolute path to sofia executable", { "sofia-executable","se" });
+	args::ValueFlag<std::string> commonRootPathArgument(parser, "common/root/path", "Common root path where shared data is located and written to. All relative paths starting from here.", { "root-path", "rp" });
+	args::ValueFlag<int> serverListeningPortArgument(parser, "5051","Port the server is listening", { "port", "p" }, 5051);
+
+	try
 	{
-		sofiaPath = boost::filesystem::path{ "D:/vcpkg/vcpkg.exe" };
+		parser.ParseCLI(argc, argv);
+	}
+	catch (args::Help)
+	{
+		std::cout << parser;
+		return EXIT_SUCCESS;
+	}
+	catch (args::ParseError e)
+	{
+		std::cerr << e.what() << std::endl;
+		std::cerr << parser;
+		return EXIT_FAILURE;
+	}
+	catch (args::ValidationError e)
+	{
+		std::cerr << e.what() << std::endl;
+		std::cerr << parser;
+		return EXIT_FAILURE;
 	}
 
-	auto params = std::vector<std::string>(argc);
-	for (auto i = 0; i < argc; i++)
+
+	if (sofiaPathArgument)
 	{
-		params[i] = argv[i];
+		sofiaPath = args::get(sofiaPathArgument);
 	}
+
+	if (commonRootPathArgument)
+	{
+		commonRootPath = args::get(commonRootPathArgument);
+	}
+
+	if (sofiaPath.empty())
+	{
+		std::cerr << "No path to SoFiA-2 executable!\n";
+		return EXIT_FAILURE;
+	}
+	std::cout << "Using " << sofiaPath << " as SoFiA executable\n";
+
+	if (commonRootPath.empty())
+	{
+		std::cerr << "No common root path!\n";
+		return EXIT_FAILURE;
+	}
+	std::cout << "Using " << commonRootPath << " as common root path\n";
+
 
 	httplib::Server svr;
 
@@ -339,15 +507,47 @@ auto main(const int argc, char** argv) -> int
 
 				// Build new search
 				SofiaSearch ss;
+				if (jsonInput.contains("sofia_config_file"))
+				{
+					const auto fullPathString =
+						(commonRootPath / std::filesystem::path(jsonInput["sofia_config_file"].get<std::string>()));
+					ss.sofiaParameters.emplace_back(jsonInput["sofia_config_file"].get<std::string>());
+				}
+
 				for (auto& [key, value] : jsonInput["sofia_params"].items())
 				{
-					ss.sofiaParameters.emplace_back(
-						std::format("{}={}", key.c_str(), value.get<std::string>()));
+					if (std::ranges::find(sofia_parameter_keys, key) !=
+						sofia_parameter_keys.end())
+					{
+						// is path like
+						if (std::ranges::find(sofia_path_parameter_keys, key) != sofia_path_parameter_keys.end())
+						{
+							auto inputStringForPath = value.get<std::string>();
+							while (inputStringForPath.starts_with(".") || inputStringForPath.starts_with("/") ||
+								   inputStringForPath.starts_with("\\"))
+							{
+								inputStringForPath.erase(0, 1);
+							}
+
+							const auto fullPathString =
+								(commonRootPath / boost::process::filesystem::path(inputStringForPath)).string();
+
+
+
+							ss.sofiaParameters.emplace_back(std::format(
+								"{}={}", key.c_str(), fullPathString));
+						}
+						else
+						{
+							ss.sofiaParameters.emplace_back(std::format("{}={}", key.c_str(), value.get<std::string>()));
+						}
+					}
 				}
 
 				// Add new Request to currentRequest
 				currentRequest = std::make_unique<SofiaRequest>(requestedSearchIdentifier, ss);
 				currentRequest->process();
+
 				res.set_content({}, "application/json");
 
 			 });
@@ -360,16 +560,7 @@ auto main(const int argc, char** argv) -> int
 				 processCurrentRequest();
 				 std::lock_guard currRequestLock(currentRequestMutex);
 
-				// Ongoing request
-				 if (currentRequest)
-				 {
-					 nlohmann::json retJ;
-					 retJ["message"] = currentRequest->getMessage();
-					 res.status = httplib::StatusCode::ServiceUnavailable_503;
-					 res.set_content(retJ.dump(), "application/json");
-					 return;
-				 }
-
+				
 
 				std::string bodyString;
 				 content_reader(
@@ -380,6 +571,9 @@ auto main(const int argc, char** argv) -> int
 					 });
 
 				 auto jsonInput = nlohmann::json::parse(bodyString);
+
+
+
 
 				 // Input not valid
 				 if (jsonInput.empty() || !jsonInput.contains("search_identifier"))
@@ -392,16 +586,25 @@ auto main(const int argc, char** argv) -> int
 					 return;
 				 }
 
-
 				 std::string requestedSearchIdentifier = jsonInput["search_identifier"];
-				 auto findit = requestResults.find(requestedSearchIdentifier);
 
+				 // requestedSearchIdentifier is Ongoing request
+				 if (currentRequest && currentRequest->getSearchIdentifier() == requestedSearchIdentifier)
+				 {
+					 nlohmann::json retJ;
+					 retJ["message"] = std::format("Request not finished yet");
+					 res.status = httplib::StatusCode::ServiceUnavailable_503;
+					 res.set_content(retJ.dump(), "application/json");
+					 return;
+				 }
+
+				 auto findit = requestResults.find(requestedSearchIdentifier);
 
 				 // Identifier not found
 				 if (findit == requestResults.end())
 				 {
 					 nlohmann::json retJ;
-					 retJ["message"] = "search_identifier not found.";
+					 retJ["message"] = "Request with given search_identifier not found.";
 
 					 res.status = httplib::StatusCode::BadRequest_400;
 					 res.set_content(retJ.dump(), "application/json");
@@ -419,6 +622,6 @@ auto main(const int argc, char** argv) -> int
 			{ res.set_content(nlohmann::json(requestResults).dump(), "application/json");
 			});
 
-	svr.listen("localhost", 8080);
-
+	std::cout << "Server is listening on port " << args::get(serverListeningPortArgument) << "\n";
+	svr.listen("0.0.0.0", args::get(serverListeningPortArgument));
 }
