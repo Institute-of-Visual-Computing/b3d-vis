@@ -64,7 +64,7 @@ void b3d::renderer::TextureFillerSyncSample::onRender()
 		const auto gridDimYAdd = fbSize.y % 2 == 0 ? 0 : 1;
 		auto gridDim = dim3{ fbSize.x / 32 + gridDimXAdd, fbSize.y / 32 + gridDimYAdd };
 		auto blockDim = dim3{ 32, 32 };
-		writeVertexBuffer<<<gridDim, blockDim>>>(renderTargetFeatureParams.colorRT.surfaces[0], fbSize.x, fbSize.y, idx);
+		writeVertexBuffer<<<gridDim, blockDim>>>(renderTargetFeatureParams.colorRT.surfaces[0].surface, fbSize.x, fbSize.y, idx);
 		kernel<<<1, 1>>>();
 
 		// cudaRet = cudaGetLastError();

@@ -38,6 +38,13 @@ namespace b3d::unity_cuda_interop
 		owl::Quaternion3f rotation{ 1 };
 	};
 
+	struct UnityNanoVdbLoading
+	{
+		bool newVolumeAvailable{ false };
+		int selectedDataset{ 0 };
+		char* f1;
+	};
+
 	struct UnityRenderingData
 	{
 		UnityRenderTargets renderTargets;
@@ -46,6 +53,7 @@ namespace b3d::unity_cuda_interop
 		UnityTexture colorMapsTexture;
 		UnityColoringInfo coloringInfo;
 		UnityTexture transferFunctionTexture;
+		UnityNanoVdbLoading nanovdbData;
 	};
 
 	static const renderer::SchemaData unityDataSchema { {
@@ -55,6 +63,8 @@ namespace b3d::unity_cuda_interop
 			SCHEMA_ENTRY("colorMapsTexture", colorMapsTexture, UnityRenderingData),
 			SCHEMA_ENTRY("coloringInfo", coloringInfo, UnityRenderingData),
 			SCHEMA_ENTRY("transferFunctionTexture", transferFunctionTexture, UnityRenderingData),
+			SCHEMA_ENTRY("nanovdbData", nanovdbData, UnityRenderingData),
+			
 										  },
 		sizeof(UnityRenderingData)
 	};

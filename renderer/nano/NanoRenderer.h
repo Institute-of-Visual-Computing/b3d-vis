@@ -37,10 +37,22 @@ namespace b3d::renderer
 			colorMapFeature_ = addFeature<ColorMapFeature>("Color Filtering");
 			transferFunctionFeature_ = addFeature<TransferFunctionFeature>("Transfer Function");
 			backgroundColorFeature_ = addFeature<BackgroundColorFeature>(
-				"Background Color", std::array<ColorRGB, 2>{ { { 0.572f, 0.100f, 0.750f }, { 0.0f, 0.3f, 0.3f } } });
+				"Background Color", std::array<ColorRGB, 2>{ { { 0,0,0}, { 0,0,0 } } });
 			foveatedFeature_ = addFeature<FoveatedRenderingFeature>();
 			// renderSyncFeature_ = addFeatureWithDependency<RenderSyncFeature>({renderTargetFeature_, colorMapFeature_, transferFunctionFeature_, backgroundColorFeature_, foveatedFeature_},"Main Synchronization");
 		}
+
+		void addNanoVdb(std::filesystem::path pathToNanoVdb)
+		{
+			runtimeDataSet_.addNanoVdb(pathToNanoVdb);
+		}
+
+		void selectDataSet(int i )
+		{
+			runtimeDataSet_.select(i);
+			
+		}
+
 	protected:
 		auto onRender() -> void override;
 		auto onInitialize() -> void override;

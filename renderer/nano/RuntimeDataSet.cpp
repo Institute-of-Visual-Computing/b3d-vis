@@ -83,10 +83,12 @@ b3d::renderer::nano::RuntimeDataSet::RuntimeDataSet()
 
 	const auto renormalizeScale = owl::AffineSpace3f::scale(owl::vec3f{ scale, scale, scale });
 	dummyVolume_ = RuntimeVolume{ volume, RuntimeVolumeState::ready, renormalizeScale };
+
+	addNanoVdb(createVolumeFromFile("D:/data/work/b3d_data/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb"));
 }
 auto RuntimeDataSet::select(const std::size_t index) -> void
 {
-	assert(index < runtimeVolumes_.size());
+	assert(index <= runtimeVolumes_.size());
 	activeVolume_ = index;
 }
 auto RuntimeDataSet::getSelectedData() -> RuntimeVolume&
