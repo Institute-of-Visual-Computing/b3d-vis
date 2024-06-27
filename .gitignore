@@ -42,3 +42,5 @@ Folder.DotSettings.user
 
 unityCUDAInterop/UnityPlayground/log.txt
 unityCUDAInterop/UnityPlayground/.vscode/**
+!thirdParty/.vs/**
+!thirdParty/out/**
