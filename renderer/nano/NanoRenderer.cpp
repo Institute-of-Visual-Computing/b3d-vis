@@ -269,6 +269,10 @@ auto NanoRenderer::onRender() -> void
 	//	owlGroupRefitAccel(nanoContext_.worldGeometryGroup);
 	//	firstFrame = false;
 	//}
+
+	volumeTransform->volumeVoxelBox = nanoVdbVolume.indexBox;
+	volumeTransform->renormalizedScale = runtimeVolume.renormalizeScale;
+
 	{
 		debugDraw().drawBox(trs_.p / 2, trs_.p, nanoVdbVolume.indexBox.size(), owl::vec4f(0.1f, 0.82f, 0.15f, 1.0f),
 							trs_.l);
