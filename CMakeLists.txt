@@ -36,9 +36,9 @@ function(add_b3d_renderer)
 			"${TARGET_LIBRARIES}"
 	)
 	set_target_properties(${MODULE_NAME}
-	PROPERTIES
-	CUDA_STANDARD 20
-	FOLDER "Renderer"
+		PROPERTIES
+			CUDA_STANDARD 20
+			FOLDER "Renderer"
 	)
 
 	add_library(B3D::Renderer::${MODULE_NAME} ALIAS ${MODULE_NAME})
@@ -47,5 +47,8 @@ endfunction()
 add_subdirectory(${PROJECT_SOURCE_DIR}/thirdParty)
 add_subdirectory(renderer)
 add_subdirectory(viewer)
-add_subdirectory(unityCUDAInterop)
 add_subdirectory(tools)
+
+if(INCLUDE_UNITY_CUDA_INTEROP)
+	add_subdirectory(unityCUDAInterop)
+endif()
