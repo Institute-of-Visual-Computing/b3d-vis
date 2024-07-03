@@ -2,8 +2,6 @@ find_package(imgui CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(glad CONFIG REQUIRED)
-find_package(Vulkan REQUIRED)
-find_package(VulkanHeaders CONFIG)
 find_package(imguizmo CONFIG REQUIRED)
 
 
@@ -11,8 +9,6 @@ add_executable(viewer)
 target_sources(viewer PRIVATE
 	main.cpp
 	NanoViewer.cpp
-	Vulkan.h
-	Vulkan.cpp
 	App.h
 	App.cpp
 	Pass.h
@@ -45,8 +41,6 @@ target_link_libraries(viewer
 	B3D::Renderer::NanoOutOfCore
 	OpenGL::GL
 	glad::glad
-	Vulkan::Vulkan
-	Vulkan::Headers
 	imguizmo::imguizmo
 	B3D::Tools::ColorMap
 	${CUDA_nvml_LIBRARY}

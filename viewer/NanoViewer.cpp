@@ -393,6 +393,8 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 	bool enableVsync, const int rendererIndex)
 	: owl::viewer::OWLViewer(title, owl::vec2i(initWindowWidth, initWindowHeight), true, enableVsync), resources_{},
 	renderingData_{}, synchronizationResources_{}, colorMapResources_{}
+					   bool enableVsync, const int rendererIndex)
+	: resources_{}, renderingData_{}, colorMapResources_{}
 {
 	nvmlInit();
 
@@ -420,164 +422,6 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 	gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
 	gladLoadGL();
 
-	static vk::DynamicLoader dl;
-	auto vkGetInstanceProcAddr = dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
-
-	VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
-
-	constexpr auto instanceExtensions = std::array{ VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME };
-
-	constexpr auto appInfo = vk::ApplicationInfo{ .pApplicationName = "GL_CUDA_interop",
-												  .applicationVersion = 1,
-												  .pEngineName = "GL_CUDA_interop",
-												  .engineVersion = 1,
-												  .apiVersion = VK_API_VERSION_1_3 };
-
-	{
-		// ReSharper disable once CppVariableCanBeMadeConstexpr
-		const auto instanceCreateInfo = vk::InstanceCreateInfo{ .pApplicationInfo = &appInfo,
-																.enabledExtensionCount = instanceExtensions.size(),
-																.ppEnabledExtensionNames = instanceExtensions.data() };
-		const auto result = vk::createInstance(instanceCreateInfo);
-		assert(result.result == vk::Result::eSuccess);
-		vulkanContext_.instance = result.value;
-	}
-
-	VULKAN_HPP_DEFAULT_DISPATCHER.init(vulkanContext_.instance);
-
-	auto cudaProperties = std::vector<cudaDeviceProp>{};
-	{
-		const auto result = vulkanContext_.instance.enumeratePhysicalDevices();
-		assert(result.result == vk::Result::eSuccess);
-
-		const auto& devices = result.value;
-
-		auto cudaDeviceCount = 0;
-		cudaGetDeviceCount(&cudaDeviceCount);
-		assert(cudaDeviceCount != 0);
-		cudaProperties.resize(cudaDeviceCount);
-
-		for (auto i = 0; i < cudaDeviceCount; i++)
-		{
-			cudaGetDeviceProperties(&cudaProperties[i], i);
-		}
-
-		auto found = false;
-		auto uuid = cudaUUID_t{};
-		auto index = 0;
-		// search for first matching device with cuda
-		for (auto i = 0; i < devices.size(); i++)
-		{
-			const auto& device = devices[i];
-			const auto properties =
-				device.getProperties2<vk::PhysicalDeviceProperties2, vk::PhysicalDeviceIDProperties>();
-
-			const auto& idProperties = properties.get<vk::PhysicalDeviceIDProperties>();
-
-			for (auto j = 0; j < cudaProperties.size(); j++)
-			{
-				const auto isEqual = std::equal(idProperties.deviceUUID.begin(), idProperties.deviceUUID.end(),
-					cudaProperties[j].uuid.bytes);
-				if (isEqual)
-				{
-					found = true;
-					index = i;
-					uuid = cudaProperties[j].uuid;
-					break;
-				}
-			}
-
-			if (found)
-			{
-				break;
-			}
-		}
-
-		vulkanContext_.physicalDevice = devices[index];
-		renderingData_.data.rendererInitializationInfo.deviceUuid = uuid;
-		renderingData_.data.rendererInitializationInfo.deviceIndex = index;
-
-		debugDrawList_ = std::make_unique<DebugDrawList>();
-		gizmoHelper_ = std::make_unique<GizmoHelper>();
-	}
-	{
-
-		constexpr auto deviceExtensions =
-			std::array{ VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME, VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME };
-
-		// vulkan device requires at lest one queue
-		// ReSharper disable once CppVariableCanBeMadeConstexpr
-		const auto priority = 1.0f;
-		const auto queueCreateInfo = vk::DeviceQueueCreateInfo{ .queueCount = 1, .pQueuePriorities = &priority };
-		const auto deviceCreateInfo = vk::DeviceCreateInfo{ .queueCreateInfoCount = 1,
-															.pQueueCreateInfos = &queueCreateInfo,
-															.enabledExtensionCount = deviceExtensions.size(),
-															.ppEnabledExtensionNames = deviceExtensions.data() };
-		const auto result = vulkanContext_.physicalDevice.createDevice(deviceCreateInfo);
-		assert(result.result == vk::Result::eSuccess);
-		vulkanContext_.device = result.value;
-		VULKAN_HPP_DEFAULT_DISPATCHER.init(vulkanContext_.device);
-	}
-
-	const auto semaphoreCreateInfo = vk::StructureChain{
-		vk::SemaphoreCreateInfo{},
-		vk::ExportSemaphoreCreateInfo{.handleTypes = vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueWin32 }
-	};
-
-	{
-		const auto result = vulkanContext_.device.createSemaphore(semaphoreCreateInfo.get());
-		assert(result.result == vk::Result::eSuccess);
-		synchronizationResources_.vkSignalSemaphore = result.value;
-	}
-
-	{
-		const auto result = vulkanContext_.device.createSemaphore(semaphoreCreateInfo.get());
-		assert(result.result == vk::Result::eSuccess);
-		synchronizationResources_.vkWaitSemaphore = result.value;
-	}
-
-	{
-		const auto handleInfo =
-			vk::SemaphoreGetWin32HandleInfoKHR{ .semaphore = synchronizationResources_.vkSignalSemaphore,
-												.handleType = vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueWin32 };
-		const auto result = vulkanContext_.device.getSemaphoreWin32HandleKHR(handleInfo);
-		assert(result.result == vk::Result::eSuccess);
-		synchronizationResources_.signalSemaphoreHandle = result.value;
-	}
-
-	{
-		const auto handleInfo =
-			vk::SemaphoreGetWin32HandleInfoKHR{ .semaphore = synchronizationResources_.vkWaitSemaphore,
-												.handleType = vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueWin32 };
-		const auto result = vulkanContext_.device.getSemaphoreWin32HandleKHR(handleInfo);
-		assert(result.result == vk::Result::eSuccess);
-		synchronizationResources_.waitSemaphoreHandle = result.value;
-	}
-	// TODO: add cuda error checks
-	GL_CALL(glGenSemaphoresEXT(1, &synchronizationResources_.glSignalSemaphore));
-
-	GL_CALL(glGenSemaphoresEXT(1, &synchronizationResources_.glWaitSemaphore));
-	GL_CALL(glImportSemaphoreWin32HandleEXT(synchronizationResources_.glSignalSemaphore,
-		GL_HANDLE_TYPE_OPAQUE_WIN32_EXT,
-		synchronizationResources_.signalSemaphoreHandle));
-	GL_CALL(glImportSemaphoreWin32HandleEXT(synchronizationResources_.glWaitSemaphore, GL_HANDLE_TYPE_OPAQUE_WIN32_EXT,
-		synchronizationResources_.waitSemaphoreHandle));
-
-	auto externalSemaphoreHandleDesc = cudaExternalSemaphoreHandleDesc{};
-	externalSemaphoreHandleDesc.type = cudaExternalSemaphoreHandleTypeOpaqueWin32;
-	externalSemaphoreHandleDesc.flags = 0;
-	{
-		externalSemaphoreHandleDesc.handle.win32.handle = synchronizationResources_.waitSemaphoreHandle;
-		const auto error = cudaImportExternalSemaphore(&renderingData_.data.synchronization.waitSemaphore,
-			&externalSemaphoreHandleDesc);
-		assert(error == cudaError::cudaSuccess);
-	}
-	{
-		externalSemaphoreHandleDesc.handle.win32.handle = synchronizationResources_.signalSemaphoreHandle;
-		const auto result = cudaImportExternalSemaphore(&renderingData_.data.synchronization.signalSemaphore,
-			&externalSemaphoreHandleDesc);
-		assert(result == cudaError::cudaSuccess);
-	}
 
 	// Create Colormap and load data from default colormap, if present
 	{
@@ -679,28 +523,6 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 		renderingData_.data.transferFunctionTexture.nativeHandle =
 			reinterpret_cast<void*>(transferFunctionResources_.transferFunctionTexture);
 	}
-
-	/*glGenTextures(1, &resources_.colorTexture);
-	glBindTexture(GL_TEXTURE_2D_ARRAY, resources_.colorTexture);
-	glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_RGBA8, 64, 64, 2);
-
-	glGenTextures(1, &resources_.minMaxTexture);
-	glBindTexture(GL_TEXTURE_2D_ARRAY, resources_.minMaxTexture);
-	glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_RG32F, 64, 64, 2);*/
-
-
-	/*{
-		const auto error = cudaGraphicsGLRegisterImage(&rendererInfo_.colorRt, resources_.colorTexture,
-													   mode_ == b3d::renderer::RenderMode::mono ? GL_TEXTURE_2D :
-	GL_TEXTURE_2D_ARRAY, cudaGraphicsRegisterFlagsWriteDiscard); assert(error == cudaError::cudaSuccess);
-	}
-	{
-		const auto error = cudaGraphicsGLRegisterImage(&rendererInfo_.minMaxRt, resources_.minMaxTexture,
-													   mode_ == b3d::renderer::RenderMode::mono ? GL_TEXTURE_2D :
-	GL_TEXTURE_2D_ARRAY, cudaGraphicsRegisterFlagsWriteDiscard); assert(error == cudaError::cudaSuccess);
-	}*/
-
-	// rendererInfo_.mode = mode_;
 
 	// NOTE: rendererInfo will be fed into renderer initialization
 
@@ -949,10 +771,6 @@ NanoViewer::~NanoViewer()
 	cudaGraphicsUnregisterResource(transferFunctionResources_.cudaGraphicsResource);
 	cudaGraphicsUnregisterResource(colorMapResources_.cudaGraphicsResource);
 
-	vulkanContext_.device.destroySemaphore(synchronizationResources_.vkSignalSemaphore);
-	vulkanContext_.device.destroySemaphore(synchronizationResources_.vkWaitSemaphore);
-	vulkanContext_.device.destroy();
-
 	if (isAdmin_)
 	{
 		const auto error = nvmlDeviceResetGpuLockedClocks(nvmlDevice_);
@@ -979,5 +797,4 @@ auto NanoViewer::selectRenderer(const std::uint32_t index) -> void
 	const auto debugInfo = b3d::renderer::DebugInitializationInfo{ debugDrawList_, gizmoHelper_ };
 
 	currentRenderer_->initialize(&renderingData_.buffer, debugInfo);
-
 }

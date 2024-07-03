@@ -31,7 +31,8 @@
 			"default-features": false,
 			"features": [
 				"opengl3-binding",
-				"glfw-binding"
+				"glfw-binding",
+				"docking-experimental"
 			]
 		},
 		"tbb",
@@ -42,8 +43,6 @@
 				"extensions"
 			]
 		},
-		"vulkan",
-		"vulkan-headers",
 		"stb",
 		"boost-program-options",
 		"imguizmo",

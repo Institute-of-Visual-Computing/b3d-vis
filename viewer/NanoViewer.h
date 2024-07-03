@@ -7,7 +7,6 @@
 
 #include "ColorMap.h"
 #include "GizmoHelper.h"
-#include "Vulkan.h"
 
 class NanoViewer final : public owl::viewer::OWLViewer
 {
@@ -73,23 +72,6 @@ private:
 	b3d::renderer::RenderMode mode_{ b3d::renderer::RenderMode::mono };
 
 	nvmlDevice_t nvmlDevice_{};
-	bool isAdmin_{false};
+	bool isAdmin_{ false };
 
-	// NOTICE: OpenGL <-> CUDA synchronization:
-	// https://github.com/nvpro-samples/gl_cuda_simple_interop/blob/master/README.md
-	struct VulkanContext
-	{
-		vk::Device device;
-		vk::PhysicalDevice physicalDevice;
-		vk::Instance instance;
-	} vulkanContext_{};
-	struct SynchronizationResources
-	{
-		vk::Semaphore vkWaitSemaphore;
-		vk::Semaphore vkSignalSemaphore;
-		GLuint glWaitSemaphore;
-		GLuint glSignalSemaphore;
-		HANDLE waitSemaphoreHandle;
-		HANDLE signalSemaphoreHandle;
-	} synchronizationResources_;
 };
