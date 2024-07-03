@@ -543,15 +543,17 @@ auto NanoViewer::showAndRunWithGui() -> void
 auto NanoViewer::drawGizmos(const CameraMatrices& cameraMatrices) -> void
 {
 	ImGui::Begin("##GizmoOverlay", nullptr,
-		ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoScrollbar |
-		ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar |
-		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus |
-		ImGuiWindowFlags_NoNavFocus);
+				 ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoScrollbar |
+					 ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar |
+					 ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus |
+					 ImGuiWindowFlags_NoNavFocus);
 	{
+
 		ImGui::SetWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y), 0);
-		ImGui::SetWindowPos(ImVec2(0, 0));
+		ImGui::SetWindowPos(ImGui::GetMainViewport()->Pos);
 		ImGuizmo::SetDrawlist();
-		ImGuizmo::SetRect(0, 0, ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y);
+		ImGuizmo::SetRect(ImGui::GetMainViewport()->Pos.x, ImGui::GetMainViewport()->Pos.y,
+						  ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y);
 		for (const auto transform : gizmoHelper_->getTransforms())
 		{
 			float mat[16];
@@ -672,6 +674,121 @@ auto NanoViewer::computeViewProjectionMatrixFromCamera(const owl::viewer::Camera
 	return mat;
 }
 
+auto NanoViewer::draw() -> void
+{
+	ZoneScoped;
+
+	// TODO: if windows minimized or not visible -> skip rendering
+	onFrameBegin();
+	glClear(GL_COLOR_BUFFER_BIT);
+	static double lastCameraUpdate = -1.f;
+	/*if (camera.lastModified != lastCameraUpdate)
+	{
+		cameraChanged();
+		lastCameraUpdate = camera.lastModified;
+	}*/
+	gizmoHelper_->clear();
+
+	ImGui_ImplOpenGL3_NewFrame();
+	ImGui_ImplGlfw_NewFrame();
+	ImGui::NewFrame();
+	ImGui::PushFont(defaultFonts[currentFontIndex]);
+
+	ImGui::BeginMainMenuBar();
+
+	ImGui::EndMainMenuBar();
+
+	const ImGuiViewport* viewport = ImGui::GetMainViewport();
+	ImGui::SetNextWindowPos(viewport->WorkPos);
+	ImGui::SetNextWindowSize(viewport->WorkSize);
+	ImGui::Begin("Editor", 0,
+				 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
+					 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus);
+
+
+	static ImGuiWindowClass windowClass;
+	static ImGuiID dockspaceId = 0;
+
+	dockspaceId = ImGui::GetID("mainDock");
+
+
+	ImGui::DockSpace(dockspaceId);
+
+	windowClass.ClassId = dockspaceId;
+	windowClass.DockingAllowUnclassed = true;
+	// windowClass.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_AutoHideTabBar;
+	//  ImGuiDockNodeFlags_NoWindowMenuButton;
+
+	ImGui::End();
+
+	/*ImGui::SetNextWindowClass(&windowClass);
+	ImGui::SetNextWindowDockID(dockspaceId, ImGuiCond_FirstUseEver);*/
+
+
+	ImGui::SetNextWindowClass(&windowClass);
+	ImGui::SetNextWindowDockID(dockspaceId, ImGuiCond_FirstUseEver);
+
+	ImGui::Begin("VolumeViewport", 0);
+
+
+	const auto cameraMatrices = computeViewProjectionMatrixFromCamera(camera_, framebufferSize_.x, framebufferSize_.y);
+
+	if (viewerSettings.enableDebugDraw)
+	{
+		drawGizmos(cameraMatrices);
+	}
+
+
+	render();
+
+	fsPass->setViewport(framebufferSize_.x, framebufferSize_.y);
+	fsPass->setSourceTexture(framebufferTexture_);
+	fsPass->execute();
+
+
+	if (viewerSettings.enableGridFloor)
+	{
+		igPass->setViewProjectionMatrix(cameraMatrices.viewProjection);
+		igPass->setViewport(framebufferSize_.x, framebufferSize_.y);
+		igPass->setGridColor(
+			glm::vec3{ viewerSettings.gridColor[0], viewerSettings.gridColor[1], viewerSettings.gridColor[2] });
+		igPass->execute();
+	}
+
+	if (viewerSettings.enableDebugDraw)
+	{
+		ddPass->setViewProjectionMatrix(cameraMatrices.viewProjection);
+		ddPass->setViewport(framebufferSize_.x, framebufferSize_.y);
+		ddPass->setLineWidth(viewerSettings.lineWidth);
+		ddPass->execute();
+	}
+
+
+	ImGui::Image((ImTextureID)framebufferTexture_, ImGui::GetContentRegionAvail());
+	ImGui::End();
+
+	gui();
+
+
+	ImGui::PopFont();
+	ImGui::EndFrame();
+
+	ImGui::Render();
+	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	{
+		GLFWwindow* backup_current_context = glfwGetCurrentContext();
+		ImGui::UpdatePlatformWindows();
+		ImGui::RenderPlatformWindowsDefault();
+		glfwMakeContextCurrent(backup_current_context);
+	}
+
+	glfwSwapBuffers(handle_);
+	glfwPollEvents();
+	FrameMark;
+}
+
 auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> void
 {
 	gladLoadGL();
@@ -682,88 +799,35 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 	ddPass = std::make_unique<DebugDrawPass>(debugDrawList_.get());
 
 	int width, height;
-	glfwGetFramebufferSize(handle, &width, &height);
-	resize(vec2i(width, height));
+	glfwGetFramebufferSize(handle_, &width, &height);
+	resize(width, height);
 
 	glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
-	glfwSetFramebufferSizeCallback(handle, reshape);
-	glfwSetMouseButtonCallback(handle, ::mouseButton);
-	glfwSetKeyCallback(handle, keyboardSpecialKey);
-	glfwSetCharCallback(handle, keyboardKey);
-	glfwSetCursorPosCallback(handle, ::mouseMotion);
-	glfwSetWindowContentScaleCallback(handle, windowContentScaleCallback);
+	glfwSetFramebufferSizeCallback(handle_, [](GLFWwindow* window, int width, int height)
+		{
+			auto* viewer = static_cast<NanoViewer*>(glfwGetWindowUserPointer(window));
+			viewer->resize(width, height);
+			viewer->draw();
+		});
+	glfwSetMouseButtonCallback(handle_, ::mouseButton);
+	glfwSetKeyCallback(handle_, keyboardSpecialKey);
+	glfwSetCharCallback(handle_, keyboardKey);
+	glfwSetCursorPosCallback(handle_, ::mouseMotion);
+	glfwSetWindowContentScaleCallback(handle_, windowContentScaleCallback);
 
-	initializeGui(handle);
-	glfwMakeContextCurrent(handle);
+	initializeGui(handle_);
+	glfwMakeContextCurrent(handle_);
 
-	while (!glfwWindowShouldClose(handle) && keepgoing())
+	while (!glfwWindowShouldClose(handle_) && keepgoing())
 	{
 		{
-			ZoneScoped;
-
-			//TODO: if windows minimized or not visible -> skip rendering
-			onFrameBegin();
-			glClear(GL_COLOR_BUFFER_BIT);
-			static double lastCameraUpdate = -1.f;
-			if (camera.lastModified != lastCameraUpdate)
-			{
-				cameraChanged();
-				lastCameraUpdate = camera.lastModified;
-			}
-			gizmoHelper_->clear();
-
-			ImGui_ImplOpenGL3_NewFrame();
-			ImGui_ImplGlfw_NewFrame();
-			ImGui::NewFrame();
-			ImGui::PushFont(defaultFonts[currentFontIndex]);
-			gui();
-
-			const auto cameraMatrices = computeViewProjectionMatrixFromCamera(camera, fbSize.x, fbSize.y);
-
-			if (viewerSettings.enableDebugDraw)
-			{
-				drawGizmos(cameraMatrices);
-			}
-
-			ImGui::PopFont();
-			ImGui::EndFrame();
-
-			render();
-
-			fsPass->setViewport(fbSize.x, fbSize.y);
-			fsPass->setSourceTexture(fbTexture);
-			fsPass->execute();
-
-
-			if (viewerSettings.enableGridFloor)
-			{
-				igPass->setViewProjectionMatrix(cameraMatrices.viewProjection);
-				igPass->setViewport(fbSize.x, fbSize.y);
-				igPass->setGridColor(
-					glm::vec3{ viewerSettings.gridColor[0], viewerSettings.gridColor[1], viewerSettings.gridColor[2] });
-				igPass->execute();
-			}
-
-			if (viewerSettings.enableDebugDraw)
-			{
-				ddPass->setViewProjectionMatrix(cameraMatrices.viewProjection);
-				ddPass->setViewport(fbSize.x, fbSize.y);
-				ddPass->setLineWidth(viewerSettings.lineWidth);
-				ddPass->execute();
-			}
-
-			ImGui::Render();
-			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-			glfwSwapBuffers(handle);
-			glfwPollEvents();
-			FrameMark;
+			draw();
 		}
 	}
 
 	deinitializeGui();
 	currentRenderer_->deinitialize();
-	glfwDestroyWindow(handle);
+	glfwDestroyWindow(handle_);
 	glfwTerminate();
 }
 NanoViewer::~NanoViewer()

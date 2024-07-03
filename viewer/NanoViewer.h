@@ -52,7 +52,7 @@ private:
 		GLuint minMaxTexture;
 
 	} resources_;
-	
+
 	struct ColorMapResources
 	{
 		b3d::tools::colormap::ColorMap colorMap;
@@ -74,4 +74,5 @@ private:
 	nvmlDevice_t nvmlDevice_{};
 	bool isAdmin_{ false };
 
+	GLFWwindow* handle_{ nullptr };
 };
