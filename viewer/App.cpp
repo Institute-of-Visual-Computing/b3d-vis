@@ -93,8 +93,9 @@ auto Application::run() -> void
 	using namespace std::string_literals;
 	auto viewer = NanoViewer{ "Default Viewer"s, 1980, 1080, !disableVsync, rendererIndex };
 	//viewer.enableFlyMode();
-	viewer.enableInspectMode();
-	viewer.setCameraOrientation(owl::vec3f(1.0,1.0,1.0), owl::vec3f(0.0,0.0,0.0), viewer.camera.getUp(), viewer.camera.getFovyInDegrees());
+	//viewer.enableInspectMode();
+	auto& camera = viewer.getCamera();
+	camera.setOrientation(glm::vec3(1.0,1.0,1.0), glm::vec3(0.0,0.0,0.0), camera.getUp(), camera.getFovYInDegrees());
 	viewer.showAndRunWithGui();
 }
 

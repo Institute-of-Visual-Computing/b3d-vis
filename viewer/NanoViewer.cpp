@@ -1,71 +1,50 @@
-#include "glad/glad.h"
-
 #include "NanoViewer.h"
-
-
-#include <cuda.h>
 
 #include "passes/DebugDrawPass.h"
 #include "passes/FullscreenTexturePass.h"
 #include "passes/InfinitGridPass.h"
 
+#include "InteropUtils.h"
+
 #include <Logging.h>
 
+#include <cuda_gl_interop.h>
+#include <cuda_runtime.h>
+#include <filesystem>
 #include <format>
+#include <glm/ext/matrix_clip_space.hpp>
+#include <glm/ext/matrix_transform.hpp>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
+#include <owl/helper/cuda.h>
+#include <print>
+#include <stb_image.h>
 #include <string>
-
-#include "GLUtils.h"
-#include "glm/ext/matrix_clip_space.hpp"
-#include "glm/ext/matrix_transform.hpp"
-
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
-#include "owl/helper/cuda.h"
+#include <tracy/Tracy.hpp>
 
 #include <ImGuizmo.h>
 
-#include <cuda_runtime.h>
-#include <filesystem>
-
-#include <nvml.h>
-
-#include "stb_image.h"
-#include "tracy/Tracy.hpp"
-
 using namespace owl;
-using namespace owl::viewer;
 
 namespace
 {
 	auto currentGizmoOperation(ImGuizmo::ROTATE);
 	auto currentGizmoMode(ImGuizmo::LOCAL);
 
-	auto reshape(GLFWwindow* window, const int width, const int height) -> void
-	{
-		auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
-		assert(gw);
-		gw->resize(vec2i(width, height));
-	}
-
 	auto keyboardKey(GLFWwindow* window, const unsigned int key) -> void
 	{
 		auto& io = ImGui::GetIO();
 		if (!io.WantCaptureKeyboard)
 		{
-			auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
-			assert(gw);
-			gw->key(key, gw->getMousePos());
 		}
 	}
 
 	auto keyboardSpecialKey(GLFWwindow* window, const int key, [[maybe_unused]] int scancode, const int action,
-		const int mods) -> void
+							const int mods) -> void
 	{
-		const auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
-		assert(gw);
+
 		if (action == GLFW_PRESS)
 		{
-			gw->special(key, mods, gw->getMousePos());
 		}
 	}
 
@@ -74,9 +53,6 @@ namespace
 		const auto& io = ImGui::GetIO();
 		if (!io.WantCaptureMouse)
 		{
-			const auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
-			assert(gw);
-			gw->mouseMotion(vec2i(static_cast<int>(x), static_cast<int>(y)));
 		}
 	}
 
@@ -85,16 +61,9 @@ namespace
 		const auto& io = ImGui::GetIO();
 		if (!io.WantCaptureMouse)
 		{
-			const auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
-			assert(gw);
-			gw->mouseButton(button, action, mods);
 		}
 		else
 		{
-			//TODO: It's a hack!! We can complete decouple our viewer from OWLViewer by implementing our own camera.
-			const auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
-			assert(gw);
-			gw->mouseButton(button, GLFW_RELEASE, mods);
 		}
 	}
 
@@ -140,7 +109,7 @@ namespace
 	}
 
 	auto windowContentScaleCallback([[maybe_unused]] GLFWwindow* window, const float scaleX,
-		[[maybe_unused]] float scaleY)
+									[[maybe_unused]] float scaleY)
 	{
 		if (!scaleToFont.contains(scaleX))
 		{
@@ -152,11 +121,18 @@ namespace
 		ImGui::GetStyle().ScaleAllSizes(dpiScale);
 	}
 
+	auto onGLFWErrorCallback(int error, const char* description)
+	{
+		b3d::renderer::log(std::format("Error: {}\n", description), b3d::renderer::LogLevel::error);
+	}
+
 
 	auto initializeGui(GLFWwindow* window) -> void
 	{
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
+		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 		ImGuizmo::AllowAxisFlip(false);
 		auto& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
@@ -224,33 +200,7 @@ auto NanoViewer::gui() -> void
 		ImGui::EndCombo();
 	}
 
-	static auto selectedCameraControlIndex = 0;
-	static constexpr auto controls = std::array{ "POI", "Fly" };
 
-	if (ImGui::BeginCombo("Camera Control", controls[selectedCameraControlIndex]))
-	{
-		for (auto i = 0; i < controls.size(); i++)
-		{
-			const auto isSelected = i == selectedCameraControlIndex;
-			if (ImGui::Selectable(controls[i], isSelected))
-			{
-				selectedCameraControlIndex = i;
-				if (i == 0)
-				{
-					enableInspectMode();
-				}
-				if (i == 1)
-				{
-					enableFlyMode();
-				}
-			}
-			if (isSelected)
-			{
-				ImGui::SetItemDefaultFocus();
-			}
-		}
-		ImGui::EndCombo();
-	}
 	ImGui::Separator();
 
 	ImGui::Separator();
@@ -310,7 +260,7 @@ auto NanoViewer::gui() -> void
 		{
 			const auto error =
 				nvmlDeviceSetGpuLockedClocks(nvmlDevice_, static_cast<unsigned int>(NVML_CLOCK_LIMIT_ID_TDP),
-					static_cast<unsigned int>(NVML_CLOCK_LIMIT_ID_TDP));
+											 static_cast<unsigned int>(NVML_CLOCK_LIMIT_ID_TDP));
 
 			enabledPersistenceMode = true;
 
@@ -346,11 +296,11 @@ auto NanoViewer::render() -> void
 {
 	constexpr auto layout = static_cast<GLuint>(GL_LAYOUT_GENERAL_EXT);
 
-	const auto cam = b3d::renderer::Camera{ .origin = camera.getFrom(),
-											.at = camera.getAt(),
-											.up = camera.getUp(),
-											.cosFoV = camera.getCosFovy(),
-											.FoV = glm::radians(camera.fovyInDegrees) };
+	const auto cam = b3d::renderer::Camera{ .origin = owl_cast(camera_.getFrom()),
+											.at = owl_cast(camera_.getAt()),
+											.up = owl_cast(camera_.getUp()),
+											.cosFoV = camera_.getCosFovY(),
+											.FoV = glm::radians(camera_.getFovYInDegrees()) };
 
 	renderingData_.data.view = b3d::renderer::View{
 		.cameras = { cam, cam },
@@ -358,8 +308,10 @@ auto NanoViewer::render() -> void
 	};
 
 	renderingData_.data.renderTargets = b3d::renderer::RenderTargets{
-		.colorRt = { cuDisplayTexture, { static_cast<uint32_t>(fbSize.x), static_cast<uint32_t>(fbSize.y), 1 } },
-		.minMaxRt = { cuDisplayTexture, { static_cast<uint32_t>(fbSize.x), static_cast<uint32_t>(fbSize.y), 1 } },
+		.colorRt = { cuFramebufferTexture_,
+					 { static_cast<uint32_t>(framebufferSize_.x), static_cast<uint32_t>(framebufferSize_.y), 1 } },
+		.minMaxRt = { cuFramebufferTexture_,
+					  { static_cast<uint32_t>(framebufferSize_.x), static_cast<uint32_t>(framebufferSize_.y), 1 } },
 	};
 
 	// GL_CALL(glSignalSemaphoreEXT(synchronizationResources_.glSignalSemaphore, 0, nullptr, 0, nullptr, &layout));
@@ -370,15 +322,41 @@ auto NanoViewer::render() -> void
 	// state)
 	// GL_CALL(glWaitSemaphoreEXT(synchronizationResources_.glWaitSemaphore, 0, nullptr, 0, nullptr, nullptr));
 }
-auto NanoViewer::resize(const owl::vec2i& newSize) -> void
+auto NanoViewer::resize(const int width, const int height) -> void
 {
-	OWLViewer::resize(newSize);
+
+	glfwMakeContextCurrent(handle_);
+	if (framebufferPointer_)
+	{
+		OWL_CUDA_CHECK(cudaFree(framebufferPointer_));
+	}
+	OWL_CUDA_CHECK(cudaMallocManaged(&framebufferPointer_, width * height * sizeof(uint32_t)));
+
+	framebufferSize_ = { width, height };
+	if (framebufferTexture_ == 0)
+	{
+		GL_CALL(glGenTextures(1, &framebufferTexture_));
+	}
+	else
+	{
+		if (cuFramebufferTexture_)
+		{
+			OWL_CUDA_CHECK(cudaGraphicsUnregisterResource(cuFramebufferTexture_));
+			cuFramebufferTexture_ = 0;
+		}
+	}
+
+	GL_CALL(glBindTexture(GL_TEXTURE_2D, framebufferTexture_));
+	GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
+
+	OWL_CUDA_CHECK(cudaGraphicsGLRegisterImage(&cuFramebufferTexture_, framebufferTexture_, GL_TEXTURE_2D, 0));
+
+	// TODO: make camera change aspect ratio
 	cameraChanged();
 }
 
 auto NanoViewer::cameraChanged() -> void
 {
-	OWLViewer::cameraChanged();
 }
 
 auto NanoViewer::onFrameBegin() -> void
@@ -390,12 +368,32 @@ auto NanoViewer::onFrameBegin() -> void
 }
 
 NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, const int initWindowHeight,
-	bool enableVsync, const int rendererIndex)
-	: owl::viewer::OWLViewer(title, owl::vec2i(initWindowWidth, initWindowHeight), true, enableVsync), resources_{},
-	renderingData_{}, synchronizationResources_{}, colorMapResources_{}
 					   bool enableVsync, const int rendererIndex)
 	: resources_{}, renderingData_{}, colorMapResources_{}
 {
+
+	glfwSetErrorCallback(onGLFWErrorCallback);
+
+	glfwInit();
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+	glfwWindowHint(GLFW_VISIBLE, true);
+
+	handle_ = glfwCreateWindow(initWindowWidth, initWindowHeight, title.c_str(), NULL, NULL);
+	if (!handle_)
+	{
+		glfwTerminate();
+		exit(EXIT_FAILURE);
+	}
+
+	glfwSetWindowUserPointer(handle_, this);
+	glfwMakeContextCurrent(handle_);
+	glfwSwapInterval((enableVsync) ? 1 : 0);
+
+	debugDrawList_ = std::make_unique<DebugDrawList>();
+	gizmoHelper_ = std::make_unique<GizmoHelper>();
+
+
 	nvmlInit();
 
 
@@ -431,7 +429,8 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 		// Setup filtering parameters for display
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // This is required on WebGL for non power-of-two textures
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,
+						GL_CLAMP_TO_EDGE); // This is required on WebGL for non power-of-two textures
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Same
 
 		// Load default colormap
@@ -461,22 +460,23 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 
 			renderingData_.data.colorMapTexture.extent =
 				b3d::renderer::Extent{ static_cast<uint32_t>(x), static_cast<uint32_t>(y), 1 };
-			renderingData_.data.colorMapTexture.nativeHandle = reinterpret_cast<void*>(colorMapResources_.colormapTexture);
+			renderingData_.data.colorMapTexture.nativeHandle =
+				reinterpret_cast<void*>(colorMapResources_.colormapTexture);
 		}
 		else
 		{
 			GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 512, 1, 0, GL_RGBA, GL_FLOAT, nullptr));
-			renderingData_.data.colorMapTexture.extent =
-				b3d::renderer::Extent{ 512, 1, 1 };
+			renderingData_.data.colorMapTexture.extent = b3d::renderer::Extent{ 512, 1, 1 };
 		}
 
 		std::string colormaptexturename = "ColorMap";
 		GL_CALL(glObjectLabel(GL_TEXTURE, colorMapResources_.colormapTexture, colormaptexturename.length() + 1,
-			colormaptexturename.c_str()));
+							  colormaptexturename.c_str()));
 
 		// TODO: add cuda error checks
 		auto rc =
-			cudaGraphicsGLRegisterImage(&colorMapResources_.cudaGraphicsResource, colorMapResources_.colormapTexture, GL_TEXTURE_2D, cudaGraphicsRegisterFlagsTextureGather);
+			cudaGraphicsGLRegisterImage(&colorMapResources_.cudaGraphicsResource, colorMapResources_.colormapTexture,
+										GL_TEXTURE_2D, cudaGraphicsRegisterFlagsTextureGather);
 
 		renderingData_.data.colorMapTexture.target = colorMapResources_.cudaGraphicsResource;
 
@@ -489,8 +489,6 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 										  colorMapResources_.colorMap.colorMapCount,
 										  colorMapResources_.colorMap.firstColorMapYTextureCoordinate,
 										  colorMapResources_.colorMap.colorMapHeightNormalized };
-
-
 	}
 
 	// Transferfunction
@@ -501,9 +499,9 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 		// Setup filtering parameters for display
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE); // This is required on WebGL for non power-of-two textures
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,
+						GL_CLAMP_TO_EDGE); // This is required on WebGL for non power-of-two textures
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Same
-
 
 
 		std::array<float, 512> initBufferData;
@@ -513,10 +511,11 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 
 		std::string transferFunctionBufferName = "TransferFunctionTexture";
 		GL_CALL(glObjectLabel(GL_TEXTURE, transferFunctionResources_.transferFunctionTexture,
-			transferFunctionBufferName.length() + 1, transferFunctionBufferName.c_str()));
+							  transferFunctionBufferName.length() + 1, transferFunctionBufferName.c_str()));
 
-		cudaError rc = cudaGraphicsGLRegisterImage(&transferFunctionResources_.cudaGraphicsResource,
-			transferFunctionResources_.transferFunctionTexture, GL_TEXTURE_2D, cudaGraphicsRegisterFlagsTextureGather | cudaGraphicsRegisterFlagsWriteDiscard);
+		cudaError rc = cudaGraphicsGLRegisterImage(
+			&transferFunctionResources_.cudaGraphicsResource, transferFunctionResources_.transferFunctionTexture,
+			GL_TEXTURE_2D, cudaGraphicsRegisterFlagsTextureGather | cudaGraphicsRegisterFlagsWriteDiscard);
 
 		renderingData_.data.transferFunctionTexture.extent = { 512, 1, 1 };
 		renderingData_.data.transferFunctionTexture.target = transferFunctionResources_.cudaGraphicsResource;
@@ -580,8 +579,8 @@ auto NanoViewer::drawGizmos(const CameraMatrices& cameraMatrices) -> void
 			mat[9] = transform->l.vz.y;
 			mat[10] = transform->l.vz.z;
 			ImGuizmo::Manipulate(reinterpret_cast<const float*>(&cameraMatrices.view),
-				reinterpret_cast<const float*>(&cameraMatrices.projection), currentGizmoOperation,
-				currentGizmoMode, mat, nullptr, nullptr);
+								 reinterpret_cast<const float*>(&cameraMatrices.projection), currentGizmoOperation,
+								 currentGizmoMode, mat, nullptr, nullptr);
 
 			transform->p.x = mat[12];
 			transform->p.y = mat[13];
@@ -622,17 +621,17 @@ auto NanoViewer::drawGizmos(const CameraMatrices& cameraMatrices) -> void
 
 			const auto halfSize = bound / 2.0f;
 
-			const auto bounds = std::array{ halfSize.x, halfSize.y, halfSize.z, -halfSize.x,-halfSize.y,-halfSize.z };
+			const auto bounds = std::array{ halfSize.x, halfSize.y, halfSize.z, -halfSize.x, -halfSize.y, -halfSize.z };
 
 			glm::mat4 worldTransformMat{ { worldTransform.l.vx.x, worldTransform.l.vx.y, worldTransform.l.vx.z, 0.0f },
 										 { worldTransform.l.vy.x, worldTransform.l.vy.y, worldTransform.l.vy.z, 0.0f },
 										 { worldTransform.l.vz.x, worldTransform.l.vz.y, worldTransform.l.vz.z, 0.0f },
 										 { worldTransform.p.x, worldTransform.p.y, worldTransform.p.z, 1.0f } };
 			const auto matX = cameraMatrices.view * worldTransformMat;
-			
+
 			ImGuizmo::Manipulate(reinterpret_cast<const float*>(&matX),
-				reinterpret_cast<const float*>(&cameraMatrices.projection), ImGuizmo::OPERATION::BOUNDS,
-				currentGizmoMode, mat, nullptr, nullptr, bounds.data());
+								 reinterpret_cast<const float*>(&cameraMatrices.projection),
+								 ImGuizmo::OPERATION::BOUNDS, currentGizmoMode, mat, nullptr, nullptr, bounds.data());
 			if (ImGuizmo::IsUsing())
 			{
 				blockInput = true;
@@ -658,16 +657,14 @@ auto NanoViewer::drawGizmos(const CameraMatrices& cameraMatrices) -> void
 	}
 	ImGui::End();
 }
-auto NanoViewer::computeViewProjectionMatrixFromCamera(const owl::viewer::Camera& camera, const int width,
-	const int height) -> CameraMatrices
+auto NanoViewer::computeViewProjectionMatrixFromCamera(const Camera& camera, const int width, const int height)
+	-> CameraMatrices
 {
 	const auto aspect = width / static_cast<float>(height);
 
 	CameraMatrices mat;
-	mat.projection = glm::perspective(glm::radians(camera.getFovyInDegrees()), aspect, 0.01f, 10000.0f);
-	mat.view = glm::lookAt(glm::vec3{ camera.position.x, camera.position.y, camera.position.z },
-		glm::vec3{ camera.getAt().x, camera.getAt().y, camera.getAt().z },
-		glm::normalize(glm::vec3{ camera.getUp().x, camera.getUp().y, camera.getUp().z }));
+	mat.projection = glm::perspective(glm::radians(camera.getFovYInDegrees()), aspect, 0.01f, 10000.0f);
+	mat.view = glm::lookAt(camera.getFrom(), camera.getAt(), glm::normalize(camera.getUp()));
 
 
 	mat.viewProjection = mat.projection * mat.view;

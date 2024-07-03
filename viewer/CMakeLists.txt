@@ -3,7 +3,7 @@ find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(glad CONFIG REQUIRED)
 find_package(imguizmo CONFIG REQUIRED)
-
+find_package(glm CONFIG REQUIRED)
 
 add_executable(viewer)
 target_sources(viewer PRIVATE
@@ -24,13 +24,15 @@ target_sources(viewer PRIVATE
 	DebugDrawVertex.h
 	GizmoHelper.h
 	GizmoHelper.cpp
+	Camera.h
+	CameraManipulator.h
+	InteropUtils.h
 )
-target_compile_features(viewer PUBLIC cxx_std_20)
+target_compile_features(viewer PUBLIC cxx_std_23)
 target_link_libraries(viewer
   PRIVATE
-	owl_viewer
-	#owl::owl
 	glfw
+	glm::glm
 	imgui::imgui
 	B3D::Renderer::Library
 	B3D::Renderer::Null
