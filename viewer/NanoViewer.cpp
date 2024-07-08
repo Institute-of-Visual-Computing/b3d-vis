@@ -308,10 +308,12 @@ auto NanoViewer::render() -> void
 	};
 
 	renderingData_.data.renderTargets = b3d::renderer::RenderTargets{
-		.colorRt = { cuFramebufferTexture_,
-					 { static_cast<uint32_t>(framebufferSize_.x), static_cast<uint32_t>(framebufferSize_.y), 1 } },
-		.minMaxRt = { cuFramebufferTexture_,
-					  { static_cast<uint32_t>(framebufferSize_.x), static_cast<uint32_t>(framebufferSize_.y), 1 } },
+		.colorRt = { viewport3dResources_.cuFramebufferTexture,
+					 { static_cast<uint32_t>(viewport3dResources_.framebufferSize.x),
+					   static_cast<uint32_t>(viewport3dResources_.framebufferSize.y), 1 } },
+		.minMaxRt = { viewport3dResources_.cuFramebufferTexture,
+					  { static_cast<uint32_t>(viewport3dResources_.framebufferSize.x),
+						static_cast<uint32_t>(viewport3dResources_.framebufferSize.y), 1 } },
 	};
 
 	// GL_CALL(glSignalSemaphoreEXT(synchronizationResources_.glSignalSemaphore, 0, nullptr, 0, nullptr, &layout));
@@ -326,7 +328,7 @@ auto NanoViewer::resize(const int width, const int height) -> void
 {
 
 	glfwMakeContextCurrent(handle_);
-	if (framebufferPointer_)
+	/*if (framebufferPointer_)
 	{
 		OWL_CUDA_CHECK(cudaFree(framebufferPointer_));
 	}
@@ -349,7 +351,7 @@ auto NanoViewer::resize(const int width, const int height) -> void
 	GL_CALL(glBindTexture(GL_TEXTURE_2D, framebufferTexture_));
 	GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
 
-	OWL_CUDA_CHECK(cudaGraphicsGLRegisterImage(&cuFramebufferTexture_, framebufferTexture_, GL_TEXTURE_2D, 0));
+	OWL_CUDA_CHECK(cudaGraphicsGLRegisterImage(&cuFramebufferTexture_, framebufferTexture_, GL_TEXTURE_2D, 0));*/
 
 	// TODO: make camera change aspect ratio
 	cameraChanged();
@@ -491,7 +493,7 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 										  colorMapResources_.colorMap.colorMapHeightNormalized };
 	}
 
-	// Transferfunction
+	// Transfer function
 	{
 		GL_CALL(glGenTextures(1, &transferFunctionResources_.transferFunctionTexture));
 		GL_CALL(glBindTexture(GL_TEXTURE_2D, transferFunctionResources_.transferFunctionTexture));
@@ -671,6 +673,98 @@ auto NanoViewer::computeViewProjectionMatrixFromCamera(const Camera& camera, con
 	return mat;
 }
 
+auto NanoViewer::initializeViewport3dResources(const int width, const int height) -> void
+{
+	glfwMakeContextCurrent(handle_);
+
+
+	if (viewport3dResources_.framebufferPointer)
+	{
+		OWL_CUDA_CHECK(cudaFree(viewport3dResources_.framebufferPointer));
+	}
+	OWL_CUDA_CHECK(cudaMallocManaged(&viewport3dResources_.framebufferPointer, width * height * sizeof(uint32_t)));
+
+	viewport3dResources_.framebufferSize = { width, height };
+	if (viewport3dResources_.framebufferTexture == 0)
+	{
+		GL_CALL(glGenTextures(1, &viewport3dResources_.framebufferTexture));
+	}
+	else
+	{
+		if (viewport3dResources_.cuFramebufferTexture)
+		{
+			OWL_CUDA_CHECK(cudaGraphicsUnregisterResource(viewport3dResources_.cuFramebufferTexture));
+			viewport3dResources_.cuFramebufferTexture = 0;
+		}
+	}
+
+	GL_CALL(glBindTexture(GL_TEXTURE_2D, viewport3dResources_.framebufferTexture));
+	GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
+	GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+	GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)); 
+
+	OWL_CUDA_CHECK(cudaGraphicsGLRegisterImage(&viewport3dResources_.cuFramebufferTexture,
+											   viewport3dResources_.framebufferTexture, GL_TEXTURE_2D, 0));
+
+	/*GLuint t;
+	GL_CALL(glGenTextures(1, &t));*/
+	GL_CALL(glGenFramebuffers(1, &viewport3dResources_.framebuffer));
+
+	GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, viewport3dResources_.framebuffer));
+	GL_CALL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
+								   viewport3dResources_.framebufferTexture, 0));
+	GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+}
+
+auto cleanupViewport3DResources() -> void
+{
+}
+
+
+auto NanoViewer::updateViewport3dResources() -> void
+{
+}
+
+auto NanoViewer::renderViewport3d(const int width, const int height) -> void
+{
+	if (viewport3dResources_.framebufferSize.x != width || viewport3dResources_.framebufferSize.y != height)
+	{
+		initializeViewport3dResources(width, height);
+	}
+	const auto cameraMatrices = computeViewProjectionMatrixFromCamera(camera_, width, height);
+
+	GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, viewport3dResources_.framebuffer));
+	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	render();
+
+	fsPass->setViewport(width, height);
+	fsPass->setSourceTexture(viewport3dResources_.framebufferTexture);
+	fsPass->execute();
+
+
+	if (viewerSettings.enableGridFloor)
+	{
+		igPass->setViewProjectionMatrix(cameraMatrices.viewProjection);
+		igPass->setViewport(width, height);
+		igPass->setGridColor(
+			glm::vec3{ viewerSettings.gridColor[0], viewerSettings.gridColor[1], viewerSettings.gridColor[2] });
+		igPass->execute();
+	}
+
+	if (viewerSettings.enableDebugDraw)
+	{
+		ddPass->setViewProjectionMatrix(cameraMatrices.viewProjection);
+		ddPass->setViewport(width, height);
+		ddPass->setLineWidth(viewerSettings.lineWidth);
+		ddPass->execute();
+	}
+
+	GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+}
+
+
 auto NanoViewer::draw() -> void
 {
 	ZoneScoped;
@@ -678,6 +772,7 @@ auto NanoViewer::draw() -> void
 	// TODO: if windows minimized or not visible -> skip rendering
 	onFrameBegin();
 	glClear(GL_COLOR_BUFFER_BIT);
+	// glEnable(GL_FRAMEBUFFER_SRGB);
 	static double lastCameraUpdate = -1.f;
 	/*if (camera.lastModified != lastCameraUpdate)
 	{
@@ -725,52 +820,32 @@ auto NanoViewer::draw() -> void
 	ImGui::SetNextWindowClass(&windowClass);
 	ImGui::SetNextWindowDockID(dockspaceId, ImGuiCond_FirstUseEver);
 
+
 	ImGui::Begin("VolumeViewport", 0);
 
+	auto viewport3dSize = ImGui::GetContentRegionAvail();
 
-	const auto cameraMatrices = computeViewProjectionMatrixFromCamera(camera_, framebufferSize_.x, framebufferSize_.y);
-
-	if (viewerSettings.enableDebugDraw)
-	{
-		drawGizmos(cameraMatrices);
-	}
-
-
-	render();
-
-	fsPass->setViewport(framebufferSize_.x, framebufferSize_.y);
-	fsPass->setSourceTexture(framebufferTexture_);
-	fsPass->execute();
-
-
-	if (viewerSettings.enableGridFloor)
-	{
-		igPass->setViewProjectionMatrix(cameraMatrices.viewProjection);
-		igPass->setViewport(framebufferSize_.x, framebufferSize_.y);
-		igPass->setGridColor(
-			glm::vec3{ viewerSettings.gridColor[0], viewerSettings.gridColor[1], viewerSettings.gridColor[2] });
-		igPass->execute();
-	}
-
-	if (viewerSettings.enableDebugDraw)
-	{
-		ddPass->setViewProjectionMatrix(cameraMatrices.viewProjection);
-		ddPass->setViewport(framebufferSize_.x, framebufferSize_.y);
-		ddPass->setLineWidth(viewerSettings.lineWidth);
-		ddPass->execute();
-	}
-
-
-	ImGui::Image((ImTextureID)framebufferTexture_, ImGui::GetContentRegionAvail());
+	ImGui::Image((ImTextureID)viewport3dResources_.framebufferTexture, viewport3dSize, {0.0f,1.0f}, {1.0f,0.0f});
 	ImGui::End();
 
 	gui();
+	if (viewerSettings.enableDebugDraw)
+	{
+		const auto cameraMatrices = computeViewProjectionMatrixFromCamera(camera_, viewport3dSize.x, viewport3dSize.y);
+		drawGizmos(cameraMatrices);
+	}
 
 
 	ImGui::PopFont();
 	ImGui::EndFrame();
 
 	ImGui::Render();
+
+	if (viewport3dSize.x > 0 && viewport3dSize.y > 0)
+	{
+		renderViewport3d(viewport3dSize.x, viewport3dSize.y);
+	}
+
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
@@ -800,12 +875,13 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 	resize(width, height);
 
 	glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
-	glfwSetFramebufferSizeCallback(handle_, [](GLFWwindow* window, int width, int height)
-		{
-			auto* viewer = static_cast<NanoViewer*>(glfwGetWindowUserPointer(window));
-			viewer->resize(width, height);
-			viewer->draw();
-		});
+	glfwSetFramebufferSizeCallback(handle_,
+								   [](GLFWwindow* window, int width, int height)
+								   {
+									   auto* viewer = static_cast<NanoViewer*>(glfwGetWindowUserPointer(window));
+									   viewer->resize(width, height);
+									   viewer->draw();
+								   });
 	glfwSetMouseButtonCallback(handle_, ::mouseButton);
 	glfwSetKeyCallback(handle_, keyboardSpecialKey);
 	glfwSetCharCallback(handle_, keyboardKey);

@@ -1,9 +1,9 @@
 #pragma once
 #include "GLUtils.h"
 
+#include <GLFW/glfw3.h>
 #include <RendererBase.h>
 #include <nvml.h>
-#include <GLFW/glfw3.h>
 
 #include "Camera.h"
 #include "ColorMap.h"
@@ -81,11 +81,26 @@ private:
 	nvmlDevice_t nvmlDevice_{};
 	bool isAdmin_{ false };
 
+	struct Viewport3dResources
+	{
+		GLuint framebuffer;
 
-	GLuint framebufferTexture_{ 0 };
-	cudaGraphicsResource_t cuFramebufferTexture_{ 0 };
-	uint32_t* framebufferPointer_{ nullptr };
-	glm::vec2 framebufferSize_{ 0 };
+
+		GLuint framebufferTexture{ 0 };
+
+
+		cudaGraphicsResource_t cuFramebufferTexture{ 0 };
+		uint32_t* framebufferPointer{ nullptr };
+		glm::vec2 framebufferSize{ 0 };
+	};
+
+	Viewport3dResources viewport3dResources_;
+
+	auto initializeViewport3dResources(const int width, const int height) -> void;
+	auto updateViewport3dResources() -> void;
+	auto renderViewport3d(const int width, const int height) -> void;
+	auto cleanupViewport3DResources() -> void;
+
 
 	GLFWwindow* handle_{ nullptr };
 
