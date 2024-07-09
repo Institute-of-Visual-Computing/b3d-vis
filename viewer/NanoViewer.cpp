@@ -541,123 +541,112 @@ auto NanoViewer::showAndRunWithGui() -> void
 	showAndRunWithGui([]() { return true; });
 }
 
-auto NanoViewer::drawGizmos(const CameraMatrices& cameraMatrices) -> void
+auto NanoViewer::drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec2& position, const glm::vec2& size)
+	-> void
 {
-	ImGui::Begin("##GizmoOverlay", nullptr,
-				 ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoScrollbar |
-					 ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoTitleBar |
-					 ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoBringToFrontOnFocus |
-					 ImGuiWindowFlags_NoNavFocus);
+	ImGuizmo::SetDrawlist();
+	ImGuizmo::SetRect(position.x, position.y, size.x, size.y);
+	for (const auto transform : gizmoHelper_->getTransforms())
 	{
+		float mat[16];
 
-		ImGui::SetWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y), 0);
-		ImGui::SetWindowPos(ImGui::GetMainViewport()->Pos);
-		ImGuizmo::SetDrawlist();
-		ImGuizmo::SetRect(ImGui::GetMainViewport()->Pos.x, ImGui::GetMainViewport()->Pos.y,
-						  ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y);
-		for (const auto transform : gizmoHelper_->getTransforms())
-		{
-			float mat[16];
+		mat[3] = 0.0f;
+		mat[7] = 0.0f;
+		mat[11] = 0.0f;
 
-			mat[3] = 0.0f;
-			mat[7] = 0.0f;
-			mat[11] = 0.0f;
+		mat[12] = transform->p.x;
+		mat[13] = transform->p.y;
+		mat[14] = transform->p.z;
 
-			mat[12] = transform->p.x;
-			mat[13] = transform->p.y;
-			mat[14] = transform->p.z;
+		mat[15] = 1.0f;
 
-			mat[15] = 1.0f;
+		mat[0] = transform->l.vx.x;
+		mat[1] = transform->l.vx.y;
+		mat[2] = transform->l.vx.z;
 
-			mat[0] = transform->l.vx.x;
-			mat[1] = transform->l.vx.y;
-			mat[2] = transform->l.vx.z;
+		mat[4] = transform->l.vy.x;
+		mat[5] = transform->l.vy.y;
+		mat[6] = transform->l.vy.z;
 
-			mat[4] = transform->l.vy.x;
-			mat[5] = transform->l.vy.y;
-			mat[6] = transform->l.vy.z;
+		mat[8] = transform->l.vz.x;
+		mat[9] = transform->l.vz.y;
+		mat[10] = transform->l.vz.z;
+		ImGuizmo::Manipulate(reinterpret_cast<const float*>(&cameraMatrices.view),
+							 reinterpret_cast<const float*>(&cameraMatrices.projection), currentGizmoOperation,
+							 currentGizmoMode, mat, nullptr, nullptr);
 
-			mat[8] = transform->l.vz.x;
-			mat[9] = transform->l.vz.y;
-			mat[10] = transform->l.vz.z;
-			ImGuizmo::Manipulate(reinterpret_cast<const float*>(&cameraMatrices.view),
-								 reinterpret_cast<const float*>(&cameraMatrices.projection), currentGizmoOperation,
-								 currentGizmoMode, mat, nullptr, nullptr);
+		transform->p.x = mat[12];
+		transform->p.y = mat[13];
+		transform->p.z = mat[14];
 
-			transform->p.x = mat[12];
-			transform->p.y = mat[13];
-			transform->p.z = mat[14];
-
-			transform->l.vx = owl::vec3f{ mat[0], mat[1], mat[2] };
-			transform->l.vy = owl::vec3f{ mat[4], mat[5], mat[6] };
-			transform->l.vz = owl::vec3f{ mat[8], mat[9], mat[10] };
-		}
-		auto blockInput = false;
-
-		for (const auto& [bound, transform, worldTransform] : gizmoHelper_->getBoundTransforms())
-		{
-			float mat[16];
-
-			mat[3] = 0.0f;
-			mat[7] = 0.0f;
-			mat[11] = 0.0f;
-
-			mat[12] = transform->p.x;
-			mat[13] = transform->p.y;
-			mat[14] = transform->p.z;
-
-			mat[15] = 1.0f;
-
-			mat[0] = transform->l.vx.x;
-			mat[1] = transform->l.vx.y;
-			mat[2] = transform->l.vx.z;
-
-			mat[4] = transform->l.vy.x;
-			mat[5] = transform->l.vy.y;
-			mat[6] = transform->l.vy.z;
-
-			mat[8] = transform->l.vz.x;
-			mat[9] = transform->l.vz.y;
-			mat[10] = transform->l.vz.z;
-
-
-			const auto halfSize = bound / 2.0f;
-
-			const auto bounds = std::array{ halfSize.x, halfSize.y, halfSize.z, -halfSize.x, -halfSize.y, -halfSize.z };
-
-			glm::mat4 worldTransformMat{ { worldTransform.l.vx.x, worldTransform.l.vx.y, worldTransform.l.vx.z, 0.0f },
-										 { worldTransform.l.vy.x, worldTransform.l.vy.y, worldTransform.l.vy.z, 0.0f },
-										 { worldTransform.l.vz.x, worldTransform.l.vz.y, worldTransform.l.vz.z, 0.0f },
-										 { worldTransform.p.x, worldTransform.p.y, worldTransform.p.z, 1.0f } };
-			const auto matX = cameraMatrices.view * worldTransformMat;
-
-			ImGuizmo::Manipulate(reinterpret_cast<const float*>(&matX),
-								 reinterpret_cast<const float*>(&cameraMatrices.projection),
-								 ImGuizmo::OPERATION::BOUNDS, currentGizmoMode, mat, nullptr, nullptr, bounds.data());
-			if (ImGuizmo::IsUsing())
-			{
-				blockInput = true;
-			}
-
-			transform->p.x = mat[12];
-			transform->p.y = mat[13];
-			transform->p.z = mat[14];
-
-			transform->l.vx = owl::vec3f{ mat[0], mat[1], mat[2] };
-			transform->l.vy = owl::vec3f{ mat[4], mat[5], mat[6] };
-			transform->l.vz = owl::vec3f{ mat[8], mat[9], mat[10] };
-		}
-
-		if (blockInput)
-		{
-#if IMGUI_VERSION_NUM >= 18723
-			ImGui::SetNextFrameWantCaptureMouse(true);
-#else
-			ImGui::CaptureMouseFromApp();
-#endif
-		}
+		transform->l.vx = owl::vec3f{ mat[0], mat[1], mat[2] };
+		transform->l.vy = owl::vec3f{ mat[4], mat[5], mat[6] };
+		transform->l.vz = owl::vec3f{ mat[8], mat[9], mat[10] };
 	}
-	ImGui::End();
+	auto blockInput = false;
+
+	for (const auto& [bound, transform, worldTransform] : gizmoHelper_->getBoundTransforms())
+	{
+		float mat[16];
+
+		mat[3] = 0.0f;
+		mat[7] = 0.0f;
+		mat[11] = 0.0f;
+
+		mat[12] = transform->p.x;
+		mat[13] = transform->p.y;
+		mat[14] = transform->p.z;
+
+		mat[15] = 1.0f;
+
+		mat[0] = transform->l.vx.x;
+		mat[1] = transform->l.vx.y;
+		mat[2] = transform->l.vx.z;
+
+		mat[4] = transform->l.vy.x;
+		mat[5] = transform->l.vy.y;
+		mat[6] = transform->l.vy.z;
+
+		mat[8] = transform->l.vz.x;
+		mat[9] = transform->l.vz.y;
+		mat[10] = transform->l.vz.z;
+
+
+		const auto halfSize = bound / 2.0f;
+
+		const auto bounds = std::array{ halfSize.x, halfSize.y, halfSize.z, -halfSize.x, -halfSize.y, -halfSize.z };
+
+		glm::mat4 worldTransformMat{ { worldTransform.l.vx.x, worldTransform.l.vx.y, worldTransform.l.vx.z, 0.0f },
+									 { worldTransform.l.vy.x, worldTransform.l.vy.y, worldTransform.l.vy.z, 0.0f },
+									 { worldTransform.l.vz.x, worldTransform.l.vz.y, worldTransform.l.vz.z, 0.0f },
+									 { worldTransform.p.x, worldTransform.p.y, worldTransform.p.z, 1.0f } };
+		const auto matX = cameraMatrices.view * worldTransformMat;
+
+		ImGuizmo::Manipulate(reinterpret_cast<const float*>(&matX),
+							 reinterpret_cast<const float*>(&cameraMatrices.projection), ImGuizmo::OPERATION::BOUNDS,
+							 currentGizmoMode, mat, nullptr, nullptr, bounds.data());
+		if (ImGuizmo::IsUsing())
+		{
+			blockInput = true;
+		}
+
+		transform->p.x = mat[12];
+		transform->p.y = mat[13];
+		transform->p.z = mat[14];
+
+		transform->l.vx = owl::vec3f{ mat[0], mat[1], mat[2] };
+		transform->l.vy = owl::vec3f{ mat[4], mat[5], mat[6] };
+		transform->l.vz = owl::vec3f{ mat[8], mat[9], mat[10] };
+	}
+
+	if (blockInput)
+	{
+#if IMGUI_VERSION_NUM >= 18723
+		ImGui::SetNextFrameWantCaptureMouse(true);
+#else
+		ImGui::CaptureMouseFromApp();
+#endif
+	}
 }
 auto NanoViewer::computeViewProjectionMatrixFromCamera(const Camera& camera, const int width, const int height)
 	-> CameraMatrices
@@ -701,7 +690,7 @@ auto NanoViewer::initializeViewport3dResources(const int width, const int height
 	GL_CALL(glBindTexture(GL_TEXTURE_2D, viewport3dResources_.framebufferTexture));
 	GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
 	GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
-	GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)); 
+	GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
 
 	OWL_CUDA_CHECK(cudaGraphicsGLRegisterImage(&viewport3dResources_.cuFramebufferTexture,
 											   viewport3dResources_.framebufferTexture, GL_TEXTURE_2D, 0));
@@ -820,20 +809,35 @@ auto NanoViewer::draw() -> void
 	ImGui::SetNextWindowClass(&windowClass);
 	ImGui::SetNextWindowDockID(dockspaceId, ImGuiCond_FirstUseEver);
 
+	gui();
 
 	ImGui::Begin("VolumeViewport", 0);
 
 	auto viewport3dSize = ImGui::GetContentRegionAvail();
+	ImVec2 p = ImGui::GetCursorScreenPos();
+	ImGui::SetNextItemAllowOverlap();
+	if (ImGui::InvisibleButton("##volumeViewport", viewport3dSize))
+	{
+		std::println("click");
+	}
+	if (ImGui::IsItemActive())
+	{
 
-	ImGui::Image((ImTextureID)viewport3dResources_.framebufferTexture, viewport3dSize, {0.0f,1.0f}, {1.0f,0.0f});
-	ImGui::End();
+		std::println("drag...");
+	}
 
-	gui();
+	ImGui::SetCursorScreenPos(p);
+	ImGui::SetNextItemAllowOverlap();
+	ImGui::Image((ImTextureID)viewport3dResources_.framebufferTexture, viewport3dSize, { 0.0f, 1.0f }, { 1.0f, 0.0f });
+
 	if (viewerSettings.enableDebugDraw)
 	{
+		ImGui::SetNextItemAllowOverlap();
+		ImGui::SetCursorScreenPos(p);
 		const auto cameraMatrices = computeViewProjectionMatrixFromCamera(camera_, viewport3dSize.x, viewport3dSize.y);
-		drawGizmos(cameraMatrices);
+		drawGizmos(cameraMatrices, glm::vec2{ p.x, p.y }, glm::vec2{ viewport3dSize.x, viewport3dSize.y });
 	}
+	ImGui::End();
 
 
 	ImGui::PopFont();

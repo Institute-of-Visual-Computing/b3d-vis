@@ -40,7 +40,7 @@ private:
 		glm::mat4 viewProjection;
 	};
 
-	auto drawGizmos(const CameraMatrices& cameraMatrices) -> void;
+	auto drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec2& position, const glm::vec2& size) -> void;
 	static auto computeViewProjectionMatrixFromCamera(const ::Camera& camera, const int width, const int height)
 		-> CameraMatrices;
 
