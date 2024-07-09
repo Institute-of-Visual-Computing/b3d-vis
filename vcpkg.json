@@ -45,7 +45,6 @@
 		},
 		"stb",
 		"boost-program-options",
-		"imguizmo",
 		{
 			"name": "tracy",
 			"features": [ "gui-tools" ]

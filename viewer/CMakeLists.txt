@@ -2,7 +2,7 @@ find_package(imgui CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(glad CONFIG REQUIRED)
-find_package(imguizmo CONFIG REQUIRED)
+#find_package(imguizmo CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 
 add_executable(viewer)
@@ -43,7 +43,8 @@ target_link_libraries(viewer
 	B3D::Renderer::NanoOutOfCore
 	OpenGL::GL
 	glad::glad
-	imguizmo::imguizmo
+	imguizmo_modefied
+	#imguizmo::imguizmo
 	B3D::Tools::ColorMap
 	${CUDA_nvml_LIBRARY}
 )
