@@ -882,13 +882,13 @@ auto NanoViewer::draw() -> void
 
 				auto mouseScreenLocation = io.MousePos;
 				const auto up = camera_.getUp();
-				const auto right = glm::normalize(glm::cross(camera_.getAt(), up));
+				const auto right = glm::normalize(glm::cross(up, camera_.forward_));
 
 				const auto f = glm::normalize(camera_.getAt() + right * delta.y + up * delta.x);
 
-				auto rotationAxis = glm::normalize(glm::cross(f, camera_.getAt()));
+				auto rotationAxis = glm::normalize(glm::cross(f, camera_.forward_));
 
-				if (glm::length(rotationAxis) >= 0.1f)
+				if (glm::length(rotationAxis) >= 0.001f)
 				{
 					const auto rotation =
 						glm::rotate(glm::identity<glm::mat4>(),
