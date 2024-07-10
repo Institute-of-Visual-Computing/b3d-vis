@@ -24,7 +24,7 @@ public:
 	}
 	[[nodiscard]] inline auto getUp() const -> glm::vec3
 	{
-		return up_;
+		return glm::vec3{0.0f,1.0f,0.0f};// up_;
 	};
 
 	inline auto setOrientation(const glm::vec3& origin, const glm::vec3& interest, const glm::vec3& up,
@@ -40,10 +40,12 @@ public:
 		// forceUpFrame();
 	}
 
-private:
+public:
 	glm::vec3 up_{ 0, 1, 0 };
 	glm::vec3 forward_;
 	glm::vec3 right_;
 	glm::vec3 position_;
 	float fovYInDegrees_{ 60.f };
+
+	float movementSpeedScale_{ 1.0f };
 };
