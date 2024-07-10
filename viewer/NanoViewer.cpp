@@ -28,7 +28,18 @@ using namespace owl;
 
 namespace
 {
-	auto currentGizmoOperation(ImGuizmo::ROTATE);
+	enum GizmoOperationFlagBits
+	{
+		none = 0,
+		translate = 1,
+		rotate = 2,
+		scale = 4
+	};
+
+	using GizmoOperationFlags = uint16_t;
+
+
+	auto currentGizmoOperation = GizmoOperationFlags(GizmoOperationFlagBits::none);
 	auto currentGizmoMode(ImGuizmo::LOCAL);
 
 	auto keyboardKey(GLFWwindow* window, const unsigned int key) -> void
@@ -222,20 +233,22 @@ auto NanoViewer::gui() -> void
 		ImGui::SeparatorText("Debug Draw Settings");
 		ImGui::SliderFloat("Line Width", &viewerSettings.lineWidth, 1.0f, 10.0f);
 		ImGui::Separator();
-
+#define flip_flag(flags, flagBit) (flags & (~flagBit)) | (~(flags & flagBit)) & flagBit;
 
 		if (ImGui::IsKeyPressed(ImGuiKey_1))
 		{
-			currentGizmoOperation = ImGuizmo::TRANSLATE;
+			currentGizmoOperation = flip_flag(currentGizmoOperation, GizmoOperationFlagBits::scale);
 		}
 		if (ImGui::IsKeyPressed(ImGuiKey_2))
 		{
-			currentGizmoOperation = ImGuizmo::ROTATE;
+			currentGizmoOperation = flip_flag(currentGizmoOperation, GizmoOperationFlagBits::translate);
 		}
 		if (ImGui::IsKeyPressed(ImGuiKey_3))
 		{
-			currentGizmoOperation = ImGuizmo::SCALE;
+			currentGizmoOperation = flip_flag(currentGizmoOperation, GizmoOperationFlagBits::rotate);
 		}
+
+#undef flip_flag(flags, flagBit)
 	}
 
 	ImGui::SeparatorText("NVML Settings");
@@ -354,12 +367,12 @@ auto NanoViewer::resize(const int width, const int height) -> void
 	OWL_CUDA_CHECK(cudaGraphicsGLRegisterImage(&cuFramebufferTexture_, framebufferTexture_, GL_TEXTURE_2D, 0));*/
 
 	// TODO: make camera change aspect ratio
-	cameraChanged();
+	// cameraChanged();
 }
 
-auto NanoViewer::cameraChanged() -> void
-{
-}
+// auto NanoViewer::cameraChanged() -> void
+//{
+// }
 
 auto NanoViewer::onFrameBegin() -> void
 {
@@ -544,46 +557,65 @@ auto NanoViewer::showAndRunWithGui() -> void
 auto NanoViewer::drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec2& position, const glm::vec2& size)
 	-> void
 {
-	ImGuizmo::SetDrawlist();
-	ImGuizmo::SetRect(position.x, position.y, size.x, size.y);
-	for (const auto transform : gizmoHelper_->getTransforms())
+	if (currentGizmoOperation != GizmoOperationFlagBits::none)
 	{
-		float mat[16];
 
-		mat[3] = 0.0f;
-		mat[7] = 0.0f;
-		mat[11] = 0.0f;
+		auto guizmoOperation = ImGuizmo::OPERATION{};
+		if (currentGizmoOperation & GizmoOperationFlagBits::rotate)
+		{
+			guizmoOperation = guizmoOperation | ImGuizmo::ROTATE;
+		}
+		if (currentGizmoOperation & GizmoOperationFlagBits::translate)
+		{
+			guizmoOperation = guizmoOperation | ImGuizmo::TRANSLATE;
+		}
+		if (currentGizmoOperation & GizmoOperationFlagBits::scale)
+		{
+			guizmoOperation = guizmoOperation | ImGuizmo::SCALE;
+		}
 
-		mat[12] = transform->p.x;
-		mat[13] = transform->p.y;
-		mat[14] = transform->p.z;
+		ImGuizmo::SetDrawlist();
+		ImGuizmo::SetRect(position.x, position.y, size.x, size.y);
+		for (const auto transform : gizmoHelper_->getTransforms())
+		{
+			float mat[16];
 
-		mat[15] = 1.0f;
+			mat[3] = 0.0f;
+			mat[7] = 0.0f;
+			mat[11] = 0.0f;
 
-		mat[0] = transform->l.vx.x;
-		mat[1] = transform->l.vx.y;
-		mat[2] = transform->l.vx.z;
+			mat[12] = transform->p.x;
+			mat[13] = transform->p.y;
+			mat[14] = transform->p.z;
 
-		mat[4] = transform->l.vy.x;
-		mat[5] = transform->l.vy.y;
-		mat[6] = transform->l.vy.z;
+			mat[15] = 1.0f;
 
-		mat[8] = transform->l.vz.x;
-		mat[9] = transform->l.vz.y;
-		mat[10] = transform->l.vz.z;
-		ImGuizmo::Manipulate(reinterpret_cast<const float*>(&cameraMatrices.view),
-							 reinterpret_cast<const float*>(&cameraMatrices.projection), currentGizmoOperation,
-							 currentGizmoMode, mat, nullptr, nullptr);
+			mat[0] = transform->l.vx.x;
+			mat[1] = transform->l.vx.y;
+			mat[2] = transform->l.vx.z;
 
-		transform->p.x = mat[12];
-		transform->p.y = mat[13];
-		transform->p.z = mat[14];
+			mat[4] = transform->l.vy.x;
+			mat[5] = transform->l.vy.y;
+			mat[6] = transform->l.vy.z;
 
-		transform->l.vx = owl::vec3f{ mat[0], mat[1], mat[2] };
-		transform->l.vy = owl::vec3f{ mat[4], mat[5], mat[6] };
-		transform->l.vz = owl::vec3f{ mat[8], mat[9], mat[10] };
+			mat[8] = transform->l.vz.x;
+			mat[9] = transform->l.vz.y;
+			mat[10] = transform->l.vz.z;
+			ImGuizmo::Manipulate(reinterpret_cast<const float*>(&cameraMatrices.view),
+								 reinterpret_cast<const float*>(&cameraMatrices.projection), guizmoOperation,
+								 currentGizmoMode, mat, nullptr, nullptr);
+
+			transform->p.x = mat[12];
+			transform->p.y = mat[13];
+			transform->p.z = mat[14];
+
+			transform->l.vx = owl::vec3f{ mat[0], mat[1], mat[2] };
+			transform->l.vy = owl::vec3f{ mat[4], mat[5], mat[6] };
+			transform->l.vz = owl::vec3f{ mat[8], mat[9], mat[10] };
+		}
 	}
 	auto blockInput = false;
+
 
 	for (const auto& [bound, transform, worldTransform] : gizmoHelper_->getBoundTransforms())
 	{
@@ -914,6 +946,73 @@ auto NanoViewer::draw() -> void
 		const auto cameraMatrices = computeViewProjectionMatrixFromCamera(camera_, viewport3dSize.x, viewport3dSize.y);
 		drawGizmos(cameraMatrices, glm::vec2{ p.x, p.y }, glm::vec2{ viewport3dSize.x, viewport3dSize.y });
 	}
+
+	const auto showControls = true;
+	if (showControls)
+	{
+		ImGui::SetNextItemAllowOverlap();
+
+		const auto scale = ImGui::GetWindowDpiScale();
+		auto buttonPosition = p + ImVec2(scale * 20, scale * 20);
+		ImGui::SetCursorScreenPos(buttonPosition);
+		const auto buttonPadding = scale * 4.0f;
+		const auto buttonSize = scale * 40;
+
+		const auto activeColor = ImGui::GetStyle().Colors[ImGuiCol_ButtonActive];
+
+#define flip_flag(flags, flagBit) (flags & (~flagBit)) | (~(flags & flagBit)) & flagBit;
+
+		const auto prevOperationState = currentGizmoOperation;
+
+		if (prevOperationState & GizmoOperationFlagBits::scale)
+		{
+			ImGui::PushStyleColor(ImGuiCol_Button, activeColor);
+		}
+		if (ImGui::Button("scale##scale_control_handle", ImVec2{ buttonSize, buttonSize }))
+		{
+			currentGizmoOperation = flip_flag(currentGizmoOperation, GizmoOperationFlagBits::scale);
+		}
+		if (prevOperationState & GizmoOperationFlagBits::scale)
+		{
+			ImGui::PopStyleColor();
+		}
+		ImGui::SetNextItemAllowOverlap();
+		buttonPosition += ImVec2(0, buttonPadding + buttonSize);
+		ImGui::SetCursorScreenPos(buttonPosition);
+
+		if (prevOperationState & GizmoOperationFlagBits::translate)
+		{
+			ImGui::PushStyleColor(ImGuiCol_Button, activeColor);
+		}
+		if (ImGui::Button("translate##translate_control_handle", ImVec2{ buttonSize, buttonSize }))
+		{
+			currentGizmoOperation = flip_flag(currentGizmoOperation, GizmoOperationFlagBits::translate);
+		}
+		if (prevOperationState & GizmoOperationFlagBits::translate)
+		{
+			ImGui::PopStyleColor();
+		}
+		ImGui::SetNextItemAllowOverlap();
+		buttonPosition += ImVec2(0, buttonPadding + buttonSize);
+		ImGui::SetCursorScreenPos(buttonPosition);
+
+		if (prevOperationState & GizmoOperationFlagBits::rotate)
+		{
+			ImGui::PushStyleColor(ImGuiCol_Button, activeColor);
+		}
+		if (ImGui::Button("rotate##rotate_control_handle", ImVec2{ buttonSize, buttonSize }))
+		{
+			currentGizmoOperation = flip_flag(currentGizmoOperation, GizmoOperationFlagBits::rotate);
+		}
+		if (prevOperationState & GizmoOperationFlagBits::rotate)
+		{
+			ImGui::PopStyleColor();
+		}
+
+
+#undef flip_flag(flags, flagBit)
+	}
+
 	ImGui::End();
 
 
