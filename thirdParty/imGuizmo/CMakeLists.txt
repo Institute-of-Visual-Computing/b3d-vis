@@ -13,3 +13,5 @@ target_link_libraries(imguizmo_modefied
   PRIVATE
 	imgui::imgui
 )
+
+set_property(TARGET imguizmo_modefied PROPERTY FOLDER "ThirdParty/imguizmo_modefied")
