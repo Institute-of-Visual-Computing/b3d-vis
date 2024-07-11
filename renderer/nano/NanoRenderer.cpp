@@ -434,6 +434,9 @@ auto NanoRenderer::onGui() -> void
 		if (ImGui::Button(std::format("Set {}##{}", index, index).c_str()))
 		{
 			runtimeDataSet_.select(index);
+			const auto& statistics = runtimeDataSet_.getStatistics(index);
+			guiData.sampleRemapping[0] = statistics.min;
+			guiData.sampleRemapping[1] = statistics.max;
 		}
 		ImGui::SameLine();
 	}
