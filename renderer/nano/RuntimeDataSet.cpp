@@ -1,10 +1,13 @@
 #include "RuntimeDataSet.h"
 
 #include <filesystem>
+#include <concepts>
 
+#include <execution>
 #include "NanoVDB.h"
 #include "owl/common/math/AffineSpace.h"
 #include "owl/helper/cuda.h"
+#include "util/GridStats.h"
 #include "util/IO.h"
 #include "util/Primitives.h"
 
@@ -15,9 +18,11 @@ namespace
 	auto createVolume(const nanovdb::GridHandle<>& gridVolume) -> NanoVdbVolume
 	{
 		auto volume = NanoVdbVolume{};
+
+
 		OWL_CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&volume.grid), gridVolume.size()));
 		OWL_CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(volume.grid), gridVolume.data(), gridVolume.size(),
-			cudaMemcpyHostToDevice));
+								  cudaMemcpyHostToDevice));
 
 		const auto gridHandle = gridVolume.grid<float>();
 		const auto& map = gridHandle->mMap;
@@ -53,15 +58,98 @@ namespace
 		return volume;
 	}
 
+	auto computeStatistics(const nanovdb::GridHandle<>& gridVolume) -> VolumeStatistics
+	{
+		const auto gridHandle = gridVolume.grid<float>();
+		const auto indexBox = gridHandle->indexBBox();
+		auto ac = gridHandle->getAccessor();
+		auto histogram = std::map<float, int>();
+		auto min = std::numeric_limits<float>::max();
+		auto max = std::numeric_limits<float>::min();
+		auto totalSamples = 0;
+		auto sum = 0.0;
+
+		auto addValueToStatistics =
+			[&](const nanovdb::Coord& coord)
+		{
+			auto leaf = ac.probeLeaf(coord);
+			if (leaf == nullptr)
+			{
+				return;
+			}
+			auto leafData = leaf->data();
+			auto value = leafData->getAvg();
+			if (!histogram.contains(value))
+			{
+				histogram[value] = 1;
+			}
+			histogram[value]++;
+			totalSamples++;
+
+			if (value < min)
+			{
+				min = value;
+			}
+
+			if (value > max)
+			{
+				max = value;
+			}
+			sum += value;
+		};
+
+		std::vector<nanovdb::Coord> ii;
+		std::cout << indexBox.volume() << std::endl;
+		ii.reserve(indexBox.volume());
+		for (auto i = indexBox.begin(); i != indexBox.end(); i++)
+		{
+			ii.push_back(*i);
+		}
+
+		std::for_each(std::execution::par,  ii.begin(), ii.end(), addValueToStatistics);
+
+
+		/*for (auto i = indexBox.begin(); i != indexBox.end(); i++)
+		{
+			addValueToStatistics(*i);
+		}*/
+
+		const auto average = (float)(sum / totalSamples);
+
+		auto halfValue = totalSamples / 2;
+
+		auto median = 0.0f;
+
+		auto samplesCount = 0;
+
+
+		for (auto& [key, value] : histogram)
+		{
+			if (samplesCount > halfValue)
+			{
+				median = key;
+				break;
+			}
+			samplesCount += value;
+		}
+
+		return VolumeStatistics{ .histogram = histogram,
+								 .totalValues = totalSamples,
+								 .min = min,
+								 .max = max,
+								 .average = average,
+								 .median = median };
+	}
+
 	auto createVolumeFromFile(const std::filesystem::path& file) -> NanoVdbVolume
 	{
 		// TODO: Let's use shared parameters to grab an initial volume path from the viewer
 		//  const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
 		//  const auto testFile =
-		//std::filesystem::path{ "D:/datacubes/n4565_cut/filtered_level_0_224_257_177_id_7_upscale.fits.nvdb" };
+		// std::filesystem::path{ "D:/datacubes/n4565_cut/filtered_level_0_224_257_177_id_7_upscale.fits.nvdb" };
 		// std::filesystem::path{ "C:/Users/anton/Downloads/chameleon_1024x1024x1080_uint16.nvdb" };
 		// std::filesystem::path{ "C:/Users/anton/Downloads/carp_256x256x512_uint16.nvdb" };
-		//const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" };
+		// const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" };
 		// const auto testFile = std::filesystem::path{ "D:/datacubes/ska/40gb/sky_ldev_v2.nvdb" };
 
 		assert(std::filesystem::exists(file));
@@ -72,10 +160,11 @@ namespace
 
 b3d::renderer::nano::RuntimeDataSet::RuntimeDataSet()
 {
-	//TODO: use cudaMemGetInfo(), add LRU eviction strategy, pass data pool size via parameter
+	// TODO: use cudaMemGetInfo(), add LRU eviction strategy, pass data pool size via parameter
 
-	//addNanoVdb(createVolume(nanovdb::createFogVolumeTorus()));
-	const auto volume = createVolume(nanovdb::createFogVolumeSphere());
+	// addNanoVdb(createVolume(nanovdb::createFogVolumeTorus()));
+	auto gridHandle = nanovdb::createFogVolumeSphere();
+	const auto volume = createVolume(gridHandle);
 	const auto volumeSize = volume.indexBox.size();
 	const auto longestAxis = std::max({ volumeSize.x, volumeSize.y, volumeSize.z });
 
@@ -83,8 +172,7 @@ b3d::renderer::nano::RuntimeDataSet::RuntimeDataSet()
 
 	const auto renormalizeScale = owl::AffineSpace3f::scale(owl::vec3f{ scale, scale, scale });
 	dummyVolume_ = RuntimeVolume{ volume, RuntimeVolumeState::ready, renormalizeScale };
-
-	addNanoVdb(createVolumeFromFile("D:/data/work/b3d_data/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb"));
+	dummyVolumeStatistics_ = computeStatistics(gridHandle);
 }
 auto RuntimeDataSet::select(const std::size_t index) -> void
 {
@@ -93,7 +181,7 @@ auto RuntimeDataSet::select(const std::size_t index) -> void
 }
 auto RuntimeDataSet::getSelectedData() -> RuntimeVolume&
 {
-	if(runtimeVolumes_.empty())
+	if (runtimeVolumes_.empty())
 	{
 		return dummyVolume_;
 	}
@@ -101,9 +189,11 @@ auto RuntimeDataSet::getSelectedData() -> RuntimeVolume&
 }
 auto RuntimeDataSet::addNanoVdb(const std::filesystem::path& path) -> void
 {
-	addNanoVdb(createVolumeFromFile(path));
+	assert(std::filesystem::exists(path));
+	const auto gridVolume = nanovdb::io::readGrid(path.string());
+	addNanoVdb(createVolume(gridVolume), computeStatistics(gridVolume));
 }
-auto RuntimeDataSet::addNanoVdb(const NanoVdbVolume& volume) -> void
+auto RuntimeDataSet::addNanoVdb(const NanoVdbVolume& volume, const VolumeStatistics& statistics) -> void
 {
 	const auto volumeSize = volume.indexBox.size();
 	const auto longestAxis = std::max({ volumeSize.x, volumeSize.y, volumeSize.z });
@@ -113,6 +203,7 @@ auto RuntimeDataSet::addNanoVdb(const NanoVdbVolume& volume) -> void
 	const auto renormalizeScale = owl::AffineSpace3f::scale(owl::vec3f{ scale, scale, scale });
 
 	runtimeVolumes_.push_back(RuntimeVolume{ volume, RuntimeVolumeState::ready, renormalizeScale });
+	volumeStatistics_.push_back(statistics);
 }
 RuntimeDataSet::~RuntimeDataSet()
 {
