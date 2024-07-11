@@ -1012,7 +1012,7 @@ auto NanoViewer::draw() -> void
 				const auto up = camera_.getUp();
 				const auto right = glm::normalize(glm::cross(up, camera_.forward_));
 
-				const auto f = glm::normalize(camera_.getAt() + right * delta.y + up * delta.x);
+				const auto f = glm::normalize(camera_.forward_ + right * delta.y + up * delta.x);
 
 				auto rotationAxis = glm::normalize(glm::cross(f, camera_.forward_));
 
