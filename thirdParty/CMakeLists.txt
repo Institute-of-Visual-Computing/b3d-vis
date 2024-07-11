@@ -8,3 +8,5 @@ add_subdirectory(imGuizmo)
 
 set_property(TARGET owl PROPERTY FOLDER "ThirdParty/owl")
 set_property(TARGET owl_viewer PROPERTY FOLDER "ThirdParty/owl")
+
+add_subdirectory(iconFontCppHeaders)
