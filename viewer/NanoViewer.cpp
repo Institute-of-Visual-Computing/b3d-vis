@@ -24,6 +24,11 @@
 
 #include <ImGuizmo.h>
 
+#include <IconsFontAwesome6Brands.h>
+#include <IconsLucide.h>
+
+#include <boost/process.hpp>
+
 using namespace owl;
 
 namespace
@@ -113,8 +118,40 @@ namespace
 			{
 				auto font =
 					io.Fonts->AddFontFromFileTTF("resources/fonts/Roboto-Medium.ttf", dpiScale * baseFontSize, &config);
+
+
+				static auto iconRangesLucide = ImVector<ImWchar>{};
+				ImFontGlyphRangesBuilder builder;
+				builder.AddText(ICON_LC_ROTATE_3D ICON_LC_MOVE_3D ICON_LC_SCALE_3D ICON_LC_BAR_CHART_3 ICON_LC_UNPLUG ICON_LC_LOG_OUT ICON_LC_CIRCLE_GAUGE ICON_LC_BUG);
+				builder.BuildRanges(&iconRangesLucide);
+
+				const auto iconFontSize = dpiScale * baseFontSize * 2.0f / 3.0f;
+				config.MergeMode = true;
+				config.PixelSnapH = true;
+				config.GlyphMinAdvanceX = iconFontSize;
+				config.OversampleH = 8;
+				config.OversampleV = 8;
+
+				font = io.Fonts->AddFontFromFileTTF("resources/fonts/lucide.ttf", iconFontSize, &config,
+													iconRangesLucide.Data);
+
+				static auto iconRangesFontAwesomeBrands = ImVector<ImWchar>{};
+				builder.Clear();
+				builder.AddText(ICON_FA_GITHUB);
+				builder.BuildRanges(&iconRangesFontAwesomeBrands);
+
+				font = io.Fonts->AddFontFromFileTTF("resources/fonts/fa-brands-400.ttf", iconFontSize,
+													&config, iconRangesFontAwesomeBrands.Data);
+
+				config.GlyphMinAdvanceX = iconFontSize * 2.0f;
+				config.MergeMode = false;
+				auto fontBig = io.Fonts->AddFontFromFileTTF("resources/fonts/lucide.ttf", iconFontSize * 2.0f, &config,
+													iconRangesLucide.Data);
+
+				const auto fontIndex = defaultFonts.size();
 				defaultFonts.push_back(font);
-				scaleToFont[scaleX] = i;
+				defaultFonts.push_back(fontBig);
+				scaleToFont[scaleX] = fontIndex;
 			}
 		}
 	}
@@ -235,15 +272,15 @@ auto NanoViewer::gui() -> void
 		ImGui::Separator();
 #define flip_flag(flags, flagBit) (flags & (~flagBit)) | (~(flags & flagBit)) & flagBit;
 
-		if (ImGui::IsKeyPressed(ImGuiKey_1))
+		if (ImGui::IsKeyPressed(ImGuiKey_1, false))
 		{
 			currentGizmoOperation = flip_flag(currentGizmoOperation, GizmoOperationFlagBits::scale);
 		}
-		if (ImGui::IsKeyPressed(ImGuiKey_2))
+		if (ImGui::IsKeyPressed(ImGuiKey_2, false))
 		{
 			currentGizmoOperation = flip_flag(currentGizmoOperation, GizmoOperationFlagBits::translate);
 		}
-		if (ImGui::IsKeyPressed(ImGuiKey_3))
+		if (ImGui::IsKeyPressed(ImGuiKey_3, false))
 		{
 			currentGizmoOperation = flip_flag(currentGizmoOperation, GizmoOperationFlagBits::rotate);
 		}
@@ -551,7 +588,7 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 
 auto NanoViewer::showAndRunWithGui() -> void
 {
-	showAndRunWithGui([]() { return true; });
+	showAndRunWithGui([&]() { return isRunning_; });
 }
 
 auto NanoViewer::drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec2& position, const glm::vec2& size)
@@ -793,13 +830,8 @@ auto NanoViewer::draw() -> void
 	// TODO: if windows minimized or not visible -> skip rendering
 	onFrameBegin();
 	glClear(GL_COLOR_BUFFER_BIT);
-	// glEnable(GL_FRAMEBUFFER_SRGB);
 	static double lastCameraUpdate = -1.f;
-	/*if (camera.lastModified != lastCameraUpdate)
-	{
-		cameraChanged();
-		lastCameraUpdate = camera.lastModified;
-	}*/
+	
 	gizmoHelper_->clear();
 
 	ImGui_ImplOpenGL3_NewFrame();
@@ -807,7 +839,69 @@ auto NanoViewer::draw() -> void
 	ImGui::NewFrame();
 	ImGui::PushFont(defaultFonts[currentFontIndex]);
 
+	//TODO: Investigate if this combination is alwys intercepted by OS
+	if(ImGui::IsKeyDown(ImGuiMod_Alt) and ImGui::IsKeyPressed(ImGuiKey_F4, false))
+	{
+		isRunning_ = false;
+	}
+
 	ImGui::BeginMainMenuBar();
+	if (ImGui::BeginMenu("Program"))
+	{
+		if (ImGui::MenuItem(ICON_LC_UNPLUG " Data Service..", nullptr, nullptr))
+		{
+		}
+
+		if (ImGui::MenuItem(ICON_LC_LOG_OUT " Quit", "Alt+F4", nullptr))
+		{
+			isRunning_ = false;
+		}
+
+		ImGui::EndMenu();
+	}
+
+
+	if (ImGui::BeginMenu("Tools"))
+	{
+		if (ImGui::MenuItem(ICON_LC_BAR_CHART_3 " Histogram", nullptr, nullptr))
+		{
+		}
+
+		if (ImGui::MenuItem("Transfer Function", nullptr, nullptr))
+		{
+		}
+
+		ImGui::EndMenu();
+	}
+
+	if (ImGui::BeginMenu("Help"))
+	{
+		const auto url = "https://github.com/Institut-of-Visual-Computing/b3d-vis";
+
+		if (ImGui::MenuItem(ICON_FA_GITHUB " Source Code", nullptr, nullptr))
+		{
+			auto cmd = "";
+#ifdef __APPLE__
+#ifdef TARGET_OS_MAC
+			cmd = "open";
+#endif
+#elif __linux__
+			cmd = "xdg-open";
+#elif _WIN32
+			cmd = "start";
+#else
+
+#endif
+			std::system(std::format("{} {}", cmd, url).c_str());
+		}
+		ImGui::SeparatorText("Develop Tools");
+		ImGui::MenuItem(ICON_LC_BUG" Debug Options");
+		ImGui::MenuItem(ICON_LC_CIRCLE_GAUGE" Renderer Profiler");
+
+		ImGui::Separator();
+		ImGui::MenuItem("About", nullptr, nullptr);
+		ImGui::EndMenu();
+	}
 
 	ImGui::EndMainMenuBar();
 
@@ -832,6 +926,7 @@ auto NanoViewer::draw() -> void
 	// windowClass.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_AutoHideTabBar;
 	//  ImGuiDockNodeFlags_NoWindowMenuButton;
 
+
 	ImGui::End();
 
 	/*ImGui::SetNextWindowClass(&windowClass);
@@ -842,8 +937,9 @@ auto NanoViewer::draw() -> void
 	ImGui::SetNextWindowDockID(dockspaceId, ImGuiCond_FirstUseEver);
 
 	gui();
-
-	ImGui::Begin("VolumeViewport", 0);
+	windowClass.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_AutoHideTabBar | ImGuiDockNodeFlags_NoUndocking;
+	ImGui::SetNextWindowClass(&windowClass);
+	ImGui::Begin("VolumeViewport", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse);
 
 	auto viewport3dSize = ImGui::GetContentRegionAvail();
 	ImVec2 p = ImGui::GetCursorScreenPos();
@@ -964,14 +1060,27 @@ auto NanoViewer::draw() -> void
 
 		const auto prevOperationState = currentGizmoOperation;
 
+		
+
 		if (prevOperationState & GizmoOperationFlagBits::scale)
 		{
 			ImGui::PushStyleColor(ImGuiCol_Button, activeColor);
 		}
-		if (ImGui::Button("scale##scale_control_handle", ImVec2{ buttonSize, buttonSize }))
+
+		ImGui::PushFont(defaultFonts[currentFontIndex + 1]);
+		if (ImGui::Button(ICON_LC_SCALE_3D "##scale_control_handle", ImVec2{ buttonSize, buttonSize }))
 		{
 			currentGizmoOperation = flip_flag(currentGizmoOperation, GizmoOperationFlagBits::scale);
 		}
+		ImGui::PopFont();
+
+		if (ImGui::BeginItemTooltip())
+		{
+			ImGui::Text("Scale Volume");
+			ImGui::TextDisabled("Hotkey: 1");
+			ImGui::EndTooltip();
+		}
+
 		if (prevOperationState & GizmoOperationFlagBits::scale)
 		{
 			ImGui::PopStyleColor();
@@ -984,10 +1093,19 @@ auto NanoViewer::draw() -> void
 		{
 			ImGui::PushStyleColor(ImGuiCol_Button, activeColor);
 		}
-		if (ImGui::Button("translate##translate_control_handle", ImVec2{ buttonSize, buttonSize }))
+		ImGui::PushFont(defaultFonts[currentFontIndex + 1]);
+		if (ImGui::Button(ICON_LC_MOVE_3D "##translate_control_handle", ImVec2{ buttonSize, buttonSize }))
 		{
 			currentGizmoOperation = flip_flag(currentGizmoOperation, GizmoOperationFlagBits::translate);
 		}
+		ImGui::PopFont();
+		if (ImGui::BeginItemTooltip())
+		{
+			ImGui::Text("Translate Volume");
+			ImGui::TextDisabled("Hotkey: 2");
+			ImGui::EndTooltip();
+		}
+
 		if (prevOperationState & GizmoOperationFlagBits::translate)
 		{
 			ImGui::PopStyleColor();
@@ -1000,10 +1118,19 @@ auto NanoViewer::draw() -> void
 		{
 			ImGui::PushStyleColor(ImGuiCol_Button, activeColor);
 		}
-		if (ImGui::Button("rotate##rotate_control_handle", ImVec2{ buttonSize, buttonSize }))
+		ImGui::PushFont(defaultFonts[currentFontIndex + 1]);
+		if (ImGui::Button(ICON_LC_ROTATE_3D "##rotate_control_handle", ImVec2{ buttonSize, buttonSize }))
 		{
 			currentGizmoOperation = flip_flag(currentGizmoOperation, GizmoOperationFlagBits::rotate);
 		}
+		ImGui::PopFont();
+		if (ImGui::BeginItemTooltip())
+		{
+			ImGui::Text("Rotate Volume");
+			ImGui::TextDisabled("Hotkey: 3");
+			ImGui::EndTooltip();
+		}
+
 		if (prevOperationState & GizmoOperationFlagBits::rotate)
 		{
 			ImGui::PopStyleColor();

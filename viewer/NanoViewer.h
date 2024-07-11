@@ -29,7 +29,6 @@ private:
 	auto render() -> void;
 	auto draw() -> void;
 	auto resize(const int width, const int height) -> void;
-	auto cameraChanged() -> void;
 	auto onFrameBegin() -> void;
 
 
@@ -105,4 +104,6 @@ private:
 	GLFWwindow* handle_{ nullptr };
 
 	::Camera camera_{};
+
+	bool isRunning_{true};
 };

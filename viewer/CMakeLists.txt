@@ -44,6 +44,7 @@ target_link_libraries(viewer
 	OpenGL::GL
 	glad::glad
 	imguizmo_modefied
+	iconFontCppHeaders
 	#imguizmo::imguizmo
 	B3D::Tools::ColorMap
 	${CUDA_nvml_LIBRARY}
