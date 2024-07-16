@@ -9,369 +9,63 @@
 #include <filesystem>
 
 #include <future>
+
+
 #include <algorithm>
+
 #include <args.hxx>
 
-#include <boost/process.hpp>
+#include "Project.h"
+#include "ProjectProvider.h"
 
-namespace bp = boost::process;
+#include "SoFiA.h"
 
 // https://stackoverflow.com/questions/2989810/which-cross-platform-preprocessor-defines-win32-or-win32-or-win32
 #if !defined(_WIN32) && (defined(__unix__) || defined(__unix))
-	auto sofiaPath = boost::process::search_path("sofia");
+std::filesystem::path sofiaPath = boost::process::search_path("sofia").string();
 #else
-	auto sofiaPath = boost::process::search_path("sofia.exe");
+std::filesystem::path sofiaPath = boost::process::search_path("sofia.exe").string();
+
 #endif
 
+
 auto commonRootPath = boost::process::filesystem::path("");
+std::unique_ptr<std::future<b3d::tools::sofiasearch::ProcessResult>> currentRequest{nullptr};
+std::unique_ptr<b3d::tools::projectexplorer::ProjectProvider> projectProvider{ nullptr };
 
-const std::array<std::string, 9> sofia_return_code_messages = {
-	"The pipeline successfully completed without any error.",
-	"An unclassified failure occurred.",
-	"A NULL pointer was encountered.",
-	"A memory allocation error occurred. This could indicate that the data cube is too large for the amount of memory available on the machine.",
-	"An array index was found to be out of range.",
-	"An error occurred while trying to read or write a file or check if a directory or file is accessible.",
-	"The overflow of an integer value occurred.",
-	"The pipeline had to be aborted due to invalid user input. This could, e.g., be due to an invalid parameter setting or the wrong input file being provided.",
-	"No specific error occurred, but sources were not detected either."
-};
-
-const std::array<std::string, 102> sofia_parameter_keys = { "pipeline.verbose",
-														"pipeline.pedantic",
-														"pipeline.threads",
-														"input.data",
-														"input.region",
-														"input.gain",
-														"input.noise",
-														"input.weights",
-														"input.primaryBeam",
-														"input.mask",
-														"input.invert",
-														"flag.region",
-														"flag.catalog",
-														"flag.radius",
-														"flag.auto",
-														"flag.threshold",
-														"flag.log",
-														"contsub.enable",
-														"contsub.order",
-														"contsub.threshold",
-														"contsub.shift",
-														"contsub.padding",
-														"scaleNoise.enable",
-														"scaleNoise.mode",
-														"scaleNoise.statistic",
-														"scaleNoise.fluxRange",
-														"scaleNoise.windowXY",
-														"scaleNoise.windowZ",
-														"scaleNoise.gridXY",
-														"scaleNoise.gridZ",
-														"scaleNoise.interpolate",
-														"scaleNoise.scfind",
-														"rippleFilter.enable",
-														"rippleFilter.statistic",
-														"rippleFilter.windowXY",
-														"rippleFilter.windowZ",
-														"rippleFilter.gridXY",
-														"rippleFilter.gridZ",
-														"rippleFilter.interpolate",
-														"scfind.enable",
-														"scfind.kernelsXY",
-														"scfind.kernelsZ",
-														"scfind.threshold",
-														"scfind.replacement",
-														"scfind.statistic",
-														"scfind.fluxRange",
-														"threshold.enable",
-														"threshold.threshold",
-														"threshold.mode",
-														"threshold.statistic",
-														"threshold.fluxRange",
-														"linker.enable",
-														"linker.radiusXY",
-														"linker.radiusZ",
-														"linker.minSizeXY",
-														"linker.minSizeZ",
-														"linker.maxSizeXY",
-														"linker.maxSizeZ",
-														"linker.minPixels",
-														"linker.maxPixels",
-														"linker.minFill",
-														"linker.maxFill",
-														"linker.positivity",
-														"linker.keepNegative",
-														"reliability.enable",
-														"reliability.parameters",
-														"reliability.threshold",
-														"reliability.scaleKernel",
-														"reliability.minSNR",
-														"reliability.minPixels",
-														"reliability.autoKernel",
-														"reliability.iterations",
-														"reliability.tolerance",
-														"reliability.catalog",
-														"reliability.plot",
-														"reliability.debug",
-														"dilation.enable",
-														"dilation.iterationsXY",
-														"dilation.iterationsZ",
-														"dilation.threshold",
-														"parameter.enable",
-														"parameter.wcs",
-														"parameter.physical",
-														"parameter.prefix",
-														"parameter.offset",
-														"output.directory",
-														"output.filename",
-														"output.writeCatASCII",
-														"output.writeCatXML",
-														"output.writeCatSQL",
-														"output.writeNoise",
-														"output.writeFiltered",
-														"output.writeMask",
-														"output.writeMask2d",
-														"output.writeRawMask",
-														"output.writeMoments",
-														"output.writeCubelets",
-														"output.writePV",
-														"output.writeKarma",
-														"output.marginCubelets",
-														"output.thresholdMom12",
-														"output.overwrite" };
-
-
-const std::array<std::string, 9> sofia_path_parameter_keys = {
-	"input.data",
-	"input.gain",
-	"input.mask",
-	"input.noise",
-	"input.primaryBeam",
-	"input.weights",
-	"flag.catalog",
-	"reliability.catalog",
-	"output.directory",
-};
-
-
-struct SofiaResult
-{
-	bool finished { false };
-	int returnCode { -1 };
-	
-
-	auto wasSuccess() const -> bool
-	{
-		return finished && returnCode == 0;
-	}
-
-	auto message() const ->std::string_view
-	{
-		if (0 <= returnCode && returnCode < sofia_return_code_messages.size())
-		{
-			return sofia_return_code_messages[1];
-		}
-		return sofia_return_code_messages[returnCode];
-	}
-};
-
-void to_json(nlohmann::json& j, const SofiaResult& result)
-{
-	j = nlohmann::json
-	{
-		{ "finished", result.finished },
-		{"returnCode", result.returnCode },
-		{ "message", result.message() }
-	};
-}
-
-void from_json(const nlohmann::json& j, SofiaResult& result)
-{
-	j.at("finished").get_to(result.finished);
-	j.at("returnCode").get_to(result.returnCode);
-}
-
-struct SofiaSearch
-{
-	std::vector<std::string> sofiaParameters;
-};
-
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SofiaSearch, sofiaParameters)
-
-
-auto runSearchSync(SofiaSearch const& search) -> SofiaResult
-{
-	auto childProcess = bp::child(boost::process::exe = sofiaPath, boost::process::args = search.sofiaParameters);
-	auto result = SofiaResult{};
-	if (childProcess.valid())
-	{
-		childProcess.wait();
-		result.returnCode = childProcess.exit_code();
-		result.finished = true;
-	}
-
-	return result;
-}
-
-static auto runSearch(SofiaSearch search) -> std::future<SofiaResult>
-{
-	return std::async(std::launch::async, runSearchSync, std::move(search));
-}
-
-enum class RequestState
-{
-	undefined,
-	created,
-	sofia_started,
-	done
-};
-
-NLOHMANN_JSON_SERIALIZE_ENUM(RequestState,
-							 {
-								 { RequestState::undefined, nullptr },
-								 { RequestState::created, "created" },
-								 { RequestState::sofia_started, "sofia_started" },
-								 { RequestState::done, "done" },
-							 })
-
-struct RequestResults
-{
-	SofiaResult sofiaResult;
-};
-
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(RequestResults, sofiaResult)
-
-
-class SofiaRequest
-{
-	public:
-	SofiaRequest(std::string searchIdentifier, SofiaSearch sofiaSearch) : searchIdentifier(searchIdentifier), search(std::move(sofiaSearch))
-		{
-			if (!searchIdentifier.empty())
-			{
-				currentState = RequestState::created;
-			}
-		}
-
-		auto process()
-		{
-			switch (currentState)
-			{
-			case RequestState::created:
-				sofiaRun = runSearch(this->search);
-				// currentProcess = bp::child(sofiaPath, search.sofiaParameters);
-				
-				currentState = RequestState::sofia_started;
-				currentMessage = "SoFiA search started.";
-				break;
-			case RequestState::sofia_started:
-				checkSearch();
-				break;
-			// case RequestState::done:
-			default:
-				break;
-			}
-		}
-
-		auto getMessage() -> std::string_view
-		{
-			return currentMessage;
-		}
-
-		auto getResults() const -> RequestResults // copy
-		{
-			return results;
-		}
-
-		auto isValid() const -> bool
-		{
-			return currentState != RequestState::undefined;
-		}
-
-		auto isDone() const -> bool
-		{
-			return currentState == RequestState::done;
-		}
-
-		auto getSearchIdentifier() -> std::string_view
-		{
-			return searchIdentifier;
-		}
-
-	private:
-		RequestState currentState{ RequestState::undefined };
-		std::string searchIdentifier;
-
-		SofiaSearch search;
-		RequestResults results {};
-
-		std::future<SofiaResult> sofiaRun;
-		bp::child currentProcess;
-
-		std::string currentMessage{ "Request is undefined." };
-
-		auto checkSearch() -> void
-		{
-			using namespace std::chrono_literals;
-			/*
-			if (!currentProcess.valid() || currentProcess.running())
-			{
-				return;
-			}
-
-			currentProcess.wait();
-			
-			results.sofiaResult = { { currentProcess.exit_code() } };
-
-			*/
-			
-			if (!sofiaRun.valid())
-			{
-				return;
-			}
-			const auto waitResult = sofiaRun.wait_for(0s);
-			if (waitResult != std::future_status::ready)
-			{
-				return;
-			}
-			
-			results.sofiaResult = sofiaRun.get();
-			currentMessage = "SoFiA search finished.";
-			currentState = RequestState::done;
-		}
-};
-
-std::unique_ptr<SofiaRequest> currentRequest{ nullptr };
-auto requestResults = std::unordered_map<std::string, RequestResults>();
 std::mutex currentRequestMutex;
 
-auto processCurrentRequest()-> void
+auto processCurrentRequest() -> void
 {
 	std::lock_guard lock(currentRequestMutex);
+	using namespace std::chrono_literals;
 	if (!currentRequest)
 	{
 		return;
 	}
 
-	if (!currentRequest->isValid())
-	{
-		currentRequest.reset();
-		std::cerr << "Invalid request processed was not valid\n";
-	}
-
-	currentRequest->process();
-
-	if(!currentRequest->isDone())
+	if (!currentRequest->valid())
 	{
 		return;
 	}
-	auto res = std::pair<std::string, RequestResults>{ currentRequest->getSearchIdentifier(), currentRequest->getResults() };
-	requestResults.emplace(res);
+
+	const auto waitResult = currentRequest->wait_for(0s);
+	if (waitResult != std::future_status::ready)
+	{
+		return;
+	}
+	
+	auto req = currentRequest->get();
+	projectProvider->getProject(req.projectIdentifier).requests.emplace_back(req.request);
+	projectProvider->saveProject(req.projectIdentifier);
+	projectProvider->saveRootCatalog();	
+	
 	currentRequest.reset();
 }
 
 auto main(const int argc, char** argv) -> int
 {
+
 	args::ArgumentParser parser("SoFiA-2 Wrapper Server", "");
 	args::HelpFlag help(parser, "help", "Display this help menu", { 'h', "help" });
 
@@ -415,18 +109,23 @@ auto main(const int argc, char** argv) -> int
 	if (sofiaPath.empty())
 	{
 		std::cerr << "No path to SoFiA-2 executable!\n";
+		std::cout << parser;
 		return EXIT_FAILURE;
 	}
 	std::cout << "Using " << sofiaPath << " as SoFiA executable\n";
 
+
 	if (commonRootPath.empty())
 	{
 		std::cerr << "No common root path!\n";
+		std::cout << parser;
 		return EXIT_FAILURE;
 	}
 	std::cout << "Using " << commonRootPath << " as common root path\n";
 
-
+	std::filesystem::path root{ args::get(commonRootPathArgument) };
+	projectProvider = std::make_unique<b3d::tools::projectexplorer::ProjectProvider>(root);
+	
 	httplib::Server svr;
 
 	// Error
@@ -451,24 +150,53 @@ auto main(const int argc, char** argv) -> int
 			res.status = httplib::StatusCode::InternalServerError_500;
 		});
 
+	svr.Get("/catalog",
+			[](const httplib::Request& req, httplib::Response& res)
+			{ res.set_content(nlohmann::json(projectProvider->getRootCatalog()).dump(), "application/json");
+			});
+
+	svr.Get("/projects",
+			[](const httplib::Request& req, httplib::Response& res) { res.set_content(nlohmann::json(projectProvider->getProjects()).dump(), "application/json");
+			});
+
+	svr.Get("/project/:guid",
+			[](const httplib::Request& req, httplib::Response& res)
+	{
+				processCurrentRequest();
+				std::lock_guard currRequestLock(currentRequestMutex);
+
+				if (!req.path_params.contains("guid"))
+				{
+					res.status = httplib::StatusCode::BadRequest_400;
+					return;
+				}
+				const auto guidVal = req.path_params.at("guid");
+				if (!projectProvider->hasProject(guidVal))
+				{
+					res.status = httplib::StatusCode::NotFound_404;
+					return;
+				}
+				const auto& proj = projectProvider->getProject(guidVal);
+				res.set_content(nlohmann::json(proj).dump(), "application/json");
+	});
+
+	// 
 	svr.Post("/start",
 			 [](const httplib::Request& req, httplib::Response& res,
 							  const httplib::ContentReader& content_reader)
 			 {
 				 processCurrentRequest();
-
 			 	 std::lock_guard currRequestLock(currentRequestMutex);
 
 				 // Ongoing request
-				 if (currentRequest)
+				 if (currentRequest != nullptr)
 				 {
 					 nlohmann::json retJ;
-					 retJ["message"] = currentRequest->getMessage();
+					 retJ["message"] = "Ongoing request";
 					 res.status = httplib::StatusCode::ServiceUnavailable_503;
 					 res.set_content(retJ.dump(), "application/json");
 					 return;
 				 }
-
 
 				 std::string bodyString;
 				 content_reader(
@@ -481,145 +209,261 @@ auto main(const int argc, char** argv) -> int
 			 	auto jsonInput = nlohmann::json::parse(bodyString);
 
 				// Input not valid
-				if (jsonInput.empty() || !jsonInput.contains("search_identifier"))
+				if (jsonInput.empty() || !jsonInput.contains("projectGUID"))
 				{
 					nlohmann::json retJ;
-					retJ["message"] = "Parameters empty or search_identifier not provided";
+					retJ["message"] = "Parameters empty or projectGUID not provided!";
 
 					res.status = httplib::StatusCode::BadRequest_400;
 					res.set_content(retJ.dump(), "application/json");
 					return;
 				}
 
-
-				std::string requestedSearchIdentifier = jsonInput["search_identifier"];
-
-				// Identifier already used (Same Request)
-				if (requestResults.find(requestedSearchIdentifier) != requestResults.end())
+				std::string projectGuid = jsonInput["projectGUID"];
+				if (!projectProvider->hasProject(projectGuid))
 				{
 					nlohmann::json retJ;
-					retJ["message"] = "search_identifier already in use.";
+					retJ["message"] = "projectGUID not valid!";
 
 					res.status = httplib::StatusCode::BadRequest_400;
 					res.set_content(retJ.dump(), "application/json");
 					return;
 				}
+
+				auto& project = projectProvider->getProject(projectGuid);
+				auto& cat = projectProvider->getRootCatalog();
+
+
+				const auto& filePath = cat.getFilePathAbsolute(project.fitsOriginGUID);
 
 				// Build new search
-				SofiaSearch ss;
-				if (jsonInput.contains("sofia_config_file"))
-				{
-					const auto fullPathString =
-						(commonRootPath / std::filesystem::path(jsonInput["sofia_config_file"].get<std::string>()));
-					ss.sofiaParameters.emplace_back(jsonInput["sofia_config_file"].get<std::string>());
-				}
+				b3d::tools::projectexplorer::Request sofiaRequest;
+				sofiaRequest.preSofiaSearchParameters.emplace_back("../../sofia.par");
+				sofiaRequest.preSofiaSearchParameters.emplace_back(std::format("input.data={}", filePath.string()));
+				sofiaRequest.preSofiaSearchParameters.emplace_back(std::format("output.filename={}", "out"));
+
 
 				for (auto& [key, value] : jsonInput["sofia_params"].items())
 				{
-					if (std::ranges::find(sofia_parameter_keys, key) !=
-						sofia_parameter_keys.end())
-					{
-						// is path like
-						if (std::ranges::find(sofia_path_parameter_keys, key) != sofia_path_parameter_keys.end())
-						{
-							auto inputStringForPath = value.get<std::string>();
-							while (inputStringForPath.starts_with(".") || inputStringForPath.starts_with("/") ||
-								   inputStringForPath.starts_with("\\"))
-							{
-								inputStringForPath.erase(0, 1);
-							}
-
-							const auto fullPathString =
-								(commonRootPath / boost::process::filesystem::path(inputStringForPath)).string();
-
-
-
-							ss.sofiaParameters.emplace_back(std::format(
-								"{}={}", key.c_str(), fullPathString));
-						}
-						else
-						{
-							ss.sofiaParameters.emplace_back(std::format("{}={}", key.c_str(), value.get<std::string>()));
-						}
-					}
+					b3d::tools::sofiasearch::appendParameterToSoFiARequest(sofiaRequest, key, value.get<std::string>());
 				}
 
-				// Add new Request to currentRequest
-				currentRequest = std::make_unique<SofiaRequest>(requestedSearchIdentifier, ss);
-				currentRequest->process();
+				const auto sofiaRequestIdentifier = sofiaRequest.createUUID();
+				
+				sofiaRequest.guid = sofiaRequestIdentifier;
+				sofiaRequest.sofiaExecutablePath = sofiaPath;
+				sofiaRequest.workingDirectory = project.projectPathAbsolute / "requests" / sofiaRequestIdentifier;
+				sofiaRequest.preSofiaSearchParameters.emplace_back(
+					std::format("output.directory={}", sofiaRequest.workingDirectory.string()));
 
-				res.set_content({}, "application/json");
+				// Identifier already used (Same Request)
+				const auto& possibleRequest =
+					std::ranges::find_if(project.requests,
+										 [&cm = sofiaRequest](const b3d::tools::projectexplorer::Request& m) -> bool
+										 { return cm.guid == m.guid; });
+				if (possibleRequest != project.requests.end())
+				{
+					auto& previousRequest = *possibleRequest;
+					if (previousRequest.result.returnCode != 0)
+					{
+						project.requests.erase(possibleRequest);
+					}
+					else
+					{
+						nlohmann::json retJ;
+						retJ["message"] = "requestGUID already in use.";
+
+						res.status = httplib::StatusCode::BadRequest_400;
+						res.set_content(retJ.dump(), "application/json");
+						return;	
+					}
+				}
+								
+				currentRequest = std::make_unique<std::future<b3d::tools::sofiasearch::ProcessResult>>(
+					std::async(std::launch::async, b3d::tools::sofiasearch::RequestProcessor(), std::ref(project),
+							   std::ref(cat), sofiaRequestIdentifier, std::move(sofiaRequest)));
+
+				nlohmann::json ret;
+				ret["requestGUID"] = sofiaRequestIdentifier;
+				res.set_content(ret.dump(), "application/json");
 
 			 });
 
 
-	svr.Post("/result",
-			 [](const httplib::Request& req, httplib::Response& res,
-							const httplib::ContentReader& content_reader)
+	svr.Get("/result/:projectGUID/:requestGUID",
+			 [](const httplib::Request& req, httplib::Response& res)
 			 {
 				 processCurrentRequest();
 				 std::lock_guard currRequestLock(currentRequestMutex);
 
-				
-
-				std::string bodyString;
-				 content_reader(
-					 [&bodyString](const char* data, size_t data_length)
-					 {
-						 bodyString.append(data, data_length);
-						 return true;
-					 });
-
-				 auto jsonInput = nlohmann::json::parse(bodyString);
-
-
-
-
-				 // Input not valid
-				 if (jsonInput.empty() || !jsonInput.contains("search_identifier"))
+				 // ProjectGUID not provided!
+				 if (!req.path_params.contains("projectGUID"))
 				 {
 					 nlohmann::json retJ;
-					 retJ["message"] = "search_identifier not provided";
+					 retJ["message"] = "Project GUID not provided!";
 
 					 res.status = httplib::StatusCode::BadRequest_400;
 					 res.set_content(retJ.dump(), "application/json");
 					 return;
 				 }
+				 const auto projectGUID = req.path_params.at("projectGUID");
 
-				 std::string requestedSearchIdentifier = jsonInput["search_identifier"];
-
-				 // requestedSearchIdentifier is Ongoing request
-				 if (currentRequest && currentRequest->getSearchIdentifier() == requestedSearchIdentifier)
+			 	 // RequestGUID not provided!
+				 if (!req.path_params.contains("requestGUID"))
 				 {
 					 nlohmann::json retJ;
-					 retJ["message"] = std::format("Request not finished yet");
+					 retJ["message"] = "Request GUID not provided!";
+
+					 res.status = httplib::StatusCode::BadRequest_400;
+					 res.set_content(retJ.dump(), "application/json");
+					 return;
+				 }
+				 const auto requestGUID = req.path_params.at("requestGUID");
+
+
+				 // Project does not exist!
+				 if (!projectProvider->hasProject(projectGUID))
+				 {
+					 nlohmann::json retJ;
+					 retJ["message"] = "Project with given projectGUID not found!";
+
+					 res.status = httplib::StatusCode::NotFound_404;
+					 res.set_content(retJ.dump(), "application/json");
+					 return;
+				 }
+				 			 
+				 /*
+				 // Request with projectGUID is not finished yet!
+				 if (currentRequest && currentRequestProcessor->getRequestGUID() == requestGUID)
+				 {
+					 nlohmann::json retJ;
+					 retJ["message"] = std::format("Request not finished yet!");
 					 res.status = httplib::StatusCode::ServiceUnavailable_503;
 					 res.set_content(retJ.dump(), "application/json");
 					 return;
 				 }
+				 */
+				 
+				 const auto& project = projectProvider->getProject(projectGUID);
 
-				 auto findit = requestResults.find(requestedSearchIdentifier);
-
-				 // Identifier not found
-				 if (findit == requestResults.end())
+				 // Request does not exist!
+				 const auto& possibleRequest =
+					 std::ranges::find_if(project.requests,
+										  [&rguid = requestGUID](const b3d::tools::projectexplorer::Request& m) -> bool
+										  { return rguid == m.guid; });
+				 if (possibleRequest == project.requests.end())
 				 {
 					 nlohmann::json retJ;
-					 retJ["message"] = "Request with given search_identifier not found.";
-
-					 res.status = httplib::StatusCode::BadRequest_400;
+					 retJ["message"] = "Request with given requestGUID not found!";
+					 res.status = httplib::StatusCode::NotFound_404;
 					 res.set_content(retJ.dump(), "application/json");
 					 return;
 				 }
 
-				nlohmann::json retJ;
-				 retJ["result"] = findit->second;
+				 const auto request = *possibleRequest;
+				 nlohmann::json retJ(request);
 				 res.status = httplib::StatusCode::OK_200;
 				 res.set_content(retJ.dump(), "application/json");
 
 			 });
 
-	svr.Get("/results", [](const httplib::Request&, httplib::Response& res)
-			{ res.set_content(nlohmann::json(requestResults).dump(), "application/json");
+	svr.Get("/results/:projectGUID", [](const httplib::Request& req, httplib::Response& res)
+			{
+				processCurrentRequest();
+				std::lock_guard currRequestLock(currentRequestMutex);
+
+				// ProjectGUID not provided!
+				if (!req.path_params.contains("projectGUID"))
+				{
+					nlohmann::json retJ;
+					retJ["message"] = "Project GUID not provided!";
+
+					res.status = httplib::StatusCode::BadRequest_400;
+					res.set_content(retJ.dump(), "application/json");
+					return;
+				}
+
+				const auto projectGUID = req.path_params.at("projectGUID");
+				// Project not found
+				if (!projectProvider->hasProject(projectGUID))
+				{
+					nlohmann::json retJ;
+					retJ["message"] = "Project with given GUID not found!";
+
+					res.status = httplib::StatusCode::NotFound_404;
+					return;
+				}
+
+				const auto& requests = projectProvider->getProject(projectGUID).requests;
+				res.set_content(nlohmann::json(requests).dump(), "application/json");
+				res.status = httplib::StatusCode::OK_200;
+
+			});
+
+	svr.Get("/file/:fileGUID",
+			[](const httplib::Request& req, httplib::Response& res)
+			{
+				// ProjectGUID not provided!
+				if (!req.path_params.contains("fileGUID"))
+				{
+					nlohmann::json retJ;
+					retJ["message"] = "GUID for file not provided";
+
+					res.status = httplib::StatusCode::BadRequest_400;
+					res.set_content(retJ.dump(), "application/json");
+					return;
+				}
+
+
+				const auto pathToFile = projectProvider->getRootCatalog().getFilePathAbsolute(req.path_params.at("fileGUID"));
+				if (pathToFile.empty())
+				{
+					nlohmann::json retJ;
+					retJ["message"] = "No file found";
+
+					res.status = httplib::StatusCode::NotFound_404;
+					res.set_content(retJ.dump(), "application/json");
+					return;
+				}
+
+				auto fin = new std::ifstream(pathToFile, std::ifstream::binary);
+				if (!fin->good())
+				{
+					nlohmann::json retJ;
+					retJ["message"] = "Could not open file.";
+
+					res.status = httplib::StatusCode::InternalServerError_500;
+					res.set_content(retJ.dump(), "application/json");
+					return;
+				}
+				const auto start = fin->tellg();
+				fin->seekg(0, std::ios::end);
+				auto fileSize = fin->tellg() - start;
+				fin->seekg(start);
+
+				res.set_content_provider(fileSize, "application/nvdb", // Content type
+											
+				 [fin, start, fileSize](size_t offset, size_t length, httplib::DataSink& sink)
+				 {
+				 	if (fin->good() && !fin->eof() && offset < fileSize)
+					{
+						std::vector<char> data(std::min((size_t)10240, length));
+
+						fin->read(data.data(), std::min(data.size(), fileSize - offset));
+						auto l = fin->tellg();
+						sink.write(data.data(), std::min(data.size(), fileSize - offset));
+					}
+					else
+					{
+						sink.done(); // No more data
+					}
+					 return true; // return 'false' if you want to cancel the process.
+					},
+					[fin](bool success)
+					{
+						fin->close();
+						delete fin;
+					});
 			});
 
 	std::cout << "Server is listening on port " << args::get(serverListeningPortArgument) << "\n";
