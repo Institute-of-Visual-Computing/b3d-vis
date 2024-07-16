@@ -594,6 +594,8 @@ auto NanoViewer::showAndRunWithGui() -> void
 auto NanoViewer::drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec2& position, const glm::vec2& size)
 	-> void
 {
+	ImGuizmo::SetDrawlist(); // TODO: set before if statement, oterwise it can lead to crashes
+	ImGuizmo::SetRect(position.x, position.y, size.x, size.y);
 	if (currentGizmoOperation != GizmoOperationFlagBits::none)
 	{
 
@@ -611,8 +613,7 @@ auto NanoViewer::drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec
 			guizmoOperation = guizmoOperation | ImGuizmo::SCALE;
 		}
 
-		ImGuizmo::SetDrawlist();
-		ImGuizmo::SetRect(position.x, position.y, size.x, size.y);
+		
 		for (const auto transform : gizmoHelper_->getTransforms())
 		{
 			float mat[16];
