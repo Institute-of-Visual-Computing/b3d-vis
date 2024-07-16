@@ -27,6 +27,16 @@ target_sources(viewer PRIVATE
 	Camera.h
 	CameraManipulator.h
 	InteropUtils.h
+	Dockspace.h
+	Dockspace.cpp
+	ServerConnect.cpp
+	DockableWindowViewBase.h
+	DockableWindowViewBase.cpp
+	WindowViewBase.h
+	WindowViewBase.cpp
+	ModalViewBase.h
+	ModalViewBase.cpp
+	IdGenerator.h
 )
 target_compile_features(viewer PUBLIC cxx_std_23)
 target_link_libraries(viewer
