@@ -6,8 +6,6 @@ find_package(stduuid CONFIG REQUIRED)
 
 add_library(${MODULE_NAME}
 	"include/Project.h"
-	"include/ProjectProvider.h"
-	"src/ProjectProvider.cpp"
 	
 	"include/Catalog.h"
 	"src/Catalog.cpp"
@@ -25,9 +23,8 @@ target_include_directories(${MODULE_NAME}
 
 target_link_libraries(${MODULE_NAME}
 	PRIVATE
-		httplib::httplib
-    PUBLIC
 		stduuid
+    PUBLIC
 		nlohmann_json::nlohmann_json
 )
 
@@ -35,7 +32,9 @@ if(MSVC)
 	set(MSVC_CXX_COMPILER_FLAGS "/Zc:__cplusplus")
 	target_compile_options(${MODULE_NAME} PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${MSVC_CXX_COMPILER_FLAGS}>)
 endif()
-target_compile_features(sofia_server PUBLIC cxx_std_20 PRIVATE cxx_std_20)
+
+
+target_compile_features(${MODULE_NAME} PUBLIC cxx_std_20 PRIVATE cxx_std_20)
 
 add_library(B3D::Tools::${MODULE_NAME} ALIAS ${MODULE_NAME})
 set_property(TARGET ${MODULE_NAME} PROPERTY FOLDER "Tools")

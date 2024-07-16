@@ -1,5 +1,7 @@
 #pragma once
 
+#include "nlohmann/json.hpp"
+
 #include "Request.h"
 
 namespace b3d::tools::projectexplorer
@@ -39,5 +41,3 @@ namespace std
 		}
 	};
 } // namespace std
-
-
