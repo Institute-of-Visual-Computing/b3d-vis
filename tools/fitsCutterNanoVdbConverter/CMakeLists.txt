@@ -27,7 +27,7 @@ set_property(TARGET NanoCutter PROPERTY FOLDER "Tools")
 
 
 
-add_library(NanoCutApi SHARED)
+add_library(NanoCutApi)
 target_sources(NanoCutApi PRIVATE
 	NanoCutApi.cpp
 	Common.h
@@ -36,7 +36,7 @@ target_sources(NanoCutApi PRIVATE
 )
 target_link_libraries(NanoCutApi PUBLIC cfitsio OpenVDB::openvdb OpenVDB::nanovdb)
 target_compile_features(NanoCutApi PUBLIC cxx_std_20)
-target_include_directories(NanoCutApi PUBLIC /include)
+target_include_directories(NanoCutApi PUBLIC include)
 
 if(MSVC)
 	target_compile_options(NanoCutApi PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${MSVC_CXX_COMPILER_FLAGS}>)
