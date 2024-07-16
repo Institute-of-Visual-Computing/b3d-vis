@@ -4,7 +4,7 @@ find_package(Boost REQUIRED COMPONENTS filesystem)
 find_package(args CONFIG REQUIRED)
 find_package(stduuid CONFIG REQUIRED)
 
-add_executable(sofia_server main.cpp "src/SoFiA.h" "src/SoFiA.cpp")
+add_executable(sofia_server main.cpp "src/SoFiA.h" "src/SoFiA.cpp" "src/ProjectProvider.cpp" "src/ProjectProvider.h")
 
 target_link_libraries(sofia_server
 	PRIVATE
