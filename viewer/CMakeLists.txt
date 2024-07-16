@@ -27,6 +27,8 @@ target_sources(viewer PRIVATE
 	Camera.h
 	CameraManipulator.h
 	InteropUtils.h
+	views/VolumeView.h
+	views/VolumeView.cpp
 	Dockspace.h
 	Dockspace.cpp
 	ServerConnect.cpp
@@ -37,6 +39,11 @@ target_sources(viewer PRIVATE
 	ModalViewBase.h
 	ModalViewBase.cpp
 	IdGenerator.h
+	GizmoOperationFlags.h
+	ApplicationContext.h
+	ApplicationContext.cpp
+	FontCollection.h
+	FontCollection.cpp
 )
 target_compile_features(viewer PUBLIC cxx_std_23)
 target_link_libraries(viewer
