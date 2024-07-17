@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <type_traits>
 
 #include "Flags.h"
 
@@ -13,10 +14,3 @@ enum class GizmoOperationFlagBits : uint16_t
 };
 
 using GizmoOperationFlags = Flags<GizmoOperationFlagBits>;
-
-inline GizmoOperationFlags operator|(const GizmoOperationFlagBits& a, const GizmoOperationFlagBits& b)
-{
-	auto flags = GizmoOperationFlags{ a };
-	flags |= b;
-	return flags;
-}

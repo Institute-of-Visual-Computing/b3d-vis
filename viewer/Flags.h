@@ -3,43 +3,89 @@
 #include <cstdint>
 
 template <typename FlagBitsType>
+	requires(std::is_enum_v<FlagBitsType>)
 struct Flags
 {
-	using FlagsType = uint16_t;
-	FlagsType flags;
+	using FlagsType = std::underlying_type_t<FlagBitsType>;
 
-	Flags(const FlagBitsType flagBits)
+	Flags()
+	{
+	}
+
+	Flags(const FlagBitsType& flagBits)
 	{
 		flags = static_cast<FlagsType>(flagBits);
 	}
 
-	Flags& operator|=(FlagBitsType r)
+	auto operator|=(const FlagBitsType& r) -> Flags&
 	{
-		flags |= static_cast<uint16_t>(r);
+		flags |= static_cast<FlagsType>(r);
 		return *this;
 	}
 
-	Flags& operator|=(Flags r)
+	auto operator|=(const Flags& r) -> Flags&
 	{
-		flags |= static_cast<uint16_t>(r.flags);
+		flags |= static_cast<FlagsType>(r.flags);
 		return *this;
 	}
 
-	Flags& operator|(Flags r)
+	auto operator|(const Flags& r) const -> Flags
 	{
-		flags |= static_cast<uint16_t>(r.flags);
+		Flags f;
+		f.flags = flags | static_cast<FlagsType>(r.flags);
+		return f;
+	}
+
+	
+
+	auto operator&(const Flags& r) const -> Flags
+	{
+		return static_cast<FlagBitsType>(flags & static_cast<FlagsType>(r.flags));
+	}
+
+	auto operator~() -> Flags&
+	{
+
+		flags = ~flags;
 		return *this;
 	}
 
-
-	FlagBitsType operator&(FlagBitsType r)
+	auto flip(const FlagBitsType& flagBit) -> Flags&
 	{
-		return static_cast<FlagBitsType>(flags & static_cast<FlagsType>(r));
+		auto bit = static_cast<FlagsType>(flagBit);
+		flags = (flags & (~bit)) | (~(flags & bit)) & bit;
+		return *this;
 	}
 
+	[[nodiscard]] auto containsBit(const FlagBitsType& flagBit) const -> bool
+	{
+		return static_cast<bool>(flags & static_cast<FlagsType>(flagBit));
+	}
+
+	auto setBit(const FlagBitsType& flagBit) -> void
+	{
+		flags |= flagBit;
+	}
+
+	auto unsetBit(const FlagBitsType& flagBit) -> void
+	{
+		flags &= ~flagBit;
+	}
 
 	bool operator==(const Flags& other) const
 	{
 		return flags == other.flags;
 	}
+
+private:
+	FlagsType flags{};
 };
+
+//template <typename FlagBitsType>
+//	requires(std::is_enum_v<FlagBitsType> && requires(FlagBitsType f) { Flags<FlagBitsType>{ f }; })
+//inline auto operator|(const FlagBitsType& a, const FlagBitsType& b) -> Flags<FlagBitsType>
+//{
+//	auto flags = Flags<FlagBitsType>{ a };
+//	flags |= b;
+//	return flags;
+//}

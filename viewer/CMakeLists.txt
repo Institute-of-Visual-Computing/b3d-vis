@@ -44,6 +44,7 @@ target_sources(viewer PRIVATE
 	ApplicationContext.cpp
 	FontCollection.h
 	FontCollection.cpp
+	Flags.h
 )
 target_compile_features(viewer PUBLIC cxx_std_23)
 target_link_libraries(viewer

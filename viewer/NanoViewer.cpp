@@ -29,19 +29,19 @@
 
 #include <boost/process.hpp>
 
+#include "views/ServerConnectSettingsView.h"
+
+#include <string_view>
+
+#include "GizmoOperationFlags.h"
+
+
+
 using namespace owl;
 
 namespace
 {
-	enum GizmoOperationFlagBits
-	{
-		none = 0,
-		translate = 1,
-		rotate = 2,
-		scale = 4
-	};
-
-	using GizmoOperationFlags = uint16_t;
+	
 
 
 	auto currentGizmoOperation = GizmoOperationFlags(GizmoOperationFlagBits::none);
@@ -270,22 +270,18 @@ auto NanoViewer::gui() -> void
 		ImGui::SeparatorText("Debug Draw Settings");
 		ImGui::SliderFloat("Line Width", &viewerSettings.lineWidth, 1.0f, 10.0f);
 		ImGui::Separator();
-#define flip_flag(flags, flagBit) (flags & (~flagBit)) | (~(flags & flagBit)) & flagBit;
-
 		if (ImGui::IsKeyPressed(ImGuiKey_1, false))
 		{
-			currentGizmoOperation = flip_flag(currentGizmoOperation, GizmoOperationFlagBits::scale);
+			currentGizmoOperation.flip(GizmoOperationFlagBits::scale);
 		}
 		if (ImGui::IsKeyPressed(ImGuiKey_2, false))
 		{
-			currentGizmoOperation = flip_flag(currentGizmoOperation, GizmoOperationFlagBits::translate);
+			currentGizmoOperation.flip(GizmoOperationFlagBits::translate);
 		}
 		if (ImGui::IsKeyPressed(ImGuiKey_3, false))
 		{
-			currentGizmoOperation = flip_flag(currentGizmoOperation, GizmoOperationFlagBits::rotate);
+			currentGizmoOperation.flip(GizmoOperationFlagBits::rotate);
 		}
-
-#undef flip_flag(flags, flagBit)
 	}
 
 	ImGui::SeparatorText("NVML Settings");
@@ -600,15 +596,15 @@ auto NanoViewer::drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec
 	{
 
 		auto guizmoOperation = ImGuizmo::OPERATION{};
-		if (currentGizmoOperation & GizmoOperationFlagBits::rotate)
+		if (currentGizmoOperation.containsBit(GizmoOperationFlagBits::rotate))
 		{
 			guizmoOperation = guizmoOperation | ImGuizmo::ROTATE;
 		}
-		if (currentGizmoOperation & GizmoOperationFlagBits::translate)
+		if (currentGizmoOperation.containsBit(GizmoOperationFlagBits::translate))
 		{
 			guizmoOperation = guizmoOperation | ImGuizmo::TRANSLATE;
 		}
-		if (currentGizmoOperation & GizmoOperationFlagBits::scale)
+		if (currentGizmoOperation.containsBit(GizmoOperationFlagBits::scale))
 		{
 			guizmoOperation = guizmoOperation | ImGuizmo::SCALE;
 		}
@@ -839,18 +835,25 @@ auto NanoViewer::draw() -> void
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
 	ImGui::PushFont(defaultFonts[currentFontIndex]);
-
 	//TODO: Investigate if this combination is alwys intercepted by OS
 	if(ImGui::IsKeyDown(ImGuiMod_Alt) and ImGui::IsKeyPressed(ImGuiKey_F4, false))
 	{
 		isRunning_ = false;
 	}
 
+	static auto connectView = ServerConnectSettingsView{ "Server Connect", []() { std::println("submit!!!"); } };
+
 	ImGui::BeginMainMenuBar();
 	if (ImGui::BeginMenu("Program"))
 	{
 		if (ImGui::MenuItem(ICON_LC_UNPLUG " Data Service..", nullptr, nullptr))
 		{
+
+		}
+		if (ImGui::MenuItem("Server Connection...", nullptr, nullptr))
+		{
+			connectView.open();
+			connectView.reset();
 		}
 
 		if (ImGui::MenuItem(ICON_LC_LOG_OUT " Quit", "Alt+F4", nullptr))
@@ -905,6 +908,8 @@ auto NanoViewer::draw() -> void
 	}
 
 	ImGui::EndMainMenuBar();
+
+	
 
 	const ImGuiViewport* viewport = ImGui::GetMainViewport();
 	ImGui::SetNextWindowPos(viewport->WorkPos);
@@ -1057,13 +1062,9 @@ auto NanoViewer::draw() -> void
 
 		const auto activeColor = ImGui::GetStyle().Colors[ImGuiCol_ButtonActive];
 
-#define flip_flag(flags, flagBit) (flags & (~flagBit)) | (~(flags & flagBit)) & flagBit;
-
 		const auto prevOperationState = currentGizmoOperation;
 
-		
-
-		if (prevOperationState & GizmoOperationFlagBits::scale)
+		if (prevOperationState.containsBit(GizmoOperationFlagBits::scale))
 		{
 			ImGui::PushStyleColor(ImGuiCol_Button, activeColor);
 		}
@@ -1071,7 +1072,7 @@ auto NanoViewer::draw() -> void
 		ImGui::PushFont(defaultFonts[currentFontIndex + 1]);
 		if (ImGui::Button(ICON_LC_SCALE_3D "##scale_control_handle", ImVec2{ buttonSize, buttonSize }))
 		{
-			currentGizmoOperation = flip_flag(currentGizmoOperation, GizmoOperationFlagBits::scale);
+			currentGizmoOperation.flip(GizmoOperationFlagBits::scale);
 		}
 		ImGui::PopFont();
 
@@ -1082,7 +1083,7 @@ auto NanoViewer::draw() -> void
 			ImGui::EndTooltip();
 		}
 
-		if (prevOperationState & GizmoOperationFlagBits::scale)
+		if (prevOperationState.containsBit(GizmoOperationFlagBits::scale))
 		{
 			ImGui::PopStyleColor();
 		}
@@ -1090,14 +1091,14 @@ auto NanoViewer::draw() -> void
 		buttonPosition += ImVec2(0, buttonPadding + buttonSize);
 		ImGui::SetCursorScreenPos(buttonPosition);
 
-		if (prevOperationState & GizmoOperationFlagBits::translate)
+		if (prevOperationState.containsBit(GizmoOperationFlagBits::translate))
 		{
 			ImGui::PushStyleColor(ImGuiCol_Button, activeColor);
 		}
 		ImGui::PushFont(defaultFonts[currentFontIndex + 1]);
 		if (ImGui::Button(ICON_LC_MOVE_3D "##translate_control_handle", ImVec2{ buttonSize, buttonSize }))
 		{
-			currentGizmoOperation = flip_flag(currentGizmoOperation, GizmoOperationFlagBits::translate);
+			currentGizmoOperation.flip(GizmoOperationFlagBits::translate);
 		}
 		ImGui::PopFont();
 		if (ImGui::BeginItemTooltip())
@@ -1107,7 +1108,7 @@ auto NanoViewer::draw() -> void
 			ImGui::EndTooltip();
 		}
 
-		if (prevOperationState & GizmoOperationFlagBits::translate)
+		if (prevOperationState.containsBit(GizmoOperationFlagBits::translate))
 		{
 			ImGui::PopStyleColor();
 		}
@@ -1115,14 +1116,14 @@ auto NanoViewer::draw() -> void
 		buttonPosition += ImVec2(0, buttonPadding + buttonSize);
 		ImGui::SetCursorScreenPos(buttonPosition);
 
-		if (prevOperationState & GizmoOperationFlagBits::rotate)
+		if (prevOperationState.containsBit(GizmoOperationFlagBits::rotate))
 		{
 			ImGui::PushStyleColor(ImGuiCol_Button, activeColor);
 		}
 		ImGui::PushFont(defaultFonts[currentFontIndex + 1]);
 		if (ImGui::Button(ICON_LC_ROTATE_3D "##rotate_control_handle", ImVec2{ buttonSize, buttonSize }))
 		{
-			currentGizmoOperation = flip_flag(currentGizmoOperation, GizmoOperationFlagBits::rotate);
+			currentGizmoOperation.flip(GizmoOperationFlagBits::rotate);
 		}
 		ImGui::PopFont();
 		if (ImGui::BeginItemTooltip())
@@ -1132,16 +1133,20 @@ auto NanoViewer::draw() -> void
 			ImGui::EndTooltip();
 		}
 
-		if (prevOperationState & GizmoOperationFlagBits::rotate)
+		if (prevOperationState.containsBit(GizmoOperationFlagBits::rotate))
 		{
 			ImGui::PopStyleColor();
 		}
 
 
-#undef flip_flag(flags, flagBit)
 	}
 
 	ImGui::End();
+
+
+
+	
+	connectView.draw();
 
 
 	ImGui::PopFont();
