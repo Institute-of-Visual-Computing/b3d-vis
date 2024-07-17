@@ -59,6 +59,6 @@ private:
 
 	GraphicsResources graphicsResources_{};
 
-	GizmoOperationFlags currentGizmoOperation_{ (int)GizmoOperationFlagBits::none };
+	GizmoOperationFlags currentGizmoOperation_{ GizmoOperationFlagBits::none };
 	std::shared_ptr<GizmoHelper> gizmoHelper_{};
 };

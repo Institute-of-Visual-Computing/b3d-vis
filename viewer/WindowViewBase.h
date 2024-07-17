@@ -4,7 +4,11 @@
 #include <imgui.h>
 #include <string_view>
 
-enum WindowFlagBits
+#include "Flags.h"
+
+
+
+enum class WindowFlagBits : uint16_t
 {
 	none = 0,
 	noUndocking = 1,
@@ -15,7 +19,14 @@ enum WindowFlagBits
 	noDocking = 32
 };
 
-using WindowFlags = uint16_t;
+using WindowFlags = Flags<WindowFlagBits>;
+
+inline WindowFlags operator|(const WindowFlagBits& a, const WindowFlagBits& b)
+{
+	auto flags = WindowFlags{ a };
+	flags |= b;
+	return flags;
+}
 
 class WindowViewBase
 {
@@ -33,7 +44,6 @@ public:
 	auto open() noexcept -> void
 	{
 		isOpen_ = true;
-		
 	}
 
 	auto close() noexcept -> void

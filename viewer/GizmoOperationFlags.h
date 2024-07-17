@@ -2,7 +2,9 @@
 
 #include <cstdint>
 
-enum class GizmoOperationFlagBits
+#include "Flags.h"
+
+enum class GizmoOperationFlagBits : uint16_t
 {
 	none = 0,
 	translate = 1,
@@ -10,4 +12,11 @@ enum class GizmoOperationFlagBits
 	scale = 4
 };
 
-using GizmoOperationFlags = uint16_t;
+using GizmoOperationFlags = Flags<GizmoOperationFlagBits>;
+
+inline GizmoOperationFlags operator|(const GizmoOperationFlagBits& a, const GizmoOperationFlagBits& b)
+{
+	auto flags = GizmoOperationFlags{ a };
+	flags |= b;
+	return flags;
+}
