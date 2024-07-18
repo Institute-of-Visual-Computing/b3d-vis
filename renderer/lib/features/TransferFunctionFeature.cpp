@@ -87,6 +87,7 @@ auto TransferFunctionFeature::gui() -> void
 	const auto availableSize = ImGui::GetContentRegionAvail();
 	const auto size = ImVec2{ availableSize.x, std::min({ 200.0f, availableSize.y }) };
 
+	//TODO:: Curve crashes sometimes in release
 	if (ImGui::Curve("##transferFunction", size, dataPoints_.size(), dataPoints_.data(), &selectedCurveHandleIdx_))
 	{
 		// curve changed
@@ -94,6 +95,7 @@ auto TransferFunctionFeature::gui() -> void
 		b3d::renderer::log("Params changed");
 		newDataAvailable_ = true;
 	}
+
 	if (newDataAvailable_)
 	{
 		newDataAvailable_ = false;

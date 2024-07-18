@@ -10,4 +10,17 @@ auto tex2D(cudaTextureObject_t, float, float) -> T
 }
 
 auto surf2Dwrite(uint32_t, cudaSurfaceObject_t, size_t, int) -> void {}
+auto optixGetPrimitiveIndex() -> int
+{
+	return {};
+}
+auto optixGetWorldRayDirection() -> vec3f
+{
+	return vec3f{};
+}
+
+auto optixGetTriangleBarycentrics()->vec2f
+{
+	return vec2f{};
+}
 #endif
