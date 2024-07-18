@@ -1,7 +1,8 @@
 #include "ModalViewBase.h"
 
-ModalViewBase::ModalViewBase(const std::string_view name, const ModalType modalType = ModalType::okCancel)
-	: WindowViewBase(name, WindowFlagBits::noCollapse | WindowFlagBits::noClose | WindowFlagBits::noDocking),
+ModalViewBase::ModalViewBase(ApplicationContext& appContext, const std::string_view name,
+							 const ModalType modalType = ModalType::okCancel)
+	: WindowViewBase(appContext, name, WindowFlagBits::noCollapse | WindowFlagBits::noClose | WindowFlagBits::noDocking),
 	  modalType_{ modalType }
 {
 	close();

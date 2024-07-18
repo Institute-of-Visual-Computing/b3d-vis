@@ -13,7 +13,7 @@ enum class ModalType
 class ModalViewBase : public WindowViewBase
 {
 public:
-	ModalViewBase(const std::string_view name, const ModalType modalType);
+	ModalViewBase(ApplicationContext& appContext, const std::string_view name, const ModalType modalType);
 
 	auto setOnSubmit(std::function<void(void)> callback) -> void
 	{

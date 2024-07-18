@@ -24,8 +24,8 @@ namespace
 	}
 } // namespace
 
-VolumeView::VolumeView(Dockspace* dockspace)
-	: DockableWindowViewBase("Volume Viewport", dockspace,
+VolumeView::VolumeView(ApplicationContext& appContext, Dockspace* dockspace)
+	: DockableWindowViewBase(appContext, "Volume Viewport", dockspace,
 							 WindowFlagBits::noTitleBar | WindowFlagBits::noUndocking | WindowFlagBits::hideTabBar |
 								 WindowFlagBits::noCollapse)
 {

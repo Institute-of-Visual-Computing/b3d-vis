@@ -8,12 +8,13 @@ struct ImFont;
 class FontCollection
 {
 public:
-	auto rebuildFont(const std::initializer_list<float>& dpiList) -> void;
+	auto rebuildFont(const std::vector<float>& dpiList) -> void;
 
 	[[nodiscard]] auto containsDpi(const float dpi) const noexcept -> bool;
 
 	[[nodiscard]] auto getDefaultFont() const noexcept -> ImFont*;
 	[[nodiscard]] auto getBigIconsFont() const noexcept -> ImFont*;
+	[[nodiscard]] auto getDefaultFontDpiScale() const noexcept -> float;
 
 private:
 	std::vector<ImFont*> loadedFonts_;

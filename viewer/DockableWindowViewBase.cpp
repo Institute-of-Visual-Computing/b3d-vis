@@ -5,9 +5,10 @@
 #include <format>
 
 
-DockableWindowViewBase::DockableWindowViewBase(const std::string_view name, Dockspace* dockspace,
+DockableWindowViewBase::DockableWindowViewBase(ApplicationContext& appContext, const std::string_view name,
+											   Dockspace* dockspace,
 											   const WindowFlags flags)
-	: WindowViewBase{ name, flags }, dockspace_{ dockspace }
+	: WindowViewBase{ appContext, name, flags }, dockspace_{ dockspace }
 {
 	windowClass_.ClassId = dockspace_->id();
 	windowClass_.DockingAllowUnclassed = true;

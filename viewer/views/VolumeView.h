@@ -17,7 +17,7 @@ class GizmoHelper;
 class VolumeView final : public DockableWindowViewBase
 {
 public:
-	VolumeView(Dockspace* dockspace);
+	VolumeView(ApplicationContext& appContext, Dockspace* dockspace);
 
 	auto onDraw() -> void override;
 

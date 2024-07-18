@@ -28,10 +28,12 @@ inline WindowFlags operator|(const WindowFlagBits& a, const WindowFlagBits& b)
 	return flags;
 }
 
+class ApplicationContext;
+
 class WindowViewBase
 {
 public:
-	WindowViewBase(const std::string_view name, const WindowFlags flags);
+	WindowViewBase(ApplicationContext& appContext, const std::string_view name, const WindowFlags flags);
 
 	auto beginDraw() -> void;
 	auto endDraw() -> void;
@@ -53,6 +55,8 @@ public:
 
 protected:
 	virtual auto onDraw() -> void = 0;
+
+	ApplicationContext* appContext_{};
 
 	ImGuiWindowClass windowClass_{};
 

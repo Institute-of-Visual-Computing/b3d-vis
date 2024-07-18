@@ -12,7 +12,8 @@
 class DockableWindowViewBase : public WindowViewBase
 {
 public:
-	DockableWindowViewBase(const std::string_view name, Dockspace* dockspace, const WindowFlags flags);
+	DockableWindowViewBase(ApplicationContext& appContext, const std::string_view name, Dockspace* dockspace,
+						   const WindowFlags flags);
 
 	auto draw() -> void;
 

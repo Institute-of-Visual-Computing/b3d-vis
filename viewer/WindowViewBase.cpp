@@ -6,7 +6,8 @@
 #include <imgui_internal.h>
 
 
-WindowViewBase::WindowViewBase(const std::string_view name, const WindowFlags flags) : flags_{ flags }
+WindowViewBase::WindowViewBase(ApplicationContext& appContext, const std::string_view name, const WindowFlags flags)
+	: flags_{ flags }, appContext_{&appContext}
 {
 
 	windowId_ = std::format("{}##{}", name, IdGenerator::next());

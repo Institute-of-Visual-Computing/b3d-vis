@@ -4,7 +4,7 @@
 
 #include <imgui.h>
 
-auto FontCollection::rebuildFont(const std::initializer_list<float>& dpiList) -> void
+auto FontCollection::rebuildFont(const std::vector<float>& dpiList) -> void
 {
 	auto& io = ImGui::GetIO();
 
@@ -18,8 +18,6 @@ auto FontCollection::rebuildFont(const std::initializer_list<float>& dpiList) ->
 	config.OversampleH = 8;
 	config.OversampleV = 8;
 
-	auto monitorCount = 0;
-	assert(monitorCount > 0);
 	for (auto dpi : dpiList)
 	{
 		const auto dpiScale = dpi;
@@ -76,10 +74,18 @@ auto FontCollection::containsDpi(const float dpi) const noexcept -> bool
 
 auto FontCollection::getDefaultFont() const noexcept -> ImFont*
 {
+	assert(loadedFonts_.size() > 0);
 	return loadedFonts_[currentFontIndex_];
 }
 
 auto FontCollection::getBigIconsFont() const noexcept -> ImFont*
 {
+	assert(loadedFonts_.size() > (currentFontIndex_ + 1));
 	return loadedFonts_[currentFontIndex_ + 1]; // TODO: needs better indexing
+}
+
+auto FontCollection::getDefaultFontDpiScale() const noexcept -> float
+{
+	return getDefaultFont()->Scale;
+	;
 }
