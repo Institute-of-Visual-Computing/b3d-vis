@@ -2,6 +2,9 @@
 
 #include "FontCollection.h"
 
+
+class GLFWwindow;
+
 class ApplicationContext final
 {
 public:
@@ -9,6 +12,8 @@ public:
 	{
 		return fonts_;
 	}
+
+	GLFWwindow* mainWindowHandle_{};
 
 private:
 	FontCollection fonts_{};

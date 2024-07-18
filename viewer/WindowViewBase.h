@@ -7,7 +7,6 @@
 #include "Flags.h"
 
 
-
 enum class WindowFlagBits : uint16_t
 {
 	none = 0,
@@ -34,9 +33,10 @@ class WindowViewBase
 {
 public:
 	WindowViewBase(ApplicationContext& appContext, const std::string_view name, const WindowFlags flags);
+	virtual ~WindowViewBase()
+	{
+	}
 
-	auto beginDraw() -> void;
-	auto endDraw() -> void;
 
 	[[nodiscard]] auto viewportSize() const noexcept -> ImVec2
 	{
@@ -55,8 +55,15 @@ public:
 
 protected:
 	virtual auto onDraw() -> void = 0;
+	virtual auto onResize() -> void
+	{
+	}
+	auto beginDraw() -> void;
+	auto endDraw() -> void;
 
-	ApplicationContext* appContext_{};
+	[[nodiscard]] auto isVisible() const -> bool;
+
+	ApplicationContext* applicationContext_{};
 
 	ImGuiWindowClass windowClass_{};
 
@@ -67,4 +74,7 @@ protected:
 
 	bool isOpen_{ true };
 	bool drawContent_{ true };
+
+private:
+	bool needResize_{ false };
 };

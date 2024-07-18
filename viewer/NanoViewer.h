@@ -13,7 +13,7 @@
 class NanoViewer final
 {
 public:
-	explicit NanoViewer(const std::string& title = "Sample Viewer", const int initWindowWidth = 1980,
+	explicit NanoViewer(const std::string& title = "Nano Viewer", const int initWindowWidth = 1980,
 						const int initWindowHeight = 1080, bool enableVsync = false, const int rendererIndex = 0);
 	auto showAndRunWithGui() -> void;
 	auto showAndRunWithGui(const std::function<bool()>& keepgoing) -> void;
@@ -26,9 +26,7 @@ public:
 private:
 	auto selectRenderer(const uint32_t index) -> void;
 	auto gui() -> void;
-	auto render() -> void;
 	auto draw() -> void;
-	auto resize(const int width, const int height) -> void;
 	auto onFrameBegin() -> void;
 
 
@@ -38,11 +36,6 @@ private:
 		glm::mat4 projection;
 		glm::mat4 viewProjection;
 	};
-
-	auto drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec2& position, const glm::vec2& size) -> void;
-	static auto computeViewProjectionMatrixFromCamera(const ::Camera& camera, const int width, const int height)
-		-> CameraMatrices;
-
 
 	std::shared_ptr<DebugDrawList> debugDrawList_{};
 	std::shared_ptr<GizmoHelper> gizmoHelper_{};
@@ -80,28 +73,6 @@ private:
 	nvmlDevice_t nvmlDevice_{};
 	bool isAdmin_{ false };
 
-	struct Viewport3dResources
-	{
-		GLuint framebuffer;
-
-
-		GLuint framebufferTexture{ 0 };
-
-
-		cudaGraphicsResource_t cuFramebufferTexture{ 0 };
-		uint32_t* framebufferPointer{ nullptr };
-		glm::vec2 framebufferSize{ 0 };
-	};
-
-	Viewport3dResources viewport3dResources_;
-
-	auto initializeViewport3dResources(const int width, const int height) -> void;
-	auto updateViewport3dResources() -> void;
-	auto renderViewport3d(const int width, const int height) -> void;
-	auto cleanupViewport3DResources() -> void;
-
-
-	GLFWwindow* handle_{ nullptr };
 
 	::Camera camera_{};
 

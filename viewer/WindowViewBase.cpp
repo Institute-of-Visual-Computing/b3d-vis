@@ -7,7 +7,7 @@
 
 
 WindowViewBase::WindowViewBase(ApplicationContext& appContext, const std::string_view name, const WindowFlags flags)
-	: flags_{ flags }, appContext_{&appContext}
+	: flags_{ flags }, applicationContext_{ &appContext }
 {
 
 	windowId_ = std::format("{}##{}", name, IdGenerator::next());
@@ -38,7 +38,16 @@ auto WindowViewBase::beginDraw() -> void
 
 		if(drawContent_)
 		{
-			viewportSize_ = ImGui::GetContentRegionAvail();
+			const auto viewportSize = ImGui::GetContentRegionAvail();
+			if ((viewportSize.x != viewportSize_.x) || (viewportSize.y != viewportSize_.y))
+			{
+				needResize_ = true;
+			}
+			else
+			{
+				needResize_ = false;
+			}
+			viewportSize_ = viewportSize;
 		}
 	}
 }
@@ -49,4 +58,13 @@ auto WindowViewBase::endDraw() -> void
 	{
 		ImGui::End();
 	}
+	if (needResize_)
+	{
+		onResize();
+	}
+}
+
+auto WindowViewBase::isVisible() const -> bool
+{
+	return drawContent_ && (viewportSize_.x > 0 && viewportSize_.y > 0);
 }

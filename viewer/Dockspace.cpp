@@ -2,7 +2,6 @@
 
 Dockspace::Dockspace()
 {
-	dockspaceId_ = ImGui::GetID("mainDock");
 }
 
 auto Dockspace::begin() -> void
@@ -15,6 +14,7 @@ auto Dockspace::begin() -> void
 	ImGui::Begin("Editor", 0,
 				 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
 					 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus);
+	dockspaceId_ = ImGui::GetID("mainDock");
 	ImGui::End();
 }
 

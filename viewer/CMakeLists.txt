@@ -27,10 +27,15 @@ target_sources(viewer PRIVATE
 	Camera.h
 	CameraManipulator.h
 	InteropUtils.h
+	views/ServerConnectSettingsView.h
+	views/ServerConnectSettingsView.cpp
 	views/VolumeView.h
 	views/VolumeView.cpp
+	views/ServerConnectView.h
+	views/ServerConnectView.cpp
 	Dockspace.h
 	Dockspace.cpp
+	ServerConnect.h
 	ServerConnect.cpp
 	DockableWindowViewBase.h
 	DockableWindowViewBase.cpp

@@ -35,13 +35,18 @@
 
 #include "GizmoOperationFlags.h"
 
-
+#include "ApplicationContext.h"
+#include "Dockspace.h"
+#include "views/VolumeView.h"
 
 using namespace owl;
 
+
 namespace
 {
-	
+	ApplicationContext applicationContext{};
+	std::unique_ptr<Dockspace> dockspace{};
+	std::unique_ptr<VolumeView> volumeView{};
 
 
 	auto currentGizmoOperation = GizmoOperationFlags(GizmoOperationFlagBits::none);
@@ -83,90 +88,36 @@ namespace
 		}
 	}
 
-	std::vector<ImFont*> defaultFonts;
-	std::unordered_map<float, int> scaleToFont{};
-	int currentFontIndex{ 0 };
 
-	auto rebuildFont() -> void
+	[[nodiscard]] auto requestRequiredDpiScales() -> std::vector<float>
 	{
-		auto& io = ImGui::GetIO();
-
-		io.Fonts->ClearFonts();
-		defaultFonts.clear();
-
-		constexpr auto baseFontSize = 16.0f;
-
-		ImFontConfig config;
-
-		config.OversampleH = 8;
-		config.OversampleV = 8;
-
+		auto requiredDpiScales = std::vector<float>{};
 		auto monitorCount = 0;
 		const auto monitors = glfwGetMonitors(&monitorCount);
-		assert(monitorCount > 0);
+		if (monitorCount == 0)
+		{
+			throw std::runtime_error{ "No monitor is connected to the system!" };
+		}
+		requiredDpiScales.reserve(monitorCount);
 		for (auto i = 0; i < monitorCount; i++)
 		{
 			const auto monitor = monitors[i];
 			auto scaleX = 0.0f;
 			auto scaleY = 0.0f;
 			glfwGetMonitorContentScale(monitor, &scaleX, &scaleY);
-			const auto dpiScale = scaleX; // / 96;
-
-			config.SizePixels = dpiScale * baseFontSize;
-
-			if (!scaleToFont.contains(scaleX))
-			{
-				auto font =
-					io.Fonts->AddFontFromFileTTF("resources/fonts/Roboto-Medium.ttf", dpiScale * baseFontSize, &config);
-
-
-				static auto iconRangesLucide = ImVector<ImWchar>{};
-				ImFontGlyphRangesBuilder builder;
-				builder.AddText(ICON_LC_ROTATE_3D ICON_LC_MOVE_3D ICON_LC_SCALE_3D ICON_LC_BAR_CHART_3 ICON_LC_UNPLUG ICON_LC_LOG_OUT ICON_LC_CIRCLE_GAUGE ICON_LC_BUG);
-				builder.BuildRanges(&iconRangesLucide);
-
-				const auto iconFontSize = dpiScale * baseFontSize * 2.0f / 3.0f;
-				config.MergeMode = true;
-				config.PixelSnapH = true;
-				config.GlyphMinAdvanceX = iconFontSize;
-				config.OversampleH = 8;
-				config.OversampleV = 8;
-
-				font = io.Fonts->AddFontFromFileTTF("resources/fonts/lucide.ttf", iconFontSize, &config,
-													iconRangesLucide.Data);
-
-				static auto iconRangesFontAwesomeBrands = ImVector<ImWchar>{};
-				builder.Clear();
-				builder.AddText(ICON_FA_GITHUB);
-				builder.BuildRanges(&iconRangesFontAwesomeBrands);
-
-				font = io.Fonts->AddFontFromFileTTF("resources/fonts/fa-brands-400.ttf", iconFontSize,
-													&config, iconRangesFontAwesomeBrands.Data);
-
-				config.GlyphMinAdvanceX = iconFontSize * 2.0f;
-				config.MergeMode = false;
-				auto fontBig = io.Fonts->AddFontFromFileTTF("resources/fonts/lucide.ttf", iconFontSize * 2.0f, &config,
-													iconRangesLucide.Data);
-
-				const auto fontIndex = defaultFonts.size();
-				defaultFonts.push_back(font);
-				defaultFonts.push_back(fontBig);
-				scaleToFont[scaleX] = fontIndex;
-			}
+			requiredDpiScales.push_back(scaleX);
 		}
+		return requiredDpiScales;
 	}
+
 
 	auto windowContentScaleCallback([[maybe_unused]] GLFWwindow* window, const float scaleX,
 									[[maybe_unused]] float scaleY)
 	{
-		if (!scaleToFont.contains(scaleX))
-		{
-			rebuildFont();
-		}
-
-		currentFontIndex = scaleToFont[scaleX];
-		const auto dpiScale = scaleX; // / 96;
-		ImGui::GetStyle().ScaleAllSizes(dpiScale);
+		const auto dpiScales = requestRequiredDpiScales();
+		applicationContext.getFontCollection().rebuildFont(dpiScales);
+		const auto defaultDpiScale = applicationContext.getFontCollection().getDefaultFontDpiScale();
+		ImGui::GetStyle().ScaleAllSizes(defaultDpiScale);
 	}
 
 	auto onGLFWErrorCallback(int error, const char* description)
@@ -188,7 +139,9 @@ namespace
 
 		ImGui::StyleColorsDark();
 
-		rebuildFont();
+		const auto dpiScales = requestRequiredDpiScales();
+		applicationContext.getFontCollection().rebuildFont(dpiScales);
+
 
 		ImGui_ImplGlfw_InitForOpenGL(window, true);
 		ImGui_ImplOpenGL3_Init();
@@ -201,11 +154,7 @@ namespace
 		ImGui::DestroyContext();
 	}
 
-	std::unique_ptr<FullscreenTexturePass> fsPass;
-	std::unique_ptr<InfinitGridPass> igPass;
-	std::unique_ptr<DebugDrawPass> ddPass;
-
-	std::unique_ptr<DebugDrawList> ddList;
+	
 
 	struct ViewerSettings
 	{
@@ -338,75 +287,6 @@ auto NanoViewer::gui() -> void
 	ImGui::End();
 }
 
-auto NanoViewer::render() -> void
-{
-	constexpr auto layout = static_cast<GLuint>(GL_LAYOUT_GENERAL_EXT);
-
-	const auto cam = b3d::renderer::Camera{ .origin = owl_cast(camera_.getFrom()),
-											.at = owl_cast(camera_.getAt()),
-											.up = owl_cast(camera_.getUp()),
-											.cosFoV = camera_.getCosFovY(),
-											.FoV = glm::radians(camera_.getFovYInDegrees()) };
-
-	renderingData_.data.view = b3d::renderer::View{
-		.cameras = { cam, cam },
-		.mode = b3d::renderer::RenderMode::mono,
-	};
-
-	renderingData_.data.renderTargets = b3d::renderer::RenderTargets{
-		.colorRt = { viewport3dResources_.cuFramebufferTexture,
-					 { static_cast<uint32_t>(viewport3dResources_.framebufferSize.x),
-					   static_cast<uint32_t>(viewport3dResources_.framebufferSize.y), 1 } },
-		.minMaxRt = { viewport3dResources_.cuFramebufferTexture,
-					  { static_cast<uint32_t>(viewport3dResources_.framebufferSize.x),
-						static_cast<uint32_t>(viewport3dResources_.framebufferSize.y), 1 } },
-	};
-
-	// GL_CALL(glSignalSemaphoreEXT(synchronizationResources_.glSignalSemaphore, 0, nullptr, 0, nullptr, &layout));
-
-	currentRenderer_->render();
-
-	// NOTE: this function call return error, when the semaphore wasn't used before (or it could be in the wrong initial
-	// state)
-	// GL_CALL(glWaitSemaphoreEXT(synchronizationResources_.glWaitSemaphore, 0, nullptr, 0, nullptr, nullptr));
-}
-auto NanoViewer::resize(const int width, const int height) -> void
-{
-
-	glfwMakeContextCurrent(handle_);
-	/*if (framebufferPointer_)
-	{
-		OWL_CUDA_CHECK(cudaFree(framebufferPointer_));
-	}
-	OWL_CUDA_CHECK(cudaMallocManaged(&framebufferPointer_, width * height * sizeof(uint32_t)));
-
-	framebufferSize_ = { width, height };
-	if (framebufferTexture_ == 0)
-	{
-		GL_CALL(glGenTextures(1, &framebufferTexture_));
-	}
-	else
-	{
-		if (cuFramebufferTexture_)
-		{
-			OWL_CUDA_CHECK(cudaGraphicsUnregisterResource(cuFramebufferTexture_));
-			cuFramebufferTexture_ = 0;
-		}
-	}
-
-	GL_CALL(glBindTexture(GL_TEXTURE_2D, framebufferTexture_));
-	GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
-
-	OWL_CUDA_CHECK(cudaGraphicsGLRegisterImage(&cuFramebufferTexture_, framebufferTexture_, GL_TEXTURE_2D, 0));*/
-
-	// TODO: make camera change aspect ratio
-	// cameraChanged();
-}
-
-// auto NanoViewer::cameraChanged() -> void
-//{
-// }
-
 auto NanoViewer::onFrameBegin() -> void
 {
 	if (newSelectedRendererIndex_ != selectedRendererIndex_)
@@ -427,15 +307,15 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 	glfwWindowHint(GLFW_VISIBLE, true);
 
-	handle_ = glfwCreateWindow(initWindowWidth, initWindowHeight, title.c_str(), NULL, NULL);
-	if (!handle_)
+	applicationContext.mainWindowHandle_ = glfwCreateWindow(initWindowWidth, initWindowHeight, title.c_str(), NULL, NULL);
+	if (!applicationContext.mainWindowHandle_)
 	{
 		glfwTerminate();
 		exit(EXIT_FAILURE);
 	}
 
-	glfwSetWindowUserPointer(handle_, this);
-	glfwMakeContextCurrent(handle_);
+	glfwSetWindowUserPointer(applicationContext.mainWindowHandle_, this);
+	glfwMakeContextCurrent(applicationContext.mainWindowHandle_);
 	glfwSwapInterval((enableVsync) ? 1 : 0);
 
 	debugDrawList_ = std::make_unique<DebugDrawList>();
@@ -587,239 +467,6 @@ auto NanoViewer::showAndRunWithGui() -> void
 	showAndRunWithGui([&]() { return isRunning_; });
 }
 
-auto NanoViewer::drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec2& position, const glm::vec2& size)
-	-> void
-{
-	ImGuizmo::SetDrawlist(); // TODO: set before if statement, oterwise it can lead to crashes
-	ImGuizmo::SetRect(position.x, position.y, size.x, size.y);
-	if (currentGizmoOperation != GizmoOperationFlagBits::none)
-	{
-
-		auto guizmoOperation = ImGuizmo::OPERATION{};
-		if (currentGizmoOperation.containsBit(GizmoOperationFlagBits::rotate))
-		{
-			guizmoOperation = guizmoOperation | ImGuizmo::ROTATE;
-		}
-		if (currentGizmoOperation.containsBit(GizmoOperationFlagBits::translate))
-		{
-			guizmoOperation = guizmoOperation | ImGuizmo::TRANSLATE;
-		}
-		if (currentGizmoOperation.containsBit(GizmoOperationFlagBits::scale))
-		{
-			guizmoOperation = guizmoOperation | ImGuizmo::SCALE;
-		}
-
-		
-		for (const auto transform : gizmoHelper_->getTransforms())
-		{
-			float mat[16];
-
-			mat[3] = 0.0f;
-			mat[7] = 0.0f;
-			mat[11] = 0.0f;
-
-			mat[12] = transform->p.x;
-			mat[13] = transform->p.y;
-			mat[14] = transform->p.z;
-
-			mat[15] = 1.0f;
-
-			mat[0] = transform->l.vx.x;
-			mat[1] = transform->l.vx.y;
-			mat[2] = transform->l.vx.z;
-
-			mat[4] = transform->l.vy.x;
-			mat[5] = transform->l.vy.y;
-			mat[6] = transform->l.vy.z;
-
-			mat[8] = transform->l.vz.x;
-			mat[9] = transform->l.vz.y;
-			mat[10] = transform->l.vz.z;
-			ImGuizmo::Manipulate(reinterpret_cast<const float*>(&cameraMatrices.view),
-								 reinterpret_cast<const float*>(&cameraMatrices.projection), guizmoOperation,
-								 currentGizmoMode, mat, nullptr, nullptr);
-
-			transform->p.x = mat[12];
-			transform->p.y = mat[13];
-			transform->p.z = mat[14];
-
-			transform->l.vx = owl::vec3f{ mat[0], mat[1], mat[2] };
-			transform->l.vy = owl::vec3f{ mat[4], mat[5], mat[6] };
-			transform->l.vz = owl::vec3f{ mat[8], mat[9], mat[10] };
-		}
-	}
-	auto blockInput = false;
-
-
-	for (const auto& [bound, transform, worldTransform] : gizmoHelper_->getBoundTransforms())
-	{
-		float mat[16];
-
-		mat[3] = 0.0f;
-		mat[7] = 0.0f;
-		mat[11] = 0.0f;
-
-		mat[12] = transform->p.x;
-		mat[13] = transform->p.y;
-		mat[14] = transform->p.z;
-
-		mat[15] = 1.0f;
-
-		mat[0] = transform->l.vx.x;
-		mat[1] = transform->l.vx.y;
-		mat[2] = transform->l.vx.z;
-
-		mat[4] = transform->l.vy.x;
-		mat[5] = transform->l.vy.y;
-		mat[6] = transform->l.vy.z;
-
-		mat[8] = transform->l.vz.x;
-		mat[9] = transform->l.vz.y;
-		mat[10] = transform->l.vz.z;
-
-
-		const auto halfSize = bound / 2.0f;
-
-		const auto bounds = std::array{ halfSize.x, halfSize.y, halfSize.z, -halfSize.x, -halfSize.y, -halfSize.z };
-
-		glm::mat4 worldTransformMat{ { worldTransform.l.vx.x, worldTransform.l.vx.y, worldTransform.l.vx.z, 0.0f },
-									 { worldTransform.l.vy.x, worldTransform.l.vy.y, worldTransform.l.vy.z, 0.0f },
-									 { worldTransform.l.vz.x, worldTransform.l.vz.y, worldTransform.l.vz.z, 0.0f },
-									 { worldTransform.p.x, worldTransform.p.y, worldTransform.p.z, 1.0f } };
-		const auto matX = cameraMatrices.view * worldTransformMat;
-
-		ImGuizmo::Manipulate(reinterpret_cast<const float*>(&matX),
-							 reinterpret_cast<const float*>(&cameraMatrices.projection), ImGuizmo::OPERATION::BOUNDS,
-							 currentGizmoMode, mat, nullptr, nullptr, bounds.data());
-		if (ImGuizmo::IsUsing())
-		{
-			blockInput = true;
-		}
-
-		transform->p.x = mat[12];
-		transform->p.y = mat[13];
-		transform->p.z = mat[14];
-
-		transform->l.vx = owl::vec3f{ mat[0], mat[1], mat[2] };
-		transform->l.vy = owl::vec3f{ mat[4], mat[5], mat[6] };
-		transform->l.vz = owl::vec3f{ mat[8], mat[9], mat[10] };
-	}
-
-	if (blockInput)
-	{
-#if IMGUI_VERSION_NUM >= 18723
-		ImGui::SetNextFrameWantCaptureMouse(true);
-#else
-		ImGui::CaptureMouseFromApp();
-#endif
-	}
-}
-auto NanoViewer::computeViewProjectionMatrixFromCamera(const Camera& camera, const int width, const int height)
-	-> CameraMatrices
-{
-	const auto aspect = width / static_cast<float>(height);
-
-	CameraMatrices mat;
-	mat.projection = glm::perspective(glm::radians(camera.getFovYInDegrees()), aspect, 0.01f, 10000.0f);
-	mat.view = glm::lookAt(camera.getFrom(), camera.getAt(), glm::normalize(camera.getUp()));
-
-
-	mat.viewProjection = mat.projection * mat.view;
-	return mat;
-}
-
-auto NanoViewer::initializeViewport3dResources(const int width, const int height) -> void
-{
-	glfwMakeContextCurrent(handle_);
-
-
-	if (viewport3dResources_.framebufferPointer)
-	{
-		OWL_CUDA_CHECK(cudaFree(viewport3dResources_.framebufferPointer));
-	}
-	OWL_CUDA_CHECK(cudaMallocManaged(&viewport3dResources_.framebufferPointer, width * height * sizeof(uint32_t)));
-
-	viewport3dResources_.framebufferSize = { width, height };
-	if (viewport3dResources_.framebufferTexture == 0)
-	{
-		GL_CALL(glGenTextures(1, &viewport3dResources_.framebufferTexture));
-	}
-	else
-	{
-		if (viewport3dResources_.cuFramebufferTexture)
-		{
-			OWL_CUDA_CHECK(cudaGraphicsUnregisterResource(viewport3dResources_.cuFramebufferTexture));
-			viewport3dResources_.cuFramebufferTexture = 0;
-		}
-	}
-
-	GL_CALL(glBindTexture(GL_TEXTURE_2D, viewport3dResources_.framebufferTexture));
-	GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
-	GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
-	GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
-
-	OWL_CUDA_CHECK(cudaGraphicsGLRegisterImage(&viewport3dResources_.cuFramebufferTexture,
-											   viewport3dResources_.framebufferTexture, GL_TEXTURE_2D, 0));
-
-	/*GLuint t;
-	GL_CALL(glGenTextures(1, &t));*/
-	GL_CALL(glGenFramebuffers(1, &viewport3dResources_.framebuffer));
-
-	GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, viewport3dResources_.framebuffer));
-	GL_CALL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-								   viewport3dResources_.framebufferTexture, 0));
-	GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-}
-
-auto cleanupViewport3DResources() -> void
-{
-}
-
-
-auto NanoViewer::updateViewport3dResources() -> void
-{
-}
-
-auto NanoViewer::renderViewport3d(const int width, const int height) -> void
-{
-	if (viewport3dResources_.framebufferSize.x != width || viewport3dResources_.framebufferSize.y != height)
-	{
-		initializeViewport3dResources(width, height);
-	}
-	const auto cameraMatrices = computeViewProjectionMatrixFromCamera(camera_, width, height);
-
-	GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, viewport3dResources_.framebuffer));
-	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
-
-	render();
-
-	fsPass->setViewport(width, height);
-	fsPass->setSourceTexture(viewport3dResources_.framebufferTexture);
-	fsPass->execute();
-
-
-	if (viewerSettings.enableGridFloor)
-	{
-		igPass->setViewProjectionMatrix(cameraMatrices.viewProjection);
-		igPass->setViewport(width, height);
-		igPass->setGridColor(
-			glm::vec3{ viewerSettings.gridColor[0], viewerSettings.gridColor[1], viewerSettings.gridColor[2] });
-		igPass->execute();
-	}
-
-	if (viewerSettings.enableDebugDraw)
-	{
-		ddPass->setViewProjectionMatrix(cameraMatrices.viewProjection);
-		ddPass->setViewport(width, height);
-		ddPass->setLineWidth(viewerSettings.lineWidth);
-		ddPass->execute();
-	}
-
-	GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
-}
-
-
 auto NanoViewer::draw() -> void
 {
 	ZoneScoped;
@@ -828,27 +475,27 @@ auto NanoViewer::draw() -> void
 	onFrameBegin();
 	glClear(GL_COLOR_BUFFER_BIT);
 	static double lastCameraUpdate = -1.f;
-	
+
 	gizmoHelper_->clear();
 
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
-	ImGui::PushFont(defaultFonts[currentFontIndex]);
-	//TODO: Investigate if this combination is alwys intercepted by OS
-	if(ImGui::IsKeyDown(ImGuiMod_Alt) and ImGui::IsKeyPressed(ImGuiKey_F4, false))
+	ImGui::PushFont(applicationContext.getFontCollection().getDefaultFont());
+	// TODO: Investigate if this combination is alwys intercepted by OS
+	if (ImGui::IsKeyDown(ImGuiMod_Alt) and ImGui::IsKeyPressed(ImGuiKey_F4, false))
 	{
 		isRunning_ = false;
 	}
 
-	static auto connectView = ServerConnectSettingsView{ "Server Connect", []() { std::println("submit!!!"); } };
+	static auto connectView =
+		ServerConnectSettingsView{ applicationContext, "Server Connect", []() { std::println("submit!!!"); } };
 
 	ImGui::BeginMainMenuBar();
 	if (ImGui::BeginMenu("Program"))
 	{
 		if (ImGui::MenuItem(ICON_LC_UNPLUG " Data Service..", nullptr, nullptr))
 		{
-
 		}
 		if (ImGui::MenuItem("Server Connection...", nullptr, nullptr))
 		{
@@ -899,8 +546,8 @@ auto NanoViewer::draw() -> void
 			std::system(std::format("{} {}", cmd, url).c_str());
 		}
 		ImGui::SeparatorText("Develop Tools");
-		ImGui::MenuItem(ICON_LC_BUG" Debug Options");
-		ImGui::MenuItem(ICON_LC_CIRCLE_GAUGE" Renderer Profiler");
+		ImGui::MenuItem(ICON_LC_BUG " Debug Options");
+		ImGui::MenuItem(ICON_LC_CIRCLE_GAUGE " Renderer Profiler");
 
 		ImGui::Separator();
 		ImGui::MenuItem("About", nullptr, nullptr);
@@ -909,36 +556,40 @@ auto NanoViewer::draw() -> void
 
 	ImGui::EndMainMenuBar();
 
-	
+	dockspace->begin();
 
-	const ImGuiViewport* viewport = ImGui::GetMainViewport();
-	ImGui::SetNextWindowPos(viewport->WorkPos);
-	ImGui::SetNextWindowSize(viewport->WorkSize);
-	ImGui::Begin("Editor", 0,
-				 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
-					 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus);
+	volumeView->draw();
 
+	dockspace->end();
 
-	static ImGuiWindowClass windowClass;
-	static ImGuiID dockspaceId = 0;
-
-	dockspaceId = ImGui::GetID("mainDock");
+	//const ImGuiViewport* viewport = ImGui::GetMainViewport();
+	//ImGui::SetNextWindowPos(viewport->WorkPos);
+	//ImGui::SetNextWindowSize(viewport->WorkSize);
+	//ImGui::Begin("Editor", 0,
+	//			 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
+	//				 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus);
 
 
-	ImGui::DockSpace(dockspaceId);
+	//static ImGuiWindowClass windowClass;
+	//static ImGuiID dockspaceId = 0;
 
-	windowClass.ClassId = dockspaceId;
-	windowClass.DockingAllowUnclassed = true;
-	// windowClass.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_AutoHideTabBar;
-	//  ImGuiDockNodeFlags_NoWindowMenuButton;
+	//dockspaceId = ImGui::GetID("mainDock");
 
 
-	ImGui::End();
+	//ImGui::DockSpace(dockspaceId);
+
+	//windowClass.ClassId = dockspaceId;
+	//windowClass.DockingAllowUnclassed = true;
+	//// windowClass.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_AutoHideTabBar;
+	////  ImGuiDockNodeFlags_NoWindowMenuButton;
+
+
+	//ImGui::End();
 
 	/*ImGui::SetNextWindowClass(&windowClass);
 	ImGui::SetNextWindowDockID(dockspaceId, ImGuiCond_FirstUseEver);*/
 
-
+/*
 	ImGui::SetNextWindowClass(&windowClass);
 	ImGui::SetNextWindowDockID(dockspaceId, ImGuiCond_FirstUseEver);
 
@@ -1069,7 +720,7 @@ auto NanoViewer::draw() -> void
 			ImGui::PushStyleColor(ImGuiCol_Button, activeColor);
 		}
 
-		ImGui::PushFont(defaultFonts[currentFontIndex + 1]);
+		ImGui::PushFont(applicationContext.getFontCollection().getBigIconsFont());
 		if (ImGui::Button(ICON_LC_SCALE_3D "##scale_control_handle", ImVec2{ buttonSize, buttonSize }))
 		{
 			currentGizmoOperation.flip(GizmoOperationFlagBits::scale);
@@ -1095,7 +746,7 @@ auto NanoViewer::draw() -> void
 		{
 			ImGui::PushStyleColor(ImGuiCol_Button, activeColor);
 		}
-		ImGui::PushFont(defaultFonts[currentFontIndex + 1]);
+		ImGui::PushFont(applicationContext.getFontCollection().getBigIconsFont());
 		if (ImGui::Button(ICON_LC_MOVE_3D "##translate_control_handle", ImVec2{ buttonSize, buttonSize }))
 		{
 			currentGizmoOperation.flip(GizmoOperationFlagBits::translate);
@@ -1120,7 +771,7 @@ auto NanoViewer::draw() -> void
 		{
 			ImGui::PushStyleColor(ImGuiCol_Button, activeColor);
 		}
-		ImGui::PushFont(defaultFonts[currentFontIndex + 1]);
+		ImGui::PushFont(applicationContext.getFontCollection().getBigIconsFont());
 		if (ImGui::Button(ICON_LC_ROTATE_3D "##rotate_control_handle", ImVec2{ buttonSize, buttonSize }))
 		{
 			currentGizmoOperation.flip(GizmoOperationFlagBits::rotate);
@@ -1137,27 +788,21 @@ auto NanoViewer::draw() -> void
 		{
 			ImGui::PopStyleColor();
 		}
-
-
 	}
 
 	ImGui::End();
 
 
-
-	
 	connectView.draw();
 
-
+	*/
 	ImGui::PopFont();
 	ImGui::EndFrame();
 
 	ImGui::Render();
 
-	if (viewport3dSize.x > 0 && viewport3dSize.y > 0)
-	{
-		renderViewport3d(viewport3dSize.x, viewport3dSize.y);
-	}
+	volumeView->renderVolume(currentRenderer_.get(), &renderingData_);
+		
 
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -1169,7 +814,7 @@ auto NanoViewer::draw() -> void
 		glfwMakeContextCurrent(backup_current_context);
 	}
 
-	glfwSwapBuffers(handle_);
+	glfwSwapBuffers(applicationContext.mainWindowHandle_);
 	glfwPollEvents();
 	FrameMark;
 }
@@ -1178,33 +823,35 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 {
 	gladLoadGL();
 
-	ddList = std::make_unique<DebugDrawList>();
-	fsPass = std::make_unique<FullscreenTexturePass>();
-	igPass = std::make_unique<InfinitGridPass>();
-	ddPass = std::make_unique<DebugDrawPass>(debugDrawList_.get());
+	
 
 	int width, height;
-	glfwGetFramebufferSize(handle_, &width, &height);
-	resize(width, height);
+	glfwGetFramebufferSize(applicationContext.mainWindowHandle_, &width, &height);
+	
 
 	glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
-	glfwSetFramebufferSizeCallback(handle_,
+	glfwSetFramebufferSizeCallback(applicationContext.mainWindowHandle_,
 								   [](GLFWwindow* window, int width, int height)
 								   {
 									   auto* viewer = static_cast<NanoViewer*>(glfwGetWindowUserPointer(window));
-									   viewer->resize(width, height);
+								
 									   viewer->draw();
 								   });
-	glfwSetMouseButtonCallback(handle_, ::mouseButton);
-	glfwSetKeyCallback(handle_, keyboardSpecialKey);
-	glfwSetCharCallback(handle_, keyboardKey);
-	glfwSetCursorPosCallback(handle_, ::mouseMotion);
-	glfwSetWindowContentScaleCallback(handle_, windowContentScaleCallback);
+	glfwSetMouseButtonCallback(applicationContext.mainWindowHandle_, ::mouseButton);
+	glfwSetKeyCallback(applicationContext.mainWindowHandle_, keyboardSpecialKey);
+	glfwSetCharCallback(applicationContext.mainWindowHandle_, keyboardKey);
+	glfwSetCursorPosCallback(applicationContext.mainWindowHandle_, ::mouseMotion);
+	glfwSetWindowContentScaleCallback(applicationContext.mainWindowHandle_, windowContentScaleCallback);
 
-	initializeGui(handle_);
-	glfwMakeContextCurrent(handle_);
+	initializeGui(applicationContext.mainWindowHandle_);
 
-	while (!glfwWindowShouldClose(handle_) && keepgoing())
+
+	dockspace = std::make_unique<Dockspace>();
+	volumeView = std::make_unique<VolumeView>(applicationContext, dockspace.get());
+
+	glfwMakeContextCurrent(applicationContext.mainWindowHandle_);
+
+	while (!glfwWindowShouldClose(applicationContext.mainWindowHandle_) && keepgoing())
 	{
 		{
 			draw();
@@ -1213,7 +860,7 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 
 	deinitializeGui();
 	currentRenderer_->deinitialize();
-	glfwDestroyWindow(handle_);
+	glfwDestroyWindow(applicationContext.mainWindowHandle_);
 	glfwTerminate();
 }
 NanoViewer::~NanoViewer()
