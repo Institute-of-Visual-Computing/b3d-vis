@@ -35,8 +35,9 @@
 
 #include "GizmoOperationFlags.h"
 
-#include "ApplicationContext.h"
-#include "Dockspace.h"
+#include "features/transferMapping/TransferMapping.h"
+#include "framework/ApplicationContext.h"
+#include "framework/Dockspace.h"
 #include "views/VolumeView.h"
 
 using namespace owl;
@@ -48,45 +49,11 @@ namespace
 	std::unique_ptr<Dockspace> dockspace{};
 	std::unique_ptr<VolumeView> volumeView{};
 
+	std::unique_ptr<TransferMapping> transferMapping{};
+
 
 	auto currentGizmoOperation = GizmoOperationFlags(GizmoOperationFlagBits::none);
 	auto currentGizmoMode(ImGuizmo::LOCAL);
-
-	auto keyboardKey(GLFWwindow* window, const unsigned int key) -> void
-	{
-		auto& io = ImGui::GetIO();
-		if (!io.WantCaptureKeyboard)
-		{
-		}
-	}
-
-	auto keyboardSpecialKey(GLFWwindow* window, const int key, [[maybe_unused]] int scancode, const int action,
-							const int mods) -> void
-	{
-
-		if (action == GLFW_PRESS)
-		{
-		}
-	}
-
-	auto mouseMotion(GLFWwindow* window, const double x, const double y) -> void
-	{
-		const auto& io = ImGui::GetIO();
-		if (!io.WantCaptureMouse)
-		{
-		}
-	}
-
-	auto mouseButton(GLFWwindow* window, const int button, const int action, const int mods) -> void
-	{
-		const auto& io = ImGui::GetIO();
-		if (!io.WantCaptureMouse)
-		{
-		}
-		else
-		{
-		}
-	}
 
 
 	[[nodiscard]] auto requestRequiredDpiScales() -> std::vector<float>
@@ -154,7 +121,6 @@ namespace
 		ImGui::DestroyContext();
 	}
 
-	
 
 	struct ViewerSettings
 	{
@@ -297,7 +263,7 @@ auto NanoViewer::onFrameBegin() -> void
 
 NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, const int initWindowHeight,
 					   bool enableVsync, const int rendererIndex)
-	: resources_{}, renderingData_{}, colorMapResources_{}
+	: renderingData_{}
 {
 
 	glfwSetErrorCallback(onGLFWErrorCallback);
@@ -307,7 +273,8 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 	glfwWindowHint(GLFW_VISIBLE, true);
 
-	applicationContext.mainWindowHandle_ = glfwCreateWindow(initWindowWidth, initWindowHeight, title.c_str(), NULL, NULL);
+	applicationContext.mainWindowHandle_ =
+		glfwCreateWindow(initWindowWidth, initWindowHeight, title.c_str(), NULL, NULL);
 	if (!applicationContext.mainWindowHandle_)
 	{
 		glfwTerminate();
@@ -351,110 +318,7 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 	gladLoadGL();
 
 
-	// Create Colormap and load data from default colormap, if present
-	{
-		GL_CALL(glGenTextures(1, &colorMapResources_.colormapTexture));
-		GL_CALL(glBindTexture(GL_TEXTURE_2D, colorMapResources_.colormapTexture));
-
-		// Setup filtering parameters for display
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,
-						GL_CLAMP_TO_EDGE); // This is required on WebGL for non power-of-two textures
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Same
-
-		// Load default colormap
-		auto filePath = std::filesystem::path{ "resources/colormaps" };
-		if (std::filesystem::exists(filePath / "defaultColorMap.json"))
-		{
-			colorMapResources_.colorMap = b3d::tools::colormap::load(filePath / "defaultColorMap.json");
-
-			if (std::filesystem::path(colorMapResources_.colorMap.colorMapFilePath).is_relative())
-			{
-				filePath /= colorMapResources_.colorMap.colorMapFilePath;
-			}
-			else
-			{
-				filePath = colorMapResources_.colorMap.colorMapFilePath;
-			}
-			int x, y, n;
-
-			const auto bla = stbi_info(filePath.string().c_str(), &x, &y, &n);
-
-			auto data = stbi_loadf(filePath.string().c_str(), &x, &y, &n, 0);
-
-			// Load Colormap
-			GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, x, y, 0, GL_RGBA, GL_FLOAT, data));
-
-			stbi_image_free(data);
-
-			renderingData_.data.colorMapTexture.extent =
-				b3d::renderer::Extent{ static_cast<uint32_t>(x), static_cast<uint32_t>(y), 1 };
-			renderingData_.data.colorMapTexture.nativeHandle =
-				reinterpret_cast<void*>(colorMapResources_.colormapTexture);
-		}
-		else
-		{
-			GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 512, 1, 0, GL_RGBA, GL_FLOAT, nullptr));
-			renderingData_.data.colorMapTexture.extent = b3d::renderer::Extent{ 512, 1, 1 };
-		}
-
-		std::string colormaptexturename = "ColorMap";
-		GL_CALL(glObjectLabel(GL_TEXTURE, colorMapResources_.colormapTexture, colormaptexturename.length() + 1,
-							  colormaptexturename.c_str()));
-
-		// TODO: add cuda error checks
-		auto rc =
-			cudaGraphicsGLRegisterImage(&colorMapResources_.cudaGraphicsResource, colorMapResources_.colormapTexture,
-										GL_TEXTURE_2D, cudaGraphicsRegisterFlagsTextureGather);
-
-		renderingData_.data.colorMapTexture.target = colorMapResources_.cudaGraphicsResource;
-
-		renderingData_.data.coloringInfo =
-			b3d::renderer::ColoringInfo{ b3d::renderer::ColoringMode::single, vec4f{ 1, 1, 1, 1 },
-										 colorMapResources_.colorMap.firstColorMapYTextureCoordinate };
-
-		renderingData_.data.colorMapInfos =
-			b3d::renderer::ColorMapInfos{ &colorMapResources_.colorMap.colorMapNames,
-										  colorMapResources_.colorMap.colorMapCount,
-										  colorMapResources_.colorMap.firstColorMapYTextureCoordinate,
-										  colorMapResources_.colorMap.colorMapHeightNormalized };
-	}
-
-	// Transfer function
-	{
-		GL_CALL(glGenTextures(1, &transferFunctionResources_.transferFunctionTexture));
-		GL_CALL(glBindTexture(GL_TEXTURE_2D, transferFunctionResources_.transferFunctionTexture));
-
-		// Setup filtering parameters for display
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,
-						GL_CLAMP_TO_EDGE); // This is required on WebGL for non power-of-two textures
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE); // Same
-
-
-		std::array<float, 512> initBufferData;
-
-		std::ranges::fill(initBufferData, 1);
-		GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, 512, 1, 0, GL_RED, GL_FLOAT, initBufferData.data()));
-
-		std::string transferFunctionBufferName = "TransferFunctionTexture";
-		GL_CALL(glObjectLabel(GL_TEXTURE, transferFunctionResources_.transferFunctionTexture,
-							  transferFunctionBufferName.length() + 1, transferFunctionBufferName.c_str()));
-
-		cudaError rc = cudaGraphicsGLRegisterImage(
-			&transferFunctionResources_.cudaGraphicsResource, transferFunctionResources_.transferFunctionTexture,
-			GL_TEXTURE_2D, cudaGraphicsRegisterFlagsTextureGather | cudaGraphicsRegisterFlagsWriteDiscard);
-
-		renderingData_.data.transferFunctionTexture.extent = { 512, 1, 1 };
-		renderingData_.data.transferFunctionTexture.target = transferFunctionResources_.cudaGraphicsResource;
-		renderingData_.data.transferFunctionTexture.nativeHandle =
-			reinterpret_cast<void*>(transferFunctionResources_.transferFunctionTexture);
-	}
-
 	// NOTE: rendererInfo will be fed into renderer initialization
-
 	selectRenderer(rendererIndex);
 	newSelectedRendererIndex_ = selectedRendererIndex_;
 
@@ -564,247 +428,14 @@ auto NanoViewer::draw() -> void
 
 	dockspace->end();
 	gui();
-	//const ImGuiViewport* viewport = ImGui::GetMainViewport();
-	//ImGui::SetNextWindowPos(viewport->WorkPos);
-	//ImGui::SetNextWindowSize(viewport->WorkSize);
-	//ImGui::Begin("Editor", 0,
-	//			 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
-	//				 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus);
-
-
-	//static ImGuiWindowClass windowClass;
-	//static ImGuiID dockspaceId = 0;
-
-	//dockspaceId = ImGui::GetID("mainDock");
-
-
-	//ImGui::DockSpace(dockspaceId);
-
-	//windowClass.ClassId = dockspaceId;
-	//windowClass.DockingAllowUnclassed = true;
-	//// windowClass.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_AutoHideTabBar;
-	////  ImGuiDockNodeFlags_NoWindowMenuButton;
-
-
-	//ImGui::End();
-
-	/*ImGui::SetNextWindowClass(&windowClass);
-	ImGui::SetNextWindowDockID(dockspaceId, ImGuiCond_FirstUseEver);*/
-
-/*
-	ImGui::SetNextWindowClass(&windowClass);
-	ImGui::SetNextWindowDockID(dockspaceId, ImGuiCond_FirstUseEver);
-
-	gui();
-	windowClass.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_AutoHideTabBar | ImGuiDockNodeFlags_NoUndocking;
-	ImGui::SetNextWindowClass(&windowClass);
-	ImGui::Begin("VolumeViewport", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse);
-
-	auto viewport3dSize = ImGui::GetContentRegionAvail();
-	ImVec2 p = ImGui::GetCursorScreenPos();
-	ImGui::SetNextItemAllowOverlap();
-	ImGui::InvisibleButton("##volumeViewport", viewport3dSize,
-						   ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
-
-
-	static auto moveCameraFaster = false;
-	auto& io = ImGui::GetIO();
-
-
-	if (ImGui::IsKeyDown(ImGuiKey_LeftShift))
-	{
-		moveCameraFaster = true;
-	}
-
-	if (ImGui::IsKeyReleased(ImGuiKey_LeftShift))
-	{
-		moveCameraFaster = false;
-	}
-
-	const auto fastSpeed = 25.0f;
-	const auto cameraMoveVelocity = 0.0f;
-	auto cameraMoveAcceleration = glm::vec3{ 0 };
-	const auto maxCameraMoveAcceleration = 1.0f;
-	static auto AccelerationExpire = 0.0;
-	const auto sensitivity = 0.1f;
-	if (ImGui::IsKeyDown(ImGuiKey_W))
-	{
-		cameraMoveAcceleration = camera_.forward_ * camera_.movementSpeedScale_ * (moveCameraFaster ? fastSpeed : 1.0f);
-	}
-	if (ImGui::IsKeyDown(ImGuiKey_S))
-	{
-		cameraMoveAcceleration =
-			-camera_.forward_ * camera_.movementSpeedScale_ * (moveCameraFaster ? fastSpeed : 1.0f);
-	}
-	if (ImGui::IsKeyDown(ImGuiKey_A))
-	{
-		cameraMoveAcceleration = -glm::normalize(glm::cross(camera_.forward_, camera_.getUp())) *
-			camera_.movementSpeedScale_ * (moveCameraFaster ? fastSpeed : 1.0f);
-	}
-	if (ImGui::IsKeyDown(ImGuiKey_D))
-	{
-		cameraMoveAcceleration = glm::normalize(glm::cross(camera_.forward_, camera_.getUp())) *
-			camera_.movementSpeedScale_ * (moveCameraFaster ? fastSpeed : 1.0f);
-	}
-
-	auto delta = io.MouseDelta;
-	delta.x *= -1.0;
-
-
-	if (ImGui::IsItemActive())
-	{
-		if (!ImGuizmo::IsUsing())
-		{
-			if (ImGui::IsMouseDragging(ImGuiMouseButton_Right))
-			{
-				const auto right = glm::normalize(glm::cross(camera_.forward_, camera_.getUp()));
-				cameraMoveAcceleration += -glm::normalize(glm::cross(camera_.forward_, right)) *
-					camera_.movementSpeedScale_ * (moveCameraFaster ? fastSpeed : 1.0f) * delta.y;
-
-				cameraMoveAcceleration +=
-					right * camera_.movementSpeedScale_ * (moveCameraFaster ? fastSpeed : 1.0f) * delta.x;
-			}
-			if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
-			{
-
-				auto mouseScreenLocation = io.MousePos;
-				const auto up = camera_.getUp();
-				const auto right = glm::normalize(glm::cross(up, camera_.forward_));
-
-				const auto f = glm::normalize(camera_.forward_ + right * delta.y + up * delta.x);
-
-				auto rotationAxis = glm::normalize(glm::cross(f, camera_.forward_));
-
-				if (glm::length(rotationAxis) >= 0.001f)
-				{
-					const auto rotation =
-						glm::rotate(glm::identity<glm::mat4>(),
-									glm::radians(glm::length(glm::vec2{ delta.x, delta.y }) * sensitivity), f);
-					camera_.forward_ = glm::normalize(glm::vec3(rotation * glm::vec4(camera_.forward_, 0.0f)));
-					camera_.right_ = glm::normalize(glm::cross(camera_.forward_, up));
-				}
-			}
-		}
-	}
-
-	camera_.position_ += cameraMoveAcceleration * io.DeltaTime;
-
-
-	ImGui::SetCursorScreenPos(p);
-	ImGui::SetNextItemAllowOverlap();
-	ImGui::Image((ImTextureID)viewport3dResources_.framebufferTexture, viewport3dSize, { 0.0f, 1.0f }, { 1.0f, 0.0f });
-
-	if (viewerSettings.enableDebugDraw)
-	{
-		ImGui::SetNextItemAllowOverlap();
-		ImGui::SetCursorScreenPos(p);
-		const auto cameraMatrices = computeViewProjectionMatrixFromCamera(camera_, viewport3dSize.x, viewport3dSize.y);
-		drawGizmos(cameraMatrices, glm::vec2{ p.x, p.y }, glm::vec2{ viewport3dSize.x, viewport3dSize.y });
-	}
-
-	const auto showControls = true;
-	if (showControls)
-	{
-		ImGui::SetNextItemAllowOverlap();
-
-		const auto scale = ImGui::GetWindowDpiScale();
-		auto buttonPosition = p + ImVec2(scale * 20, scale * 20);
-		ImGui::SetCursorScreenPos(buttonPosition);
-		const auto buttonPadding = scale * 4.0f;
-		const auto buttonSize = scale * 40;
-
-		const auto activeColor = ImGui::GetStyle().Colors[ImGuiCol_ButtonActive];
-
-		const auto prevOperationState = currentGizmoOperation;
-
-		if (prevOperationState.containsBit(GizmoOperationFlagBits::scale))
-		{
-			ImGui::PushStyleColor(ImGuiCol_Button, activeColor);
-		}
-
-		ImGui::PushFont(applicationContext.getFontCollection().getBigIconsFont());
-		if (ImGui::Button(ICON_LC_SCALE_3D "##scale_control_handle", ImVec2{ buttonSize, buttonSize }))
-		{
-			currentGizmoOperation.flip(GizmoOperationFlagBits::scale);
-		}
-		ImGui::PopFont();
-
-		if (ImGui::BeginItemTooltip())
-		{
-			ImGui::Text("Scale Volume");
-			ImGui::TextDisabled("Hotkey: 1");
-			ImGui::EndTooltip();
-		}
-
-		if (prevOperationState.containsBit(GizmoOperationFlagBits::scale))
-		{
-			ImGui::PopStyleColor();
-		}
-		ImGui::SetNextItemAllowOverlap();
-		buttonPosition += ImVec2(0, buttonPadding + buttonSize);
-		ImGui::SetCursorScreenPos(buttonPosition);
-
-		if (prevOperationState.containsBit(GizmoOperationFlagBits::translate))
-		{
-			ImGui::PushStyleColor(ImGuiCol_Button, activeColor);
-		}
-		ImGui::PushFont(applicationContext.getFontCollection().getBigIconsFont());
-		if (ImGui::Button(ICON_LC_MOVE_3D "##translate_control_handle", ImVec2{ buttonSize, buttonSize }))
-		{
-			currentGizmoOperation.flip(GizmoOperationFlagBits::translate);
-		}
-		ImGui::PopFont();
-		if (ImGui::BeginItemTooltip())
-		{
-			ImGui::Text("Translate Volume");
-			ImGui::TextDisabled("Hotkey: 2");
-			ImGui::EndTooltip();
-		}
-
-		if (prevOperationState.containsBit(GizmoOperationFlagBits::translate))
-		{
-			ImGui::PopStyleColor();
-		}
-		ImGui::SetNextItemAllowOverlap();
-		buttonPosition += ImVec2(0, buttonPadding + buttonSize);
-		ImGui::SetCursorScreenPos(buttonPosition);
-
-		if (prevOperationState.containsBit(GizmoOperationFlagBits::rotate))
-		{
-			ImGui::PushStyleColor(ImGuiCol_Button, activeColor);
-		}
-		ImGui::PushFont(applicationContext.getFontCollection().getBigIconsFont());
-		if (ImGui::Button(ICON_LC_ROTATE_3D "##rotate_control_handle", ImVec2{ buttonSize, buttonSize }))
-		{
-			currentGizmoOperation.flip(GizmoOperationFlagBits::rotate);
-		}
-		ImGui::PopFont();
-		if (ImGui::BeginItemTooltip())
-		{
-			ImGui::Text("Rotate Volume");
-			ImGui::TextDisabled("Hotkey: 3");
-			ImGui::EndTooltip();
-		}
-
-		if (prevOperationState.containsBit(GizmoOperationFlagBits::rotate))
-		{
-			ImGui::PopStyleColor();
-		}
-	}
-
-	ImGui::End();
-
-
-	connectView.draw();
-
-	*/
+	
 	ImGui::PopFont();
 	ImGui::EndFrame();
 
 	ImGui::Render();
 
 	gizmoHelper_->clear();
-		
+
 
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
@@ -825,24 +456,20 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 {
 	gladLoadGL();
 
-	
 
 	int width, height;
 	glfwGetFramebufferSize(applicationContext.mainWindowHandle_, &width, &height);
-	
+
 
 	glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
 	glfwSetFramebufferSizeCallback(applicationContext.mainWindowHandle_,
 								   [](GLFWwindow* window, int width, int height)
 								   {
 									   auto* viewer = static_cast<NanoViewer*>(glfwGetWindowUserPointer(window));
-								
+
 									   viewer->draw();
 								   });
-	glfwSetMouseButtonCallback(applicationContext.mainWindowHandle_, ::mouseButton);
-	glfwSetKeyCallback(applicationContext.mainWindowHandle_, keyboardSpecialKey);
-	glfwSetCharCallback(applicationContext.mainWindowHandle_, keyboardKey);
-	glfwSetCursorPosCallback(applicationContext.mainWindowHandle_, ::mouseMotion);
+
 	glfwSetWindowContentScaleCallback(applicationContext.mainWindowHandle_, windowContentScaleCallback);
 
 	initializeGui(applicationContext.mainWindowHandle_);
@@ -851,6 +478,10 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 	dockspace = std::make_unique<Dockspace>();
 	volumeView = std::make_unique<VolumeView>(applicationContext, dockspace.get());
 	volumeView->setRenderVolume(currentRenderer_.get(), &renderingData_);
+
+	transferMapping = std::make_unique<TransferMapping>(applicationContext);
+	transferMapping->initializeResources();
+	transferMapping->updateRenderingData(renderingData_);
 
 	glfwMakeContextCurrent(applicationContext.mainWindowHandle_);
 
@@ -868,9 +499,6 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 }
 NanoViewer::~NanoViewer()
 {
-	cudaGraphicsUnregisterResource(transferFunctionResources_.cudaGraphicsResource);
-	cudaGraphicsUnregisterResource(colorMapResources_.cudaGraphicsResource);
-
 	if (isAdmin_)
 	{
 		const auto error = nvmlDeviceResetGpuLockedClocks(nvmlDevice_);
@@ -893,7 +521,6 @@ auto NanoViewer::selectRenderer(const std::uint32_t index) -> void
 
 	selectedRendererIndex_ = index;
 	currentRenderer_ = b3d::renderer::registry[selectedRendererIndex_].rendererInstance;
-
 
 
 	const auto debugInfo = b3d::renderer::DebugInitializationInfo{ debugDrawList_, gizmoHelper_ };

@@ -5,8 +5,9 @@
 #include <RendererBase.h>
 #include <nvml.h>
 
+#include <ColorMap.h>
+
 #include "Camera.h"
-#include "ColorMap.h"
 #include "DebugDrawList.h"
 #include "GizmoHelper.h"
 
@@ -45,25 +46,25 @@ private:
 	std::int32_t newSelectedRendererIndex_{ -1 };
 	std::vector<std::string> registeredRendererNames_{};
 
-	struct GraphicsResources
-	{
-		GLuint colorTexture;
-		GLuint minMaxTexture;
+	//struct GraphicsResources
+	//{
+	//	GLuint colorTexture;
+	//	GLuint minMaxTexture;
 
-	} resources_;
+	//} resources_;
 
-	struct ColorMapResources
-	{
-		b3d::tools::colormap::ColorMap colorMap;
-		GLuint colormapTexture;
-		cudaGraphicsResource_t cudaGraphicsResource;
-	} colorMapResources_;
+	//struct ColorMapResources
+	//{
+	//	b3d::tools::colormap::ColorMap colorMap;
+	//	GLuint colormapTexture;
+	//	cudaGraphicsResource_t cudaGraphicsResource;
+	//} colorMapResources_;
 
-	struct TransferFunctionResources
-	{
-		GLuint transferFunctionTexture;
-		cudaGraphicsResource_t cudaGraphicsResource;
-	} transferFunctionResources_;
+	//struct TransferFunctionResources
+	//{
+	//	GLuint transferFunctionTexture;
+	//	cudaGraphicsResource_t cudaGraphicsResource;
+	//} transferFunctionResources_;
 
 
 	b3d::renderer::RenderingDataWrapper renderingData_;
