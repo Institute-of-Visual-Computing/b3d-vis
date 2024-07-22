@@ -33,24 +33,27 @@ target_sources(viewer PRIVATE
 	views/VolumeView.cpp
 	views/ServerConnectView.h
 	views/ServerConnectView.cpp
-	Dockspace.h
-	Dockspace.cpp
 	ServerConnect.h
 	ServerConnect.cpp
-	DockableWindowViewBase.h
-	DockableWindowViewBase.cpp
-	WindowViewBase.h
-	WindowViewBase.cpp
-	ModalViewBase.h
-	ModalViewBase.cpp
 	IdGenerator.h
 	GizmoOperationFlags.h
-	ApplicationContext.h
-	ApplicationContext.cpp
 	FontCollection.h
 	FontCollection.cpp
 	Flags.h
+	framework/Dockspace.h
+	framework/Dockspace.cpp
+	framework/DockableWindowViewBase.h
+	framework/DockableWindowViewBase.cpp
+	framework/WindowViewBase.h
+	framework/WindowViewBase.cpp
+	framework/ModalViewBase.h
+	framework/ModalViewBase.cpp
+	framework/ApplicationContext.h
+	framework/ApplicationContext.cpp
 )
+
+target_include_directories(viewer PUBLIC /)
+
 target_compile_features(viewer PUBLIC cxx_std_23)
 target_link_libraries(viewer
   PRIVATE
@@ -71,6 +74,7 @@ target_link_libraries(viewer
 	#imguizmo::imguizmo
 	B3D::Tools::ColorMap
 	${CUDA_nvml_LIBRARY}
+	imcurve_modefied
 )
 
 option(ENABLE_NANO_PROFILE "Enables Tracy profiling" OFF)

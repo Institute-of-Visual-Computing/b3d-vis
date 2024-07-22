@@ -1,7 +1,7 @@
 #include "VolumeView.h"
-#include "../GizmoHelper.h"
+#include "GizmoHelper.h"
 
-#include "../GLUtils.h"
+#include "GLUtils.h"
 
 #include <GLFW/glfw3.h>
 
@@ -13,7 +13,7 @@
 #include <IconsFontAwesome6Brands.h>
 #include <IconsLucide.h>
 
-#include "../ApplicationContext.h"
+#include "framework/ApplicationContext.h"
 
 #include <cuda_gl_interop.h>
 #include <cuda_runtime.h>
@@ -21,10 +21,10 @@
 
 #include <RendererBase.h>
 
-#include "../InteropUtils.h"
-#include "../passes/DebugDrawPass.h"
-#include "../passes/FullscreenTexturePass.h"
-#include "../passes/InfinitGridPass.h"
+#include "InteropUtils.h"
+#include "passes/DebugDrawPass.h"
+#include "passes/FullscreenTexturePass.h"
+#include "passes/InfinitGridPass.h"
 
 namespace
 {

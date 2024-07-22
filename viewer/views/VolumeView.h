@@ -2,10 +2,11 @@
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
 #define IMGUI_DEFINE_MATH_OPERATORS
 #endif
-#include "../Camera.h"
-#include "../DockableWindowViewBase.h"
-#include "../GLUtils.h"
-#include "../GizmoOperationFlags.h"
+#include "Camera.h"
+#include "framework/DockableWindowViewBase.h"
+#include "GLUtils.h"
+#include "GizmoOperationFlags.h"
+
 #include "imgui.h"
 
 #include <array>

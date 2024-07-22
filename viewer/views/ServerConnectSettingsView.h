@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../ModalViewBase.h"
+#include "framework/ModalViewBase.h"
 
 class ServerConnectSettingsView final : public ModalViewBase
 {

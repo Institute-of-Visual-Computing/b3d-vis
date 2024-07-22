@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../DockableWindowViewBase.h"
+#include "framework/DockableWindowViewBase.h"
 
 class ServerConnectView : public DockableWindowViewBase
 {
