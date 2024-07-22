@@ -156,7 +156,14 @@ auto main(const int argc, char** argv) -> int
 			});
 
 	svr.Get("/projects",
-			[](const httplib::Request& req, httplib::Response& res) { res.set_content(nlohmann::json(projectProvider->getProjects()).dump(), "application/json");
+			[](const httplib::Request& req, httplib::Response& res)
+			{
+				std::vector<b3d::tools::projectexplorer::Project> projects;
+				for (const auto& project : projectProvider->getProjects() | std::views::values | std::views::all)
+				{
+					projects.push_back(project);
+				}
+				res.set_content(nlohmann::json(projects).dump(), "application/json");
 			});
 
 	svr.Get("/project/:guid",
@@ -332,9 +339,9 @@ auto main(const int argc, char** argv) -> int
 					 return;
 				 }
 				 			 
-				 /*
+				 
 				 // Request with projectGUID is not finished yet!
-				 if (currentRequest && currentRequestProcessor->getRequestGUID() == requestGUID)
+				 if (currentRequest != nullptr)
 				 {
 					 nlohmann::json retJ;
 					 retJ["message"] = std::format("Request not finished yet!");
@@ -342,7 +349,7 @@ auto main(const int argc, char** argv) -> int
 					 res.set_content(retJ.dump(), "application/json");
 					 return;
 				 }
-				 */
+				 
 				 
 				 const auto& project = projectProvider->getProject(projectGUID);
 
