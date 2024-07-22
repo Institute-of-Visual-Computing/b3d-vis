@@ -21,10 +21,10 @@
 
 #include <RendererBase.h>
 
+#include "../InteropUtils.h"
 #include "../passes/DebugDrawPass.h"
 #include "../passes/FullscreenTexturePass.h"
 #include "../passes/InfinitGridPass.h"
-#include "../InteropUtils.h"
 
 namespace
 {
@@ -48,16 +48,16 @@ VolumeView::VolumeView(ApplicationContext& appContext, Dockspace* dockspace)
 							 WindowFlagBits::noTitleBar | WindowFlagBits::noUndocking | WindowFlagBits::hideTabBar |
 								 WindowFlagBits::noCollapse)
 {
-	gizmoHelper_ = std::make_shared<GizmoHelper>();
-	//initializeGraphicsResources();
 
-	debugDrawList_ = std::make_unique<DebugDrawList>();
+	// initializeGraphicsResources();
+
+
 	fullscreenTexturePass_ = std::make_unique<FullscreenTexturePass>();
 	InfinitGridPass_ = std::make_unique<InfinitGridPass>();
-	debugDrawPass_ = std::make_unique<DebugDrawPass>(debugDrawList_.get());
+	debugDrawPass_ = std::make_unique<DebugDrawPass>(applicationContext_->getDrawList().get());
 
 	camera_.setOrientation(glm::vec3(1.0, 1.0, 1.0), glm::vec3(0.0, 0.0, 0.0), camera_.getUp(),
-						  camera_.getFovYInDegrees());
+						   camera_.getFovYInDegrees());
 }
 
 VolumeView::~VolumeView()
@@ -67,6 +67,9 @@ VolumeView::~VolumeView()
 
 auto VolumeView::onDraw() -> void
 {
+
+	renderVolume();
+
 	if (ImGui::IsKeyPressed(ImGuiKey_1, false))
 	{
 		currentGizmoOperation_.flip(GizmoOperationFlagBits::scale);
@@ -279,67 +282,13 @@ auto VolumeView::onResize() -> void
 	initializeGraphicsResources();
 }
 
-auto VolumeView::renderVolume(b3d::renderer::RendererBase* renderer,
-							  b3d::renderer::RenderingDataWrapper* renderingData) -> void
+auto VolumeView::setRenderVolume(b3d::renderer::RendererBase* renderer, b3d::renderer::RenderingDataWrapper* renderingData)
+	-> void
 {
-	const auto width = viewportSize_.x;
-	const auto height = viewportSize_.y;
-	const auto cameraMatrices = computeViewProjectionMatrixFromCamera(camera_, width, height);
-
-	GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, graphicsResources_.framebuffer));
-	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
-
-
-
-	const auto cam = b3d::renderer::Camera{ .origin = owl_cast(camera_.getFrom()),
-											.at = owl_cast(camera_.getAt()),
-											.up = owl_cast(camera_.getUp()),
-											.cosFoV = camera_.getCosFovY(),
-											.FoV = glm::radians(camera_.getFovYInDegrees()) };
-
-	renderingData->data.view = b3d::renderer::View{
-		.cameras = { cam, cam },
-		.mode = b3d::renderer::RenderMode::mono,
-	};
-
-	renderingData->data.renderTargets = b3d::renderer::RenderTargets{
-		.colorRt = { graphicsResources_.cuFramebufferTexture,
-					 { static_cast<uint32_t>(graphicsResources_.framebufferSize.x),
-					   static_cast<uint32_t>(graphicsResources_.framebufferSize.y), 1 } },
-		.minMaxRt = { graphicsResources_.cuFramebufferTexture,
-					  { static_cast<uint32_t>(graphicsResources_.framebufferSize.x),
-						static_cast<uint32_t>(graphicsResources_.framebufferSize.y), 1 } },
-	};
-
-	renderer->render();
-
-
-
-	fullscreenTexturePass_->setViewport(width, height);
-	fullscreenTexturePass_->setSourceTexture(graphicsResources_.framebufferTexture);
-	fullscreenTexturePass_->execute();
-
-
-	if (viewerSettings_.enableGridFloor)
-	{
-		InfinitGridPass_->setViewProjectionMatrix(cameraMatrices.viewProjection);
-		InfinitGridPass_->setViewport(width, height);
-		InfinitGridPass_->setGridColor(
-			glm::vec3{ viewerSettings_.gridColor[0], viewerSettings_.gridColor[1], viewerSettings_.gridColor[2] });
-		InfinitGridPass_->execute();
-	}
-
-	if (viewerSettings_.enableDebugDraw)
-	{
-		debugDrawPass_->setViewProjectionMatrix(cameraMatrices.viewProjection);
-		debugDrawPass_->setViewport(width, height);
-		debugDrawPass_->setLineWidth(viewerSettings_.lineWidth);
-		debugDrawPass_->execute();
-	}
-
-	GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+	renderer_ = renderer;
+	renderingData_ = renderingData;
 }
+
 
 auto VolumeView::drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec2& position, const glm::vec2& size)
 	-> void
@@ -365,7 +314,7 @@ auto VolumeView::drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec
 		}
 
 
-		for (const auto transform : gizmoHelper_->getTransforms())
+		for (const auto transform : applicationContext_->getGizmoHelper()->getTransforms())
 		{
 			float mat[16];
 
@@ -406,7 +355,7 @@ auto VolumeView::drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec
 	auto blockInput = false;
 
 
-	for (const auto& [bound, transform, worldTransform] : gizmoHelper_->getBoundTransforms())
+	for (const auto& [bound, transform, worldTransform] : applicationContext_->getGizmoHelper()->getBoundTransforms())
 	{
 		float mat[16];
 
@@ -479,7 +428,8 @@ auto VolumeView::initializeGraphicsResources() -> void
 	{
 		OWL_CUDA_CHECK(cudaFree(graphicsResources_.framebufferPointer));
 	}
-	OWL_CUDA_CHECK(cudaMallocManaged(&graphicsResources_.framebufferPointer, viewportSize_.x * viewportSize_.y * sizeof(uint32_t)));
+	OWL_CUDA_CHECK(cudaMallocManaged(&graphicsResources_.framebufferPointer,
+									 viewportSize_.x * viewportSize_.y * sizeof(uint32_t)));
 
 	graphicsResources_.framebufferSize = glm::vec2{ viewportSize_.x, viewportSize_.y };
 	if (graphicsResources_.framebufferTexture == 0)
@@ -516,4 +466,66 @@ auto VolumeView::deinitializeGraphicsResources() -> void
 {
 }
 
+auto VolumeView::renderVolume() -> void
+{
 
+	const auto width = viewportSize_.x;
+	const auto height = viewportSize_.y;
+	const auto cameraMatrices = computeViewProjectionMatrixFromCamera(camera_, width, height);
+
+	GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, graphicsResources_.framebuffer));
+	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+	glClear(GL_COLOR_BUFFER_BIT);
+
+
+	if (renderingData_ && renderer_ && graphicsResources_.cuFramebufferTexture)
+	{
+
+
+		const auto cam = b3d::renderer::Camera{ .origin = owl_cast(camera_.getFrom()),
+												.at = owl_cast(camera_.getAt()),
+												.up = owl_cast(camera_.getUp()),
+												.cosFoV = camera_.getCosFovY(),
+												.FoV = glm::radians(camera_.getFovYInDegrees()) };
+
+		renderingData_->data.view = b3d::renderer::View{
+			.cameras = { cam, cam },
+			.mode = b3d::renderer::RenderMode::mono,
+		};
+
+		renderingData_->data.renderTargets = b3d::renderer::RenderTargets{
+			.colorRt = { graphicsResources_.cuFramebufferTexture,
+						 { static_cast<uint32_t>(graphicsResources_.framebufferSize.x),
+						   static_cast<uint32_t>(graphicsResources_.framebufferSize.y), 1 } },
+			.minMaxRt = { graphicsResources_.cuFramebufferTexture,
+						  { static_cast<uint32_t>(graphicsResources_.framebufferSize.x),
+							static_cast<uint32_t>(graphicsResources_.framebufferSize.y), 1 } },
+		};
+
+		renderer_->render();
+	}
+
+	fullscreenTexturePass_->setViewport(width, height);
+	fullscreenTexturePass_->setSourceTexture(graphicsResources_.framebufferTexture);
+	fullscreenTexturePass_->execute();
+
+
+	if (viewerSettings_.enableGridFloor)
+	{
+		InfinitGridPass_->setViewProjectionMatrix(cameraMatrices.viewProjection);
+		InfinitGridPass_->setViewport(width, height);
+		InfinitGridPass_->setGridColor(
+			glm::vec3{ viewerSettings_.gridColor[0], viewerSettings_.gridColor[1], viewerSettings_.gridColor[2] });
+		InfinitGridPass_->execute();
+	}
+
+	if (viewerSettings_.enableDebugDraw)
+	{
+		debugDrawPass_->setViewProjectionMatrix(cameraMatrices.viewProjection);
+		debugDrawPass_->setViewport(width, height);
+		debugDrawPass_->setLineWidth(viewerSettings_.lineWidth);
+		debugDrawPass_->execute();
+	}
+
+	GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+}

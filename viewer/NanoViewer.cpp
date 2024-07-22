@@ -318,8 +318,10 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 	glfwMakeContextCurrent(applicationContext.mainWindowHandle_);
 	glfwSwapInterval((enableVsync) ? 1 : 0);
 
-	debugDrawList_ = std::make_unique<DebugDrawList>();
-	gizmoHelper_ = std::make_unique<GizmoHelper>();
+	debugDrawList_ = std::make_shared<DebugDrawList>();
+	gizmoHelper_ = std::make_shared<GizmoHelper>();
+
+	applicationContext.setExternalDrawLists(debugDrawList_, gizmoHelper_);
 
 
 	nvmlInit();
@@ -476,10 +478,10 @@ auto NanoViewer::draw() -> void
 	glClear(GL_COLOR_BUFFER_BIT);
 	static double lastCameraUpdate = -1.f;
 
-	gizmoHelper_->clear();
 
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
+
 	ImGui::NewFrame();
 	ImGui::PushFont(applicationContext.getFontCollection().getDefaultFont());
 	// TODO: Investigate if this combination is alwys intercepted by OS
@@ -561,7 +563,7 @@ auto NanoViewer::draw() -> void
 	volumeView->draw();
 
 	dockspace->end();
-
+	gui();
 	//const ImGuiViewport* viewport = ImGui::GetMainViewport();
 	//ImGui::SetNextWindowPos(viewport->WorkPos);
 	//ImGui::SetNextWindowSize(viewport->WorkSize);
@@ -801,7 +803,7 @@ auto NanoViewer::draw() -> void
 
 	ImGui::Render();
 
-	volumeView->renderVolume(currentRenderer_.get(), &renderingData_);
+	gizmoHelper_->clear();
 		
 
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -848,6 +850,7 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 
 	dockspace = std::make_unique<Dockspace>();
 	volumeView = std::make_unique<VolumeView>(applicationContext, dockspace.get());
+	volumeView->setRenderVolume(currentRenderer_.get(), &renderingData_);
 
 	glfwMakeContextCurrent(applicationContext.mainWindowHandle_);
 
@@ -890,6 +893,8 @@ auto NanoViewer::selectRenderer(const std::uint32_t index) -> void
 
 	selectedRendererIndex_ = index;
 	currentRenderer_ = b3d::renderer::registry[selectedRendererIndex_].rendererInstance;
+
+
 
 	const auto debugInfo = b3d::renderer::DebugInitializationInfo{ debugDrawList_, gizmoHelper_ };
 

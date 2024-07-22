@@ -44,14 +44,18 @@ public:
 	};
 
 
-	auto renderVolume(b3d::renderer::RendererBase* renderer, b3d::renderer::RenderingDataWrapper* renderingData)
+	auto setRenderVolume(b3d::renderer::RendererBase* renderer, b3d::renderer::RenderingDataWrapper* renderingData)
 		-> void;
-
 
 private:
 	auto drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec2& position, const glm::vec2& size) -> void;
 	auto initializeGraphicsResources() -> void;
 	auto deinitializeGraphicsResources() -> void;
+
+	auto renderVolume() -> void;
+
+	b3d::renderer::RendererBase* renderer_{};
+	b3d::renderer::RenderingDataWrapper* renderingData_{};
 
 	Camera camera_{};
 
@@ -80,9 +84,7 @@ private:
 	GraphicsResources graphicsResources_{};
 
 	GizmoOperationFlags currentGizmoOperation_{ GizmoOperationFlagBits::none };
-	std::shared_ptr<GizmoHelper> gizmoHelper_{};
 
-	std::shared_ptr<DebugDrawList> debugDrawList_{};
 	std::unique_ptr<FullscreenTexturePass> fullscreenTexturePass_;
 	std::unique_ptr<InfinitGridPass> InfinitGridPass_{};
 	std::unique_ptr<DebugDrawPass> debugDrawPass_{};

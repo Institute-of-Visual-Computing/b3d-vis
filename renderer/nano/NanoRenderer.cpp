@@ -278,6 +278,8 @@ auto NanoRenderer::onRender() -> void
 							runtimeVolume.renormalizeScale.l);
 	}
 
+	debugInfo_.gizmoHelper->drawGizmo(volumeTransform->worldMatTRS);
+
 	const auto colorMapParams = colorMapFeature_->getParamsData();
 
 	using namespace owl::extensions;
@@ -351,7 +353,6 @@ auto NanoRenderer::onRender() -> void
 		owl2f{ foveatedRenderingParams.leftEyeGazeScreenSpace.x, foveatedRenderingParams.leftEyeGazeScreenSpace.y },
 		owl2f{ foveatedRenderingParams.rightEyeGazeScreenSpace.x, foveatedRenderingParams.rightEyeGazeScreenSpace.y }
 	};
-
 	record.start();
 	for (const auto cameraIndex : cameraIndices)
 	{
@@ -520,7 +521,7 @@ auto NanoRenderer::onGui() -> void
 
 	ImGui::Text("%1.3f", timing);
 
-	debugInfo_.gizmoHelper->drawGizmo(volumeTransform->worldMatTRS);
+	
 
 	static auto currentPath = std::filesystem::current_path();
 	static auto selectedPath = std::filesystem::path{};
