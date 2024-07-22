@@ -50,6 +50,13 @@ target_sources(viewer PRIVATE
 	framework/ModalViewBase.cpp
 	framework/ApplicationContext.h
 	framework/ApplicationContext.cpp
+	framework/ExtensionBase.h
+	framework/RendererExtensionBase.h
+	features/transferMapping/TransferMapping.h
+	features/transferMapping/TransferMapping.cpp
+	features/transferMapping/TransferMappingController.h
+	features/transferMapping/TransferMappingView.h
+	features/transferMapping/TransferMappingView.cpp
 )
 
 target_include_directories(viewer PUBLIC /)
