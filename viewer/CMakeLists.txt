@@ -6,6 +6,11 @@ find_package(glad CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 
 add_executable(viewer)
+
+IF (WIN32)
+	target_sources(viewer PRIVATE App.rc)
+ENDIF()
+
 target_sources(viewer PRIVATE
 	main.cpp
 	NanoViewer.cpp
