@@ -52,9 +52,12 @@ target_sources(viewer PRIVATE
 	framework/ApplicationContext.cpp
 	framework/ExtensionBase.h
 	framework/RendererExtensionBase.h
+	framework/UpdatableComponentBase.h
+	framework/UpdatableComponentBase.cpp
 	features/transferMapping/TransferMapping.h
 	features/transferMapping/TransferMapping.cpp
 	features/transferMapping/TransferMappingController.h
+	features/transferMapping/TransferMappingController.cpp
 	features/transferMapping/TransferMappingView.h
 	features/transferMapping/TransferMappingView.cpp
 )

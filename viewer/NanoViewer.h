@@ -66,11 +66,6 @@ private:
 	//	cudaGraphicsResource_t cudaGraphicsResource;
 	//} transferFunctionResources_;
 
-
-	b3d::renderer::RenderingDataWrapper renderingData_;
-
-	b3d::renderer::RenderMode mode_{ b3d::renderer::RenderMode::mono };
-
 	nvmlDevice_t nvmlDevice_{};
 	bool isAdmin_{ false };
 

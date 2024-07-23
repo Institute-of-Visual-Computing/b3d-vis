@@ -7,6 +7,15 @@
 #include <stb_image.h>
 
 #include <RenderData.h>
+#include "TransferMappingController.h"
+#include "framework/ApplicationContext.h";
+
+TransferMapping::TransferMapping(ApplicationContext& applicationContext) : RendererExtensionBase(applicationContext)
+{
+	transferMappingController_ = std::make_unique<TransferMappingController>(applicationContext, *this);
+	applicationContext.addUpdatableComponent(transferMappingController_.get());
+	applicationContext.addRendererExtensionComponent(this);
+}
 
 auto TransferMapping::initializeResources() -> void
 {
@@ -21,7 +30,7 @@ auto TransferMapping::initializeResources() -> void
 
 
 	auto filePath = std::filesystem::path{ "resources/colormaps" };
-	if (std::filesystem::exists(filePath / "defaultColorMap.json"))
+	assert(std::filesystem::exists(filePath / "defaultColorMap.json"));
 	{
 		colorMapResources_.colorMap = b3d::tools::colormap::load(filePath / "defaultColorMap.json");
 
@@ -46,11 +55,6 @@ auto TransferMapping::initializeResources() -> void
 		colorMapResources_.colorMapTextureExtent =
 			b3d::renderer::Extent{ static_cast<uint32_t>(x), static_cast<uint32_t>(y), 1 };
 	}
-	else
-	{
-		GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 512, 1, 0, GL_RGBA, GL_FLOAT, nullptr));
-		colorMapResources_.colorMapTextureExtent = b3d::renderer::Extent{ 512, 1, 1 };
-	}
 
 	const auto colorMapTextureName = std::string{ "ColorMap" };
 	GL_CALL(glObjectLabel(GL_TEXTURE, colorMapResources_.colorMapTexture, colorMapTextureName.length() + 1,
@@ -73,7 +77,8 @@ auto TransferMapping::initializeResources() -> void
 	auto initBufferData = std::array<float, 512>{};
 
 	std::ranges::fill(initBufferData, 1);
-	GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, 512, 1, 0, GL_RED, GL_FLOAT, initBufferData.data()));
+	GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, transferFunctionSamples, 1, 0, GL_RED, GL_FLOAT,
+						 initBufferData.data()));
 
 	const auto transferFunctionBufferName = std::string{ "TransferFunctionTexture" };
 	GL_CALL(glObjectLabel(GL_TEXTURE, transferFunctionResources_.transferFunctionTexture,
@@ -95,21 +100,31 @@ auto TransferMapping::deinitializeResources() -> void
 
 auto TransferMapping::updateRenderingData(b3d::renderer::RenderingDataWrapper& renderingData) -> void
 {
-	renderingData.data.colorMapTexture.extent = colorMapResources_.colorMapTextureExtent;
-	renderingData.data.colorMapTexture.nativeHandle = reinterpret_cast<void*>(colorMapResources_.colorMapTexture);
-	renderingData.data.colorMapTexture.target = colorMapResources_.cudaGraphicsResource;
-	renderingData.data.coloringInfo =
-		b3d::renderer::ColoringInfo{ b3d::renderer::ColoringMode::single, owl::vec4f{ 1, 1, 1, 1 },
-									 colorMapResources_.colorMap.firstColorMapYTextureCoordinate };
+	auto model = TransferMappingController::Model{ .transferFunctionGraphicsResource =
+													   transferFunctionResources_.cudaGraphicsResource,
+												   .transferFunctionSamplesCount = transferFunctionSamples };
+	if (transferMappingController_->updateModel(model))
+	{
 
-	renderingData.data.colorMapInfos =
-		b3d::renderer::ColorMapInfos{ &colorMapResources_.colorMap.colorMapNames,
-									  colorMapResources_.colorMap.colorMapCount,
-									  colorMapResources_.colorMap.firstColorMapYTextureCoordinate,
-									  colorMapResources_.colorMap.colorMapHeightNormalized };
 
-	renderingData.data.transferFunctionTexture.extent = { 512, 1, 1 };
-	renderingData.data.transferFunctionTexture.target = transferFunctionResources_.cudaGraphicsResource;
-	renderingData.data.transferFunctionTexture.nativeHandle =
-		reinterpret_cast<void*>(transferFunctionResources_.transferFunctionTexture);
+		renderingData.data.colorMapTexture.extent = colorMapResources_.colorMapTextureExtent;
+		renderingData.data.colorMapTexture.target = colorMapResources_.cudaGraphicsResource;
+		renderingData.data.coloringInfo =
+			b3d::renderer::ColoringInfo{ b3d::renderer::ColoringMode::single, owl::vec4f{ 1, 1, 1, 1 },
+										 colorMapResources_.colorMap.firstColorMapYTextureCoordinate };
+
+		renderingData.data.coloringInfo.coloringMode = model.coloringMode;
+		renderingData.data.coloringInfo.selectedColorMap = colorMapResources_.colorMap.firstColorMapYTextureCoordinate +
+			static_cast<float>(model.selectedColorMap) * colorMapResources_.colorMap.colorMapHeightNormalized;
+
+
+		renderingData.data.colorMapInfos =
+			b3d::renderer::ColorMapInfos{ &colorMapResources_.colorMap.colorMapNames,
+										  colorMapResources_.colorMap.colorMapCount,
+										  colorMapResources_.colorMap.firstColorMapYTextureCoordinate,
+										  colorMapResources_.colorMap.colorMapHeightNormalized };
+
+		renderingData.data.transferFunctionTexture.extent = { transferFunctionSamples, 1, 1 };
+		renderingData.data.transferFunctionTexture.target = transferFunctionResources_.cudaGraphicsResource;
+	}
 }

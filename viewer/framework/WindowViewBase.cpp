@@ -34,7 +34,8 @@ auto WindowViewBase::beginDraw() -> void
 	if (isOpen_)
 	{
 		auto hasCloseButton = (flags_ & WindowFlagBits::noClose) != WindowFlagBits::noClose;
-		drawContent_ = ImGui::Begin(windowId_.c_str(), hasCloseButton ? &isOpen_ : nullptr, imGuiWindowFlags_);
+		drawContent_ = ImGui::Begin(windowId_.c_str(), hasCloseButton ? &isOpen_ : nullptr,
+									imGuiWindowFlags_);
 
 		if(drawContent_)
 		{

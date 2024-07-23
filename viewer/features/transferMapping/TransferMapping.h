@@ -5,16 +5,17 @@
 #include <Common.h>
 
 #include "framework/RendererExtensionBase.h"
+#include "TransferMappingController.h"
 
-class TransferMapping : public RendererExtensionBase
+class TransferMapping final : public RendererExtensionBase
 {
 public:
-	TransferMapping(ApplicationContext& applicationContext) : RendererExtensionBase(applicationContext)
-	{
-		//applicationContext
-	}
+	TransferMapping(ApplicationContext& applicationContext);
 
 private:
+	constexpr static int transferFunctionSamples = 512;
+
+	friend TransferMappingController;
 	struct ColorMapResources
 	{
 		b3d::tools::colormap::ColorMap colorMap{};
@@ -29,8 +30,12 @@ private:
 		cudaGraphicsResource_t cudaGraphicsResource{};
 	} transferFunctionResources_{};
 
+
 public:
 	auto initializeResources() -> void override;
 	auto deinitializeResources() -> void override;
 	auto updateRenderingData(b3d::renderer::RenderingDataWrapper& renderingData) -> void override;
+
+	private:
+	std::unique_ptr<TransferMappingController> transferMappingController_{};
 };

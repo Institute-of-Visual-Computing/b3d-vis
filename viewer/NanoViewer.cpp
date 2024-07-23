@@ -37,23 +37,17 @@
 
 #include "features/transferMapping/TransferMapping.h"
 #include "framework/ApplicationContext.h"
-#include "framework/Dockspace.h"
 #include "views/VolumeView.h"
 
 using namespace owl;
 
-
 namespace
 {
 	ApplicationContext applicationContext{};
-	std::unique_ptr<Dockspace> dockspace{};
 	std::unique_ptr<VolumeView> volumeView{};
-
 	std::unique_ptr<TransferMapping> transferMapping{};
-
-
-	auto currentGizmoOperation = GizmoOperationFlags(GizmoOperationFlagBits::none);
-	auto currentGizmoMode(ImGuizmo::LOCAL);
+	b3d::renderer::RenderingDataWrapper renderingData{};
+	b3d::renderer::RenderMode mode{ b3d::renderer::RenderMode::mono };
 
 
 	[[nodiscard]] auto requestRequiredDpiScales() -> std::vector<float>
@@ -185,18 +179,6 @@ auto NanoViewer::gui() -> void
 		ImGui::SeparatorText("Debug Draw Settings");
 		ImGui::SliderFloat("Line Width", &viewerSettings.lineWidth, 1.0f, 10.0f);
 		ImGui::Separator();
-		if (ImGui::IsKeyPressed(ImGuiKey_1, false))
-		{
-			currentGizmoOperation.flip(GizmoOperationFlagBits::scale);
-		}
-		if (ImGui::IsKeyPressed(ImGuiKey_2, false))
-		{
-			currentGizmoOperation.flip(GizmoOperationFlagBits::translate);
-		}
-		if (ImGui::IsKeyPressed(ImGuiKey_3, false))
-		{
-			currentGizmoOperation.flip(GizmoOperationFlagBits::rotate);
-		}
 	}
 
 	ImGui::SeparatorText("NVML Settings");
@@ -263,9 +245,7 @@ auto NanoViewer::onFrameBegin() -> void
 
 NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, const int initWindowHeight,
 					   bool enableVsync, const int rendererIndex)
-	: renderingData_{}
 {
-
 	glfwSetErrorCallback(onGLFWErrorCallback);
 
 	glfwInit();
@@ -290,13 +270,11 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 
 	applicationContext.setExternalDrawLists(debugDrawList_, gizmoHelper_);
 
-
 	nvmlInit();
-
 
 	{
 		const auto error =
-			nvmlDeviceGetHandleByIndex(renderingData_.data.rendererInitializationInfo.deviceIndex, &nvmlDevice_);
+			nvmlDeviceGetHandleByIndex(renderingData.data.rendererInitializationInfo.deviceIndex, &nvmlDevice_);
 		assert(error == NVML_SUCCESS);
 	}
 
@@ -348,7 +326,7 @@ auto NanoViewer::draw() -> void
 
 	ImGui::NewFrame();
 	ImGui::PushFont(applicationContext.getFontCollection().getDefaultFont());
-	// TODO: Investigate if this combination is alwys intercepted by OS
+	// TODO: Investigate if this combination is always intercepted by OS
 	if (ImGui::IsKeyDown(ImGuiMod_Alt) and ImGui::IsKeyPressed(ImGuiKey_F4, false))
 	{
 		isRunning_ = false;
@@ -422,13 +400,25 @@ auto NanoViewer::draw() -> void
 
 	ImGui::EndMainMenuBar();
 
-	dockspace->begin();
+	applicationContext.getMainDockspace()->begin();
 
 	volumeView->draw();
 
-	dockspace->end();
-	gui();
-	
+	for (auto component : applicationContext.updatableComponents_)
+	{
+		component->update();
+	}
+
+	for (auto component : applicationContext.rendererExtensions_)
+	{
+		component->updateRenderingData(renderingData);
+	}
+
+
+	applicationContext.getMainDockspace()->end();
+
+	ImGui::ShowDemoWindow();
+
 	ImGui::PopFont();
 	ImGui::EndFrame();
 
@@ -474,14 +464,13 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 
 	initializeGui(applicationContext.mainWindowHandle_);
 
-
-	dockspace = std::make_unique<Dockspace>();
-	volumeView = std::make_unique<VolumeView>(applicationContext, dockspace.get());
-	volumeView->setRenderVolume(currentRenderer_.get(), &renderingData_);
+	volumeView = std::make_unique<VolumeView>(applicationContext, applicationContext.getMainDockspace());
+	volumeView->setRenderVolume(currentRenderer_.get(), &renderingData);
 
 	transferMapping = std::make_unique<TransferMapping>(applicationContext);
+	//TODO: we need a system for graphics resource initialization/deinitialization
 	transferMapping->initializeResources();
-	transferMapping->updateRenderingData(renderingData_);
+	transferMapping->updateRenderingData(renderingData);
 
 	glfwMakeContextCurrent(applicationContext.mainWindowHandle_);
 
@@ -506,6 +495,7 @@ NanoViewer::~NanoViewer()
 	}
 	nvmlShutdown();
 }
+
 auto NanoViewer::selectRenderer(const std::uint32_t index) -> void
 {
 	assert(index < b3d::renderer::registry.size());
@@ -518,12 +508,10 @@ auto NanoViewer::selectRenderer(const std::uint32_t index) -> void
 		currentRenderer_->deinitialize();
 	}
 
-
 	selectedRendererIndex_ = index;
 	currentRenderer_ = b3d::renderer::registry[selectedRendererIndex_].rendererInstance;
 
-
 	const auto debugInfo = b3d::renderer::DebugInitializationInfo{ debugDrawList_, gizmoHelper_ };
 
-	currentRenderer_->initialize(&renderingData_.buffer, debugInfo);
+	currentRenderer_->initialize(&renderingData.buffer, debugInfo);
 }

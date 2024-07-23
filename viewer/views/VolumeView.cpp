@@ -48,10 +48,6 @@ VolumeView::VolumeView(ApplicationContext& appContext, Dockspace* dockspace)
 							 WindowFlagBits::noTitleBar | WindowFlagBits::noUndocking | WindowFlagBits::hideTabBar |
 								 WindowFlagBits::noCollapse)
 {
-
-	// initializeGraphicsResources();
-
-
 	fullscreenTexturePass_ = std::make_unique<FullscreenTexturePass>();
 	InfinitGridPass_ = std::make_unique<InfinitGridPass>();
 	debugDrawPass_ = std::make_unique<DebugDrawPass>(applicationContext_->getDrawList().get());
@@ -67,7 +63,6 @@ VolumeView::~VolumeView()
 
 auto VolumeView::onDraw() -> void
 {
-
 	renderVolume();
 
 	if (ImGui::IsKeyPressed(ImGuiKey_1, false))
