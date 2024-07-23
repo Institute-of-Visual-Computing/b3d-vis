@@ -24,8 +24,6 @@
 
 #include <NanoCutterParser.h>
 
-#include "Curve.h"
-
 extern "C" char NanoOutOfCoreRenderer_ptx[];
 extern "C" uint8_t NanoOutOfCoreRenderer_optixir[];
 extern "C" uint32_t NanoOutOfCoreRenderer_optixir_length;
@@ -432,7 +430,6 @@ auto NanoRenderer::onRender() -> void
 
 auto NanoRenderer::onInitialize() -> void
 {
-	foo[0].x = ImGui::CurveTerminator;
 	RendererBase::onInitialize();
 	prepareGeometry();
 	const auto testProjectFile = std::filesystem::path{ "D:/datacubes/n4565_cut_2/project.b3d" };
@@ -537,14 +534,6 @@ auto NanoRenderer::onGui() -> void
 
 	openFileDialog_.gui();
 
-	
-	const auto size = ImGui::GetContentRegionAvail();
-
-    if (ImGui::Curve("Das editor", size, 10, foo.data(), &selectionIdx))
-    {
-        // curve changed
-    }
-    float value_you_care_about = ImGui::CurveValue(0.7f, 10, foo.data()); // calculate value at position 0.7
 
 	ImGui::End();
 

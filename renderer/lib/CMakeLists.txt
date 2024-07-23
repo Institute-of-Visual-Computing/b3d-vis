@@ -15,7 +15,7 @@ set(SHARED_HEADERS
 	NullGizmoHelper.h
 	CudaGpuTimers.h
 	OwlExtensions.h
-	"Common.h"
+	Common.h
 	RenderFeature.h
 	features/ColorMapFeature.h
 	features/ColorMapFeature.cpp
@@ -29,8 +29,6 @@ set(SHARED_HEADERS
 	features/RenderTargetFeature.h
 	features/SoFiASubregionFeature.cpp
 	features/SoFiASubregionFeature.h
-	Curve.h
-	Curve.cpp
 )
 find_package(httplib CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)

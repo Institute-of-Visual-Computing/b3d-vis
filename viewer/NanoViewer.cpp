@@ -414,6 +414,8 @@ auto NanoViewer::draw() -> void
 		component->updateRenderingData(renderingData);
 	}
 
+	// TODO: IT IS DEPRICATED AND IT WILL BE REMOVED!!!
+	currentRenderer_->gui();
 
 	applicationContext.getMainDockspace()->end();
 
