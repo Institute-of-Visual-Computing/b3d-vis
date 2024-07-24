@@ -16,6 +16,7 @@ target_link_libraries(sofia_server
 		B3D::Tools::ProjectExplorer
 		stduuid
 		NanoCutApi
+		B3D::Tools::FitsTools
 )
 
 target_include_directories(sofia_server

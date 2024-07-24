@@ -24,23 +24,42 @@ endif()
 
 set_property(TARGET NanoCutter PROPERTY FOLDER "Tools")
 
-
-
-
 add_library(NanoCutApi)
-target_sources(NanoCutApi PRIVATE
-	NanoCutApi.cpp
-	Common.h
-	FitsHelper.cpp
-	NanoGenerator.cpp
+target_sources(NanoCutApi
+	PRIVATE
+		NanoCutApi.cpp
+		Common.h
+		FitsHelper.cpp
+		NanoGenerator.cpp
 )
+
 target_link_libraries(NanoCutApi PUBLIC cfitsio OpenVDB::openvdb OpenVDB::nanovdb)
 target_compile_features(NanoCutApi PUBLIC cxx_std_20)
 target_include_directories(NanoCutApi PUBLIC include)
 
+
+add_library(FitsTools)
+target_sources(FitsTools
+	PRIVATE
+		FitsHelper.cpp
+		Common.h
+	PUBLIC
+		"fitstools/FitsTools.h"
+		FitsTools.cpp
+)
+
+target_link_libraries(FitsTools PRIVATE cfitsio)
+target_compile_features(FitsTools PUBLIC cxx_std_20)
+target_include_directories(FitsTools PUBLIC ../common/fits fitstools)
+
 if(MSVC)
 	target_compile_options(NanoCutApi PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${MSVC_CXX_COMPILER_FLAGS}>)
+	target_compile_options(FitsTools PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${MSVC_CXX_COMPILER_FLAGS}>)
 endif()
+
+add_library(B3D::Tools::FitsTools ALIAS FitsTools)
+set_property(TARGET FitsTools PROPERTY FOLDER "Tools")
+
 
 
 #find_package(Catch2 REQUIRED)

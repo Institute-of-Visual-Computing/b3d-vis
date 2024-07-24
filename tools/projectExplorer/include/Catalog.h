@@ -110,8 +110,6 @@ namespace b3d::tools::projectexplorer
 				removeMapping(guid);
 			}
 		}
-
-		auto getExternalJsonRepresentation() const -> std::string;
 		
 		std::string b3dGuidFileCatalogVersion{ "1.0.0" };
 		std::unordered_map<std::string, CatalogEntry> mappings{};

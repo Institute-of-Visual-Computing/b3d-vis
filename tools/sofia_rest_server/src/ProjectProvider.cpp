@@ -5,9 +5,9 @@
 
 #include "ProjectProvider.h"
 
-
 #include "Catalog.h"
 
+#include "FitsTools.h"
 
 auto b3d::tools::projectexplorer::ProjectProvider::saveRootCatalog() -> bool
 {
@@ -49,9 +49,17 @@ auto b3d::tools::projectexplorer::ProjectProvider::findProjectsInRootDirectory()
 				const auto data = nlohmann::json::parse(f);
 				
 				auto project = data.get<Project>();
-				
+
+				auto fitsRootPath = getRootCatalog().getFilePathAbsolute(project.fitsOriginGUID);
+				project.fitsOriginProperties = fitstools::getFitsFileInfos(fitsRootPath);
+
+
+				// Read Props for fits
+				// project.fitsOriginProperties.unit
+								
 				project.projectPathAbsolute = dirEntry.path().parent_path();
 				knownProjects.insert(std::make_pair(project.projectUUID, project));
+				saveProject(project.projectUUID);
 			}
 			catch (nlohmann::json::type_error& e)
 			{
