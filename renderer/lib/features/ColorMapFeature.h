@@ -15,8 +15,6 @@ namespace b3d::renderer
 		auto onInitialize() -> void override;
 		auto beginUpdate() -> void override;
 		auto endUpdate() -> void override;
-		auto gui() -> void override;
-		[[nodiscard]] auto hasGui() const -> bool override;
 
 		struct ParamsData
 		{
@@ -33,11 +31,6 @@ namespace b3d::renderer
 		ColorMapInfos* colorMapInfos_{nullptr};
 		ExternalTexture* colorMapTexture_{nullptr};
 		cudaTextureObject_t colorMapCudaTexture_{};
-
-		// For use with imgui only.
-		int selectedColoringMode_{ 1 };
-		// For use with imgui only.
-		int selectedColoringMap_{ 0 };
 	};
 
 } // namespace b3d::renderer

@@ -23,11 +23,12 @@ auto b3d::renderer::RenderTargetFeature::beginUpdate() -> void
 
 	// TODO: minmaxRT not considered yet
 	{
-		using namespace std::chrono_literals;
+		//TODO: Remove dead code
+		/*using namespace std::chrono_literals;
 		if (frmIdx == 1)
 		{
 			std::this_thread::sleep_for(0.6s);
-		}
+		}*/
 		
 		OWL_CUDA_CHECK(
 			cudaGraphicsMapResources(1, &renderTargets_->colorRt.target));

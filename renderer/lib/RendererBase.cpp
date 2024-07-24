@@ -36,8 +36,8 @@ auto RendererBase::deinitialize() -> void
 auto RendererBase::gui() -> void
 {
 	onGui();
-
-	ImGui::Begin("Features");
+	//TODO: IT IS DEPRICATED AND IT WILL BE REMOVED!!!
+	ImGui::Begin("[DEPRICATED] Features");
 
 	for (const auto& feature : renderFeatures_)
 	{

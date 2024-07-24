@@ -1,7 +1,7 @@
 #include "RuntimeDataSet.h"
 
-#include <filesystem>
 #include <concepts>
+#include <filesystem>
 
 #include <execution>
 #include "NanoVDB.h"
@@ -60,70 +60,135 @@ namespace
 
 	auto computeStatistics(const nanovdb::GridHandle<>& gridVolume) -> VolumeStatistics
 	{
+		auto workers = std::thread::hardware_concurrency();
+
+		auto perWorkerStatistics = std::vector<VolumeStatistics>();
+		perWorkerStatistics.resize(workers);
+		auto workerIndicies = std::vector<int>{};
+		workerIndicies.resize(workers);
+		std::iota(workerIndicies.begin(), workerIndicies.end(), 0);
+
 		const auto gridHandle = gridVolume.grid<float>();
 		const auto indexBox = gridHandle->indexBBox();
-		auto ac = gridHandle->getAccessor();
-		auto histogram = std::map<float, int>();
-		auto min = std::numeric_limits<float>::max();
-		auto max = std::numeric_limits<float>::min();
-		auto totalSamples = 0;
-		auto sum = 0.0;
 
-		auto addValueToStatistics =
-			[&](const nanovdb::Coord& coord)
-		{
-			auto leaf = ac.probeLeaf(coord);
-			if (leaf == nullptr)
-			{
-				return;
-			}
-			auto leafData = leaf->data();
-			auto value = leafData->getAvg();
-			if (!histogram.contains(value))
-			{
-				histogram[value] = 1;
-			}
-			histogram[value]++;
-			totalSamples++;
-
-			if (value < min)
-			{
-				min = value;
-			}
-
-			if (value > max)
-			{
-				max = value;
-			}
-			sum += value;
-		};
-
-		std::vector<nanovdb::Coord> ii;
+		// std::vector<nanovdb::Coord> ii;
 		std::cout << indexBox.volume() << std::endl;
-		ii.reserve(indexBox.volume());
+		auto volume = indexBox.volume();
+		/*ii.reserve(indexBox.volume());
 		for (auto i = indexBox.begin(); i != indexBox.end(); i++)
 		{
 			ii.push_back(*i);
-		}
-
-		std::for_each(std::execution::par,  ii.begin(), ii.end(), addValueToStatistics);
-
-
-		/*for (auto i = indexBox.begin(); i != indexBox.end(); i++)
-		{
-			addValueToStatistics(*i);
 		}*/
 
-		const auto average = (float)(sum / totalSamples);
+		auto perWorkerVoxels = (int)(std::ceilf((float)volume / workers));
 
-		auto halfValue = totalSamples / 2;
+
+		/*std::for_each(std::execution::par, workerIndicies.begin(), workerIndicies.end(),
+					  [&](int worker)
+					  {
+						  auto ac = gridHandle->getAccessor();
+						  auto histogram = std::map<float, int>();
+						  auto min = std::numeric_limits<float>::max();
+						  auto max = std::numeric_limits<float>::min();
+						  auto totalSamples = 0;
+						  auto sum = 0.0;
+
+						  auto addValueToStatistics = [&](const nanovdb::CoordBBox::Iterator& coord) -> void
+						  {
+							  auto leaf = ac.probeLeaf(nanovdb::Coord{ *coord });
+							  if (leaf == nullptr)
+							  {
+								  return;
+							  }
+							  auto leafData = leaf->data();
+							  auto value = leafData->getAvg();
+							  if (!histogram.contains(value))
+							  {
+								  histogram[value] = 1;
+							  }
+							  histogram[value]++;
+							  totalSamples++;
+
+							  if (value < min)
+							  {
+								  min = value;
+							  }
+
+							  if (value > max)
+							  {
+								  max = value;
+							  }
+							  sum += value;
+						  };
+
+						  auto end = indexBox.begin();
+						  auto begin = indexBox.begin();
+
+						  
+
+						  for (auto i = 0; i < (perWorkerVoxels * worker); i++)
+						  {
+							  begin++;
+							  end++;
+						  }
+						  auto rest = (perWorkerVoxels * (worker + 1)) % perWorkerVoxels;
+						  if (rest == 0)
+						  {
+							  rest = perWorkerVoxels;
+						  }
+						  for (auto i = 0; i < rest; i++)
+						  {
+							  end++;
+						  }
+						  std::for_each(std::execution::seq, begin, end,
+										addValueToStatistics);
+
+						  const auto average = (float)(sum / totalSamples);
+
+						  auto halfValue = totalSamples / 2;
+
+						  auto median = 0.0f;
+
+						  auto samplesCount = 0;
+
+
+						  for (auto& [key, value] : histogram)
+						  {
+							  if (samplesCount > halfValue)
+							  {
+								  median = key;
+								  break;
+							  }
+							  samplesCount += value;
+						  }
+
+						  perWorkerStatistics[worker] = VolumeStatistics{ .histogram = histogram,
+																		  .totalValues = totalSamples,
+																		  .min = min,
+																		  .max = max,
+																		  .average = average,
+																		  .median = median };
+					  });*/
+
+		auto totalStatistics = VolumeStatistics{};
+
+		for (auto& stat : perWorkerStatistics)
+		{
+			totalStatistics.average += stat.average;
+			totalStatistics.min = std::min(totalStatistics.min, stat.min);
+			totalStatistics.max = std::max(totalStatistics.max, stat.max);
+			totalStatistics.histogram.insert(stat.histogram.begin(), stat.histogram.end());
+			totalStatistics.totalValues += stat.totalValues;
+		}
+
+		auto halfValue = totalStatistics.totalValues / 2;
 
 		auto median = 0.0f;
 
 		auto samplesCount = 0;
 
 
-		for (auto& [key, value] : histogram)
+		for (auto& [key, value] : totalStatistics.histogram)
 		{
 			if (samplesCount > halfValue)
 			{
@@ -133,13 +198,11 @@ namespace
 			samplesCount += value;
 		}
 
-		return VolumeStatistics{ .histogram = histogram,
-								 .totalValues = totalSamples,
-								 .min = min,
-								 .max = max,
-								 .average = average,
-								 .median = median };
+		totalStatistics.average /= workers;
+
+		return totalStatistics;
 	}
+
 
 	auto createVolumeFromFile(const std::filesystem::path& file) -> NanoVdbVolume
 	{

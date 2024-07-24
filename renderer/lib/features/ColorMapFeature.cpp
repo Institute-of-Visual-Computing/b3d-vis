@@ -1,11 +1,5 @@
 #include "ColorMapFeature.h"
-
-#include <format>
 #include "Logging.h"
-
-#include "imgui.h"
-#include "imgui_internal.h"
-
 #include "owl/helper/cuda.h"
 
 void b3d::renderer::ColorMapFeature::onInitialize()
@@ -68,70 +62,6 @@ auto b3d::renderer::ColorMapFeature::endUpdate() -> void
 		OWL_CUDA_CHECK(cudaDestroyTextureObject(colorMapCudaTexture_));
 		cudaGraphicsUnmapResources(1, &colorMapTexture_->target);
 	}
-}
-auto b3d::renderer::ColorMapFeature::gui() -> void
-{
-
-	if (colorMapTexture_ != nullptr && colorMapTexture_->nativeHandle != nullptr)
-	{
-		const auto totalItems = colorMapInfos_->colorMapNames->size();
-
-		ImGui::Combo("Mode", &selectedColoringMode_, "Uniform Color\0ColorMap\0\0");
-		if (selectedColoringMode_ == 0)
-		{
-			ImGui::ColorEdit3("Uniform Color", &coloringInfo_->singleColor.x);
-		}
-		else
-		{
-
-			ImGui::SetNextItemWidth(-1);
-			if (ImGui::BeginCombo("##coloringModeSelector", "", ImGuiComboFlags_CustomPreview))
-			{
-				const auto size = ImGui::GetContentRegionAvail();
-				const auto mapItemSize = ImVec2{ size.x, 20 };
-				ImGui::Image(colorMapTexture_->nativeHandle, mapItemSize,
-							 ImVec2(0, (selectedColoringMap_ + 0.5) / static_cast<float>(totalItems)),
-							 ImVec2(1, (selectedColoringMap_ + 0.5) / static_cast<float>(totalItems)));
-
-				for (auto n = 0; n < colorMapInfos_->colorMapNames->size(); n++)
-				{
-					const auto isSelected = (selectedColoringMap_ == n);
-					if (ImGui::Selectable(std::format("##colorMap{}", n).c_str(), isSelected,
-										  ImGuiSelectableFlags_AllowOverlap, mapItemSize))
-					{
-						selectedColoringMap_ = n;
-					}
-					ImGui::SameLine(1);
-					ImGui::Image(colorMapTexture_->nativeHandle, mapItemSize,
-								 ImVec2(0, (n + 0.5) / static_cast<float>(totalItems)),
-								 ImVec2(1, (n + 0.5) / static_cast<float>(totalItems)));
-
-					if (isSelected)
-					{
-						ImGui::SetItemDefaultFocus();
-					}
-				}
-				ImGui::EndCombo();
-			}
-
-			if (ImGui::BeginComboPreview())
-			{
-				const auto size = ImGui::GetContentRegionAvail();
-				const auto mapItemSize = ImVec2{ size.x, 20 };
-				ImGui::Image(colorMapTexture_->nativeHandle, mapItemSize,
-							 ImVec2(0, selectedColoringMap_ / static_cast<float>(totalItems)),
-							 ImVec2(1, (selectedColoringMap_ + 1) / static_cast<float>(totalItems)));
-				ImGui::EndComboPreview();
-			}
-		}
-	}
-	coloringInfo_->coloringMode = selectedColoringMode_ == 0 ? ColoringMode::single : ColoringMode::colormap;
-	coloringInfo_->selectedColorMap = colorMapInfos_->firstColorMapYTextureCoordinate +
-		static_cast<float>(selectedColoringMap_) * colorMapInfos_->colorMapHeightNormalized;
-}
-auto b3d::renderer::ColorMapFeature::hasGui() const -> bool
-{
-	return true;
 }
 auto b3d::renderer::ColorMapFeature::getParamsData() -> ParamsData
 {
