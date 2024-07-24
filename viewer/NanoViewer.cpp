@@ -398,6 +398,25 @@ auto NanoViewer::draw() -> void
 		ImGui::EndMenu();
 	}
 
+	for (const auto& [label, groups] : applicationContext.menuData)
+	{
+		if (ImGui::BeginMenu(label.c_str()))
+		{
+			for (const auto& [groupLabel, items] : groups.groups)
+			{
+				if (groupLabel != "")
+				{
+					ImGui::SeparatorText(groupLabel.c_str());
+				}
+				for (auto& item : items)
+				{
+					ImGui::MenuItem(item.label.c_str());
+				}
+			}
+			ImGui::EndMenu();
+		}
+	}
+
 	ImGui::EndMainMenuBar();
 
 	applicationContext.getMainDockspace()->begin();
@@ -470,7 +489,7 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 	volumeView->setRenderVolume(currentRenderer_.get(), &renderingData);
 
 	transferMapping = std::make_unique<TransferMapping>(applicationContext);
-	//TODO: we need a system for graphics resource initialization/deinitialization
+	// TODO: we need a system for graphics resource initialization/deinitialization
 	transferMapping->initializeResources();
 	transferMapping->updateRenderingData(renderingData);
 

@@ -1,8 +1,10 @@
 #include "ApplicationContext.h"
 #include "DebugDrawList.h"
 #include "GizmoHelper.h"
-#include "framework/UpdatableComponentBase.h"
 #include "framework/Dockspace.h"
+#include "framework/UpdatableComponentBase.h"
+
+#include <algorithm>
 
 ApplicationContext::ApplicationContext()
 {
@@ -39,4 +41,19 @@ auto ApplicationContext::addUpdatableComponent(UpdatableComponentBase* component
 auto ApplicationContext::addRendererExtensionComponent(RendererExtensionBase* component) -> void
 {
 	rendererExtensions_.push_back(component);
+}
+auto ApplicationContext::addMenuAction(Action action, std::string_view menu, std::string_view label,
+									   std::optional<std::string_view> group, int sortOrderKey) -> void
+{
+	menuData[std::string{ menu }].addItem(group.value_or(""),
+										  MenuItemEntryAction{ sortOrderKey, std::string{ label } });
+}
+
+auto ApplicationContext::MenuItemEntry::addItem(std::string_view group, MenuItemEntryAction actionEntry) -> void
+{
+	auto& items = groups[std::string{ group }];
+
+	items.push_back(actionEntry);
+	std::sort(items.begin(), items.end(),
+			  [](const MenuItemEntryAction& a, const MenuItemEntryAction& b) { return a.sortKey > b.sortKey; });
 }

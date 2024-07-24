@@ -1,10 +1,14 @@
 #pragma once
 
-#include <memory>
-#include <vector>
-#include "FontCollection.h"
 #include <functional>
+#include <memory>
 #include <string_view>
+#include <variant>
+#include <vector>
+#include <map>
+#include <optional>
+
+#include "FontCollection.h"
 
 #include "framework/Dockspace.h"
 
@@ -40,9 +44,26 @@ public:
 	auto addRendererExtensionComponent(RendererExtensionBase* component) -> void;
 	auto addMenuAction(std::vector<std::string_view> menuPath, Action action) -> void;
 	auto addMenuToggle(std::vector<std::string_view> menuPath, bool& toogle) -> void;
+	auto addMenuAction(Action action, std::string_view menu, std::string_view label,
+					   std::optional<std::string_view> group = std::nullopt, int sortOrderKey = 0) -> void;
 	auto addTool(std::string_view iconLable, Action action) -> void;
-	//auto registerAsyncTasks(asyncEngine& )
+	// auto registerAsyncTasks(asyncEngine& )
 
+
+	struct MenuItemEntryAction
+	{
+		int sortKey{ 0 };
+		std::string label{};
+	};
+
+	struct MenuItemEntry
+	{
+		std::map<std::string, std::vector<MenuItemEntryAction>> groups;
+
+		auto addItem(std::string_view group, MenuItemEntryAction actionEntry) -> void;
+	};
+
+	std::map<std::string, MenuItemEntry> menuData;
 
 private:
 	FontCollection fonts_{};
@@ -50,8 +71,8 @@ private:
 	std::shared_ptr<DebugDrawList> debugDrawList_{};
 	std::shared_ptr<GizmoHelper> gizmoHelper_{};
 
-	public:
+public:
 	std::vector<UpdatableComponentBase*> updatableComponents_{};
 	std::vector<RendererExtensionBase*> rendererExtensions_{};
-	std::unique_ptr<Dockspace> mainDockspace_{nullptr};
+	std::unique_ptr<Dockspace> mainDockspace_{ nullptr };
 };
