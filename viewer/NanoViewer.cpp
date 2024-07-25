@@ -36,6 +36,7 @@
 #include "GizmoOperationFlags.h"
 
 #include "features/transferMapping/TransferMapping.h"
+#include "features/projectExplorer/ProjectExplorer.h"
 #include "framework/ApplicationContext.h"
 #include "framework/MenuBar.h"
 #include "views/VolumeView.h"
@@ -47,6 +48,7 @@ namespace
 	ApplicationContext applicationContext{};
 	std::unique_ptr<VolumeView> volumeView{};
 	std::unique_ptr<TransferMapping> transferMapping{};
+	std::unique_ptr<ProjectExplorer> projectExplorer{};
 	std::unique_ptr<MenuBar> mainMenu{};
 	b3d::renderer::RenderingDataWrapper renderingData{};
 	b3d::renderer::RenderMode mode{ b3d::renderer::RenderMode::mono };
@@ -391,6 +393,7 @@ auto NanoViewer::draw() -> void
 		ImGui::EndMenu();
 	}
 	ImGui::EndMainMenuBar();
+
 	mainMenu->draw();
 
 	applicationContext.getMainDockspace()->begin();
@@ -466,6 +469,8 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 	// TODO: we need a system for graphics resource initialization/deinitialization
 	transferMapping->initializeResources();
 	transferMapping->updateRenderingData(renderingData);
+
+	projectExplorer = std::make_unique<ProjectExplorer>(applicationContext);
 
 	mainMenu = std::make_unique<MenuBar>(applicationContext);
 

@@ -68,6 +68,9 @@ target_sources(viewer PRIVATE
 	features/transferMapping/TransferMappingView.h
 	features/transferMapping/TransferMappingView.cpp
 	features/projectExplorer/ProjectExplorer.h
+	features/projectExplorer/ProjectExplorer.cpp
+	features/projectExplorer/ProjectSelectionView.h
+	features/projectExplorer/ProjectSelectionView.cpp
 )
 
 target_include_directories(viewer PUBLIC /)
