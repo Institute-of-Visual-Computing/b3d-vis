@@ -10,7 +10,7 @@ enum class ModalType
 	okCancel
 };
 
-class ModalViewBase : public WindowViewBase
+class ModalViewBase
 {
 public:
 	ModalViewBase(ApplicationContext& appContext, const std::string_view name, const ModalType modalType);
@@ -19,11 +19,15 @@ public:
 	{
 		onSubmitCallback_ = callback;
 	}
+	auto open() -> void;
 
 	auto draw() -> void;
 	auto reset() -> void;
 
 protected:
+
+	virtual auto onDraw() -> void = 0;
+
 	auto block() noexcept -> void
 	{
 		blockSubmit_ = true;
@@ -42,14 +46,12 @@ protected:
 	auto submit() -> void;
 
 private:
-	auto requestClose() -> void
-	{
-		closeRequested_ = true;
-	}
 
 	bool blockSubmit_{ true };
-	bool closeRequested_{ false };
+	bool isOpenRequested_{ false };
 
 	std::function<void(void)> onSubmitCallback_{};
 	ModalType modalType_{};
+
+	std::string id_{};
 };

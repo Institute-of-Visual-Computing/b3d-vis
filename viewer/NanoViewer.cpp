@@ -349,11 +349,6 @@ auto NanoViewer::draw() -> void
 			connectView.reset();
 		}
 
-		if (ImGui::MenuItem(ICON_LC_LOG_OUT " Quit", "Alt+F4", nullptr))
-		{
-			isRunning_ = false;
-		}
-
 		ImGui::EndMenu();
 	}
 
@@ -473,6 +468,8 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 	transferMapping->updateRenderingData(renderingData);
 
 	mainMenu = std::make_unique<MenuBar>(applicationContext);
+
+	applicationContext.addMenuAction([&]() { isRunning_ = false; }, "Program", "Quit", "Alt+F4", std::nullopt, 100);
 
 	glfwMakeContextCurrent(applicationContext.mainWindowHandle_);
 

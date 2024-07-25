@@ -67,5 +67,5 @@ auto ApplicationContext::MenuItemEntry::addItem(std::string_view group, MenuItem
 
 	items.push_back(actionEntry);
 	std::sort(items.begin(), items.end(),
-			  [](const MenuItemEntryAction& a, const MenuItemEntryAction& b) { return a.sortKey > b.sortKey; });
+			  [](const MenuItemEntryAction& a, const MenuItemEntryAction& b) { return a.sortKey < b.sortKey; });
 }

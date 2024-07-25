@@ -57,6 +57,7 @@ public:
 	auto addMenuToggleAction(bool& toggleValue, ToggleAction onToggleChanged, std::string_view menu,
 							 std::string_view label, std::optional<std::string_view> shortcut = std::nullopt,
 							 std::optional<std::string_view> group = std::nullopt, int sortOrderKey = 0) -> void;
+	auto addTrayIcon(std::string_view icon, std::string_view toolTip) -> void;
 	auto addTool(std::string_view iconLable, Action action) -> void;
 	// auto registerAsyncTasks(asyncEngine& )
 

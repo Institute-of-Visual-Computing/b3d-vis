@@ -59,12 +59,15 @@ target_sources(viewer PRIVATE
 	framework/RendererExtensionBase.h
 	framework/UpdatableComponentBase.h
 	framework/UpdatableComponentBase.cpp
+	framework/MenuBar.h
+	framework/MenuBar.cpp
 	features/transferMapping/TransferMapping.h
 	features/transferMapping/TransferMapping.cpp
 	features/transferMapping/TransferMappingController.h
 	features/transferMapping/TransferMappingController.cpp
 	features/transferMapping/TransferMappingView.h
 	features/transferMapping/TransferMappingView.cpp
+	features/projectExplorer/ProjectExplorer.h
 )
 
 target_include_directories(viewer PUBLIC /)
