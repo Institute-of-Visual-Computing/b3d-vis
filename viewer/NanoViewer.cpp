@@ -37,6 +37,7 @@
 
 #include "features/transferMapping/TransferMapping.h"
 #include "framework/ApplicationContext.h"
+#include "framework/MenuBar.h"
 #include "views/VolumeView.h"
 
 using namespace owl;
@@ -46,6 +47,7 @@ namespace
 	ApplicationContext applicationContext{};
 	std::unique_ptr<VolumeView> volumeView{};
 	std::unique_ptr<TransferMapping> transferMapping{};
+	std::unique_ptr<MenuBar> mainMenu{};
 	b3d::renderer::RenderingDataWrapper renderingData{};
 	b3d::renderer::RenderMode mode{ b3d::renderer::RenderMode::mono };
 
@@ -362,10 +364,6 @@ auto NanoViewer::draw() -> void
 		{
 		}
 
-		if (ImGui::MenuItem("Transfer Function", nullptr, nullptr))
-		{
-		}
-
 		ImGui::EndMenu();
 	}
 
@@ -397,27 +395,8 @@ auto NanoViewer::draw() -> void
 		ImGui::MenuItem("About", nullptr, nullptr);
 		ImGui::EndMenu();
 	}
-
-	for (const auto& [label, groups] : applicationContext.menuData)
-	{
-		if (ImGui::BeginMenu(label.c_str()))
-		{
-			for (const auto& [groupLabel, items] : groups.groups)
-			{
-				if (groupLabel != "")
-				{
-					ImGui::SeparatorText(groupLabel.c_str());
-				}
-				for (auto& item : items)
-				{
-					ImGui::MenuItem(item.label.c_str());
-				}
-			}
-			ImGui::EndMenu();
-		}
-	}
-
 	ImGui::EndMainMenuBar();
+	mainMenu->draw();
 
 	applicationContext.getMainDockspace()->begin();
 
@@ -492,6 +471,8 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 	// TODO: we need a system for graphics resource initialization/deinitialization
 	transferMapping->initializeResources();
 	transferMapping->updateRenderingData(renderingData);
+
+	mainMenu = std::make_unique<MenuBar>(applicationContext);
 
 	glfwMakeContextCurrent(applicationContext.mainWindowHandle_);
 

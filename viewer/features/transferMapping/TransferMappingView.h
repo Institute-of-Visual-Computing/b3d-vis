@@ -2,9 +2,9 @@
 
 #include "framework/DockableWindowViewBase.h"
 
+#include <owl/common.h>
 #include <string>
 #include <vector>
-#include <owl/common.h>
 
 class TransferMappingView final : public DockableWindowViewBase
 {
@@ -12,7 +12,7 @@ public:
 	TransferMappingView(ApplicationContext& appContext, Dockspace* dockspace);
 
 	[[nodiscard]] auto resampleData(int samplesCount) -> std::vector<float>;
-	
+
 	auto hasNewDataAvailable() const -> bool
 	{
 		return newDataAvailable_;
@@ -33,8 +33,8 @@ public:
 	{
 		return selectedColoringMap_;
 	}
-	
-	private:
+
+private:
 	auto onDraw() -> void override;
 	std::vector<ImVec2> dataPoints_;
 

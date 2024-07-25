@@ -42,11 +42,23 @@ auto ApplicationContext::addRendererExtensionComponent(RendererExtensionBase* co
 {
 	rendererExtensions_.push_back(component);
 }
+
 auto ApplicationContext::addMenuAction(Action action, std::string_view menu, std::string_view label,
-									   std::optional<std::string_view> group, int sortOrderKey) -> void
+									   std::optional<std::string_view> shortcut, std::optional<std::string_view> group,
+									   int sortOrderKey) -> void
 {
 	menuData[std::string{ menu }].addItem(group.value_or(""),
-										  MenuItemEntryAction{ sortOrderKey, std::string{ label } });
+										  MenuItemEntryAction{ sortOrderKey, std::string{ label }, action, shortcut });
+}
+
+auto ApplicationContext::addMenuToggleAction(bool& toggleValue, ToggleAction onToggleChanged, std::string_view menu,
+											 std::string_view label, std::optional<std::string_view> shortcut,
+											 std::optional<std::string_view> group, int sortOrderKey) -> void
+{
+	menuData[std::string{ menu }].addItem(group.value_or(""),
+										  MenuItemEntryAction{ sortOrderKey, std::string{ label },
+															   ToggleEntryAction{ &toggleValue, onToggleChanged },
+															   shortcut });
 }
 
 auto ApplicationContext::MenuItemEntry::addItem(std::string_view group, MenuItemEntryAction actionEntry) -> void

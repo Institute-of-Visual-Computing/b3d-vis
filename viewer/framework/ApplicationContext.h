@@ -1,12 +1,12 @@
 #pragma once
 
 #include <functional>
+#include <map>
 #include <memory>
+#include <optional>
 #include <string_view>
 #include <variant>
 #include <vector>
-#include <map>
-#include <optional>
 
 #include "FontCollection.h"
 
@@ -18,7 +18,16 @@ class GizmoHelper;
 class UpdatableComponentBase;
 class RendererExtensionBase;
 
+namespace std_help
+{
+	template <class... Ts>
+	struct overloaded : Ts...
+	{
+		using Ts::operator()...;
+	};
+} // namespace std_help
 using Action = std::function<void(void)>;
+using ToggleAction = std::function<void(bool)>;
 
 class ApplicationContext final
 {
@@ -42,18 +51,30 @@ public:
 
 	auto addUpdatableComponent(UpdatableComponentBase* component) -> void;
 	auto addRendererExtensionComponent(RendererExtensionBase* component) -> void;
-	auto addMenuAction(std::vector<std::string_view> menuPath, Action action) -> void;
-	auto addMenuToggle(std::vector<std::string_view> menuPath, bool& toogle) -> void;
 	auto addMenuAction(Action action, std::string_view menu, std::string_view label,
+					   std::optional<std::string_view> shortcut = std::nullopt,
 					   std::optional<std::string_view> group = std::nullopt, int sortOrderKey = 0) -> void;
+	auto addMenuToggleAction(bool& toggleValue, ToggleAction onToggleChanged, std::string_view menu,
+							 std::string_view label, std::optional<std::string_view> shortcut = std::nullopt,
+							 std::optional<std::string_view> group = std::nullopt, int sortOrderKey = 0) -> void;
 	auto addTool(std::string_view iconLable, Action action) -> void;
 	// auto registerAsyncTasks(asyncEngine& )
 
+
+	struct ToggleEntryAction
+	{
+		bool* value;
+		ToggleAction onChangeAction;
+	};
+
+	using ActionHolder = std::variant<ToggleEntryAction, Action>;
 
 	struct MenuItemEntryAction
 	{
 		int sortKey{ 0 };
 		std::string label{};
+		ActionHolder action;
+		std::optional<std::string_view> shortcut{};
 	};
 
 	struct MenuItemEntry
