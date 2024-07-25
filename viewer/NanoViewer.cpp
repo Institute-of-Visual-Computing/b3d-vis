@@ -35,11 +35,13 @@
 
 #include "GizmoOperationFlags.h"
 
-#include "features/transferMapping/TransferMapping.h"
 #include "features/projectExplorer/ProjectExplorer.h"
+#include "features/transferMapping/TransferMapping.h"
 #include "framework/ApplicationContext.h"
 #include "framework/MenuBar.h"
 #include "views/VolumeView.h"
+
+#include <imspinner.h>
 
 using namespace owl;
 
@@ -473,6 +475,70 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 	projectExplorer = std::make_unique<ProjectExplorer>(applicationContext);
 
 	mainMenu = std::make_unique<MenuBar>(applicationContext);
+
+
+	// TODO: Move this to server connection feature
+	static bool isServerConnected = false;
+
+	applicationContext.addMenuBarTray(
+		[&]()
+		{
+			auto color = isServerConnected ? ImVec4{ 0.1, 0.5, 0.1, 1.0 } : ImVec4{ 0.5, 0.1, 0.1, 1.0 };
+
+			ImGui::PushStyleColor(ImGuiCol_Button, color);
+			if (ImGui::Button(ICON_LC_SERVER))
+			{
+				isServerConnected = !isServerConnected;
+			}
+			ImGui::PopStyleColor();
+
+			if (ImGui::IsItemHovered())
+			{
+				if (ImGui::BeginTooltip())
+				{
+					ImGui::Text("Setup Server Connection...");
+					ImGui::EndTooltip();
+				}
+			}
+
+
+
+			const auto sampleRequest = std::vector<std::string>
+			{
+				"Ready: SoFiA search [10, 30, 50] [20, 40, 100]",
+				"Pending: SoFiA search [110, 130, 150] [120, 140, 1100]",
+				"Pending: SoFiA search [210, 230, 250] [220, 240, 2100]",
+			};
+
+
+			ImGui::SameLine();
+			ImGui::SetNextItemAllowOverlap();
+			auto h = ImGui::GetItemRectSize().y;
+			const auto pos = ImGui::GetCursorPos();
+			ImGui::Button("##requestQueue", ImVec2(32, 32));
+			if (ImGui::IsItemHovered())
+			{
+				if (ImGui::BeginTooltip())
+				{
+					ImGui::SetNextItemOpen(true);
+					if (ImGui::TreeNode("Server Requests"))
+					{
+
+						for (const auto& item : sampleRequest)
+						{
+							ImGui::BulletText(item.c_str());
+						}
+						ImGui::TreePop();
+					}
+					ImGui::EndTooltip();		
+				}
+
+			}
+
+			ImGui::SetCursorPos( pos + ImGui::GetStyle().ItemInnerSpacing);
+			ImSpinner::SpinnerRotateSegments("abs", 10, 3.0f);
+		});
+
 
 	applicationContext.addMenuAction([&]() { isRunning_ = false; }, "Program", "Quit", "Alt+F4", std::nullopt, 100);
 

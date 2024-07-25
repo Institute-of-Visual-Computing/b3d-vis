@@ -48,5 +48,20 @@ auto MenuBar::draw() -> void
 			ImGui::EndMenu();
 		}
 	}
+
+	if (!applicationContext_->trayCallbacks.empty())
+	{
+		ImGui::Spacing();
+		ImGui::SameLine(ImGui::GetWindowWidth() - 100);
+
+
+		for (auto& callback : applicationContext_->trayCallbacks)
+		{
+			callback();
+			ImGui::SameLine();
+		}
+	}
+
+
 	ImGui::EndMainMenuBar();
 }

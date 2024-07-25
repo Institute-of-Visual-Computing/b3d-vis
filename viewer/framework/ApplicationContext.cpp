@@ -61,6 +61,11 @@ auto ApplicationContext::addMenuToggleAction(bool& toggleValue, ToggleAction onT
 															   shortcut });
 }
 
+auto ApplicationContext::addMenuBarTray(Action trayDrawCallback) -> void
+{
+	trayCallbacks.push_back(trayDrawCallback);
+}
+
 auto ApplicationContext::MenuItemEntry::addItem(std::string_view group, MenuItemEntryAction actionEntry) -> void
 {
 	auto& items = groups[std::string{ group }];

@@ -96,6 +96,7 @@ target_link_libraries(viewer
 	B3D::Tools::ColorMap
 	${CUDA_nvml_LIBRARY}
 	imcurve_modefied
+	imspinner
 )
 
 option(ENABLE_NANO_PROFILE "Enables Tracy profiling" OFF)
