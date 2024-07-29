@@ -31,6 +31,7 @@
 
 #include "views/ServerConnectSettingsView.h"
 
+#include <format>
 #include <string_view>
 
 #include "GizmoOperationFlags.h"
@@ -486,7 +487,7 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 			auto color = isServerConnected ? ImVec4{ 0.1, 0.5, 0.1, 1.0 } : ImVec4{ 0.5, 0.1, 0.1, 1.0 };
 
 			ImGui::PushStyleColor(ImGuiCol_Button, color);
-			if (ImGui::Button(ICON_LC_SERVER))
+			if (ImGui::Button(isServerConnected ? ICON_LC_SERVER : ICON_LC_SERVER_OFF))
 			{
 				isServerConnected = !isServerConnected;
 			}
@@ -502,20 +503,53 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 			}
 
 
-
-			const auto sampleRequest = std::vector<std::string>
-			{
+			const auto sampleRequest = std::vector<std::string>{
 				"Ready: SoFiA search [10, 30, 50] [20, 40, 100]",
 				"Pending: SoFiA search [110, 130, 150] [120, 140, 1100]",
 				"Pending: SoFiA search [210, 230, 250] [220, 240, 2100]",
 			};
 
+			enum class RequestStatus
+			{
+				pending,
+				ready
+			};
+
+			struct Request
+			{
+				int progress{};
+				std::string label;
+				RequestStatus status{ RequestStatus::pending };
+			};
+
+			static auto actualRequests = std::vector<Request>{};
+
+			auto hasPendingRequests = false;
+			// update fake requests
+			for (auto& request : actualRequests)
+			{
+				request.progress++;
+				if (request.progress >= 1000)
+				{
+					request.status = RequestStatus::ready;
+				}
+				else
+				{
+					hasPendingRequests = true;
+				}
+			}
+
 
 			ImGui::SameLine();
 			ImGui::SetNextItemAllowOverlap();
-			auto h = ImGui::GetItemRectSize().y;
 			const auto pos = ImGui::GetCursorPos();
-			ImGui::Button("##requestQueue", ImVec2(32, 32));
+			const auto spinnerRadius = ImGui::GetFontSize() * 0.25f;
+			const auto itemWidth = ImGui::GetStyle().FramePadding.x * 2 + spinnerRadius * 4;
+			if (ImGui::Button("##requestQueue", ImVec2(itemWidth, 32)))
+			{
+				const auto requestIndex = rand() % sampleRequest.size();
+				actualRequests.push_back(Request{ .label = sampleRequest[requestIndex] });
+			}
 			if (ImGui::IsItemHovered())
 			{
 				if (ImGui::BeginTooltip())
@@ -524,19 +558,30 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 					if (ImGui::TreeNode("Server Requests"))
 					{
 
-						for (const auto& item : sampleRequest)
+						for (const auto& item : actualRequests)
 						{
-							ImGui::BulletText(item.c_str());
+							ImGui::BulletText(std::format("{}: {}",
+														  item.status == RequestStatus::pending ? "Pending" : "Ready",
+														  item.label)
+												  .c_str());
 						}
 						ImGui::TreePop();
 					}
-					ImGui::EndTooltip();		
+					ImGui::EndTooltip();
 				}
-
 			}
 
-			ImGui::SetCursorPos( pos + ImGui::GetStyle().ItemInnerSpacing);
-			ImSpinner::SpinnerRotateSegments("abs", 10, 3.0f);
+			if (hasPendingRequests)
+			{
+				ImGui::SetCursorPos(pos + ImGui::GetStyle().FramePadding*2);
+				ImSpinner::SpinnerRotateSegments("abs", spinnerRadius, 2.0f);
+			}
+			else
+			{
+				const auto offset = (itemWidth - ImGui::CalcTextSize(ICON_LC_CIRCLE_CHECK).x) * 0.5f;
+				ImGui::SetCursorPos(pos + ImVec2(offset, 0));
+				ImGui::Text(ICON_LC_CIRCLE_CHECK);
+			}
 		});
 
 
