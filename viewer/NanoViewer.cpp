@@ -29,7 +29,6 @@
 
 #include <boost/process.hpp>
 
-#include "views/ServerConnectSettingsView.h"
 
 #include <format>
 #include <string_view>
@@ -38,6 +37,7 @@
 
 #include "features/projectExplorer/ProjectExplorer.h"
 #include "features/transferMapping/TransferMapping.h"
+#include "features/serverConnect/ServerConnectSettingsView.h"
 #include "framework/ApplicationContext.h"
 #include "framework/MenuBar.h"
 #include "views/VolumeView.h"
@@ -402,6 +402,7 @@ auto NanoViewer::draw() -> void
 	applicationContext.getMainDockspace()->begin();
 
 	volumeView->draw();
+	connectView.draw();
 
 	for (auto component : applicationContext.updatableComponents_)
 	{

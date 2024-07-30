@@ -13,7 +13,8 @@ enum class ModalType
 class ModalViewBase
 {
 public:
-	ModalViewBase(ApplicationContext& appContext, const std::string_view name, const ModalType modalType);
+	ModalViewBase(ApplicationContext& applicationContext, const std::string_view name,
+				  const ModalType modalType = ModalType::okCancel, const ImVec2& minSize = ImVec2{ 0, 0 });
 
 	auto setOnSubmit(std::function<void(void)> callback) -> void
 	{
@@ -25,7 +26,6 @@ public:
 	auto reset() -> void;
 
 protected:
-
 	virtual auto onDraw() -> void = 0;
 
 	auto block() noexcept -> void
@@ -45,8 +45,9 @@ protected:
 
 	auto submit() -> void;
 
-private:
+	ApplicationContext* applicationContext_{ nullptr };
 
+private:
 	bool blockSubmit_{ true };
 	bool isOpenRequested_{ false };
 
@@ -54,4 +55,5 @@ private:
 	ModalType modalType_{};
 
 	std::string id_{};
+	ImVec2 minSize_{ 0, 0 };
 };

@@ -32,8 +32,6 @@ target_sources(viewer PRIVATE
 	Camera.h
 	CameraManipulator.h
 	InteropUtils.h
-	views/ServerConnectSettingsView.h
-	views/ServerConnectSettingsView.cpp
 	views/VolumeView.h
 	views/VolumeView.cpp
 	views/ServerConnectView.h
@@ -71,6 +69,11 @@ target_sources(viewer PRIVATE
 	features/projectExplorer/ProjectExplorer.cpp
 	features/projectExplorer/ProjectSelectionView.h
 	features/projectExplorer/ProjectSelectionView.cpp
+	features/serverConnect/ServerConnect.h
+	features/serverConnect/ServerConnectView.h
+	features/serverConnect/ServerConnectView.cpp
+	features/serverConnect/ServerConnectSettingsView.h
+	features/serverConnect/ServerConnectSettingsView.cpp
 )
 
 target_include_directories(viewer PUBLIC /)

@@ -4,9 +4,10 @@
 
 #include <format>
 
-ModalViewBase::ModalViewBase(ApplicationContext& appContext, const std::string_view name,
-							 const ModalType modalType = ModalType::okCancel)
-	: modalType_{ modalType }, id_{ std::format("{}###modal{}", name, IdGenerator::next()) }
+ModalViewBase::ModalViewBase(ApplicationContext& applicationContext, const std::string_view name,
+							 const ModalType modalType, const ImVec2& minSize)
+	: applicationContext_{ &applicationContext }, modalType_{ modalType },
+	  id_{ std::format("{}###modal{}", name, IdGenerator::next()) }, minSize_{ minSize }
 {
 }
 
@@ -24,7 +25,8 @@ auto ModalViewBase::draw() -> void
 	}
 	ImVec2 center = ImGui::GetMainViewport()->GetCenter();
 	ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-	//ImGui::OpenPopup(id_.c_str());
+	ImGui::SetNextWindowSizeConstraints(minSize_, ImVec2{ INFINITY, -1.0 });
+	// ImGui::OpenPopup(id_.c_str());
 	if (ImGui::BeginPopupModal(id_.c_str(), NULL, ImGuiWindowFlags_AlwaysAutoResize))
 	{
 
