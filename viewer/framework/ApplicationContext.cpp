@@ -38,6 +38,12 @@ auto ApplicationContext::addUpdatableComponent(UpdatableComponentBase* component
 	updatableComponents_.push_back(component);
 }
 
+auto ApplicationContext::removeUpdatableComponent(UpdatableComponentBase* component) -> void
+{
+	//std::remove(updatableComponents_.begin(), updatableComponents_.end(), component);
+	std::erase(updatableComponents_, component);
+}
+
 auto ApplicationContext::addRendererExtensionComponent(RendererExtensionBase* component) -> void
 {
 	rendererExtensions_.push_back(component);

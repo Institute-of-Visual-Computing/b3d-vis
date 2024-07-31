@@ -74,6 +74,9 @@ target_sources(viewer PRIVATE
 	features/serverConnect/ServerConnectView.cpp
 	features/serverConnect/ServerConnectSettingsView.h
 	features/serverConnect/ServerConnectSettingsView.cpp
+	features/serverConnect/ServerConnectionDescription.h
+	features/serverConnect/ServerAddEditView.h
+	features/serverConnect/ServerAddEditView.cpp
 )
 
 target_include_directories(viewer PUBLIC /)

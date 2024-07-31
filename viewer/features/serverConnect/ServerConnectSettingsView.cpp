@@ -1,6 +1,7 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 
 #include "ServerConnectSettingsView.h"
+#include "ServerAddEditView.h"
 
 #include <array>
 #include <format>
@@ -20,6 +21,11 @@ namespace
 											 { "192.168.0.1" },
 											 { "very long server name 192.168.0.1:9999" } };
 	std::array<bool, 2> selected = { false, false };
+
+	auto updateServerConnection()
+	{
+	
+	}
 } // namespace
 
 ServerConnectSettingsView::ServerConnectSettingsView(ApplicationContext& appContext, std::string_view name,
@@ -27,6 +33,7 @@ ServerConnectSettingsView::ServerConnectSettingsView(ApplicationContext& appCont
 	: ModalViewBase(appContext, name, ModalType::okCancel, ImVec2(40 * ImGui::GetFontSize(), 10 * ImGui::GetFontSize()))
 {
 	setOnSubmit(onSubmitCallback);
+	addEditView_ = std::make_unique<ServerAddEditView>(appContext, "Add Edit", ::updateServerConnection);
 }
 
 auto ServerConnectSettingsView::onDraw() -> void
@@ -144,7 +151,11 @@ auto ServerConnectSettingsView::onDraw() -> void
 	}
 	ImGui::EndChild();
 
-	ImGui::Button("Add...");
+	if (ImGui::Button("Add..."))
+	{
+		//applicationContext_->addUpdatableComponent(addEditView_.get());
+		addEditView_->open();
+	}
 	ImGui::SameLine();
 	ImGui::Button("Edit...");
 	ImGui::SameLine();
@@ -156,4 +167,6 @@ auto ServerConnectSettingsView::onDraw() -> void
 	{
 		unblock();
 	}
+
+	addEditView_->draw();
 }

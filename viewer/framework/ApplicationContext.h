@@ -50,6 +50,8 @@ public:
 	[[nodiscard]] auto getMainDockspace() -> Dockspace*;
 
 	auto addUpdatableComponent(UpdatableComponentBase* component) -> void;
+	auto removeUpdatableComponent(UpdatableComponentBase* component) -> void;
+
 	auto addRendererExtensionComponent(RendererExtensionBase* component) -> void;
 	auto addMenuAction(Action action, std::string_view menu, std::string_view label,
 					   std::optional<std::string_view> shortcut = std::nullopt,

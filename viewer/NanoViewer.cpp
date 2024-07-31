@@ -409,6 +409,11 @@ auto NanoViewer::draw() -> void
 		component->update();
 	}
 
+	/*for (auto component : applicationContext.drawableComponents_)
+	{
+		component->draw();
+	}*/
+
 	for (auto component : applicationContext.rendererExtensions_)
 	{
 		component->updateRenderingData(renderingData);
