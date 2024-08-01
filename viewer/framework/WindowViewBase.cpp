@@ -7,7 +7,7 @@
 
 
 WindowViewBase::WindowViewBase(ApplicationContext& appContext, const std::string_view name, const WindowFlags flags)
-	: flags_{ flags }, applicationContext_{ &appContext }
+	: applicationContext_{ &appContext }, flags_{ flags }
 {
 
 	windowId_ = std::format("{}##{}", name, IdGenerator::next());
@@ -23,8 +23,7 @@ WindowViewBase::WindowViewBase(ApplicationContext& appContext, const std::string
 	}
 	if ((flags_ & WindowFlagBits::noDocking) == WindowFlagBits::noDocking)
 	{
-		windowClass_.DockNodeFlagsOverrideSet =
-			ImGuiDockNodeFlags_NoDockingSplitOther | ImGuiDockNodeFlags_NoDocking;
+		windowClass_.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoDockingSplitOther | ImGuiDockNodeFlags_NoDocking;
 	}
 	if ((flags_ & WindowFlagBits::autoResize) == WindowFlagBits::autoResize)
 	{
@@ -38,10 +37,9 @@ auto WindowViewBase::beginDraw() -> void
 	if (isOpen_)
 	{
 		auto hasCloseButton = (flags_ & WindowFlagBits::noClose) != WindowFlagBits::noClose;
-		drawContent_ = ImGui::Begin(windowId_.c_str(), hasCloseButton ? &isOpen_ : nullptr,
-									imGuiWindowFlags_);
+		drawContent_ = ImGui::Begin(windowId_.c_str(), hasCloseButton ? &isOpen_ : nullptr, imGuiWindowFlags_);
 
-		if(drawContent_)
+		if (drawContent_)
 		{
 			const auto viewportSize = ImGui::GetContentRegionAvail();
 			if ((viewportSize.x != viewportSize_.x) || (viewportSize.y != viewportSize_.y))

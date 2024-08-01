@@ -2,55 +2,72 @@
 
 #include "ServerConnectSettingsView.h"
 #include "ServerAddEditView.h"
-
-#include <array>
-#include <format>
-#include <vector>
-
 #include "framework/ApplicationContext.h"
 
 #include <IconsLucide.h>
 
+#include <format>
+#include <vector>
+
+#include "imspinner.h"
+
 namespace
 {
-	struct ServerSelection
+	/*struct ServerSelection
 	{
 		std::string name;
 	};
 	std::vector<ServerSelection> servers = { { "localhost" },
 											 { "192.168.0.1" },
 											 { "very long server name 192.168.0.1:9999" } };
-	std::array<bool, 2> selected = { false, false };
-
-	auto updateServerConnection()
-	{
-	
-	}
+	*/
+	auto counter = 0;
+	auto startTestConnection = false;
 } // namespace
 
-ServerConnectSettingsView::ServerConnectSettingsView(ApplicationContext& appContext, std::string_view name,
-													 std::function<void(void)> onSubmitCallback)
+ServerConnectSettingsView::ServerConnectSettingsView(ApplicationContext& appContext, const std::string_view name,
+													 const std::function<void(ModalViewBase*)>& onSubmitCallback)
 	: ModalViewBase(appContext, name, ModalType::okCancel, ImVec2(40 * ImGui::GetFontSize(), 10 * ImGui::GetFontSize()))
 {
 	setOnSubmit(onSubmitCallback);
-	addEditView_ = std::make_unique<ServerAddEditView>(appContext, "Add Edit", ::updateServerConnection);
+	addServerView_ = std::make_unique<ServerAddEditView>(
+		appContext, "Add Server",
+		[](ModalViewBase* self)
+		{ reinterpret_cast<ServerAddEditView*>(self)->setModel(ServerConnectionDescription{}); },
+		[&](ModalViewBase* self)
+		{
+			const auto model = reinterpret_cast<ServerAddEditView*>(self)->model();
+			applicationContext_->settings_.configuredServerSettings_.push_back(model);
+			selectedItem_ = applicationContext_->settings_.configuredServerSettings_.size() - 1;
+		});
+	editServerView_ = std::make_unique<ServerAddEditView>(
+		appContext, "Edit Server",
+		[&](ModalViewBase* self)
+		{
+			reinterpret_cast<ServerAddEditView*>(self)->setModel(
+				applicationContext_->settings_.configuredServerSettings_[selectedItem_]);
+		},
+		[&](ModalViewBase* self)
+		{
+			const auto model = reinterpret_cast<ServerAddEditView*>(self)->model();
+			applicationContext_->settings_.configuredServerSettings_[selectedItem_] = model;
+		});
 }
 
 auto ServerConnectSettingsView::onDraw() -> void
 {
-	static auto selectedItem = 0;
-	ImGuiStyle& style = ImGui::GetStyle();
-	float window_visible_x2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
-	const auto itemSize = ImVec2{ 200, 200 };
-	const auto padding = 10;
+	const auto& style = ImGui::GetStyle();
+	const auto windowVisibleX2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+	constexpr auto itemSize = ImVec2{ 200, 200 };
 
 	ImGui::BeginChild("##servers", ImVec2{ 0, 300 }, ImGuiChildFlags_Border, ImGuiWindowFlags_AlwaysVerticalScrollbar);
 	auto pos = ImGui::GetCursorPos();
-	auto s_pos = ImGui::GetCursorPos();
+	const auto widgetStartPosition = ImGui::GetCursorPos();
 
-
-	for (int n = 0; n < servers.size(); n++)
+	const auto& servers = applicationContext_->settings_.configuredServerSettings_;
+	for (auto n = 0; n < servers.size(); n++)
 	{
+		constexpr auto padding = 10;
 		ImGui::PushID(n);
 		ImGui::SetNextItemAllowOverlap();
 		ImGui::SetCursorPos(ImVec2(pos.x + padding, pos.y + padding));
@@ -59,15 +76,16 @@ auto ServerConnectSettingsView::onDraw() -> void
 						  ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeX |
 							  ImGuiChildFlags_AutoResizeY);
 
-		ImVec2 alignment = ImVec2(0.5f, 0.0f);
+		auto alignment = ImVec2(0.5f, 0.0f);
 		ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, alignment);
 
 		ImGui::PushID(n);
 		const auto itemPosition = ImGui::GetCursorPos();
-		if (ImGui::Selectable("", selectedItem == n,
+		if (ImGui::Selectable("", selectedItem_ == n,
 							  ImGuiSelectableFlags_DontClosePopups | ImGuiSelectableFlags_AllowOverlap, itemSize))
 		{
-			selectedItem = n;
+			selectedItem_ = n;
+			resetServerStatus();
 		}
 		if (ImGui::BeginItemTooltip())
 		{
@@ -115,37 +133,20 @@ auto ServerConnectSettingsView::onDraw() -> void
 			ImGui::Text(text.c_str());
 		}
 
-
 		ImGui::PopID();
 		ImGui::PopStyleVar();
 		ImGui::EndChild();
 		ImGui::PopStyleVar();
-		/*	ImGui::PushFont(applicationContext_->getFontCollection().getBigIconsFont());
-			ImGui::SetCursorPos(ImVec2(pos.x + padding, pos.y + padding));
-			ImGui::Text(ICON_LC_HARD_DRIVE);
-			ImGui::PopFont();
-			ImGui::SetCursorPos(ImVec2(pos.x + padding, pos.y + padding + 30));
-			ImGui::Text(servers[n].name.c_str());*/
-
-
-		/*	ImGui::SetNextItemAllowOverlap();
-			ImGui::SetCursorPos(pos);
-			ImGui::Text("Server");
-			ImGui::SetNextItemAllowOverlap();
-			ImGui::Text(servers[n].name.c_str());
-			ImGui::SetCursorPos(pos);*/
-		// ImGui::Button("Box", button_sz);
-		float last_button_x2 = ImGui::GetItemRectMax().x;
-		float next_button_x2 =
-			last_button_x2 + style.ItemSpacing.x + itemSize.x; // Expected position if next button was on same line
-		if (n + 1 < servers.size() && next_button_x2 < window_visible_x2)
+		const auto lastButtonX2 = ImGui::GetItemRectMax().x;
+		const auto nextButtonX2 = lastButtonX2 + style.ItemSpacing.x + itemSize.x;
+		if (n + 1 < servers.size() && nextButtonX2 < windowVisibleX2)
 		{
 			pos.x = pos.x + padding * 2 + itemSize.x;
 		}
 		else
 		{
 			pos.y = pos.y + padding * 2 + itemSize.y;
-			pos.x = s_pos.x;
+			pos.x = widgetStartPosition.x;
 		}
 		ImGui::PopID();
 	}
@@ -153,20 +154,101 @@ auto ServerConnectSettingsView::onDraw() -> void
 
 	if (ImGui::Button("Add..."))
 	{
-		//applicationContext_->addUpdatableComponent(addEditView_.get());
-		addEditView_->open();
+		addServerView_->open();
 	}
 	ImGui::SameLine();
-	ImGui::Button("Edit...");
+
+	ImGui::BeginDisabled(selectedItem_ < 0);
+	if (ImGui::Button("Edit..."))
+	{
+		editServerView_->open();
+	}
+
 	ImGui::SameLine();
-	ImGui::Button("Remove");
+	if (ImGui::Button("Remove"))
+	{
+		applicationContext_->settings_.configuredServerSettings_.erase(
+			applicationContext_->settings_.configuredServerSettings_.begin() + selectedItem_);
+		selectedItem_ -= 1;
+	}
+	ImGui::SameLine(ImGui::GetContentRegionAvail().x - 200);
+	if (ImGui::Button("Test Connection"))
+	{
+		testServerStatus();
+		resetServerStatus();
+	}
+
+	if (startTestConnection)
+	{
+		counter++;
+		if (counter > 1000)
+		{
+			if (rand() % 2 == 0)
+			{
+				selectedServerStatus_ = ServerStatusState::ok;
+			}
+			else
+			{
+
+				selectedServerStatus_ = ServerStatusState::unreachable;
+			}
+			startTestConnection = false;
+			counter = 0;
+		}
+		else
+		{
+			selectedServerStatus_ = ServerStatusState::testing;
+		}
+	}
+
+	ImGui::EndDisabled();
+	if (isServerSelected())
+	{
+
+		ImGui::SameLine();
+		switch (selectedServerStatus_)
+		{
+
+		case ServerStatusState::ok:
+			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4{ 0.1f, 0.7f, 0.1f, 1.0f });
+			ImGui::Text(ICON_LC_CIRCLE_CHECK);
+			ImGui::PopStyleColor();
+			break;
+		case ServerStatusState::unreachable:
+			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4{ 0.7f, 0.1f, 0.1f, 1.0f });
+			ImGui::Text(ICON_LC_SERVER_CRASH);
+			ImGui::PopStyleColor();
+			break;
+		case ServerStatusState::unknown:
+			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4{ 0.7f, 0.7f, 0.1f, 1.0f });
+			ImGui::Text(ICON_LC_TRIANGLE_ALERT);
+			ImGui::PopStyleColor();
+			break;
+		case ServerStatusState::testing:
+			ImSpinner::SpinnerRotateSegments("server_test_spinner", 8, 2.0f);
+			break;
+		}
+	}
 
 
-	ImGui::Text("hallo modal!!!");
-	if (ImGui::Button("allow submit"))
+	if (isServerSelected())
 	{
 		unblock();
 	}
+	else
+	{
+		block();
+	}
 
-	addEditView_->draw();
+	addServerView_->draw();
+	editServerView_->draw();
+}
+
+auto ServerConnectSettingsView::testServerStatus() -> void
+{
+	startTestConnection = true;
+}
+auto ServerConnectSettingsView::resetServerStatus() -> void
+{
+	selectedServerStatus_ = ServerStatusState::unknown;
 }
