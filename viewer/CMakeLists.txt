@@ -4,6 +4,7 @@ find_package(GLEW REQUIRED)
 find_package(glad CONFIG REQUIRED)
 #find_package(imguizmo CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
 add_executable(viewer)
 
@@ -44,6 +45,8 @@ target_sources(${viewerTargetName} PRIVATE
 	FontCollection.cpp
 	Flags.h
 	ServerConnectionDescription.h
+	ApplicationSettings.h
+	ApplicationSettings.cpp
 	framework/Dockspace.h
 	framework/Dockspace.cpp
 	framework/DockableWindowViewBase.h
@@ -75,7 +78,6 @@ target_sources(${viewerTargetName} PRIVATE
 	features/serverConnect/ServerConnectView.cpp
 	features/serverConnect/ServerConnectSettingsView.h
 	features/serverConnect/ServerConnectSettingsView.cpp
-	features/serverConnect/ServerConnectionDescription.h
 	features/serverConnect/ServerAddEditView.h
 	features/serverConnect/ServerAddEditView.cpp
 )
@@ -103,6 +105,7 @@ target_link_libraries(${viewerTargetName}
 	${CUDA_nvml_LIBRARY}
 	imcurve_modefied
 	imspinner
+	nlohmann_json::nlohmann_json
 )
 
 option(ENABLE_NANO_PROFILE "Enables Tracy profiling" OFF)
