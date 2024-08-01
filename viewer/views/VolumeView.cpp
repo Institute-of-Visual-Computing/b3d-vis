@@ -49,7 +49,7 @@ VolumeView::VolumeView(ApplicationContext& appContext, Dockspace* dockspace)
 								 WindowFlagBits::noCollapse)
 {
 	fullscreenTexturePass_ = std::make_unique<FullscreenTexturePass>();
-	InfinitGridPass_ = std::make_unique<InfinitGridPass>();
+	infinitGridPass_ = std::make_unique<InfinitGridPass>();
 	debugDrawPass_ = std::make_unique<DebugDrawPass>(applicationContext_->getDrawList().get());
 
 	camera_.setOrientation(glm::vec3(1.0, 1.0, 1.0), glm::vec3(0.0, 0.0, 0.0), camera_.getUp(),
@@ -512,11 +512,11 @@ auto VolumeView::renderVolume() -> void
 
 	if (viewerSettings_.enableGridFloor)
 	{
-		InfinitGridPass_->setViewProjectionMatrix(cameraMatrices.viewProjection);
-		InfinitGridPass_->setViewport(width, height);
-		InfinitGridPass_->setGridColor(
+		infinitGridPass_->setViewProjectionMatrix(cameraMatrices.viewProjection);
+		infinitGridPass_->setViewport(width, height);
+		infinitGridPass_->setGridColor(
 			glm::vec3{ viewerSettings_.gridColor[0], viewerSettings_.gridColor[1], viewerSettings_.gridColor[2] });
-		InfinitGridPass_->execute();
+		infinitGridPass_->execute();
 	}
 
 	if (viewerSettings_.enableDebugDraw)

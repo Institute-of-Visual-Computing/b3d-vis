@@ -2,13 +2,15 @@
 
 class ApplicationContext;
 
-class MenuBar
+class MenuBar final
 {
 public:
-	MenuBar(ApplicationContext& applicationContext);
-	auto draw() -> void;
-	virtual ~MenuBar(){}
+	explicit MenuBar(ApplicationContext& applicationContext);
+	auto draw() const -> void;
+	~MenuBar()
+	{
+	}
 
-		private:
+private:
 	ApplicationContext* applicationContext_;
 };

@@ -13,13 +13,20 @@ enum class ModalType
 class ModalViewBase
 {
 public:
+	virtual ~ModalViewBase() = default;
 	ModalViewBase(ApplicationContext& applicationContext, const std::string_view name,
 				  const ModalType modalType = ModalType::okCancel, const ImVec2& minSize = ImVec2{ 0, 0 });
 
-	auto setOnSubmit(std::function<void(void)> callback) -> void
+	auto setOnSubmit(const std::function<void(ModalViewBase* self)>& callback) -> void
 	{
 		onSubmitCallback_ = callback;
 	}
+
+	auto setOnOpen(const std::function<void(ModalViewBase* self)>& callback) -> void
+	{
+		onOpenCallback_ = callback;
+	}
+
 	auto open() -> void;
 
 	auto draw() -> void;
@@ -51,7 +58,8 @@ private:
 	bool blockSubmit_{ true };
 	bool isOpenRequested_{ false };
 
-	std::function<void(void)> onSubmitCallback_{};
+	std::function<void(ModalViewBase* self)> onSubmitCallback_{};
+	std::function<void(ModalViewBase* self)> onOpenCallback_{};
 	ModalType modalType_{};
 
 	std::string id_{};

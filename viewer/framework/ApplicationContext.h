@@ -4,12 +4,12 @@
 #include <map>
 #include <memory>
 #include <optional>
-#include <string_view>
 #include <variant>
 #include <vector>
 
 #include "FontCollection.h"
 
+#include "ApplicationSettings.h"
 #include "framework/Dockspace.h"
 
 class GLFWwindow;
@@ -39,7 +39,8 @@ public:
 		return fonts_;
 	}
 
-	auto setExternalDrawLists(std::shared_ptr<DebugDrawList> debugDrawList, std::shared_ptr<GizmoHelper> gizmoHelper)
+	auto setExternalDrawLists(const std::shared_ptr<DebugDrawList>& debugDrawList,
+							  const std::shared_ptr<GizmoHelper>& gizmoHelper)
 		-> void;
 
 	[[nodiscard]] auto getGizmoHelper() const -> std::shared_ptr<GizmoHelper>;
@@ -47,20 +48,20 @@ public:
 
 	GLFWwindow* mainWindowHandle_{};
 
-	[[nodiscard]] auto getMainDockspace() -> Dockspace*;
+	[[nodiscard]] auto getMainDockspace() const -> Dockspace*;
 
 	auto addUpdatableComponent(UpdatableComponentBase* component) -> void;
 	auto removeUpdatableComponent(UpdatableComponentBase* component) -> void;
 
 	auto addRendererExtensionComponent(RendererExtensionBase* component) -> void;
 	auto addMenuAction(Action action, std::string_view menu, std::string_view label,
-					   std::optional<std::string_view> shortcut = std::nullopt,
-					   std::optional<std::string_view> group = std::nullopt, int sortOrderKey = 0) -> void;
-	auto addMenuToggleAction(bool& toggleValue, ToggleAction onToggleChanged, std::string_view menu,
-							 std::string_view label, std::optional<std::string_view> shortcut = std::nullopt,
-							 std::optional<std::string_view> group = std::nullopt, int sortOrderKey = 0) -> void;
-	auto addMenuBarTray(Action trayDrawCallback = []() {}) -> void;
-	auto addTool(std::string_view iconLable, Action action) -> void;
+					   const std::optional<std::string_view>& shortcut = std::nullopt,
+					   const std::optional<std::string_view>& group = std::nullopt, int sortOrderKey = 0) -> void;
+	auto addMenuToggleAction(bool& toggleValue, const ToggleAction& onToggleChanged, std::string_view menu,
+							 std::string_view label, const std::optional<std::string_view>& shortcut = std::nullopt,
+							 const std::optional<std::string_view>& group = std::nullopt, int sortOrderKey = 0) -> void;
+	auto addMenuBarTray(const Action& trayDrawCallback = []() {}) -> void;
+	auto addTool(std::string_view iconLabel, Action action) -> void;
 	// auto registerAsyncTasks(asyncEngine& )
 
 
@@ -84,11 +85,13 @@ public:
 	{
 		std::map<std::string, std::vector<MenuItemEntryAction>> groups;
 
-		auto addItem(std::string_view group, MenuItemEntryAction actionEntry) -> void;
+		auto addItem(std::string_view group, const MenuItemEntryAction& actionEntry) -> void;
 	};
 
-	std::map<std::string, MenuItemEntry> menuData;
-	std::vector<Action> trayCallbacks;
+	std::map<std::string, MenuItemEntry> menuData_;
+	std::vector<Action> trayCallbacks_;
+
+	ApplicationSettings settings_{};
 
 private:
 	FontCollection fonts_{};

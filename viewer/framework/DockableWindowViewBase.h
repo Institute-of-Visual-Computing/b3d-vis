@@ -1,19 +1,16 @@
 #pragma once
 
-#include <cstdint>
 #include <string_view>
 
-#include <imgui.h>
-
-#include "WindowViewBase.h"
 #include "Dockspace.h"
+#include "WindowViewBase.h"
 
 
 class DockableWindowViewBase : public WindowViewBase
 {
 public:
-	DockableWindowViewBase(ApplicationContext& appContext, const std::string_view name, Dockspace* dockspace,
-						   const WindowFlags flags);
+	DockableWindowViewBase(ApplicationContext& appContext, std::string_view name, Dockspace* dockspace,
+						   WindowFlags flags);
 
 	auto draw() -> void;
 

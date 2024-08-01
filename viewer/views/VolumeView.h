@@ -3,11 +3,11 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #endif
 #include "Camera.h"
-#include "framework/DockableWindowViewBase.h"
-#include "GLUtils.h"
-#include "GizmoOperationFlags.h"
 
-#include "imgui.h"
+#include "GizmoOperationFlags.h"
+#include "framework/DockableWindowViewBase.h"
+#include "passes/InfinitGridPass.h"
+
 
 #include <array>
 #include <cuda_runtime.h>
@@ -32,7 +32,7 @@ class VolumeView final : public DockableWindowViewBase
 {
 public:
 	VolumeView(ApplicationContext& appContext, Dockspace* dockspace);
-	~VolumeView();
+	~VolumeView() override;
 
 	auto onDraw() -> void override;
 	auto onResize() -> void override;
@@ -87,6 +87,6 @@ private:
 	GizmoOperationFlags currentGizmoOperation_{ GizmoOperationFlagBits::none };
 
 	std::unique_ptr<FullscreenTexturePass> fullscreenTexturePass_;
-	std::unique_ptr<InfinitGridPass> InfinitGridPass_{};
+	std::unique_ptr<InfinitGridPass> infinitGridPass_{};
 	std::unique_ptr<DebugDrawPass> debugDrawPass_{};
 };

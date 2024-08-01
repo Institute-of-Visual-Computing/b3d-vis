@@ -1,25 +1,23 @@
 #include "NanoViewer.h"
 
 #include "passes/DebugDrawPass.h"
-#include "passes/FullscreenTexturePass.h"
-#include "passes/InfinitGridPass.h"
 
+#include "GLUtils.h"
 #include "InteropUtils.h"
+
+#include <GLFW/glfw3.h>
 
 #include <Logging.h>
 
-#include <cuda_gl_interop.h>
-#include <cuda_runtime.h>
-#include <filesystem>
 #include <format>
-#include <glm/ext/matrix_clip_space.hpp>
-#include <glm/ext/matrix_transform.hpp>
+#include <print>
+#include <string>
+
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 #include <owl/helper/cuda.h>
-#include <print>
+
 #include <stb_image.h>
-#include <string>
 #include <tracy/Tracy.hpp>
 
 #include <ImGuizmo.h>
@@ -29,15 +27,11 @@
 
 #include <boost/process.hpp>
 
-
-#include <format>
-#include <string_view>
-
 #include "GizmoOperationFlags.h"
 
 #include "features/projectExplorer/ProjectExplorer.h"
-#include "features/transferMapping/TransferMapping.h"
 #include "features/serverConnect/ServerConnectSettingsView.h"
+#include "features/transferMapping/TransferMapping.h"
 #include "framework/ApplicationContext.h"
 #include "framework/MenuBar.h"
 #include "views/VolumeView.h"
@@ -54,7 +48,6 @@ namespace
 	std::unique_ptr<ProjectExplorer> projectExplorer{};
 	std::unique_ptr<MenuBar> mainMenu{};
 	b3d::renderer::RenderingDataWrapper renderingData{};
-	b3d::renderer::RenderMode mode{ b3d::renderer::RenderMode::mono };
 
 
 	[[nodiscard]] auto requestRequiredDpiScales() -> std::vector<float>
@@ -88,7 +81,7 @@ namespace
 		ImGui::GetStyle().ScaleAllSizes(defaultDpiScale);
 	}
 
-	auto onGLFWErrorCallback(int error, const char* description)
+	auto onGlfwErrorCallback(int error, const char* description)
 	{
 		b3d::renderer::log(std::format("Error: {}\n", description), b3d::renderer::LogLevel::error);
 	}
@@ -193,7 +186,6 @@ auto NanoViewer::gui() -> void
 
 	static auto enablePersistenceMode{ false };
 	static auto enabledPersistenceMode{ false };
-	static auto showPermissionDeniedMessage{ false };
 
 	uint32_t clock;
 	{
@@ -251,9 +243,9 @@ auto NanoViewer::onFrameBegin() -> void
 }
 
 NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, const int initWindowHeight,
-					   bool enableVsync, const int rendererIndex)
+					   const bool enableVsync, const int rendererIndex)
 {
-	glfwSetErrorCallback(onGLFWErrorCallback);
+	glfwSetErrorCallback(onGlfwErrorCallback);
 
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
@@ -261,7 +253,7 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 	glfwWindowHint(GLFW_VISIBLE, true);
 
 	applicationContext.mainWindowHandle_ =
-		glfwCreateWindow(initWindowWidth, initWindowHeight, title.c_str(), NULL, NULL);
+		glfwCreateWindow(initWindowWidth, initWindowHeight, title.c_str(), nullptr, nullptr);
 	if (!applicationContext.mainWindowHandle_)
 	{
 		glfwTerminate();
@@ -325,7 +317,6 @@ auto NanoViewer::draw() -> void
 	// TODO: if windows minimized or not visible -> skip rendering
 	onFrameBegin();
 	glClear(GL_COLOR_BUFFER_BIT);
-	static double lastCameraUpdate = -1.f;
 
 
 	ImGui_ImplOpenGL3_NewFrame();
@@ -339,8 +330,8 @@ auto NanoViewer::draw() -> void
 		isRunning_ = false;
 	}
 
-	static auto connectView =
-		ServerConnectSettingsView{ applicationContext, "Server Connect", []() { std::println("submit!!!"); } };
+	static auto connectView = ServerConnectSettingsView{ applicationContext, "Server Connect",
+														 [](ModalViewBase*) { std::println("submit!!!"); } };
 
 	ImGui::BeginMainMenuBar();
 	if (ImGui::BeginMenu("Program"))
@@ -369,10 +360,10 @@ auto NanoViewer::draw() -> void
 
 	if (ImGui::BeginMenu("Help"))
 	{
-		const auto url = "https://github.com/Institut-of-Visual-Computing/b3d-vis";
 
 		if (ImGui::MenuItem(ICON_FA_GITHUB " Source Code", nullptr, nullptr))
 		{
+			const auto url = "https://github.com/Institut-of-Visual-Computing/b3d-vis";
 			auto cmd = "";
 #ifdef __APPLE__
 #ifdef TARGET_OS_MAC
@@ -404,7 +395,7 @@ auto NanoViewer::draw() -> void
 	volumeView->draw();
 	connectView.draw();
 
-	for (auto component : applicationContext.updatableComponents_)
+	for (const auto component : applicationContext.updatableComponents_)
 	{
 		component->update();
 	}
@@ -414,12 +405,12 @@ auto NanoViewer::draw() -> void
 		component->draw();
 	}*/
 
-	for (auto component : applicationContext.rendererExtensions_)
+	for (const auto component : applicationContext.rendererExtensions_)
 	{
 		component->updateRenderingData(renderingData);
 	}
 
-	// TODO: IT IS DEPRICATED AND IT WILL BE REMOVED!!!
+	// TODO: IT IS DEPRECATED AND IT WILL BE REMOVED!!!
 	currentRenderer_->gui();
 
 	applicationContext.getMainDockspace()->end();
@@ -438,10 +429,10 @@ auto NanoViewer::draw() -> void
 
 	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 	{
-		GLFWwindow* backup_current_context = glfwGetCurrentContext();
+		const auto backupCurrentContext = glfwGetCurrentContext();
 		ImGui::UpdatePlatformWindows();
 		ImGui::RenderPlatformWindowsDefault();
-		glfwMakeContextCurrent(backup_current_context);
+		glfwMakeContextCurrent(backupCurrentContext);
 	}
 
 	glfwSwapBuffers(applicationContext.mainWindowHandle_);
@@ -460,7 +451,7 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 
 	glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
 	glfwSetFramebufferSizeCallback(applicationContext.mainWindowHandle_,
-								   [](GLFWwindow* window, int width, int height)
+								   [](GLFWwindow* window, int, int)
 								   {
 									   auto* viewer = static_cast<NanoViewer*>(glfwGetWindowUserPointer(window));
 
@@ -485,12 +476,12 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 
 
 	// TODO: Move this to server connection feature
-	static bool isServerConnected = false;
+	static auto isServerConnected = false;
 
 	applicationContext.addMenuBarTray(
 		[&]()
 		{
-			auto color = isServerConnected ? ImVec4{ 0.1, 0.5, 0.1, 1.0 } : ImVec4{ 0.5, 0.1, 0.1, 1.0 };
+			const auto color = isServerConnected ? ImVec4{ 0.1, 0.5, 0.1, 1.0 } : ImVec4{ 0.5, 0.1, 0.1, 1.0 };
 
 			ImGui::PushStyleColor(ImGuiCol_Button, color);
 			if (ImGui::Button(isServerConnected ? ICON_LC_SERVER : ICON_LC_SERVER_OFF))
@@ -564,11 +555,11 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 					if (ImGui::TreeNode("Server Requests"))
 					{
 
-						for (const auto& item : actualRequests)
+						for (const auto& [progress, label, status] : actualRequests)
 						{
 							ImGui::BulletText(std::format("{}: {}",
-														  item.status == RequestStatus::pending ? "Pending" : "Ready",
-														  item.label)
+														  status == RequestStatus::pending ? "Pending" : "Ready",
+														  label)
 												  .c_str());
 						}
 						ImGui::TreePop();
@@ -579,7 +570,7 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 
 			if (hasPendingRequests)
 			{
-				ImGui::SetCursorPos(pos + ImGui::GetStyle().FramePadding*2);
+				ImGui::SetCursorPos(pos + ImGui::GetStyle().FramePadding * 2);
 				ImSpinner::SpinnerRotateSegments("abs", spinnerRadius, 2.0f);
 			}
 			else

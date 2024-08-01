@@ -4,16 +4,16 @@
 class Camera final
 {
 public:
-	[[nodiscard]] inline float getFovYInDegrees() const
+	[[nodiscard]] auto getFovYInDegrees() const -> float
 	{
 		return fovYInDegrees_;
 	}
-	[[nodiscard]] inline float getCosFovY() const
+	[[nodiscard]] auto getCosFovY() const -> float
 	{
 		return glm::cos(glm::radians(fovYInDegrees_));
 	}
 
-	[[nodiscard]] inline auto getFrom() const -> glm::vec3
+	[[nodiscard]] auto getFrom() const -> glm::vec3
 	{
 		return position_;
 	}
@@ -22,13 +22,13 @@ public:
 	{
 		return position_ + forward_;
 	}
-	[[nodiscard]] inline auto getUp() const -> glm::vec3
+	[[nodiscard]] static auto getUp() -> glm::vec3
 	{
-		return glm::vec3{0.0f,1.0f,0.0f};// up_;
+		return glm::vec3{0.0f,1.0f,0.0f};;
 	};
 
 	inline auto setOrientation(const glm::vec3& origin, const glm::vec3& interest, const glm::vec3& up,
-							   float fovYInDegrees) -> void
+							   const float fovYInDegrees) -> void
 	{
 		fovYInDegrees_ = fovYInDegrees;
 		position_ = origin;
@@ -37,7 +37,6 @@ public:
 		right_ = glm::normalize(glm::cross(up, forward_));
 
 		up_ = glm::normalize(glm::cross(forward_, right_));
-		// forceUpFrame();
 	}
 
 public:

@@ -14,6 +14,10 @@ ModalViewBase::ModalViewBase(ApplicationContext& applicationContext, const std::
 auto ModalViewBase::open() -> void
 {
 	isOpenRequested_ = true;
+	if (onOpenCallback_)
+	{
+		onOpenCallback_(this);
+	}
 }
 
 auto ModalViewBase::draw() -> void
@@ -75,6 +79,9 @@ auto ModalViewBase::submit() -> void
 {
 	if (!isBlocked())
 	{
-		onSubmitCallback_();
+		if (onSubmitCallback_)
+		{
+			onSubmitCallback_(this);
+		}
 	}
 }

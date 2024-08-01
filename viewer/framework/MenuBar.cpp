@@ -8,10 +8,10 @@ MenuBar::MenuBar(ApplicationContext& applicationContext) : applicationContext_{ 
 {
 }
 
-auto MenuBar::draw() -> void
+auto MenuBar::draw() const -> void
 {
 	ImGui::BeginMainMenuBar();
-	for (const auto& [label, groups] : applicationContext_->menuData)
+	for (const auto& [label, groups] : applicationContext_->menuData_)
 	{
 		if (ImGui::BeginMenu(label.c_str()))
 		{
@@ -33,7 +33,7 @@ auto MenuBar::draw() -> void
 									action();
 								}
 							},
-							[&](ApplicationContext::ToggleEntryAction action)
+							[&](const ApplicationContext::ToggleEntryAction& action)
 							{
 								if (ImGui::MenuItem(item.label.c_str(),
 													item.shortcut.has_value() ? item.shortcut.value().data() : nullptr,
@@ -49,13 +49,13 @@ auto MenuBar::draw() -> void
 		}
 	}
 
-	if (!applicationContext_->trayCallbacks.empty())
+	if (!applicationContext_->trayCallbacks_.empty())
 	{
 		ImGui::Spacing();
 		ImGui::SameLine(ImGui::GetWindowWidth() - 100);
 
 
-		for (auto& callback : applicationContext_->trayCallbacks)
+		for (auto& callback : applicationContext_->trayCallbacks_)
 		{
 			callback();
 			ImGui::SameLine();

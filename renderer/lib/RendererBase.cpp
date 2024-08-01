@@ -36,8 +36,8 @@ auto RendererBase::deinitialize() -> void
 auto RendererBase::gui() -> void
 {
 	onGui();
-	//TODO: IT IS DEPRICATED AND IT WILL BE REMOVED!!!
-	ImGui::Begin("[DEPRICATED] Features");
+	//TODO: IT IS DEPRECATED AND IT WILL BE REMOVED!!!
+	ImGui::Begin("[DEPRECATED] Features");
 
 	for (const auto& feature : renderFeatures_)
 	{
