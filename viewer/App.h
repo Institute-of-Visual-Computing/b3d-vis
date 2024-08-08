@@ -12,5 +12,5 @@ class Application
 {
 public:
 	auto run() -> void;
-	auto initialization(const std::vector<Param>& vector) -> void;
+	auto initialization(const std::vector<Param>& parameters) -> void;
 };

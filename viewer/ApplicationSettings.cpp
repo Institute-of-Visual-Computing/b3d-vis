@@ -2,6 +2,10 @@
 #include <fstream>
 #include <print>
 
+#include <imgui.h>
+
+#include "GuiDefaultLayoutSettings.h"
+
 auto ApplicationSettings::save(const std::filesystem::path& filePath) const -> void
 {
 	const auto j = nlohmann::json(*this);
@@ -23,4 +27,15 @@ auto ApplicationSettings::load(const std::filesystem::path& filePath) -> void
 	{
 		std::println("[settings]: {}", e.what());
 	}
+}
+auto ApplicationSettings::load() -> void
+{
+	load(settingsStorageLocationPath_);
+
+	
+}
+auto ApplicationSettings::restoreDefaultLayoutSettings() -> void
+{
+	
+	ImGui::LoadIniSettingsFromMemory(defaultLayoutSettings.data(), defaultLayoutSettings.size());
 }

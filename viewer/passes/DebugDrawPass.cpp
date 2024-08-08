@@ -1,8 +1,8 @@
 #include "DebugDrawPass.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "../DebugDrawVertex.h"
-#include "../GLUtils.h"
+#include "DebugDrawVertex.h"
+#include "GLUtils.h"
 
 DebugDrawPass::DebugDrawPass(DebugDrawList* debugDrawList) : viewProjection_{}, debugDrawList_{ *debugDrawList }
 {
@@ -82,12 +82,7 @@ auto DebugDrawPass::execute() const -> void
 	glGenVertexArrays(1, &vertexArrayObject);
 
 	const auto lastIsEnabledDepthTest = glIsEnabled(GL_DEPTH_TEST);
-	/*glDisable(GL_DEPTH_TEST);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);*/
-	/*glFrontFace(GL_CW);
-	glEnable(GL_CULL_FACE);
-	glCullFace(GL_BACK);*/
+
 	glViewport(0, 0, width_, height_);
 	glUseProgram(program_);
 	glUniformMatrix4fv(viewProjectionUniformLocation_, 1, GL_FALSE, glm::value_ptr(viewProjection_));

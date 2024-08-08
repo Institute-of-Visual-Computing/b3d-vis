@@ -4,16 +4,16 @@
 #include <ColorMap.h>
 #include <Common.h>
 
-#include "framework/RendererExtensionBase.h"
 #include "TransferMappingController.h"
+#include "framework/RendererExtensionBase.h"
 
 class TransferMapping final : public RendererExtensionBase
 {
 public:
-	TransferMapping(ApplicationContext& applicationContext);
+	explicit TransferMapping(ApplicationContext& applicationContext);
 
 private:
-	constexpr static int transferFunctionSamples = 512;
+	constexpr static auto transferFunctionSamples_ = 512;
 
 	friend TransferMappingController;
 	struct ColorMapResources

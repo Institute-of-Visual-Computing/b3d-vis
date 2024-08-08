@@ -1,7 +1,8 @@
 #include "InfinitGridPass.h"
+#include "GLUtils.h"
+
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include "../GLUtils.h"
 
 InfinitGridPass::InfinitGridPass() : viewProjection_{}
 {

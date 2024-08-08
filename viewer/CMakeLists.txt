@@ -47,6 +47,8 @@ target_sources(${viewerTargetName} PRIVATE
 	ServerConnectionDescription.h
 	ApplicationSettings.h
 	ApplicationSettings.cpp
+	GuiDefaultLayoutSettings.h
+	GuiDefaultLayoutSettings.cpp
 	framework/Dockspace.h
 	framework/Dockspace.cpp
 	framework/DockableWindowViewBase.h

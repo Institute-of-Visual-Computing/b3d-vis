@@ -1,19 +1,16 @@
+#define GLM_ENABLE_EXPERIMENTAL
 #include "VolumeView.h"
-#include "GizmoHelper.h"
 
-#include "GLUtils.h"
+#include <print>
 
-#include <GLFW/glfw3.h>
-
-#include <ImGuizmo.h>
+#include <glm/glm.hpp>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
-#include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 
-#include <IconsFontAwesome6Brands.h>
 #include <IconsLucide.h>
-
-#include "framework/ApplicationContext.h"
+#include <ImGuizmo.h>
+#include <GLFW/glfw3.h>
 
 #include <cuda_gl_interop.h>
 #include <cuda_runtime.h>
@@ -21,7 +18,10 @@
 
 #include <RendererBase.h>
 
+#include "GizmoHelper.h"
+#include "GLUtils.h"
 #include "InteropUtils.h"
+#include "framework/ApplicationContext.h"
 #include "passes/DebugDrawPass.h"
 #include "passes/FullscreenTexturePass.h"
 #include "passes/InfinitGridPass.h"

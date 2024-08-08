@@ -1,7 +1,8 @@
 #pragma once
 
-#include "../Pass.h"
-#include "glad/glad.h"
+#include <glad/glad.h>
+
+#include "Pass.h"
 
 class FullscreenTexturePass final : public Pass
 	{

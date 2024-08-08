@@ -1,7 +1,7 @@
 #include "ProjectExplorer.h"
 
-#include "framework/ApplicationContext.h"
 #include "ProjectSelectionView.h"
+#include "framework/ApplicationContext.h"
 
 ProjectExplorer::ProjectExplorer(ApplicationContext& applicationContext) : UpdatableComponentBase{applicationContext}
 {

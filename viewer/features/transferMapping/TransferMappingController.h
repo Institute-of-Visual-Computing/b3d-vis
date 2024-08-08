@@ -1,8 +1,9 @@
 #pragma once
-#include <memory>
+#include <Common.h>
 #include "TransferMappingView.h"
 #include "framework/UpdatableComponentBase.h"
-#include <Common.h>
+
+#include <memory>
 
 class TransferMapping;
 

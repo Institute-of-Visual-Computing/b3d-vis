@@ -1,8 +1,8 @@
 #pragma once
 
 #include <glm/glm.hpp>
-#include "../DebugDrawList.h"
-#include "../Pass.h"
+#include "DebugDrawList.h"
+#include "Pass.h"
 #include "glad/glad.h"
 
 class DebugDrawPass final : public Pass

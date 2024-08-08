@@ -4,8 +4,8 @@
 
 #include <Curve.h>
 
-#include "imgui.h"
 #include <imgui_internal.h>
+#include "imgui.h"
 
 TransferMappingView::TransferMappingView(ApplicationContext& appContext, Dockspace* dockspace)
 	: DockableWindowViewBase{ appContext, "Transfer Mapping", dockspace, WindowFlagBits::none }
@@ -22,7 +22,7 @@ TransferMappingView::TransferMappingView(ApplicationContext& appContext, Dockspa
 	dataPoints_[8].x = ImGui::CurveTerminator;
 }
 
-auto TransferMappingView::resampleData(int samplesCount) -> std::vector<float>
+auto TransferMappingView::resampleData(const int samplesCount) const -> std::vector<float>
 {
 	auto samples = std::vector<float>{};
 	samples.resize(samplesCount);
@@ -58,8 +58,7 @@ auto TransferMappingView::onDraw() -> void
 			ImGui::SetNextItemWidth(-1);
 			if (ImGui::BeginCombo("##coloringModeSelector", "", ImGuiComboFlags_CustomPreview))
 			{
-				const auto size = ImGui::GetContentRegionAvail();
-				const auto mapItemSize = ImVec2{ size.x, 20 };
+				const auto mapItemSize = ImVec2{ ImGui::GetContentRegionAvail().x, 20 };
 				ImGui::Image(colorMapTextureHandle_, mapItemSize,
 							 ImVec2(0, (selectedColoringMap_ + 0.5) / static_cast<float>(totalItems)),
 							 ImVec2(1, (selectedColoringMap_ + 0.5) / static_cast<float>(totalItems)));
@@ -88,8 +87,7 @@ auto TransferMappingView::onDraw() -> void
 
 			if (ImGui::BeginComboPreview())
 			{
-				const auto size = ImGui::GetContentRegionAvail();
-				const auto mapItemSize = ImVec2{ size.x, 20 };
+				const auto mapItemSize = ImVec2{ ImGui::GetContentRegionAvail().x, 20 };
 				ImGui::Image(colorMapTextureHandle_, mapItemSize,
 							 ImVec2(0, selectedColoringMap_ / static_cast<float>(totalItems)),
 							 ImVec2(1, (selectedColoringMap_ + 1) / static_cast<float>(totalItems)));

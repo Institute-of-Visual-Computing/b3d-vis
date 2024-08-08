@@ -3,12 +3,14 @@
 #include <cuda_gl_interop.h>
 #include <owl/common.h>
 #include <owl/helper/cuda.h>
-#include <ranges>
+
 #include <stb_image.h>
 
 #include <RenderData.h>
 #include "TransferMappingController.h"
 #include "framework/ApplicationContext.h";
+
+#include <ranges>
 
 TransferMapping::TransferMapping(ApplicationContext& applicationContext) : RendererExtensionBase(applicationContext)
 {
@@ -45,8 +47,8 @@ auto TransferMapping::initializeResources() -> void
 		int x, y, n;
 
 		const auto result = stbi_info(filePath.string().c_str(), &x, &y, &n);
-
-		auto data = stbi_loadf(filePath.string().c_str(), &x, &y, &n, 0);
+		assert(result);
+		const auto data = stbi_loadf(filePath.string().c_str(), &x, &y, &n, 0);
 
 		GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, x, y, 0, GL_RGBA, GL_FLOAT, data));
 
@@ -64,7 +66,6 @@ auto TransferMapping::initializeResources() -> void
 											   colorMapResources_.colorMapTexture, GL_TEXTURE_2D,
 											   cudaGraphicsRegisterFlagsTextureGather));
 
-	// Transfer function
 	GL_CALL(glGenTextures(1, &transferFunctionResources_.transferFunctionTexture));
 	GL_CALL(glBindTexture(GL_TEXTURE_2D, transferFunctionResources_.transferFunctionTexture));
 
@@ -77,7 +78,7 @@ auto TransferMapping::initializeResources() -> void
 	auto initBufferData = std::array<float, 512>{};
 
 	std::ranges::fill(initBufferData, 1);
-	GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, transferFunctionSamples, 1, 0, GL_RED, GL_FLOAT,
+	GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, transferFunctionSamples_, 1, 0, GL_RED, GL_FLOAT,
 						 initBufferData.data()));
 
 	const auto transferFunctionBufferName = std::string{ "TransferFunctionTexture" };
@@ -102,7 +103,7 @@ auto TransferMapping::updateRenderingData(b3d::renderer::RenderingDataWrapper& r
 {
 	auto model = TransferMappingController::Model{ .transferFunctionGraphicsResource =
 													   transferFunctionResources_.cudaGraphicsResource,
-												   .transferFunctionSamplesCount = transferFunctionSamples };
+												   .transferFunctionSamplesCount = transferFunctionSamples_ };
 	if (transferMappingController_->updateModel(model))
 	{
 
@@ -124,7 +125,7 @@ auto TransferMapping::updateRenderingData(b3d::renderer::RenderingDataWrapper& r
 										  colorMapResources_.colorMap.firstColorMapYTextureCoordinate,
 										  colorMapResources_.colorMap.colorMapHeightNormalized };
 
-		renderingData.data.transferFunctionTexture.extent = { transferFunctionSamples, 1, 1 };
+		renderingData.data.transferFunctionTexture.extent = { transferFunctionSamples_, 1, 1 };
 		renderingData.data.transferFunctionTexture.target = transferFunctionResources_.cudaGraphicsResource;
 	}
 }

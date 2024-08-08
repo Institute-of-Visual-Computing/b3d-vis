@@ -5,7 +5,6 @@
 #include "TransferMapping.h"
 #include "TransferMappingView.h"
 #include "framework/ApplicationContext.h"
-#include "framework/Dockspace.h"
 
 TransferMappingController::TransferMappingController(ApplicationContext& applicationContext,
 													 TransferMapping& transferMapping)
@@ -14,7 +13,7 @@ TransferMappingController::TransferMappingController(ApplicationContext& applica
 	  transferMapping_{ &transferMapping }
 {
 	applicationContext.addMenuToggleAction(
-		showToolWindow_, [&](bool isOn) { isOn ? mappingView_->open() : mappingView_->close(); }, "Tools",
+		showToolWindow_, [&](const bool isOn) { isOn ? mappingView_->open() : mappingView_->close(); }, "Tools",
 		"Transfer Mapping");
 }
 
@@ -23,7 +22,7 @@ auto TransferMappingController::update() -> void
 	if (showToolWindow_)
 	{
 		mappingView_->setColorMapInfos(transferMapping_->colorMapResources_.colorMap.colorMapNames,
-									   (void*)transferMapping_->colorMapResources_.colorMapTexture);
+									   reinterpret_cast<void*>(transferMapping_->colorMapResources_.colorMapTexture));
 		mappingView_->draw();
 	}
 }
@@ -39,32 +38,27 @@ auto TransferMappingController::updateModel(Model& model) const -> bool
 
 		cudaArray_t transferFunctionCudaArray{ nullptr };
 		OWL_CUDA_CHECK(cudaGraphicsSubResourceGetMappedArray(&transferFunctionCudaArray, cudaTransferResource, 0, 0));
-		// Create texture
-		auto resDesc = cudaResourceDesc{};
-		resDesc.resType = cudaResourceTypeArray;
-		resDesc.res.array.array = transferFunctionCudaArray;
+
+		const auto resourceDescriptor =
+			cudaResourceDesc{ .resType = cudaResourceTypeArray, .res = cudaArray_t{ transferFunctionCudaArray } };
 
 
-		auto texDesc = cudaTextureDesc{};
-		texDesc.addressMode[0] = cudaAddressModeClamp;
-		texDesc.addressMode[1] = cudaAddressModeClamp;
+		constexpr auto textureDescriptor =
+			cudaTextureDesc{ .addressMode = { cudaAddressModeClamp, cudaAddressModeClamp },
+							 .filterMode = cudaFilterModeLinear,
+							 .readMode = cudaReadModeElementType,
+							 .sRGB = 0,
+							 .borderColor = { 1.0f, 1.0f, 1.0f, 1.0f },
+							 .normalizedCoords = 1,
+							 .maxAnisotropy = 1,
+							 .mipmapFilterMode = cudaFilterModePoint,
+							 .minMipmapLevelClamp = 0,
+							 .maxMipmapLevelClamp = 0 };
 
-		texDesc.filterMode = cudaFilterModeLinear;
-		texDesc.readMode = cudaReadModeElementType; // cudaReadModeNormalizedFloat
 
-		texDesc.normalizedCoords = 1;
-		texDesc.maxAnisotropy = 1;
-		texDesc.maxMipmapLevelClamp = 0;
-		texDesc.minMipmapLevelClamp = 0;
-		texDesc.mipmapFilterMode = cudaFilterModePoint;
-		texDesc.borderColor[0] = 1.0f;
-		texDesc.borderColor[1] = 1.0f;
-		texDesc.borderColor[2] = 1.0f;
-		texDesc.borderColor[3] = 1.0f;
-		texDesc.sRGB = 0;
-
-		cudaTextureObject_t transferFunctionCudaTexture{};
-		OWL_CUDA_CHECK(cudaCreateTextureObject(&transferFunctionCudaTexture, &resDesc, &texDesc, nullptr));
+		auto transferFunctionCudaTexture = cudaTextureObject_t{};
+		OWL_CUDA_CHECK(
+			cudaCreateTextureObject(&transferFunctionCudaTexture, &resourceDescriptor, &textureDescriptor, nullptr));
 
 
 		const auto& dataPoints = mappingView_->resampleData(model.transferFunctionSamplesCount);
