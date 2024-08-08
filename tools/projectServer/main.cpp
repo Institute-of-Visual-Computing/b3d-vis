@@ -188,6 +188,14 @@ auto main(const int argc, char** argv) -> int
 			res.status = httplib::StatusCode::InternalServerError_500;
 		});
 
+	svr.Get("/status",
+			[](const httplib::Request& req, httplib::Response& res)
+			{
+				nlohmann::json retJ;
+				retJ["status"] = "OK";
+				res.set_content(retJ.dump(), "application/json");
+			});
+
 	svr.Get("/catalog",
 			[](const httplib::Request& req, httplib::Response& res)
 			{
