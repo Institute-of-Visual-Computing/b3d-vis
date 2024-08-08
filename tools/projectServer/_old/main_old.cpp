@@ -18,7 +18,6 @@
 #include "Project.h"
 #include "ProjectProvider.h"
 
-#include "SoFiA.h"
 
 // https://stackoverflow.com/questions/2989810/which-cross-platform-preprocessor-defines-win32-or-win32-or-win32
 #if !defined(_WIN32) && (defined(__unix__) || defined(__unix))
@@ -65,7 +64,6 @@ auto processCurrentRequest() -> void
 
 auto main(const int argc, char** argv) -> int
 {
-
 	args::ArgumentParser parser("SoFiA-2 Wrapper Server", "");
 	args::HelpFlag help(parser, "help", "Display this help menu", { 'h', "help" });
 
@@ -166,24 +164,24 @@ auto main(const int argc, char** argv) -> int
 				res.set_content(nlohmann::json(projects).dump(), "application/json");
 			});
 
-	svr.Get("/project/:guid",
+	svr.Get("/project/:uuid",
 			[](const httplib::Request& req, httplib::Response& res)
 	{
 				processCurrentRequest();
 				std::lock_guard currRequestLock(currentRequestMutex);
 
-				if (!req.path_params.contains("guid"))
+				if (!req.path_params.contains("uuid"))
 				{
 					res.status = httplib::StatusCode::BadRequest_400;
 					return;
 				}
-				const auto guidVal = req.path_params.at("guid");
-				if (!projectProvider->hasProject(guidVal))
+				const auto uuidVal = req.path_params.at("uuid");
+				if (!projectProvider->hasProject(uuidVal))
 				{
 					res.status = httplib::StatusCode::NotFound_404;
 					return;
 				}
-				const auto& proj = projectProvider->getProject(guidVal);
+				const auto& proj = projectProvider->getProject(uuidVal);
 				res.set_content(nlohmann::json(proj).dump(), "application/json");
 	});
 
@@ -216,48 +214,89 @@ auto main(const int argc, char** argv) -> int
 			 	auto jsonInput = nlohmann::json::parse(bodyString);
 
 				// Input not valid
-				if (jsonInput.empty() || !jsonInput.contains("projectGUID"))
+				if (jsonInput.empty() || !jsonInput.contains("projectUUID"))
 				{
 					nlohmann::json retJ;
-					retJ["message"] = "Parameters empty or projectGUID not provided!";
+					retJ["message"] = "Parameters empty or projectUUID not provided!";
 
 					res.status = httplib::StatusCode::BadRequest_400;
 					res.set_content(retJ.dump(), "application/json");
 					return;
 				}
 
-				std::string projectGuid = jsonInput["projectGUID"];
-				if (!projectProvider->hasProject(projectGuid))
+				std::string projectUuid = jsonInput["projectUUID"];
+				if (!projectProvider->hasProject(projectUuid))
 				{
 					nlohmann::json retJ;
-					retJ["message"] = "projectGUID not valid!";
+					retJ["message"] = "projectUUID not valid!";
 
 					res.status = httplib::StatusCode::BadRequest_400;
 					res.set_content(retJ.dump(), "application/json");
 					return;
 				}
 
-				auto& project = projectProvider->getProject(projectGuid);
+				auto& project = projectProvider->getProject(projectUuid);
 				auto& cat = projectProvider->getRootCatalog();
 
-
-				const auto& filePath = cat.getFilePathAbsolute(project.fitsOriginGUID);
+				const auto& filePath = cat.getFilePathAbsolute(project.fitsOriginUUID);
 
 				// Build new search
 				b3d::tools::projectexplorer::Request sofiaRequest;
 				sofiaRequest.preSofiaSearchParameters.emplace_back("../../sofia.par");
 				sofiaRequest.preSofiaSearchParameters.emplace_back(std::format("input.data={}", filePath.string()));
+
+				if (!project.requests.empty())
+				{
+					const auto& fitsMaskFile = cat.getFilePathAbsolute(project.requests[0].result.sofia.fileResultUUID);
+					sofiaRequest.preSofiaSearchParameters.emplace_back(
+						std::format("input.mask={}", fitsMaskFile.string()));	
+				}
+
 				sofiaRequest.preSofiaSearchParameters.emplace_back(std::format("output.filename={}", "out"));
 
-
+				auto searchRegionProvided{ false };
 				for (auto& [key, value] : jsonInput["sofia_params"].items())
 				{
 					b3d::tools::sofiasearch::appendParameterToSoFiARequest(sofiaRequest, key, value.get<std::string>());
+					if (key == "input.region")
+					{
+						searchRegionProvided = true;
+						// xmin, xmax, ymin, ymax, zmin, zmax
+						std::array<int64_t, 6> subRegionValues;
+						auto workingString = value.get<std::string>();
+						std::stringstream ss(workingString);
+						std::string item;
+						auto arrayPos = 0;
+						while (std::getline(ss, item, ','))
+						{
+							subRegionValues[arrayPos] = std::stoll(item);
+							arrayPos++;
+						}
+
+						sofiaRequest.searchRegion = {
+							{ subRegionValues[0], subRegionValues[2], subRegionValues[4] },
+							{ subRegionValues[1], subRegionValues[3], subRegionValues[5] }
+						};
+					}
+				}
+				if (!searchRegionProvided)
+				{
+					sofiaRequest.searchRegion = { { 0, 0, 0 },
+												  { project.fitsOriginProperties.axisDimensions[0],
+													project.fitsOriginProperties.axisDimensions[1],
+													project.fitsOriginProperties.axisDimensions[2] } };
+
+				}
+
+				if (!project.requests.empty())
+				{
+					b3d::tools::sofiasearch::appendParameterToSoFiARequest(sofiaRequest, "output.writeRawMask", "true");
+					b3d::tools::sofiasearch::appendParameterToSoFiARequest(sofiaRequest, "linker.enable", "false");
 				}
 
 				const auto sofiaRequestIdentifier = sofiaRequest.createUUID();
 				
-				sofiaRequest.guid = sofiaRequestIdentifier;
+				sofiaRequest.uuid = sofiaRequestIdentifier;
 				sofiaRequest.sofiaExecutablePath = sofiaPath;
 				sofiaRequest.workingDirectory = project.projectPathAbsolute / "requests" / sofiaRequestIdentifier;
 				sofiaRequest.preSofiaSearchParameters.emplace_back(
@@ -267,7 +306,7 @@ auto main(const int argc, char** argv) -> int
 				const auto& possibleRequest =
 					std::ranges::find_if(project.requests,
 										 [&cm = sofiaRequest](const b3d::tools::projectexplorer::Request& m) -> bool
-										 { return cm.guid == m.guid; });
+										 { return cm.uuid == m.uuid; });
 				if (possibleRequest != project.requests.end())
 				{
 					auto& previousRequest = *possibleRequest;
@@ -278,7 +317,7 @@ auto main(const int argc, char** argv) -> int
 					else
 					{
 						nlohmann::json retJ;
-						retJ["message"] = "requestGUID already in use.";
+						retJ["message"] = "requestUUID already in use.";
 
 						res.status = httplib::StatusCode::BadRequest_400;
 						res.set_content(retJ.dump(), "application/json");
@@ -291,48 +330,48 @@ auto main(const int argc, char** argv) -> int
 							   std::ref(cat), sofiaRequestIdentifier, std::move(sofiaRequest)));
 
 				nlohmann::json ret;
-				ret["requestGUID"] = sofiaRequestIdentifier;
+				ret["requestUUID"] = sofiaRequestIdentifier;
 				res.set_content(ret.dump(), "application/json");
 
 			 });
 
 
-	svr.Get("/result/:projectGUID/:requestGUID",
+	svr.Get("/result/:projectUUID/:requestUUID",
 			 [](const httplib::Request& req, httplib::Response& res)
 			 {
 				 processCurrentRequest();
 				 std::lock_guard currRequestLock(currentRequestMutex);
 
-				 // ProjectGUID not provided!
-				 if (!req.path_params.contains("projectGUID"))
+				 // ProjectUUID not provided!
+				 if (!req.path_params.contains("projectUUID"))
 				 {
 					 nlohmann::json retJ;
-					 retJ["message"] = "Project GUID not provided!";
+					 retJ["message"] = "Project UUID not provided!";
 
 					 res.status = httplib::StatusCode::BadRequest_400;
 					 res.set_content(retJ.dump(), "application/json");
 					 return;
 				 }
-				 const auto projectGUID = req.path_params.at("projectGUID");
+				 const auto projectUUID = req.path_params.at("requestUUID");
 
-			 	 // RequestGUID not provided!
-				 if (!req.path_params.contains("requestGUID"))
+			 	 // RequestUUID not provided!
+				 if (!req.path_params.contains("requestUUID"))
 				 {
 					 nlohmann::json retJ;
-					 retJ["message"] = "Request GUID not provided!";
+					 retJ["message"] = "Request UUID not provided!";
 
 					 res.status = httplib::StatusCode::BadRequest_400;
 					 res.set_content(retJ.dump(), "application/json");
 					 return;
 				 }
-				 const auto requestGUID = req.path_params.at("requestGUID");
+				 const auto requestUUID = req.path_params.at("requestUUID");
 
 
 				 // Project does not exist!
-				 if (!projectProvider->hasProject(projectGUID))
+				 if (!projectProvider->hasProject(projectUUID))
 				 {
 					 nlohmann::json retJ;
-					 retJ["message"] = "Project with given projectGUID not found!";
+					 retJ["message"] = "Project with given projectUUID not found!";
 
 					 res.status = httplib::StatusCode::NotFound_404;
 					 res.set_content(retJ.dump(), "application/json");
@@ -340,7 +379,7 @@ auto main(const int argc, char** argv) -> int
 				 }
 				 			 
 				 
-				 // Request with projectGUID is not finished yet!
+				 // Request with projectUUID is not finished yet!
 				 if (currentRequest != nullptr)
 				 {
 					 nlohmann::json retJ;
@@ -351,17 +390,17 @@ auto main(const int argc, char** argv) -> int
 				 }
 				 
 				 
-				 const auto& project = projectProvider->getProject(projectGUID);
+				 const auto& project = projectProvider->getProject(projectUUID);
 
 				 // Request does not exist!
 				 const auto& possibleRequest =
 					 std::ranges::find_if(project.requests,
-										  [&rguid = requestGUID](const b3d::tools::projectexplorer::Request& m) -> bool
-										  { return rguid == m.guid; });
+										  [&ruuid = requestUUID](const b3d::tools::projectexplorer::Request& m) -> bool
+										  { return ruuid == m.uuid; });
 				 if (possibleRequest == project.requests.end())
 				 {
 					 nlohmann::json retJ;
-					 retJ["message"] = "Request with given requestGUID not found!";
+					 retJ["message"] = "Request with given requestUUID not found!";
 					 res.status = httplib::StatusCode::NotFound_404;
 					 res.set_content(retJ.dump(), "application/json");
 					 return;
@@ -374,47 +413,47 @@ auto main(const int argc, char** argv) -> int
 
 			 });
 
-	svr.Get("/results/:projectGUID", [](const httplib::Request& req, httplib::Response& res)
+	svr.Get("/results/:projectUUID", [](const httplib::Request& req, httplib::Response& res)
 			{
 				processCurrentRequest();
 				std::lock_guard currRequestLock(currentRequestMutex);
 
-				// ProjectGUID not provided!
-				if (!req.path_params.contains("projectGUID"))
+				// ProjectUUID not provided!
+				if (!req.path_params.contains("projectUUID"))
 				{
 					nlohmann::json retJ;
-					retJ["message"] = "Project GUID not provided!";
+					retJ["message"] = "Project UUID not provided!";
 
 					res.status = httplib::StatusCode::BadRequest_400;
 					res.set_content(retJ.dump(), "application/json");
 					return;
 				}
 
-				const auto projectGUID = req.path_params.at("projectGUID");
+				const auto projectUUID = req.path_params.at("projectUUID");
 				// Project not found
-				if (!projectProvider->hasProject(projectGUID))
+				if (!projectProvider->hasProject(projectUUID))
 				{
 					nlohmann::json retJ;
-					retJ["message"] = "Project with given GUID not found!";
+					retJ["message"] = "Project with given UUID not found!";
 
 					res.status = httplib::StatusCode::NotFound_404;
 					return;
 				}
 
-				const auto& requests = projectProvider->getProject(projectGUID).requests;
+				const auto& requests = projectProvider->getProject(projectUUID).requests;
 				res.set_content(nlohmann::json(requests).dump(), "application/json");
 				res.status = httplib::StatusCode::OK_200;
 
 			});
 
-	svr.Get("/file/:fileGUID",
+	svr.Get("/file/:fileUUID",
 			[](const httplib::Request& req, httplib::Response& res)
 			{
-				// ProjectGUID not provided!
-				if (!req.path_params.contains("fileGUID"))
+				// ProjectUUID not provided!
+				if (!req.path_params.contains("fileUUID"))
 				{
 					nlohmann::json retJ;
-					retJ["message"] = "GUID for file not provided";
+					retJ["message"] = "UUID for file not provided";
 
 					res.status = httplib::StatusCode::BadRequest_400;
 					res.set_content(retJ.dump(), "application/json");
@@ -422,7 +461,7 @@ auto main(const int argc, char** argv) -> int
 				}
 
 
-				const auto pathToFile = projectProvider->getRootCatalog().getFilePathAbsolute(req.path_params.at("fileGUID"));
+				const auto pathToFile = projectProvider->getRootCatalog().getFilePathAbsolute(req.path_params.at("fileUUID"));
 				if (pathToFile.empty())
 				{
 					nlohmann::json retJ;

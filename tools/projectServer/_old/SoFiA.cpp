@@ -1,9 +1,10 @@
 #include "SoFiA.h"
 
+#include <iostream>
+
 #include "Catalog.h"
 
 #include <boost/process.hpp>
-#include "NanoCutApi.h"
 
 namespace
 {
@@ -11,14 +12,11 @@ namespace
 		"The pipeline successfully completed without any error.",
 		"An unclassified failure occurred.",
 		"A NULL pointer was encountered.",
-		"A memory allocation error occurred. This could indicate that the data cube is too large for the amount of "
-		"memory "
-		"available on the machine.",
+		"A memory allocation error occurred. This could indicate that the data cube is too large for the amount of memory available on the machine.",
 		"An array index was found to be out of range.",
 		"An error occurred while trying to read or write a file or check if a directory or file is accessible.",
 		"The overflow of an integer value occurred.",
-		"The pipeline had to be aborted due to invalid user input. This could, e.g., be due to an invalid parameter "
-		"setting or the wrong input file being provided.",
+		"The pipeline had to be aborted due to invalid user input. This could, e.g., be due to an invalid parameter setting or the wrong input file being provided.",
 		"No specific error occurred, but sources were not detected either."
 	};
 
@@ -123,10 +121,33 @@ auto b3d::tools::sofiasearch::RequestProcessor::createNvdb(const projectexplorer
 														   )
 	-> void
 {
-	const auto originFitsPath = rootCatalog.getFilePathAbsolute(project.fitsOriginGUID);
-	const auto maskFitsPath = rootCatalog.getFilePathAbsolute(request.result.sofia.fileResultGUID);
+	const auto originFitsPath = rootCatalog.getFilePathAbsolute(project.fitsOriginUUID);
+	const auto maskFitsPath = rootCatalog.getFilePathAbsolute(request.result.sofia.fileResultUUID);
+	const auto originFitsMask = project.requests.empty() ?
+		maskFitsPath :
+		rootCatalog.getFilePathAbsolute(project.requests[0].result.sofia.fileResultUUID);
+
+	const auto originNVDB = project.requests.empty() ?
+		maskFitsPath :
+		rootCatalog.getFilePathAbsolute(project.requests[0].result.nvdb.fileResultUUID);
+	
 	const auto destinationNvdbPath = request.workingDirectory / "masked.nvdb";
-	const auto nvdbResult = ncConvertFitsToNanoVdbWithMask(originFitsPath.string().c_str(), maskFitsPath.string().c_str(), destinationNvdbPath.string().c_str());
+	auto nvdbResult = NANOCUT_OK;
+	if (project.requests.empty())
+	{
+		nvdbResult = ncConvertFitsToNanoVdbWithMask(originFitsPath.string().c_str(), maskFitsPath.string().c_str(), destinationNvdbPath.string().c_str());
+	}
+	else
+	{
+		long offset[3] = { static_cast<long>(request.searchRegion.lower.x),
+						   static_cast<long>(request.searchRegion.lower.y),
+						   static_cast<long>(request.searchRegion.lower.z)};
+		nvdbResult = ncConvertFitsToNanoVdbWithBinaryMask(
+			originFitsPath.string().c_str(), originFitsMask.string().c_str(), maskFitsPath.string().c_str(), offset,
+			originNVDB.string().c_str(),
+			destinationNvdbPath.string().c_str());
+	}
+
 	request.result.nvdb.finished = true;
 	if (nvdbResult != NANOCUT_OK)
 	{
@@ -144,11 +165,12 @@ auto b3d::tools::sofiasearch::RequestProcessor::createNvdb(const projectexplorer
 }
 
 auto b3d::tools::sofiasearch::RequestProcessor::operator()(projectexplorer::Project &project,
-                                                           b3d::tools::projectexplorer::Catalog &rootCatalog, std::string requestGUID,
+                                                           b3d::tools::projectexplorer::Catalog &rootCatalog, std::string requestUUID,
                                                            b3d::tools::projectexplorer::Request sofiaRequest) -> ProcessResult
 {
+	const auto startTime = std::chrono::steady_clock::now();
 	ProcessResult pr;
-	pr.requestGUID = requestGUID;
+	pr.requestGUID = requestUUID;
 	pr.projectIdentifier = project.projectUUID;
 	pr.request = std::move(sofiaRequest);
 
@@ -156,7 +178,7 @@ auto b3d::tools::sofiasearch::RequestProcessor::operator()(projectexplorer::Proj
 	std::filesystem::create_directories(pr.request.workingDirectory);
 
 	runSearchSync(pr.request);
-	if (!pr.request.result.sofia.wasSuccess())
+	if (!pr.request.result.sofia.wasSuccess() && pr.request.result.sofia.returnCode != 8)
 	{
 		pr.request.result.finished = true;
 		pr.request.result.returnCode = -1;
@@ -164,7 +186,21 @@ auto b3d::tools::sofiasearch::RequestProcessor::operator()(projectexplorer::Proj
 		return pr;
 	}
 	// Catalog add mask file
-	pr.request.result.sofia.fileResultGUID = rootCatalog.addFilePath(pr.request.workingDirectory / "out_mask.fits", true);
+	if (project.requests.empty())
+	{
+		pr.request.result.sofia.fileResultUUID =
+			rootCatalog.addFilePathAbsolute(pr.request.workingDirectory / "out_mask.fits");
+	}
+	else
+	{
+		pr.request.result.sofia.fileResultUUID =
+			rootCatalog.addFilePathAbsolute(pr.request.workingDirectory / "out_mask-raw.fits");
+	}
+	
+
+	assert(project.fitsOriginProperties.axisCount == 3);
+
+	auto searchRegionSize = pr.request.searchRegion.size();
 
 	createNvdb(project, rootCatalog, pr.request);
 	if (!pr.request.result.nvdb.wasSuccess())
@@ -174,12 +210,18 @@ auto b3d::tools::sofiasearch::RequestProcessor::operator()(projectexplorer::Proj
 		pr.request.result.message = "Nvdb generation failed";
 		return pr;
 	}
-	pr.request.result.nvdb.fileResultGUID =
-		rootCatalog.addFilePath(pr.request.workingDirectory / "masked.nvdb", true);
+
+	pr.request.result.nvdb.fileResultUUID =
+		rootCatalog.addFilePathAbsolute(pr.request.workingDirectory / "masked.nvdb");
 
 	pr.request.result.finished = true;
 	pr.request.result.returnCode = 0;
 	pr.request.result.message = "Request completed";
+
+
+	const std::chrono::duration<double> requestDuration = std::chrono::steady_clock::now() - startTime;
+	auto blubSecs = std::chrono::duration_cast<std::chrono::seconds>(requestDuration);
+	pr.request.durationSeconds = blubSecs.count();
 	return pr;
 }
 
