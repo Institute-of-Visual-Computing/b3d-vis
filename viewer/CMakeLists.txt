@@ -6,6 +6,7 @@ find_package(glad CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
+set(viewerTargetName viewer)
 add_executable(viewer)
 
 IF (WIN32)

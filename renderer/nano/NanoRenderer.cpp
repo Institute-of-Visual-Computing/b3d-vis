@@ -413,7 +413,7 @@ auto NanoRenderer::onGui() -> void
 {
 	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
 
-	ImGui::Begin("[DEPRICATED] RT Settings");
+	ImGui::Begin("[DEPRECATED] RT Settings");
 
 	ImGui::SeparatorText("Runtime Data Managment");
 
