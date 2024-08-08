@@ -3,6 +3,7 @@
 #include "framework/DockableWindowViewBase.h"
 
 #include <owl/common.h>
+
 #include <string>
 #include <vector>
 
@@ -11,7 +12,7 @@ class TransferMappingView final : public DockableWindowViewBase
 public:
 	TransferMappingView(ApplicationContext& appContext, Dockspace* dockspace);
 
-	[[nodiscard]] auto resampleData(int samplesCount) -> std::vector<float>;
+	[[nodiscard]] auto resampleData(int samplesCount) const -> std::vector<float>;
 
 	auto hasNewDataAvailable() const -> bool
 	{

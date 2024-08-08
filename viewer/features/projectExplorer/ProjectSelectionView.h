@@ -1,10 +1,10 @@
 #pragma once
 
 #include "framework/ModalViewBase.h"
-class ProjectSelectionView : public ModalViewBase
+class ProjectSelectionView final : public ModalViewBase
 {
 public:
-	ProjectSelectionView(ApplicationContext& applicationContext);
+	explicit ProjectSelectionView(ApplicationContext& applicationContext);
 
 	auto onDraw() -> void override;
 };

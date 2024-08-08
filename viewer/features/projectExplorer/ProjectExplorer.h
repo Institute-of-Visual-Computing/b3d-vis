@@ -2,15 +2,15 @@
 
 #include <memory>
 
-#include "framework/UpdatableComponentBase.h"
 #include "ProjectSelectionView.h"
+#include "framework/UpdatableComponentBase.h"
 
 class ApplicationContext;
 
-class ProjectExplorer : public UpdatableComponentBase
+class ProjectExplorer final : public UpdatableComponentBase
 {
 public:
-	ProjectExplorer(ApplicationContext& applicationContext);
+	explicit ProjectExplorer(ApplicationContext& applicationContext);
 
 
 private:

@@ -21,6 +21,7 @@ class RendererExtensionBase;
 namespace std_help
 {
 	template <class... Ts>
+	// ReSharper disable once CppInconsistentNaming
 	struct overloaded : Ts...
 	{
 		using Ts::operator()...;
@@ -61,7 +62,8 @@ public:
 							 std::string_view label, const std::optional<std::string_view>& shortcut = std::nullopt,
 							 const std::optional<std::string_view>& group = std::nullopt, int sortOrderKey = 0) -> void;
 	auto addMenuBarTray(const Action& trayDrawCallback = []() {}) -> void;
-	auto addTool(std::string_view iconLabel, Action action) -> void;
+	//TODO: investigate if thous API is needed
+	//auto addTool(std::string_view iconLabel, Action action) -> void;
 	// auto registerAsyncTasks(asyncEngine& )
 
 

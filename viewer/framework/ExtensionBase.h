@@ -5,7 +5,7 @@ class ApplicationContext;
 class ExtensionBase
 {
 public:
-	ExtensionBase(ApplicationContext& applicationContext) : appContext_{ &applicationContext }
+	explicit ExtensionBase(ApplicationContext& applicationContext) : appContext_{ &applicationContext }
 	{
 	}
 

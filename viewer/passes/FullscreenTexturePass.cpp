@@ -1,5 +1,5 @@
 #include "FullscreenTexturePass.h"
-#include "../GLUtils.h"
+#include "GLUtils.h"
 
 FullscreenTexturePass::FullscreenTexturePass() : srcTexture_{ 0 }
 {
