@@ -14,9 +14,9 @@ using namespace b3d::renderer;
 
 namespace
 {
-	int rendererIndex = 0;
-	bool disableVsync = false;
-	bool shouldRun = true;
+	auto rendererIndex = 0;
+	auto disableVsync = false;
+	auto shouldRun = true;
 
 	struct Command
 	{
@@ -28,9 +28,9 @@ namespace
 
 	auto showHelp() -> void
 	{
-		for (const auto& command : commands)
+		for (const auto& [name, description] : commands)
 		{
-			std::cout << "\t--" << command.name << "\t\t" << command.description << std::endl;
+			std::cout << "\t--" << name << "\t\t" << description << std::endl;
 		}
 	}
 
@@ -74,8 +74,8 @@ namespace
 
 			for (++foundBegin; foundBegin != foundEnd; ++foundBegin)
 			{
-				const auto value = *foundBegin;
-				values.push_back(value.value);
+				const auto [value] = *foundBegin;
+				values.push_back(value);
 			}
 
 			callback(values);
@@ -93,12 +93,13 @@ auto Application::run() -> void
 	using namespace std::string_literals;
 	auto viewer = NanoViewer{ "Default Viewer"s, 1980, 1080, !disableVsync, rendererIndex };
 	//viewer.enableFlyMode();
-	viewer.enableInspectMode();
-	viewer.setCameraOrientation(owl::vec3f(1.0,1.0,1.0), owl::vec3f(0.0,0.0,0.0), viewer.camera.getUp(), viewer.camera.getFovyInDegrees());
+	//viewer.enableInspectMode();
+	auto& camera = viewer.getCamera();
+	camera.setOrientation(glm::vec3(1.0,1.0,1.0), glm::vec3(0.0,0.0,0.0), camera.getUp(), camera.getFovYInDegrees());
 	viewer.showAndRunWithGui();
 }
 
-auto Application::initialization(const std::vector<Param>& params) -> void
+auto Application::initialization(const std::vector<Param>& parameters) -> void
 {
 	registerRenderer<NullRenderer>("nullRenderer");
 	registerRenderer<NanoRenderer>("NanoRenderer");
@@ -107,7 +108,7 @@ auto Application::initialization(const std::vector<Param>& params) -> void
 	registerRenderer<CudaSurfaceObjectWriteTestRenderer>("CudaSurfaceObjectWriteTestRenderer");
 	registerRenderer<FastVoxelTraversalRenderer>("FastVoxelTraversalRenderer");
 
-	addParamCommand(params, "renderer", "Sets default renderer.",
+	addParamCommand(parameters, "renderer", "Sets default renderer.",
 					[&](const std::vector<std::string>& values)
 					{
 						if (values.size() == 1)
@@ -126,7 +127,7 @@ auto Application::initialization(const std::vector<Param>& params) -> void
 						}
 					});
 
-	addParamCommand(params, "disable_vsync", "Disables VSync.",
+	addParamCommand(parameters, "disable_vsync", "Disables VSync.",
 					[&](const std::vector<std::string>& values)
 					{
 						if (values.size() == 0)
@@ -138,7 +139,7 @@ auto Application::initialization(const std::vector<Param>& params) -> void
 							notifyFaultyArguments();
 						}
 					});
-	addParamCommand(params, "enable_vsync", "Enables VSync.",
+	addParamCommand(parameters, "enable_vsync", "Enables VSync.",
 					[&](const std::vector<std::string>& values)
 					{
 						if (values.size() == 0)
@@ -150,7 +151,7 @@ auto Application::initialization(const std::vector<Param>& params) -> void
 							notifyFaultyArguments();
 						}
 					});
-	addParamCommand(params, "help", "Show help.",
+	addParamCommand(parameters, "help", "Show help.",
 					[&](const std::vector<std::string>& values)
 					{
 						if (values.size() == 0)

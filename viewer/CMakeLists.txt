@@ -2,17 +2,20 @@ find_package(imgui CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(glad CONFIG REQUIRED)
-find_package(Vulkan REQUIRED)
-find_package(VulkanHeaders CONFIG)
-find_package(imguizmo CONFIG REQUIRED)
+#find_package(imguizmo CONFIG REQUIRED)
+find_package(glm CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
+set(viewerTargetName viewer)
+add_executable(${viewerTargetName})
 
-add_executable(viewer)
-target_sources(viewer PRIVATE
+IF (WIN32)
+	target_sources(${viewerTargetName} PRIVATE App.rc)
+ENDIF()
+
+target_sources(${viewerTargetName} PRIVATE
 	main.cpp
 	NanoViewer.cpp
-	Vulkan.h
-	Vulkan.cpp
 	App.h
 	App.cpp
 	Pass.h
@@ -28,13 +31,66 @@ target_sources(viewer PRIVATE
 	DebugDrawVertex.h
 	GizmoHelper.h
 	GizmoHelper.cpp
+	Camera.h
+	CameraManipulator.h
+	InteropUtils.h
+	views/VolumeView.h
+	views/VolumeView.cpp
+	views/ServerConnectView.h
+	views/ServerConnectView.cpp
+	ServerConnect.h
+	ServerConnect.cpp
+	IdGenerator.h
+	GizmoOperationFlags.h
+	FontCollection.h
+	FontCollection.cpp
+	Flags.h
+	ServerConnectionDescription.h
+	ApplicationSettings.h
+	ApplicationSettings.cpp
+	GuiDefaultLayoutSettings.h
+	GuiDefaultLayoutSettings.cpp
+	framework/Dockspace.h
+	framework/Dockspace.cpp
+	framework/DockableWindowViewBase.h
+	framework/DockableWindowViewBase.cpp
+	framework/WindowViewBase.h
+	framework/WindowViewBase.cpp
+	framework/ModalViewBase.h
+	framework/ModalViewBase.cpp
+	framework/ApplicationContext.h
+	framework/ApplicationContext.cpp
+	framework/ExtensionBase.h
+	framework/RendererExtensionBase.h
+	framework/UpdatableComponentBase.h
+	framework/UpdatableComponentBase.cpp
+	framework/MenuBar.h
+	framework/MenuBar.cpp
+	features/transferMapping/TransferMapping.h
+	features/transferMapping/TransferMapping.cpp
+	features/transferMapping/TransferMappingController.h
+	features/transferMapping/TransferMappingController.cpp
+	features/transferMapping/TransferMappingView.h
+	features/transferMapping/TransferMappingView.cpp
+	features/projectExplorer/ProjectExplorer.h
+	features/projectExplorer/ProjectExplorer.cpp
+	features/projectExplorer/ProjectSelectionView.h
+	features/projectExplorer/ProjectSelectionView.cpp
+	features/serverConnect/ServerConnect.h
+	features/serverConnect/ServerConnectView.h
+	features/serverConnect/ServerConnectView.cpp
+	features/serverConnect/ServerConnectSettingsView.h
+	features/serverConnect/ServerConnectSettingsView.cpp
+	features/serverConnect/ServerAddEditView.h
+	features/serverConnect/ServerAddEditView.cpp
 )
-target_compile_features(viewer PUBLIC cxx_std_20)
-target_link_libraries(viewer
+
+target_include_directories(${viewerTargetName} PUBLIC /)
+target_compile_features(${viewerTargetName} PUBLIC cxx_std_23)
+target_link_libraries(${viewerTargetName}
   PRIVATE
-	owl_viewer
-	#owl::owl
 	glfw
+	glm::glm
 	imgui::imgui
 	B3D::Renderer::Library
 	B3D::Renderer::Null
@@ -45,11 +101,14 @@ target_link_libraries(viewer
 	B3D::Renderer::NanoOutOfCore
 	OpenGL::GL
 	glad::glad
-	Vulkan::Vulkan
-	Vulkan::Headers
-	imguizmo::imguizmo
+	imguizmo_modefied
+	iconFontCppHeaders
+	#imguizmo::imguizmo
 	B3D::Tools::ColorMap
 	${CUDA_nvml_LIBRARY}
+	imcurve_modefied
+	imspinner
+	nlohmann_json::nlohmann_json
 )
 
 option(ENABLE_NANO_PROFILE "Enables Tracy profiling" OFF)
@@ -57,9 +116,9 @@ option(ENABLE_NANO_SANITIZERS "Enables address sanitizers" OFF)
 
 if(ENABLE_NANO_PROFILE)
 	find_package(Tracy CONFIG REQUIRED)
-	target_link_libraries(viewer PRIVATE Tracy::TracyClient)
-	target_compile_definitions(viewer PUBLIC -DNANO_PROFILE -DTRACY_ENABLE)
-	target_sources(viewer PRIVATE
+	target_link_libraries(${viewerTargetName} PRIVATE Tracy::TracyClient)
+	target_compile_definitions(${viewerTargetName} PUBLIC -DNANO_PROFILE -DTRACY_ENABLE)
+	target_sources(${viewerTargetName} PRIVATE
 	main.cpp
 	)
 endif()
@@ -74,7 +133,7 @@ if(ENABLE_NANO_SANITIZERS)
 	#target_compile_definitions(viewer PRIVATE -D_CRTDBG_MAP_ALLOC)
 endif()
 
-target_include_directories(viewer
+target_include_directories(${viewerTargetName}
 	PRIVATE
 		${Stb_INCLUDE_DIR}
 )

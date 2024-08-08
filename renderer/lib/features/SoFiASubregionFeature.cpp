@@ -31,7 +31,7 @@ SoFiASubregionFeature::SoFiASubregionFeature(const std::string& name, b3d::rende
 
 void SoFiASubregionFeature::onInitialize()
 {
-	debugDrawlist_ = &renderer_->gizmoDraw();
+	debugDrawList_ = &renderer_->gizmoDraw();
 }
 
 
@@ -41,7 +41,7 @@ auto SoFiASubregionFeature::gui() -> void
 	const auto volTransform = sharedParameters_->get<VolumeTransform>("volumeTransform");
 	const auto transformedWorldMat = volTransform->worldMatTRS * volTransform->renormalizedScale * owl::AffineSpace3f::scale(volTransform->volumeVoxelBox.size());
 	
-	debugDrawlist_->drawBoundGizmo(boxTransform_, transformedWorldMat, {1,1,1});
+	debugDrawList_->drawBoundGizmo(boxTransform_, transformedWorldMat, {1,1,1});
 
 	if (currentSearch.valid())
 	{

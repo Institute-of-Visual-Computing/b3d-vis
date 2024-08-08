@@ -14,7 +14,7 @@ auto b3d::renderer::RenderTargetFeature::beginUpdate() -> void
 	skipUpdate = renderTargets_ == nullptr;
 
 	auto id = std::this_thread::get_id();
-	std::cout << "Thread ID: " << id << "\n";
+
 	if (skipUpdate)
 	{
 		b3d::renderer::log("RenderTargetFeature skips update, because of missing shared parameters!");
@@ -23,12 +23,13 @@ auto b3d::renderer::RenderTargetFeature::beginUpdate() -> void
 
 	// TODO: minmaxRT not considered yet
 	{
-		using namespace std::chrono_literals;
+		//TODO: Remove dead code
+		/*using namespace std::chrono_literals;
 		if (frmIdx == 1)
 		{
 			std::this_thread::sleep_for(0.6s);
-		}
-		b3d::renderer::log("Map Tex");
+		}*/
+		
 		OWL_CUDA_CHECK(
 			cudaGraphicsMapResources(1, &renderTargets_->colorRt.target));
 			

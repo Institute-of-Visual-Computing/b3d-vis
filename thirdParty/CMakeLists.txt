@@ -4,5 +4,11 @@ add_subdirectory(${owl_dir} EXCLUDE_FROM_ALL)
 add_subdirectory(${owl_dir}/samples/common)
 # add_subdirectory(${owl_dir}/samples/common)
 
+add_subdirectory(imGuizmo)
+add_subdirectory(imCurve)
+add_subdirectory(imSpinner)
+
 set_property(TARGET owl PROPERTY FOLDER "ThirdParty/owl")
 set_property(TARGET owl_viewer PROPERTY FOLDER "ThirdParty/owl")
+
+add_subdirectory(iconFontCppHeaders)

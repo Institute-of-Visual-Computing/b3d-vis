@@ -68,7 +68,7 @@ namespace b3d::renderer
 		std::atomic_bool stopSearch_{ false };
 
 		RendererBase* renderer_;
-		GizmoHelperBase* debugDrawlist_;
+		GizmoHelperBase* debugDrawList_;
 		owl::AffineSpace3f boxTransform_{};
 
 		std::future<SoFiaSearch> currentSearch;

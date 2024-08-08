@@ -269,6 +269,10 @@ auto NanoRenderer::onRender() -> void
 	//	owlGroupRefitAccel(nanoContext_.worldGeometryGroup);
 	//	firstFrame = false;
 	//}
+
+	volumeTransform->volumeVoxelBox = nanoVdbVolume.indexBox;
+	volumeTransform->renormalizedScale = runtimeVolume.renormalizeScale;
+
 	{
 		debugDraw().drawBox(trs_.p / 2, trs_.p, nanoVdbVolume.indexBox.size(), owl::vec4f(0.1f, 0.82f, 0.15f, 1.0f),
 							trs_.l);
@@ -277,6 +281,8 @@ auto NanoRenderer::onRender() -> void
 		debugDraw().drawBox(trs_.p / 2, trs_.p, aabbSize, owl::vec4f(0.9f, 0.4f, 0.2f, 0.4f),
 							runtimeVolume.renormalizeScale.l);
 	}
+
+	debugInfo_.gizmoHelper->drawGizmo(volumeTransform->worldMatTRS);
 
 	const auto colorMapParams = colorMapFeature_->getParamsData();
 
@@ -351,7 +357,6 @@ auto NanoRenderer::onRender() -> void
 		owl2f{ foveatedRenderingParams.leftEyeGazeScreenSpace.x, foveatedRenderingParams.leftEyeGazeScreenSpace.y },
 		owl2f{ foveatedRenderingParams.rightEyeGazeScreenSpace.x, foveatedRenderingParams.rightEyeGazeScreenSpace.y }
 	};
-
 	record.start();
 	for (const auto cameraIndex : cameraIndices)
 	{
@@ -408,7 +413,7 @@ auto NanoRenderer::onGui() -> void
 {
 	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
 
-	ImGui::Begin("RT Settings");
+	ImGui::Begin("[DEPRECATED] RT Settings");
 
 	ImGui::SeparatorText("Runtime Data Managment");
 
@@ -434,6 +439,9 @@ auto NanoRenderer::onGui() -> void
 		if (ImGui::Button(std::format("Set {}##{}", index, index).c_str()))
 		{
 			runtimeDataSet_.select(index);
+			const auto& statistics = runtimeDataSet_.getStatistics(index);
+			guiData.sampleRemapping[0] = statistics.min;
+			guiData.sampleRemapping[1] = statistics.max;
 		}
 		ImGui::SameLine();
 	}
@@ -517,7 +525,7 @@ auto NanoRenderer::onGui() -> void
 
 	ImGui::Text("%1.3f", timing);
 
-	debugInfo_.gizmoHelper->drawGizmo(volumeTransform->worldMatTRS);
+	
 
 	static auto currentPath = std::filesystem::current_path();
 	static auto selectedPath = std::filesystem::path{};

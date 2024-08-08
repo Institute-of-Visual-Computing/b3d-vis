@@ -14,6 +14,7 @@
 #include "features/RenderTargetFeature.h"
 #include "features/TransferFunctionFeature.h"
 #include "..//nanoOutOfCore/OpenFileDialog.h"
+#include "features/SoFiASubregionFeature.h"
 
 
 namespace b3d::renderer
@@ -39,6 +40,7 @@ namespace b3d::renderer
 			backgroundColorFeature_ = addFeature<BackgroundColorFeature>(
 				"Background Color", std::array<ColorRGB, 2>{ { { 0,0,0}, { 0,0,0 } } });
 			foveatedFeature_ = addFeature<FoveatedRenderingFeature>();
+			soFiASubregionFeature_ = addFeature<SoFiASubregionFeature>("SoFiA-2 Search", this);
 			// renderSyncFeature_ = addFeatureWithDependency<RenderSyncFeature>({renderTargetFeature_, colorMapFeature_, transferFunctionFeature_, backgroundColorFeature_, foveatedFeature_},"Main Synchronization");
 		}
 
@@ -75,6 +77,7 @@ namespace b3d::renderer
 		TransferFunctionFeature* transferFunctionFeature_;
 		BackgroundColorFeature* backgroundColorFeature_;
 		FoveatedRenderingFeature* foveatedFeature_;
+		SoFiASubregionFeature* soFiASubregionFeature_;
 
 		nano::RuntimeDataSet runtimeDataSet_{};
 		nano::OpenFileDialog openFileDialog_{ nano::SelectMode::singleFile, { ".nvdb" } };//TODO: add multiselect mode

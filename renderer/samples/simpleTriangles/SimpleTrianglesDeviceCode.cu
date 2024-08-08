@@ -20,6 +20,7 @@
 #include "deviceCode.h"
 
 #include "owl/owl_device.h"
+#include "../../nano/OptixHelper.cuh"
 
 namespace
 {
@@ -63,7 +64,7 @@ OPTIX_RAYGEN_PROGRAM(simpleRayGen)()
 				  /*the ray to trace*/ ray,
 				  /*prd*/ prd);
 
-	const int fbOfs = pixelID.x + self.fbSize.x * pixelID.y;
+	//const int fbOfs = pixelID.x + self.fbSize.x * pixelID.y;
 	surf2Dwrite(owl::make_rgba(prd.color), optixLaunchParams.surfacePointer, sizeof(uint32_t) * pixelID.x, pixelID.y);
 }
 

@@ -31,7 +31,8 @@
 			"default-features": false,
 			"features": [
 				"opengl3-binding",
-				"glfw-binding"
+				"glfw-binding",
+				"docking-experimental"
 			]
 		},
 		"tbb",
@@ -42,17 +43,15 @@
 				"extensions"
 			]
 		},
-		"vulkan",
-		"vulkan-headers",
 		"stb",
 		"boost-program-options",
-		"imguizmo",
 		{
 			"name": "tracy",
 			"features": [ "gui-tools" ]
 		},
 		"cpp-httplib",
-		"boost-process"
+		"boost-process",
+		"stduuid"
 	],
 	"builtin-baseline": "ad3bae57455a3c3ce528fcd47d8e8027d0498add"
 }
