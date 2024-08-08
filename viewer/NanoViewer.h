@@ -1,31 +1,30 @@
 #pragma once
-#include "GLUtils.h"
-
-#include <GLFW/glfw3.h>
+#include <ColorMap.h>
 #include <RendererBase.h>
+
 #include <nvml.h>
 
-#include <ColorMap.h>
 
 #include "Camera.h"
 #include "DebugDrawList.h"
 #include "GizmoHelper.h"
 
+
 class NanoViewer final
 {
 public:
-	explicit NanoViewer(const std::string& title = "Nano Viewer", const int initWindowWidth = 1980,
-						const int initWindowHeight = 1080, bool enableVsync = false, const int rendererIndex = 0);
+	explicit NanoViewer(const std::string& title = "Nano Viewer", int initWindowWidth = 1980,
+						int initWindowHeight = 1080, bool enableVsync = false, int rendererIndex = 0);
 	auto showAndRunWithGui() -> void;
 	auto showAndRunWithGui(const std::function<bool()>& keepgoing) -> void;
 	[[nodiscard]] auto getCamera() -> ::Camera&
 	{
 		return camera_;
 	}
-	virtual ~NanoViewer();
+	~NanoViewer();
 
 private:
-	auto selectRenderer(const uint32_t index) -> void;
+	auto selectRenderer(uint32_t index) -> void;
 	auto gui() -> void;
 	auto draw() -> void;
 	auto onFrameBegin() -> void;
@@ -46,31 +45,10 @@ private:
 	std::int32_t newSelectedRendererIndex_{ -1 };
 	std::vector<std::string> registeredRendererNames_{};
 
-	//struct GraphicsResources
-	//{
-	//	GLuint colorTexture;
-	//	GLuint minMaxTexture;
-
-	//} resources_;
-
-	//struct ColorMapResources
-	//{
-	//	b3d::tools::colormap::ColorMap colorMap;
-	//	GLuint colormapTexture;
-	//	cudaGraphicsResource_t cudaGraphicsResource;
-	//} colorMapResources_;
-
-	//struct TransferFunctionResources
-	//{
-	//	GLuint transferFunctionTexture;
-	//	cudaGraphicsResource_t cudaGraphicsResource;
-	//} transferFunctionResources_;
-
 	nvmlDevice_t nvmlDevice_{};
 	bool isAdmin_{ false };
 
-
 	::Camera camera_{};
 
-	bool isRunning_{true};
+	bool isRunning_{ true };
 };

@@ -4,7 +4,7 @@ class ApplicationContext;
 class UpdatableComponentBase
 {
 public:
-	UpdatableComponentBase(ApplicationContext& applicationContext);
+	explicit UpdatableComponentBase(ApplicationContext& applicationContext);
 
 	virtual ~UpdatableComponentBase()
 	{

@@ -1,11 +1,11 @@
 
 #include "TransferMappingController.h"
+#include <cuda_runtime.h>
 #include <owl/helper/cuda.h>
 #include "TransferMapping.h"
 #include "TransferMappingView.h"
 #include "framework/ApplicationContext.h"
 #include "framework/Dockspace.h"
-#include <cuda_runtime.h>
 
 TransferMappingController::TransferMappingController(ApplicationContext& applicationContext,
 													 TransferMapping& transferMapping)
@@ -13,6 +13,9 @@ TransferMappingController::TransferMappingController(ApplicationContext& applica
 	  mappingView_{ std::make_unique<TransferMappingView>(applicationContext, applicationContext.getMainDockspace()) },
 	  transferMapping_{ &transferMapping }
 {
+	applicationContext.addMenuToggleAction(
+		showToolWindow_, [&](bool isOn) { isOn ? mappingView_->open() : mappingView_->close(); }, "Tools",
+		"Transfer Mapping");
 }
 
 auto TransferMappingController::update() -> void
@@ -22,7 +25,6 @@ auto TransferMappingController::update() -> void
 		mappingView_->setColorMapInfos(transferMapping_->colorMapResources_.colorMap.colorMapNames,
 									   (void*)transferMapping_->colorMapResources_.colorMapTexture);
 		mappingView_->draw();
-		
 	}
 }
 
@@ -75,7 +77,7 @@ auto TransferMappingController::updateModel(Model& model) const -> bool
 
 		model.coloringMode = mappingView_->getColoringMode() == 0 ? b3d::renderer::ColoringMode::single :
 																	b3d::renderer::ColoringMode::colormap;
-		
+
 		model.selectedColorMap = mappingView_->getColoringMap();
 	}
 	return mappingView_->hasNewDataAvailable();

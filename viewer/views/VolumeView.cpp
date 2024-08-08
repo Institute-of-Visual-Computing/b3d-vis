@@ -49,7 +49,7 @@ VolumeView::VolumeView(ApplicationContext& appContext, Dockspace* dockspace)
 								 WindowFlagBits::noCollapse)
 {
 	fullscreenTexturePass_ = std::make_unique<FullscreenTexturePass>();
-	InfinitGridPass_ = std::make_unique<InfinitGridPass>();
+	infinitGridPass_ = std::make_unique<InfinitGridPass>();
 	debugDrawPass_ = std::make_unique<DebugDrawPass>(applicationContext_->getDrawList().get());
 
 	camera_.setOrientation(glm::vec3(1.0, 1.0, 1.0), glm::vec3(0.0, 0.0, 0.0), camera_.getUp(),
@@ -84,7 +84,7 @@ auto VolumeView::onDraw() -> void
 	ImGui::InvisibleButton("##volumeViewport", viewportSize_,
 						   ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
 
-
+	const auto viewportIsFocused = ImGui::IsItemFocused();
 	static auto moveCameraFaster = false;
 	auto& io = ImGui::GetIO();
 
@@ -105,24 +105,29 @@ auto VolumeView::onDraw() -> void
 	const auto maxCameraMoveAcceleration = 1.0f;
 	static auto AccelerationExpire = 0.0;
 	const auto sensitivity = 0.1f;
-	if (ImGui::IsKeyDown(ImGuiKey_W))
+	if (viewportIsFocused)
 	{
-		cameraMoveAcceleration = camera_.forward_ * camera_.movementSpeedScale_ * (moveCameraFaster ? fastSpeed : 1.0f);
-	}
-	if (ImGui::IsKeyDown(ImGuiKey_S))
-	{
-		cameraMoveAcceleration =
-			-camera_.forward_ * camera_.movementSpeedScale_ * (moveCameraFaster ? fastSpeed : 1.0f);
-	}
-	if (ImGui::IsKeyDown(ImGuiKey_A))
-	{
-		cameraMoveAcceleration = -glm::normalize(glm::cross(camera_.forward_, camera_.getUp())) *
-			camera_.movementSpeedScale_ * (moveCameraFaster ? fastSpeed : 1.0f);
-	}
-	if (ImGui::IsKeyDown(ImGuiKey_D))
-	{
-		cameraMoveAcceleration = glm::normalize(glm::cross(camera_.forward_, camera_.getUp())) *
-			camera_.movementSpeedScale_ * (moveCameraFaster ? fastSpeed : 1.0f);
+
+		if (ImGui::IsKeyDown(ImGuiKey_W))
+		{
+			cameraMoveAcceleration =
+				camera_.forward_ * camera_.movementSpeedScale_ * (moveCameraFaster ? fastSpeed : 1.0f);
+		}
+		if (ImGui::IsKeyDown(ImGuiKey_S))
+		{
+			cameraMoveAcceleration =
+				-camera_.forward_ * camera_.movementSpeedScale_ * (moveCameraFaster ? fastSpeed : 1.0f);
+		}
+		if (ImGui::IsKeyDown(ImGuiKey_A))
+		{
+			cameraMoveAcceleration = -glm::normalize(glm::cross(camera_.forward_, camera_.getUp())) *
+				camera_.movementSpeedScale_ * (moveCameraFaster ? fastSpeed : 1.0f);
+		}
+		if (ImGui::IsKeyDown(ImGuiKey_D))
+		{
+			cameraMoveAcceleration = glm::normalize(glm::cross(camera_.forward_, camera_.getUp())) *
+				camera_.movementSpeedScale_ * (moveCameraFaster ? fastSpeed : 1.0f);
+		}
 	}
 
 	auto delta = io.MouseDelta;
@@ -277,8 +282,8 @@ auto VolumeView::onResize() -> void
 	initializeGraphicsResources();
 }
 
-auto VolumeView::setRenderVolume(b3d::renderer::RendererBase* renderer, b3d::renderer::RenderingDataWrapper* renderingData)
-	-> void
+auto VolumeView::setRenderVolume(b3d::renderer::RendererBase* renderer,
+								 b3d::renderer::RenderingDataWrapper* renderingData) -> void
 {
 	renderer_ = renderer;
 	renderingData_ = renderingData;
@@ -507,11 +512,11 @@ auto VolumeView::renderVolume() -> void
 
 	if (viewerSettings_.enableGridFloor)
 	{
-		InfinitGridPass_->setViewProjectionMatrix(cameraMatrices.viewProjection);
-		InfinitGridPass_->setViewport(width, height);
-		InfinitGridPass_->setGridColor(
+		infinitGridPass_->setViewProjectionMatrix(cameraMatrices.viewProjection);
+		infinitGridPass_->setViewport(width, height);
+		infinitGridPass_->setGridColor(
 			glm::vec3{ viewerSettings_.gridColor[0], viewerSettings_.gridColor[1], viewerSettings_.gridColor[2] });
-		InfinitGridPass_->execute();
+		infinitGridPass_->execute();
 	}
 
 	if (viewerSettings_.enableDebugDraw)

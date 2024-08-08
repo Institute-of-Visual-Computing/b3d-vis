@@ -72,7 +72,7 @@ struct Flags
 		flags &= ~flagBit;
 	}
 
-	bool operator==(const Flags& other) const
+	auto operator==(const Flags& other) const -> bool
 	{
 		return flags == other.flags;
 	}

@@ -15,12 +15,13 @@ enum class WindowFlagBits : uint16_t
 	noTitleBar = 4,
 	noCollapse = 8,
 	noClose = 16,
-	noDocking = 32
+	noDocking = 32,
+	autoResize = 64
 };
 
 using WindowFlags = Flags<WindowFlagBits>;
 
-inline WindowFlags operator|(const WindowFlagBits& a, const WindowFlagBits& b)
+inline auto operator|(const WindowFlagBits& a, const WindowFlagBits& b) -> WindowFlags
 {
 	auto flags = WindowFlags{ a };
 	flags |= b;
@@ -36,7 +37,6 @@ public:
 	virtual ~WindowViewBase()
 	{
 	}
-
 
 	[[nodiscard]] auto viewportSize() const noexcept -> ImVec2
 	{

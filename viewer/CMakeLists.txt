@@ -4,14 +4,15 @@ find_package(GLEW REQUIRED)
 find_package(glad CONFIG REQUIRED)
 #find_package(imguizmo CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
 add_executable(viewer)
 
 IF (WIN32)
-	target_sources(viewer PRIVATE App.rc)
+	target_sources(${viewerTargetName} PRIVATE App.rc)
 ENDIF()
 
-target_sources(viewer PRIVATE
+target_sources(${viewerTargetName} PRIVATE
 	main.cpp
 	NanoViewer.cpp
 	App.h
@@ -32,8 +33,6 @@ target_sources(viewer PRIVATE
 	Camera.h
 	CameraManipulator.h
 	InteropUtils.h
-	views/ServerConnectSettingsView.h
-	views/ServerConnectSettingsView.cpp
 	views/VolumeView.h
 	views/VolumeView.cpp
 	views/ServerConnectView.h
@@ -45,6 +44,9 @@ target_sources(viewer PRIVATE
 	FontCollection.h
 	FontCollection.cpp
 	Flags.h
+	ServerConnectionDescription.h
+	ApplicationSettings.h
+	ApplicationSettings.cpp
 	framework/Dockspace.h
 	framework/Dockspace.cpp
 	framework/DockableWindowViewBase.h
@@ -59,18 +61,30 @@ target_sources(viewer PRIVATE
 	framework/RendererExtensionBase.h
 	framework/UpdatableComponentBase.h
 	framework/UpdatableComponentBase.cpp
+	framework/MenuBar.h
+	framework/MenuBar.cpp
 	features/transferMapping/TransferMapping.h
 	features/transferMapping/TransferMapping.cpp
 	features/transferMapping/TransferMappingController.h
 	features/transferMapping/TransferMappingController.cpp
 	features/transferMapping/TransferMappingView.h
 	features/transferMapping/TransferMappingView.cpp
+	features/projectExplorer/ProjectExplorer.h
+	features/projectExplorer/ProjectExplorer.cpp
+	features/projectExplorer/ProjectSelectionView.h
+	features/projectExplorer/ProjectSelectionView.cpp
+	features/serverConnect/ServerConnect.h
+	features/serverConnect/ServerConnectView.h
+	features/serverConnect/ServerConnectView.cpp
+	features/serverConnect/ServerConnectSettingsView.h
+	features/serverConnect/ServerConnectSettingsView.cpp
+	features/serverConnect/ServerAddEditView.h
+	features/serverConnect/ServerAddEditView.cpp
 )
 
-target_include_directories(viewer PUBLIC /)
-
-target_compile_features(viewer PUBLIC cxx_std_23)
-target_link_libraries(viewer
+target_include_directories(${viewerTargetName} PUBLIC /)
+target_compile_features(${viewerTargetName} PUBLIC cxx_std_23)
+target_link_libraries(${viewerTargetName}
   PRIVATE
 	glfw
 	glm::glm
@@ -90,6 +104,8 @@ target_link_libraries(viewer
 	B3D::Tools::ColorMap
 	${CUDA_nvml_LIBRARY}
 	imcurve_modefied
+	imspinner
+	nlohmann_json::nlohmann_json
 )
 
 option(ENABLE_NANO_PROFILE "Enables Tracy profiling" OFF)
@@ -97,9 +113,9 @@ option(ENABLE_NANO_SANITIZERS "Enables address sanitizers" OFF)
 
 if(ENABLE_NANO_PROFILE)
 	find_package(Tracy CONFIG REQUIRED)
-	target_link_libraries(viewer PRIVATE Tracy::TracyClient)
-	target_compile_definitions(viewer PUBLIC -DNANO_PROFILE -DTRACY_ENABLE)
-	target_sources(viewer PRIVATE
+	target_link_libraries(${viewerTargetName} PRIVATE Tracy::TracyClient)
+	target_compile_definitions(${viewerTargetName} PUBLIC -DNANO_PROFILE -DTRACY_ENABLE)
+	target_sources(${viewerTargetName} PRIVATE
 	main.cpp
 	)
 endif()
@@ -114,7 +130,7 @@ if(ENABLE_NANO_SANITIZERS)
 	#target_compile_definitions(viewer PRIVATE -D_CRTDBG_MAP_ALLOC)
 endif()
 
-target_include_directories(viewer
+target_include_directories(${viewerTargetName}
 	PRIVATE
 		${Stb_INCLUDE_DIR}
 )

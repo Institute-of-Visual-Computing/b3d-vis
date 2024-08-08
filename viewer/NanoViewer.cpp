@@ -1,25 +1,23 @@
 #include "NanoViewer.h"
 
 #include "passes/DebugDrawPass.h"
-#include "passes/FullscreenTexturePass.h"
-#include "passes/InfinitGridPass.h"
 
+#include "GLUtils.h"
 #include "InteropUtils.h"
+
+#include <GLFW/glfw3.h>
 
 #include <Logging.h>
 
-#include <cuda_gl_interop.h>
-#include <cuda_runtime.h>
-#include <filesystem>
 #include <format>
-#include <glm/ext/matrix_clip_space.hpp>
-#include <glm/ext/matrix_transform.hpp>
+#include <print>
+#include <string>
+
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 #include <owl/helper/cuda.h>
-#include <print>
+
 #include <stb_image.h>
-#include <string>
 #include <tracy/Tracy.hpp>
 
 #include <ImGuizmo.h>
@@ -29,15 +27,16 @@
 
 #include <boost/process.hpp>
 
-#include "views/ServerConnectSettingsView.h"
-
-#include <string_view>
-
 #include "GizmoOperationFlags.h"
 
+#include "features/projectExplorer/ProjectExplorer.h"
+#include "features/serverConnect/ServerConnectSettingsView.h"
 #include "features/transferMapping/TransferMapping.h"
 #include "framework/ApplicationContext.h"
+#include "framework/MenuBar.h"
 #include "views/VolumeView.h"
+
+#include <imspinner.h>
 
 using namespace owl;
 
@@ -46,8 +45,9 @@ namespace
 	ApplicationContext applicationContext{};
 	std::unique_ptr<VolumeView> volumeView{};
 	std::unique_ptr<TransferMapping> transferMapping{};
+	std::unique_ptr<ProjectExplorer> projectExplorer{};
+	std::unique_ptr<MenuBar> mainMenu{};
 	b3d::renderer::RenderingDataWrapper renderingData{};
-	b3d::renderer::RenderMode mode{ b3d::renderer::RenderMode::mono };
 
 
 	[[nodiscard]] auto requestRequiredDpiScales() -> std::vector<float>
@@ -81,7 +81,7 @@ namespace
 		ImGui::GetStyle().ScaleAllSizes(defaultDpiScale);
 	}
 
-	auto onGLFWErrorCallback(int error, const char* description)
+	auto onGlfwErrorCallback(int error, const char* description)
 	{
 		b3d::renderer::log(std::format("Error: {}\n", description), b3d::renderer::LogLevel::error);
 	}
@@ -186,7 +186,6 @@ auto NanoViewer::gui() -> void
 
 	static auto enablePersistenceMode{ false };
 	static auto enabledPersistenceMode{ false };
-	static auto showPermissionDeniedMessage{ false };
 
 	uint32_t clock;
 	{
@@ -244,9 +243,9 @@ auto NanoViewer::onFrameBegin() -> void
 }
 
 NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, const int initWindowHeight,
-					   bool enableVsync, const int rendererIndex)
+					   const bool enableVsync, const int rendererIndex)
 {
-	glfwSetErrorCallback(onGLFWErrorCallback);
+	glfwSetErrorCallback(onGlfwErrorCallback);
 
 	glfwInit();
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
@@ -254,7 +253,7 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 	glfwWindowHint(GLFW_VISIBLE, true);
 
 	applicationContext.mainWindowHandle_ =
-		glfwCreateWindow(initWindowWidth, initWindowHeight, title.c_str(), NULL, NULL);
+		glfwCreateWindow(initWindowWidth, initWindowHeight, title.c_str(), nullptr, nullptr);
 	if (!applicationContext.mainWindowHandle_)
 	{
 		glfwTerminate();
@@ -318,7 +317,6 @@ auto NanoViewer::draw() -> void
 	// TODO: if windows minimized or not visible -> skip rendering
 	onFrameBegin();
 	glClear(GL_COLOR_BUFFER_BIT);
-	static double lastCameraUpdate = -1.f;
 
 
 	ImGui_ImplOpenGL3_NewFrame();
@@ -332,8 +330,8 @@ auto NanoViewer::draw() -> void
 		isRunning_ = false;
 	}
 
-	static auto connectView =
-		ServerConnectSettingsView{ applicationContext, "Server Connect", []() { std::println("submit!!!"); } };
+	static auto connectView = ServerConnectSettingsView{ applicationContext, "Server Connect",
+														 [](ModalViewBase*) { std::println("submit!!!"); } };
 
 	ImGui::BeginMainMenuBar();
 	if (ImGui::BeginMenu("Program"))
@@ -347,11 +345,6 @@ auto NanoViewer::draw() -> void
 			connectView.reset();
 		}
 
-		if (ImGui::MenuItem(ICON_LC_LOG_OUT " Quit", "Alt+F4", nullptr))
-		{
-			isRunning_ = false;
-		}
-
 		ImGui::EndMenu();
 	}
 
@@ -362,19 +355,15 @@ auto NanoViewer::draw() -> void
 		{
 		}
 
-		if (ImGui::MenuItem("Transfer Function", nullptr, nullptr))
-		{
-		}
-
 		ImGui::EndMenu();
 	}
 
 	if (ImGui::BeginMenu("Help"))
 	{
-		const auto url = "https://github.com/Institut-of-Visual-Computing/b3d-vis";
 
 		if (ImGui::MenuItem(ICON_FA_GITHUB " Source Code", nullptr, nullptr))
 		{
+			const auto url = "https://github.com/Institut-of-Visual-Computing/b3d-vis";
 			auto cmd = "";
 #ifdef __APPLE__
 #ifdef TARGET_OS_MAC
@@ -397,24 +386,31 @@ auto NanoViewer::draw() -> void
 		ImGui::MenuItem("About", nullptr, nullptr);
 		ImGui::EndMenu();
 	}
-
 	ImGui::EndMainMenuBar();
+
+	mainMenu->draw();
 
 	applicationContext.getMainDockspace()->begin();
 
 	volumeView->draw();
+	connectView.draw();
 
-	for (auto component : applicationContext.updatableComponents_)
+	for (const auto component : applicationContext.updatableComponents_)
 	{
 		component->update();
 	}
 
-	for (auto component : applicationContext.rendererExtensions_)
+	/*for (auto component : applicationContext.drawableComponents_)
+	{
+		component->draw();
+	}*/
+
+	for (const auto component : applicationContext.rendererExtensions_)
 	{
 		component->updateRenderingData(renderingData);
 	}
 
-	// TODO: IT IS DEPRICATED AND IT WILL BE REMOVED!!!
+	// TODO: IT IS DEPRECATED AND IT WILL BE REMOVED!!!
 	currentRenderer_->gui();
 
 	applicationContext.getMainDockspace()->end();
@@ -433,10 +429,10 @@ auto NanoViewer::draw() -> void
 
 	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 	{
-		GLFWwindow* backup_current_context = glfwGetCurrentContext();
+		const auto backupCurrentContext = glfwGetCurrentContext();
 		ImGui::UpdatePlatformWindows();
 		ImGui::RenderPlatformWindowsDefault();
-		glfwMakeContextCurrent(backup_current_context);
+		glfwMakeContextCurrent(backupCurrentContext);
 	}
 
 	glfwSwapBuffers(applicationContext.mainWindowHandle_);
@@ -455,7 +451,7 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 
 	glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
 	glfwSetFramebufferSizeCallback(applicationContext.mainWindowHandle_,
-								   [](GLFWwindow* window, int width, int height)
+								   [](GLFWwindow* window, int, int)
 								   {
 									   auto* viewer = static_cast<NanoViewer*>(glfwGetWindowUserPointer(window));
 
@@ -470,9 +466,123 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 	volumeView->setRenderVolume(currentRenderer_.get(), &renderingData);
 
 	transferMapping = std::make_unique<TransferMapping>(applicationContext);
-	//TODO: we need a system for graphics resource initialization/deinitialization
+	// TODO: we need a system for graphics resource initialization/deinitialization
 	transferMapping->initializeResources();
 	transferMapping->updateRenderingData(renderingData);
+
+	projectExplorer = std::make_unique<ProjectExplorer>(applicationContext);
+
+	mainMenu = std::make_unique<MenuBar>(applicationContext);
+
+
+	// TODO: Move this to server connection feature
+	static auto isServerConnected = false;
+
+	applicationContext.addMenuBarTray(
+		[&]()
+		{
+			const auto color = isServerConnected ? ImVec4{ 0.1, 0.5, 0.1, 1.0 } : ImVec4{ 0.5, 0.1, 0.1, 1.0 };
+
+			ImGui::PushStyleColor(ImGuiCol_Button, color);
+			if (ImGui::Button(isServerConnected ? ICON_LC_SERVER : ICON_LC_SERVER_OFF))
+			{
+				isServerConnected = !isServerConnected;
+			}
+			ImGui::PopStyleColor();
+
+			if (ImGui::IsItemHovered())
+			{
+				if (ImGui::BeginTooltip())
+				{
+					ImGui::Text("Setup Server Connection...");
+					ImGui::EndTooltip();
+				}
+			}
+
+
+			const auto sampleRequest = std::vector<std::string>{
+				"Ready: SoFiA search [10, 30, 50] [20, 40, 100]",
+				"Pending: SoFiA search [110, 130, 150] [120, 140, 1100]",
+				"Pending: SoFiA search [210, 230, 250] [220, 240, 2100]",
+			};
+
+			enum class RequestStatus
+			{
+				pending,
+				ready
+			};
+
+			struct Request
+			{
+				int progress{};
+				std::string label;
+				RequestStatus status{ RequestStatus::pending };
+			};
+
+			static auto actualRequests = std::vector<Request>{};
+
+			auto hasPendingRequests = false;
+			// update fake requests
+			for (auto& request : actualRequests)
+			{
+				request.progress++;
+				if (request.progress >= 1000)
+				{
+					request.status = RequestStatus::ready;
+				}
+				else
+				{
+					hasPendingRequests = true;
+				}
+			}
+
+
+			ImGui::SameLine();
+			ImGui::SetNextItemAllowOverlap();
+			const auto pos = ImGui::GetCursorPos();
+			const auto spinnerRadius = ImGui::GetFontSize() * 0.25f;
+			const auto itemWidth = ImGui::GetStyle().FramePadding.x * 2 + spinnerRadius * 4;
+			if (ImGui::Button("##requestQueue", ImVec2(itemWidth, 32)))
+			{
+				const auto requestIndex = rand() % sampleRequest.size();
+				actualRequests.push_back(Request{ .label = sampleRequest[requestIndex] });
+			}
+			if (ImGui::IsItemHovered())
+			{
+				if (ImGui::BeginTooltip())
+				{
+					ImGui::SetNextItemOpen(true);
+					if (ImGui::TreeNode("Server Requests"))
+					{
+
+						for (const auto& [progress, label, status] : actualRequests)
+						{
+							ImGui::BulletText(std::format("{}: {}",
+														  status == RequestStatus::pending ? "Pending" : "Ready",
+														  label)
+												  .c_str());
+						}
+						ImGui::TreePop();
+					}
+					ImGui::EndTooltip();
+				}
+			}
+
+			if (hasPendingRequests)
+			{
+				ImGui::SetCursorPos(pos + ImGui::GetStyle().FramePadding * 2);
+				ImSpinner::SpinnerRotateSegments("abs", spinnerRadius, 2.0f);
+			}
+			else
+			{
+				const auto offset = (itemWidth - ImGui::CalcTextSize(ICON_LC_CIRCLE_CHECK).x) * 0.5f;
+				ImGui::SetCursorPos(pos + ImVec2(offset, 0));
+				ImGui::Text(ICON_LC_CIRCLE_CHECK);
+			}
+		});
+
+
+	applicationContext.addMenuAction([&]() { isRunning_ = false; }, "Program", "Quit", "Alt+F4", std::nullopt, 100);
 
 	glfwMakeContextCurrent(applicationContext.mainWindowHandle_);
 
