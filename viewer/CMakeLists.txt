@@ -7,7 +7,7 @@ find_package(glm CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
 set(viewerTargetName viewer)
-add_executable(viewer)
+add_executable(${viewerTargetName})
 
 IF (WIN32)
 	target_sources(${viewerTargetName} PRIVATE App.rc)
