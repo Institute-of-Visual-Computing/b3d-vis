@@ -2,6 +2,8 @@
 
 class ApplicationContext;
 
+
+/// \brief Base which allows initialization and deinitialization of resources. Allows access to ApplicationContext.
 class ExtensionBase
 {
 public:

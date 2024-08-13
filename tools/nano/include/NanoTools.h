@@ -53,6 +53,6 @@ namespace b3d::tools::nano
 	                                           const std::filesystem::path& subRegionFitsMaskFilePath,
 											   const b3d::common::Vec3I& subRegionOffset,	
 	                                           const std::filesystem::path& destinationNanoVdbFilePath)
-		-> NanoResult;		
+		-> NanoResult;
 	
 } // namespace b3d::tools::nano

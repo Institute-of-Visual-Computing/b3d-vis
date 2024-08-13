@@ -299,9 +299,7 @@ auto main(const int argc, char** argv) -> int
 					res.set_content(retJ.dump(), "application/json");
 					return;
 				}
-
 				
-
 				auto internalRequest = InternalRequest{
 					.userRequest = {},
 					.projectUUID = projectUuid,
