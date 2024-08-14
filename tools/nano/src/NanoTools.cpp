@@ -103,8 +103,7 @@ auto b3d::tools::nano::createNanoVdbWithExistingAndSubregion(
 	// Calculate offset of source NanoVDB in originalFitsFileBounds
 	const auto sourceGridhandle = nanovdb::io::readGrid(sourceNanoVdbFilePath.generic_string());
 
-
-	auto sourceGridAccessor = sourceGridhandle.grid<float>(0)->getAccessor();
+	auto nanoGrid = sourceGridhandle.grid<float>(0);
 	const auto sourceGridMetaData = sourceGridhandle.gridMetaData(0);
 
 	// The sourceGridIndexBox is most likely smaller than
@@ -144,7 +143,8 @@ auto b3d::tools::nano::createNanoVdbWithExistingAndSubregion(
 			sourceGridIndexBox3I.lower.z <= position.z && position.x <= sourceGridIndexBox3I.upper.x &&
 			position.y <= sourceGridIndexBox3I.upper.y && position.z <= sourceGridIndexBox3I.upper.z)
 		{
-			return sourceGridAccessor.getValue(position.x, position.y, position.z);
+
+			return sourceGridhandle.grid<float>(0)->getAccessor().getValue(position.x, position.y, position.z);
 		}
 
 		return 0.0f;
