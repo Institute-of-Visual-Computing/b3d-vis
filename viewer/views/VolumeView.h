@@ -55,6 +55,8 @@ private:
 
 	auto renderVolume() -> void;
 
+	auto demoMode(const bool enable) -> void;
+
 	b3d::renderer::RendererBase* renderer_{};
 	b3d::renderer::RenderingDataWrapper* renderingData_{};
 
@@ -66,6 +68,7 @@ private:
 		std::array<float, 3> gridColor{ 0.95f, 0.9f, 0.92f };
 		bool enableDebugDraw{ true };
 		bool enableGridFloor{ true };
+		bool enableControlToolBar{ true };
 	};
 
 	ViewerSettings viewerSettings_{};
