@@ -252,12 +252,17 @@ auto b3d::tools::fits::applyMaskInPlace(std::vector<float>& data, const std::vec
 	const float maskedValue) -> void
 {
 	assert(data.size() == mask.size());
-
+	for ( auto i = size_t{0}; i < data.size(); i++)
+	{
+		data[i] = mask[i] > 0 ? data[i] : maskedValue;
+	}
+	/*
 	std::transform(std::execution::par, data.begin(), data.end(), mask.begin(), data.begin(),
 		[maskedValue](const float value, const int maskValue) -> float
 		{
 			return maskValue > 0 ? value : maskedValue;
 		});
+	*/
 }
 
 auto b3d::tools::fits::applyMask(const std::filesystem::path& fitsDataFilePath,
@@ -265,7 +270,7 @@ auto b3d::tools::fits::applyMask(const std::filesystem::path& fitsDataFilePath,
 	-> ExtractedFloatData
 {
 	auto dataFitsFile = openFitsFile(fitsDataFilePath, READONLY);
-	auto maskFitsFile = openFitsFile(fitsDataFilePath, READONLY);
+	auto maskFitsFile = openFitsFile(fitsMaskFilePath, READONLY);
 
 	const auto dataProps = getFitsProperties(dataFitsFile);
 	const auto maskProps = getFitsProperties(maskFitsFile);
