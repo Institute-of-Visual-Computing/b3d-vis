@@ -50,11 +50,12 @@ public:
 		-> void;
 
 private:
-	auto drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec2& position, const glm::vec2& size) -> void;
+	auto drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec2& position, const glm::vec2& size) const
+		-> void;
 	auto initializeGraphicsResources() -> void;
 	auto deinitializeGraphicsResources() -> void;
 
-	auto renderVolume() -> void;
+	auto renderVolume() const -> void;
 
 	auto demoMode(const bool enable) -> void;
 
@@ -73,8 +74,8 @@ private:
 		glm::vec3 target{ 0.0f, 0.0f, 0.0f };
 		float height{ 1.0f };
 		float radius{ 1.0f };
-		float stiffness{ 17.0f };
-		float dumping{ 1.5f };
+		float stiffness{ 12.0f };
+		float dumping{ 1.0f };
 	};
 
 	CameraFlyAroundAnimationSetting flyAnimationSettings_ = {};

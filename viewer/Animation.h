@@ -26,7 +26,7 @@ namespace animation
 	}
 
 	inline auto springDamperExact(float& x, float& v, const float xGoal, const float vGoal, const float stiffness,
-						   const float damping, const float dt, const float eps = 1e-5f) -> void
+								  const float damping, const float dt, const float eps = 1e-5f) -> void
 	{
 		const auto g = xGoal;
 		const auto q = vGoal;
@@ -44,6 +44,54 @@ namespace animation
 
 		x = j * eydt * cosf(w * dt + p) + c;
 		v = -y * j * eydt * cosf(w * dt + p) - w * j * eydt * sinf(w * dt + p);
+	}
+
+	inline auto springDamperExact2(float& x, float& v, const float xGoal, const float vGoal, const float stiffness,
+								   const float damping, const float dt, const float eps = 1e-5f) -> void
+	{
+		const auto g = xGoal;
+		const auto q = vGoal;
+		const auto s = stiffness;
+		const auto d = damping;
+		const auto c = g + (d * q) / (s + eps);
+		const auto y = d / 2.0f;
+
+		if (fabs(s - (d * d) / 4.0f) < eps) // Critically Damped
+		{
+			const auto j0 = x - c;
+			const auto j1 = v + j0 * y;
+
+			const auto eydt = fastNegExp(y * dt);
+
+			x = j0 * eydt + dt * j1 * eydt + c;
+			v = -y * j0 * eydt - y * dt * j1 * eydt + j1 * eydt;
+		}
+		else if (s - (d * d) / 4.0f > 0.0) // Under Damped
+		{
+			const auto w = sqrtf(s - (d * d) / 4.0f);
+			auto j = sqrtf(squaref(v + y * (x - c)) / (w * w + eps) + squaref(x - c));
+			const auto p = fastAtan((v + (x - c) * y) / (-(x - c) * w + eps));
+
+			j = (x - c) > 0.0f ? j : -j;
+
+			const auto eydt = fastNegExp(y * dt);
+
+			x = j * eydt * cosf(w * dt + p) + c;
+			v = -y * j * eydt * cosf(w * dt + p) - w * j * eydt * sinf(w * dt + p);
+		}
+		else if (s - (d * d) / 4.0f < 0.0) // Over Damped
+		{
+			const auto y0 = (d + sqrtf(d * d - 4 * s)) / 2.0f;
+			const auto y1 = (d - sqrtf(d * d - 4 * s)) / 2.0f;
+			const auto j1 = (c * y0 - x * y0 - v) / (y1 - y0);
+			const auto j0 = x - j1 - c;
+
+			const auto ey0dt = fastNegExp(y0 * dt);
+			const auto ey1dt = fastNegExp(y1 * dt);
+
+			x = j0 * ey0dt + j1 * ey1dt + c;
+			v = -y0 * j0 * ey0dt - y1 * j1 * ey1dt;
+		}
 	}
 
 

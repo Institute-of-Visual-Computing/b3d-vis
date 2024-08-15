@@ -12,6 +12,7 @@
 #include <IconsLucide.h>
 #include <ImGuizmo.h>
 
+
 #include <cuda_gl_interop.h>
 #include <cuda_runtime.h>
 #include <owl/helper/cuda.h>
@@ -40,8 +41,6 @@ namespace
 		mat.viewProjection = mat.projection * mat.view;
 		return mat;
 	}
-
-
 } // namespace
 
 VolumeView::VolumeView(ApplicationContext& appContext, Dockspace* dockspace)
@@ -58,23 +57,25 @@ VolumeView::VolumeView(ApplicationContext& appContext, Dockspace* dockspace)
 
 	cameraLastFrame_ = camera_;
 
-
 	flyAnimationSettings_.radius = 3.0f;
 	animator_.addPropertyAnimation(
 		[&](const float t, const float dt)
 		{
+			const auto radius = flyAnimationSettings_.radius;
+			const auto height = flyAnimationSettings_.height;
+			const auto& origin = flyAnimationSettings_.origin;
+			const auto sin = glm::sin(t);
+			const auto cos = glm::cos(t);
+
+			const auto offset = glm::vec3{ sin * radius, height, cos * radius };
+
+			const auto lastPosition = cameraLastFrame_.position_;
+			const auto position = origin + offset;
+			const auto targetVelocity = position - lastPosition;
+
+			const auto cameraCurrentPosition = camera_.position_;
 			{
-				const auto radius = flyAnimationSettings_.radius;
-				const auto height = flyAnimationSettings_.height;
-				const auto& origin = flyAnimationSettings_.origin;
-				const auto sin = glm::sin(t);
-				const auto cos = glm::cos(t);
 
-				const auto offset = glm::vec3{ sin * radius, height, cos * radius };
-
-				const auto lastPosition = cameraLastFrame_.position_;
-				const auto position = origin + offset;
-				const auto targetVelocity = position - lastPosition;
 				const auto cameraVelocity = position - camera_.position_;
 
 				auto x = camera_.position_.x;
@@ -86,41 +87,41 @@ VolumeView::VolumeView(ApplicationContext& appContext, Dockspace* dockspace)
 				auto vz = cameraVelocity.z;
 
 
-				animation::springDamperExact(x, vx, position.x, targetVelocity.x, flyAnimationSettings_.stiffness,
-											 flyAnimationSettings_.dumping, dt);
-				animation::springDamperExact(y, vy, position.y, targetVelocity.y, flyAnimationSettings_.stiffness,
-											 flyAnimationSettings_.dumping, dt);
-				animation::springDamperExact(z, vz, position.z, targetVelocity.z, flyAnimationSettings_.stiffness,
-											 flyAnimationSettings_.dumping, dt);
+				animation::springDamperExact2(x, vx, position.x, targetVelocity.x, flyAnimationSettings_.stiffness,
+											  flyAnimationSettings_.dumping, dt);
+				animation::springDamperExact2(y, vy, position.y, targetVelocity.y, flyAnimationSettings_.stiffness,
+											  flyAnimationSettings_.dumping, dt);
+				animation::springDamperExact2(z, vz, position.z, targetVelocity.z, flyAnimationSettings_.stiffness,
+											  flyAnimationSettings_.dumping, dt);
 				camera_.position_ = glm::vec3{ x, y, z };
 			}
 
 			{
-				auto targetNormalized = glm::normalize(flyAnimationSettings_.target - camera_.position_);
+				auto targetNormalized = glm::normalize(flyAnimationSettings_.target - cameraCurrentPosition);
 
 				auto x = camera_.forward_.x;
 				auto y = camera_.forward_.y;
 				auto z = camera_.forward_.z;
 
-				const auto forwardVelocity = cameraLastFrame_.forward_ - camera_.forward_;
+				const auto forwardVelocity = cameraLastFrame_.position_ + cameraLastFrame_.forward_ - (camera_.forward_ + cameraCurrentPosition);
 
-				const auto distance = glm::length(camera_.position_ - flyAnimationSettings_.target);
-				const auto dd = 1.0f / distance;
-				auto vx = forwardVelocity.x * dd;
-				auto vy = forwardVelocity.y * dd;
-				auto vz = forwardVelocity.z * dd;
-				const auto targetForwardVelocity = forwardVelocity;
+				
+				auto vx = forwardVelocity.x;
+				auto vy = forwardVelocity.y;
+				auto vz = forwardVelocity.z;
+				const auto targetForwardVelocity = glm::vec3{ 0.0, 0.0, 0.0f }; // forwardVelocity;
 
-				animation::springDamperExact(x, vx, targetNormalized.x, targetForwardVelocity.x,
-											 flyAnimationSettings_.stiffness, flyAnimationSettings_.dumping, dt);
-				animation::springDamperExact(y, vy, targetNormalized.y, targetForwardVelocity.y,
-											 flyAnimationSettings_.stiffness, flyAnimationSettings_.dumping, dt);
-				animation::springDamperExact(z, vz, targetNormalized.z, targetForwardVelocity.z,
-											 flyAnimationSettings_.stiffness, flyAnimationSettings_.dumping, dt);
+				animation::springDamperExact2(x, vx, targetNormalized.x, targetForwardVelocity.x,
+											  flyAnimationSettings_.stiffness, flyAnimationSettings_.dumping, dt);
+				animation::springDamperExact2(y, vy, targetNormalized.y, targetForwardVelocity.y,
+											  flyAnimationSettings_.stiffness, flyAnimationSettings_.dumping, dt);
+				animation::springDamperExact2(z, vz, targetNormalized.z, targetForwardVelocity.z,
+											  flyAnimationSettings_.stiffness, flyAnimationSettings_.dumping, dt);
 
 
 				camera_.setOrientation(camera_.position_,
-									   camera_.position_ + camera_.forward_ + glm::vec3{ vx, vy, vz }, camera_.up_, 60);
+									   camera_.position_ + camera_.forward_ + glm::vec3{ vx, vy, vz }, camera_.up_,
+									   60);
 			}
 		});
 
@@ -152,8 +153,7 @@ auto VolumeView::onDraw() -> void
 		currentGizmoOperation_.flip(GizmoOperationFlagBits::rotate);
 	}
 
-
-	ImVec2 p = ImGui::GetCursorScreenPos();
+	const auto p = ImGui::GetCursorScreenPos();
 	ImGui::SetNextItemAllowOverlap();
 	ImGui::InvisibleButton("##volumeViewport", viewportSize_,
 						   ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
@@ -208,12 +208,8 @@ auto VolumeView::onDraw() -> void
 		glm::quat desiredOrientation_{};
 	};
 
-
 	constexpr auto fastSpeed = 25.0f;
-	constexpr auto cameraMoveVelocity = 0.0f;
 	auto cameraMoveAcceleration = glm::vec3{ 0 };
-	constexpr auto maxCameraMoveAcceleration = 1.0f;
-	static auto accelerationExpire = 0.0;
 	if (viewportIsFocused)
 	{
 
@@ -268,8 +264,6 @@ auto VolumeView::onDraw() -> void
 			}
 			if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
 			{
-
-				auto mouseScreenLocation = io.MousePos;
 				const auto up = camera_.getUp();
 				const auto right = glm::normalize(glm::cross(up, camera_.forward_));
 
@@ -295,7 +289,8 @@ auto VolumeView::onDraw() -> void
 
 	ImGui::SetCursorScreenPos(p);
 	ImGui::SetNextItemAllowOverlap();
-	ImGui::Image((ImTextureID)graphicsResources_.framebufferTexture, viewportSize_, { 0.0f, 1.0f }, { 1.0f, 0.0f });
+	ImGui::Image(reinterpret_cast<ImTextureID>(graphicsResources_.framebufferTexture), viewportSize_, { 0.0f, 1.0f },
+				 { 1.0f, 0.0f });
 
 	if (viewerSettings_.enableDebugDraw)
 	{
@@ -400,15 +395,15 @@ auto VolumeView::onDraw() -> void
 		demoMode(!animator_.isRunning());
 	}
 
-#if 0
+#if 1
 	ImGui::SliderFloat("stiffness", &flyAnimationSettings_.stiffness, 0.0f, 100.0f);
 	ImGui::SliderFloat("damping", &flyAnimationSettings_.dumping, 0.0f, 100.0f);
-	const auto d = (flyAnimationSettings_.dumping * flyAnimationSettings_.dumping) / 4.0f;
+	/*const auto d = (flyAnimationSettings_.dumping * flyAnimationSettings_.dumping) / 4.0f;
 
 	if (d > flyAnimationSettings_.stiffness)
 	{
 		flyAnimationSettings_.stiffness = d;
-	}
+	}*/
 #endif
 	animator_.animate(io.DeltaTime);
 }
@@ -427,10 +422,10 @@ auto VolumeView::setRenderVolume(b3d::renderer::RendererBase* renderer,
 }
 
 
-auto VolumeView::drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec2& position, const glm::vec2& size)
-	-> void
+auto VolumeView::drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec2& position,
+							const glm::vec2& size) const -> void
 {
-	const auto currentGizmoMode = ImGuizmo::LOCAL;
+	constexpr auto currentGizmoMode = ImGuizmo::LOCAL;
 	ImGuizmo::SetDrawlist(); // TODO: set before if statement, otherwise it can lead to crashes
 	ImGuizmo::SetRect(position.x, position.y, size.x, size.y);
 	if (currentGizmoOperation_ != GizmoOperationFlagBits::none)
@@ -603,12 +598,12 @@ auto VolumeView::deinitializeGraphicsResources() -> void
 {
 }
 
-auto VolumeView::renderVolume() -> void
+auto VolumeView::renderVolume() const -> void
 {
 
 	const auto width = viewportSize_.x;
 	const auto height = viewportSize_.y;
-	const auto cameraMatrices = computeViewProjectionMatrixFromCamera(camera_, width, height);
+	const auto [view, projection, viewProjection] = computeViewProjectionMatrixFromCamera(camera_, width, height);
 
 	GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, graphicsResources_.framebuffer));
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -649,7 +644,7 @@ auto VolumeView::renderVolume() -> void
 
 	if (viewerSettings_.enableGridFloor)
 	{
-		infinitGridPass_->setViewProjectionMatrix(cameraMatrices.viewProjection);
+		infinitGridPass_->setViewProjectionMatrix(viewProjection);
 		infinitGridPass_->setViewport(width, height);
 		infinitGridPass_->setGridColor(
 			glm::vec3{ viewerSettings_.gridColor[0], viewerSettings_.gridColor[1], viewerSettings_.gridColor[2] });
@@ -658,7 +653,7 @@ auto VolumeView::renderVolume() -> void
 
 	if (viewerSettings_.enableDebugDraw)
 	{
-		debugDrawPass_->setViewProjectionMatrix(cameraMatrices.viewProjection);
+		debugDrawPass_->setViewProjectionMatrix(viewProjection);
 		debugDrawPass_->setViewport(width, height);
 		debugDrawPass_->setLineWidth(viewerSettings_.lineWidth);
 		debugDrawPass_->execute();
