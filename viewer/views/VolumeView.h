@@ -4,6 +4,7 @@
 #endif
 #include "Camera.h"
 
+#include "Animation.h"
 #include "GizmoOperationFlags.h"
 #include "framework/DockableWindowViewBase.h"
 #include "passes/InfinitGridPass.h"
@@ -61,6 +62,22 @@ private:
 	b3d::renderer::RenderingDataWrapper* renderingData_{};
 
 	Camera camera_{};
+	Camera cameraLastFrame_{};
+
+	animation::PropertyAnimator animator_;
+	bool demoModeEnabled_{ false };
+
+	struct CameraFlyAroundAnimationSetting
+	{
+		glm::vec3 origin{};
+		glm::vec3 target{ 0.0f, 0.0f, 0.0f };
+		float height{ 1.0f };
+		float radius{ 1.0f };
+		float stiffness{ 17.0f };
+		float dumping{ 1.5f };
+	};
+
+	CameraFlyAroundAnimationSetting flyAnimationSettings_ = {};
 
 	struct ViewerSettings
 	{

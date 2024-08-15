@@ -26,101 +26,6 @@
 #include "passes/FullscreenTexturePass.h"
 #include "passes/InfinitGridPass.h"
 
-namespace animation
-{
-
-	auto fastAtan(const float x) -> float
-	{
-		const auto z = fabs(x);
-		const auto w = z > 1.0f ? 1.0f / z : z;
-		const float y = (M_PI / 4.0f) * w - w * (w - 1) * (0.2447f + 0.0663f * w);
-		return copysign(z > 1.0f ? M_PI / 2.0 - y : y, x);
-	}
-
-	auto fastNegExp(const float x) -> float
-	{
-		return 1.0f / (1.0f + x + 0.48f * x * x + 0.235f * x * x * x);
-	}
-
-	auto squaref(const float x) -> float
-	{
-		return x * x;
-	}
-
-	auto springDamperExact(float& x, float& v, const float xGoal, const float vGoal, const float stiffness,
-						   const float damping, const float dt, const float eps = 1e-5f) -> void
-	{
-		const auto g = xGoal;
-		const auto q = vGoal;
-		const auto s = stiffness;
-		const auto d = damping;
-		const auto c = g + (d * q) / (s + eps);
-		const auto y = d / 2.0f;
-		const auto w = sqrtf(s - (d * d) / 4.0f);
-		auto j = sqrtf(squaref(v + y * (x - c)) / (w * w + eps) + squaref(x - c));
-		const auto p = fastAtan((v + (x - c) * y) / (-(x - c) * w + eps));
-
-		j = (x - c) > 0.0f ? j : -j;
-
-		const auto eydt = fastNegExp(y * dt);
-
-		x = j * eydt * cosf(w * dt + p) + c;
-		v = -y * j * eydt * cosf(w * dt + p) - w * j * eydt * sinf(w * dt + p);
-	}
-
-
-	using PropertyAnimation = std::function<void(float, float)>;
-
-	class PropertyAnimator final
-	{
-	public:
-		auto addPropertyAnimation(const PropertyAnimation& animation)
-		{
-			animations_.push_back(animation);
-		}
-
-		auto animate(const float delta) -> void
-		{
-			if (isRunning_)
-			{
-				globalTime_ += delta;
-				for (auto& animation : animations_)
-				{
-					animation(globalTime_, delta);
-				}
-			}
-		}
-
-		auto reset() -> void
-		{
-			animations_.clear();
-		}
-		auto start() -> void
-		{
-			isRunning_ = true;
-		}
-		auto stop() -> void
-		{
-			pause();
-			globalTime_ = 0.0f;
-		}
-		auto pause() -> void
-		{
-			isRunning_ = false;
-		}
-
-		auto isRunning() const -> bool
-		{
-			return isRunning_;
-		}
-
-	private:
-		std::vector<PropertyAnimation> animations_{};
-		float globalTime_{ 0.0f };
-
-		bool isRunning_{ false };
-	};
-} // namespace animation
 
 namespace
 {
@@ -132,14 +37,11 @@ namespace
 		VolumeView::CameraMatrices mat;
 		mat.projection = glm::perspective(glm::radians(camera.getFovYInDegrees()), aspect, 0.01f, 10000.0f);
 		mat.view = glm::lookAt(camera.getFrom(), camera.getAt(), glm::normalize(camera.getUp()));
-
-
 		mat.viewProjection = mat.projection * mat.view;
 		return mat;
 	}
 
-	animation::PropertyAnimator animator;
-	bool demoModeEnabled = false;
+
 } // namespace
 
 VolumeView::VolumeView(ApplicationContext& appContext, Dockspace* dockspace)
@@ -154,50 +56,26 @@ VolumeView::VolumeView(ApplicationContext& appContext, Dockspace* dockspace)
 	camera_.setOrientation(glm::vec3(1.0, 1.0, 1.0), glm::vec3(0.0, 0.0, 0.0), camera_.getUp(),
 						   camera_.getFovYInDegrees());
 
+	cameraLastFrame_ = camera_;
 
-	struct CameraFlyAroundAnimationSetting
-	{
-		glm::vec3 origin{};
-		glm::vec3 target{ 0.0f, 0.0f, 0.0f };
-		float height{ 1.0f };
-		float radius{ 1.0f };
-		float stiffness{ 20.0f };
-		float dumping{ 6.0f };
-	};
 
-	auto flyAnimationSettings = CameraFlyAroundAnimationSetting{};
-	flyAnimationSettings.radius = 3.0f;
-
-	animator.addPropertyAnimation(
-		[&, flyAnimationSettings](const float t, const float dt)
+	flyAnimationSettings_.radius = 3.0f;
+	animator_.addPropertyAnimation(
+		[&](const float t, const float dt)
 		{
-			auto cameraAnimationPathPosition = [=](const float x) -> glm::vec3
 			{
-				const auto radius = flyAnimationSettings.radius;
-				const auto height = flyAnimationSettings.height;
-				const auto& origin = flyAnimationSettings.origin;
-				const auto sin = glm::sin(x);
-				const auto cos = glm::cos(x);
+				const auto radius = flyAnimationSettings_.radius;
+				const auto height = flyAnimationSettings_.height;
+				const auto& origin = flyAnimationSettings_.origin;
+				const auto sin = glm::sin(t);
+				const auto cos = glm::cos(t);
 
 				const auto offset = glm::vec3{ sin * radius, height, cos * radius };
 
-				return origin + offset;
-			};
-
-			const auto lastPosition = cameraAnimationPathPosition(t - dt);
-			const auto position = cameraAnimationPathPosition(t);
-
-			const auto targetVelocity = position - lastPosition;
-
-			const auto lastTargetLookDirection = glm::normalize(flyAnimationSettings.origin - lastPosition);
-			const auto targetLookDirection = glm::normalize(flyAnimationSettings.origin - position);
-			const auto targetLookDirectionVelocity = targetLookDirection - lastTargetLookDirection;
-
-			const auto cameraVelocity = position - camera_.position_;
-			const auto lastCameraPosition = camera_.position_;
-
-
-			{
+				const auto lastPosition = cameraLastFrame_.position_;
+				const auto position = origin + offset;
+				const auto targetVelocity = position - lastPosition;
+				const auto cameraVelocity = position - camera_.position_;
 
 				auto x = camera_.position_.x;
 				auto y = camera_.position_.y;
@@ -208,43 +86,46 @@ VolumeView::VolumeView(ApplicationContext& appContext, Dockspace* dockspace)
 				auto vz = cameraVelocity.z;
 
 
-				animation::springDamperExact(x, vx, position.x, targetVelocity.x, flyAnimationSettings.stiffness,
-											 flyAnimationSettings.dumping, dt);
-				animation::springDamperExact(y, vy, position.y, targetVelocity.y, flyAnimationSettings.stiffness,
-											 flyAnimationSettings.dumping, dt);
-				animation::springDamperExact(z, vz, position.z, targetVelocity.z, flyAnimationSettings.stiffness,
-											 flyAnimationSettings.dumping, dt);
+				animation::springDamperExact(x, vx, position.x, targetVelocity.x, flyAnimationSettings_.stiffness,
+											 flyAnimationSettings_.dumping, dt);
+				animation::springDamperExact(y, vy, position.y, targetVelocity.y, flyAnimationSettings_.stiffness,
+											 flyAnimationSettings_.dumping, dt);
+				animation::springDamperExact(z, vz, position.z, targetVelocity.z, flyAnimationSettings_.stiffness,
+											 flyAnimationSettings_.dumping, dt);
 				camera_.position_ = glm::vec3{ x, y, z };
 			}
 
 			{
+				auto targetNormalized = glm::normalize(flyAnimationSettings_.target - camera_.position_);
 
-				const auto lastForwardTarget =
-					glm::dot(glm::normalize(flyAnimationSettings.target - lastPosition), camera_.forward_);
-				const auto forwardTarget =
-					glm::dot(glm::normalize(flyAnimationSettings.target - camera_.position_), camera_.forward_);
+				auto x = camera_.forward_.x;
+				auto y = camera_.forward_.y;
+				auto z = camera_.forward_.z;
 
-				auto v = forwardTarget - lastForwardTarget;
-				auto p = forwardTarget;
-				animation::springDamperExact(p, v, 0.0f, 0.0f, flyAnimationSettings.stiffness,
-											 flyAnimationSettings.dumping, dt);
+				const auto forwardVelocity = cameraLastFrame_.forward_ - camera_.forward_;
+
+				const auto distance = glm::length(camera_.position_ - flyAnimationSettings_.target);
+				const auto dd = 1.0f / distance;
+				auto vx = forwardVelocity.x * dd;
+				auto vy = forwardVelocity.y * dd;
+				auto vz = forwardVelocity.z * dd;
+				const auto targetForwardVelocity = forwardVelocity;
+
+				animation::springDamperExact(x, vx, targetNormalized.x, targetForwardVelocity.x,
+											 flyAnimationSettings_.stiffness, flyAnimationSettings_.dumping, dt);
+				animation::springDamperExact(y, vy, targetNormalized.y, targetForwardVelocity.y,
+											 flyAnimationSettings_.stiffness, flyAnimationSettings_.dumping, dt);
+				animation::springDamperExact(z, vz, targetNormalized.z, targetForwardVelocity.z,
+											 flyAnimationSettings_.stiffness, flyAnimationSettings_.dumping, dt);
 
 
-				const auto rotation = glm::rotate(
-					glm::identity<glm::mat4>(), p,
-					glm::normalize(
-						glm::cross(glm::normalize(flyAnimationSettings.target - camera_.position_), camera_.forward_)));
-
-				const auto target = glm::normalize(glm::vec3(rotation * glm::vec4(camera_.forward_, 0.0f)));
-
-
-				const auto interest = camera_.position_ - target;
-				camera_.setOrientation(camera_.position_, flyAnimationSettings.target, camera_.up_, 60);
+				camera_.setOrientation(camera_.position_,
+									   camera_.position_ + camera_.forward_ + glm::vec3{ vx, vy, vz }, camera_.up_, 60);
 			}
 		});
 
 	applicationContext_->addMenuToggleAction(
-		demoModeEnabled, [&](const bool isOn) { demoMode(isOn); }, "Help", "Demo Mode", "F2", std::nullopt, 0);
+		demoModeEnabled_, [&](const bool isOn) { demoMode(isOn); }, "Help", "Demo Mode", "F2", std::nullopt, 0);
 }
 
 VolumeView::~VolumeView()
@@ -255,6 +136,7 @@ VolumeView::~VolumeView()
 
 auto VolumeView::onDraw() -> void
 {
+	cameraLastFrame_ = camera_;
 	renderVolume();
 
 	if (ImGui::IsKeyPressed(ImGuiKey_1, false))
@@ -515,9 +397,20 @@ auto VolumeView::onDraw() -> void
 
 	if (ImGui::IsKeyPressed(ImGuiKey_F2, false))
 	{
-		demoMode(!animator.isRunning());
+		demoMode(!animator_.isRunning());
 	}
-	animator.animate(io.DeltaTime);
+
+#if 0
+	ImGui::SliderFloat("stiffness", &flyAnimationSettings_.stiffness, 0.0f, 100.0f);
+	ImGui::SliderFloat("damping", &flyAnimationSettings_.dumping, 0.0f, 100.0f);
+	const auto d = (flyAnimationSettings_.dumping * flyAnimationSettings_.dumping) / 4.0f;
+
+	if (d > flyAnimationSettings_.stiffness)
+	{
+		flyAnimationSettings_.stiffness = d;
+	}
+#endif
+	animator_.animate(io.DeltaTime);
 }
 
 auto VolumeView::onResize() -> void
@@ -543,18 +436,18 @@ auto VolumeView::drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec
 	if (currentGizmoOperation_ != GizmoOperationFlagBits::none)
 	{
 
-		auto guizmoOperation = ImGuizmo::OPERATION{};
+		auto gizmoOperation = ImGuizmo::OPERATION{};
 		if (currentGizmoOperation_.containsBit(GizmoOperationFlagBits::rotate))
 		{
-			guizmoOperation = guizmoOperation | ImGuizmo::ROTATE;
+			gizmoOperation = gizmoOperation | ImGuizmo::ROTATE;
 		}
 		if (currentGizmoOperation_.containsBit(GizmoOperationFlagBits::translate))
 		{
-			guizmoOperation = guizmoOperation | ImGuizmo::TRANSLATE;
+			gizmoOperation = gizmoOperation | ImGuizmo::TRANSLATE;
 		}
 		if (currentGizmoOperation_.containsBit(GizmoOperationFlagBits::scale))
 		{
-			guizmoOperation = guizmoOperation | ImGuizmo::SCALE;
+			gizmoOperation = gizmoOperation | ImGuizmo::SCALE;
 		}
 
 
@@ -584,7 +477,7 @@ auto VolumeView::drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec
 			mat[9] = transform->l.vz.y;
 			mat[10] = transform->l.vz.z;
 			ImGuizmo::Manipulate(reinterpret_cast<const float*>(&cameraMatrices.view),
-								 reinterpret_cast<const float*>(&cameraMatrices.projection), guizmoOperation,
+								 reinterpret_cast<const float*>(&cameraMatrices.projection), gizmoOperation,
 								 currentGizmoMode, mat, nullptr, nullptr);
 
 			transform->p.x = mat[12];
@@ -777,18 +670,18 @@ auto VolumeView::renderVolume() -> void
 auto VolumeView::demoMode(const bool enable) -> void
 {
 	static auto backup = viewerSettings_;
-	demoModeEnabled = enable;
+	demoModeEnabled_ = enable;
 
 	if (enable)
 	{
 		viewerSettings_.enableDebugDraw = false;
 		viewerSettings_.enableGridFloor = false;
 		viewerSettings_.enableControlToolBar = false;
-		animator.start();
+		animator_.start();
 	}
 	else
 	{
 		viewerSettings_ = backup;
-		animator.pause();
+		animator_.pause();
 	}
 }

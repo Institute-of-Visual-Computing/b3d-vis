@@ -50,6 +50,7 @@ target_sources(${viewerTargetName} PRIVATE
 	ApplicationSettings.cpp
 	GuiDefaultLayoutSettings.h
 	GuiDefaultLayoutSettings.cpp
+	Animation.h
 	framework/Dockspace.h
 	framework/Dockspace.cpp
 	framework/DockableWindowViewBase.h
