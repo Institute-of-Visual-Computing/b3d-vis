@@ -17,7 +17,7 @@ ServerAddEditView::ServerAddEditView(ApplicationContext& applicationContext, con
 auto ServerAddEditView::onDraw() -> void
 {
 	ImGui::InputText("Name", &model_.name);
-	ImGui::InputText("IP Address", &model_.ip);
+	ImGui::InputText("IP Address", &model_.ipHost);
 	ImGui::InputText("Port", &model_.port);
 
 	unblock();

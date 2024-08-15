@@ -5,13 +5,14 @@
 
 #include <memory>
 
+#include "ServerClient.h"
+
 
 class ServerConnectSettingsView final : public ModalViewBase
 {
 public:
 	ServerConnectSettingsView(ApplicationContext& appContext, const std::string_view name,
 							  const std::function<void(ModalViewBase*)>& onSubmitCallback);
-
 
 	// Inherited via ModalViewBase
 	auto onDraw() -> void override;
@@ -29,16 +30,5 @@ private:
 
 	auto testServerStatus() -> void;
 
-	enum class ServerStatusState
-	{
-		ok,
-		unreachable,
-		unknown,
-		testing
-	};
-
-	ServerStatusState selectedServerStatus_{ServerStatusState::unknown};
-
-	auto resetServerStatus() -> void;
-	
+	b3d::tools::project::ServerClient serverClient_{ };
 };

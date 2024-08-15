@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ServerConnectionDescription.h"
+#include "ServerClient.h"
 #include "framework/ModalViewBase.h"
 
 class ServerAddEditView final : public ModalViewBase
@@ -13,15 +13,15 @@ public:
 	auto onDraw() -> void override;
 
 private:
-	ServerConnectionDescription model_{};
+	b3d::tools::project::ServerConnectionDescription model_{};
 
 public:
-	auto setModel(const ServerConnectionDescription& model) -> void
+	auto setModel(const b3d::tools::project::ServerConnectionDescription& model) -> void
 	{
 		model_ = model;
 	}
 
-	[[nodiscard]] auto model() const -> const ServerConnectionDescription&
+	[[nodiscard]] auto model() const -> const b3d::tools::project::ServerConnectionDescription&
 	{
 		return model_;
 	}

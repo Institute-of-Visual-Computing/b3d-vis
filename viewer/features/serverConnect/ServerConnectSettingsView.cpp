@@ -33,24 +33,28 @@ ServerConnectSettingsView::ServerConnectSettingsView(ApplicationContext& appCont
 	addServerView_ = std::make_unique<ServerAddEditView>(
 		appContext, "Add Server",
 		[](ModalViewBase* self)
-		{ reinterpret_cast<ServerAddEditView*>(self)->setModel(ServerConnectionDescription{}); },
+		{ reinterpret_cast<ServerAddEditView*>(self)->setModel(b3d::tools::project::ServerConnectionDescription{}); },
 		[&](ModalViewBase* self)
 		{
 			const auto model = reinterpret_cast<ServerAddEditView*>(self)->model();
 			applicationContext_->settings_.configuredServerSettings_.push_back(model);
 			selectedItem_ = applicationContext_->settings_.configuredServerSettings_.size() - 1;
+			
+			serverClient_ = b3d::tools::project::ServerClient(model);
 		});
+
 	editServerView_ = std::make_unique<ServerAddEditView>(
 		appContext, "Edit Server",
 		[&](ModalViewBase* self)
 		{
-			reinterpret_cast<ServerAddEditView*>(self)->setModel(
+			    reinterpret_cast<ServerAddEditView*>(self)->setModel(
 				applicationContext_->settings_.configuredServerSettings_[selectedItem_]);
 		},
 		[&](ModalViewBase* self)
 		{
 			const auto model = reinterpret_cast<ServerAddEditView*>(self)->model();
 			applicationContext_->settings_.configuredServerSettings_[selectedItem_] = model;
+			serverClient_ = b3d::tools::project::ServerClient(model);
 		});
 }
 
@@ -85,7 +89,7 @@ auto ServerConnectSettingsView::onDraw() -> void
 							  ImGuiSelectableFlags_DontClosePopups | ImGuiSelectableFlags_AllowOverlap, itemSize))
 		{
 			selectedItem_ = n;
-			resetServerStatus();
+			serverClient_ = b3d::tools::project::ServerClient(servers[n]);
 		}
 		if (ImGui::BeginItemTooltip())
 		{
@@ -158,7 +162,7 @@ auto ServerConnectSettingsView::onDraw() -> void
 	}
 	ImGui::SameLine();
 
-	ImGui::BeginDisabled(selectedItem_ < 0);
+	ImGui::BeginDisabled(!isServerSelected());
 	if (ImGui::Button("Edit..."))
 	{
 		editServerView_->open();
@@ -171,64 +175,50 @@ auto ServerConnectSettingsView::onDraw() -> void
 			applicationContext_->settings_.configuredServerSettings_.begin() + selectedItem_);
 		selectedItem_ -= 1;
 	}
-	ImGui::SameLine(ImGui::GetContentRegionAvail().x - 200);
+	ImGui::SameLine(ImGui::GetContentRegionAvail().x - 225);
+
+	ImGui::BeginGroup();
+
+	if (ImGui::Button("Set"))
+	{
+		applicationContext_->serverClient.setNewConnectionInfo(serverClient_.getConnectionInfo());
+	}
+	ImGui::SameLine();
 	if (ImGui::Button("Test Connection"))
 	{
 		testServerStatus();
-		resetServerStatus();
 	}
 
-	if (startTestConnection)
-	{
-		counter++;
-		if (counter > 1000)
-		{
-			if (rand() % 2 == 0)
-			{
-				selectedServerStatus_ = ServerStatusState::ok;
-			}
-			else
-			{
-
-				selectedServerStatus_ = ServerStatusState::unreachable;
-			}
-			startTestConnection = false;
-			counter = 0;
-		}
-		else
-		{
-			selectedServerStatus_ = ServerStatusState::testing;
-		}
-	}
-
-	ImGui::EndDisabled();
 	if (isServerSelected())
 	{
-
 		ImGui::SameLine();
-		switch (selectedServerStatus_)
+		switch (serverClient_.getLastServerStatusState())
 		{
 
-		case ServerStatusState::ok:
+		case b3d::tools::project::ServerStatusState::ok:
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4{ 0.1f, 0.7f, 0.1f, 1.0f });
 			ImGui::Text(ICON_LC_CIRCLE_CHECK);
 			ImGui::PopStyleColor();
 			break;
-		case ServerStatusState::unreachable:
+		case b3d::tools::project::ServerStatusState::unreachable:
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4{ 0.7f, 0.1f, 0.1f, 1.0f });
 			ImGui::Text(ICON_LC_SERVER_CRASH);
 			ImGui::PopStyleColor();
 			break;
-		case ServerStatusState::unknown:
+		case b3d::tools::project::ServerStatusState::unknown:
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4{ 0.7f, 0.7f, 0.1f, 1.0f });
 			ImGui::Text(ICON_LC_TRIANGLE_ALERT);
 			ImGui::PopStyleColor();
 			break;
-		case ServerStatusState::testing:
+		case b3d::tools::project::ServerStatusState::testing:
 			ImSpinner::SpinnerRotateSegments("server_test_spinner", 8, 2.0f);
 			break;
 		}
 	}
+	
+
+	ImGui::EndGroup();
+	ImGui::EndDisabled();
 
 
 	if (isServerSelected())
@@ -246,9 +236,5 @@ auto ServerConnectSettingsView::onDraw() -> void
 
 auto ServerConnectSettingsView::testServerStatus() -> void
 {
-	startTestConnection = true;
-}
-auto ServerConnectSettingsView::resetServerStatus() -> void
-{
-	selectedServerStatus_ = ServerStatusState::unknown;
+	serverClient_.forceUpdateServerStatusState();
 }

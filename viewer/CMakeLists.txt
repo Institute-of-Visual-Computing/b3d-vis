@@ -38,14 +38,11 @@ target_sources(${viewerTargetName} PRIVATE
 	views/VolumeView.cpp
 	views/ServerConnectView.h
 	views/ServerConnectView.cpp
-	ServerConnect.h
-	ServerConnect.cpp
 	IdGenerator.h
 	GizmoOperationFlags.h
 	FontCollection.h
 	FontCollection.cpp
 	Flags.h
-	ServerConnectionDescription.h
 	ApplicationSettings.h
 	ApplicationSettings.cpp
 	GuiDefaultLayoutSettings.h
@@ -76,7 +73,6 @@ target_sources(${viewerTargetName} PRIVATE
 	features/projectExplorer/ProjectExplorer.cpp
 	features/projectExplorer/ProjectSelectionView.h
 	features/projectExplorer/ProjectSelectionView.cpp
-	features/serverConnect/ServerConnect.h
 	features/serverConnect/ServerConnectView.h
 	features/serverConnect/ServerConnectView.cpp
 	features/serverConnect/ServerConnectSettingsView.h
@@ -99,6 +95,7 @@ target_link_libraries(${viewerTargetName}
 	B3D::Renderer::Nano
 	B3D::Renderer::FastVoxelTraversal
 	B3D::Renderer::NanoOutOfCore
+	B3D::Tools::ServerClient
 	OpenGL::GL
 	glad::glad
 	imguizmo_modefied
@@ -110,6 +107,8 @@ target_link_libraries(${viewerTargetName}
 	imspinner
 	nlohmann_json::nlohmann_json
 )
+
+target_compile_definitions(${viewerTargetName} PUBLIC B3D_USE_NLOHMANN_JSON)
 
 option(ENABLE_NANO_PROFILE "Enables Tracy profiling" OFF)
 option(ENABLE_NANO_SANITIZERS "Enables address sanitizers" OFF)
