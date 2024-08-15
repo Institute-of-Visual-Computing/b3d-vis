@@ -49,7 +49,7 @@ auto b3d::tools::projectServer::ProjectProvider::findProjects() -> void
 			{
 				std::ifstream f(dirEntry.path());
 				const auto data = nlohmann::json::parse(f);
-				
+				f.close();
 				auto project = data.get<project::Project>();
 
 				auto fitsRootPath = catalog_.getFilePathAbsolute(project.fitsOriginUUID);

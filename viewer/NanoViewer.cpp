@@ -323,6 +323,8 @@ auto NanoViewer::draw() -> void
 	ImGui_ImplGlfw_NewFrame();
 
 	ImGui::NewFrame();
+	applicationContext.serverClient.updateServerStatusState(ImGui::GetIO().DeltaTime);
+
 	ImGui::PushFont(applicationContext.getFontCollection().getDefaultFont());
 	// TODO: Investigate if this combination is always intercepted by OS
 	if (ImGui::IsKeyDown(ImGuiMod_Alt) and ImGui::IsKeyPressed(ImGuiKey_F4, false))
@@ -481,24 +483,17 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 	applicationContext.addMenuBarTray(
 		[&]()
 		{
-			const auto color = isServerConnected ? ImVec4{ 0.1, 0.5, 0.1, 1.0 } : ImVec4{ 0.5, 0.1, 0.1, 1.0 };
+			
+			const auto color = applicationContext.serverClient.getLastServerStatusState() == b3d::tools::project::ServerStatusState::ok ? ImVec4{ 0.1, 0.5, 0.1, 1.0 } : ImVec4{ 0.5, 0.1, 0.1, 1.0 };
 
 			ImGui::PushStyleColor(ImGuiCol_Button, color);
-			if (ImGui::Button(isServerConnected ? ICON_LC_SERVER : ICON_LC_SERVER_OFF))
+			if(ImGui::Button(applicationContext.serverClient.getLastServerStatusState() == b3d::tools::project::ServerStatusState::ok ? ICON_LC_SERVER : ICON_LC_SERVER_OFF))
 			{
-				isServerConnected = !isServerConnected;
+				// TODO: Open Server Connection Dialog?
 			}
+			// TODO: Hover to show Status Tooltip.
+			
 			ImGui::PopStyleColor();
-
-			if (ImGui::IsItemHovered())
-			{
-				if (ImGui::BeginTooltip())
-				{
-					ImGui::Text("Setup Server Connection...");
-					ImGui::EndTooltip();
-				}
-			}
-
 
 			const auto sampleRequest = std::vector<std::string>{
 				"Ready: SoFiA search [10, 30, 50] [20, 40, 100]",
