@@ -476,18 +476,27 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 
 	mainMenu = std::make_unique<MenuBar>(applicationContext);
 
-
-	// TODO: Move this to server connection feature
-	static auto isServerConnected = false;
-
 	applicationContext.addMenuBarTray(
 		[&]()
 		{
-			
-			const auto color = applicationContext.serverClient.getLastServerStatusState() == b3d::tools::project::ServerStatusState::ok ? ImVec4{ 0.1, 0.5, 0.1, 1.0 } : ImVec4{ 0.5, 0.1, 0.1, 1.0 };
+			auto icon = ICON_LC_SERVER;
+			if (applicationContext.serverClient.getLastServerStatusState() == b3d::tools::project::ServerStatusState::ok
+				)
+			{
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.1, 0.5, 0.1, 1.0 });
+			}
+			else if (applicationContext.serverClient.getLastServerStatusState() ==
+					 b3d::tools::project::ServerStatusState::testing)
+			{
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 1, 0.65, 0.0, 1.0 });
+			}
+			else
+			{
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.5, 0.1, 0.1, 1.0 });
+				icon = ICON_LC_SERVER_OFF;
+			}
 
-			ImGui::PushStyleColor(ImGuiCol_Button, color);
-			if(ImGui::Button(applicationContext.serverClient.getLastServerStatusState() == b3d::tools::project::ServerStatusState::ok ? ICON_LC_SERVER : ICON_LC_SERVER_OFF))
+			if (ImGui::Button(icon))
 			{
 				// TODO: Open Server Connection Dialog?
 			}

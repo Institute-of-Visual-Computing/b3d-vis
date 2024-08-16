@@ -51,7 +51,8 @@ auto b3d::tools::project::ServerClient::updateServerStatusState(float deltaTimeS
 	if (secondsSinceLastHeartbeat_ >= heartbeatIntervalSeconds && lastHeartbeatDone_)
 	{
 		lastHeartbeatDone_ = false;
-		lastServerStatusState_ = ServerStatusState::testing;
+		lastServerStatusState_ =
+			lastServerStatusState_ == ServerStatusState::ok ? ServerStatusState::ok : ServerStatusState::testing;
 		heartbeatFuture_ = getServerStatusStateAsync();
 	}
 }
