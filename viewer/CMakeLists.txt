@@ -79,6 +79,10 @@ target_sources(${viewerTargetName} PRIVATE
 	features/serverConnect/ServerConnectSettingsView.cpp
 	features/serverConnect/ServerAddEditView.h
 	features/serverConnect/ServerAddEditView.cpp
+	features/projectExplorer/ProjectExplorerView.h
+	features/projectExplorer/ProjectExplorerView.cpp
+	features/projectExplorer/ProjectExplorerController.cpp
+	features/projectExplorer/ProjectExplorerController.h
 )
 
 target_include_directories(${viewerTargetName} PUBLIC /)
@@ -96,6 +100,7 @@ target_link_libraries(${viewerTargetName}
 	B3D::Renderer::FastVoxelTraversal
 	B3D::Renderer::NanoOutOfCore
 	B3D::Tools::ServerClient
+	B3D::Tools::Project
 	OpenGL::GL
 	glad::glad
 	imguizmo_modefied
