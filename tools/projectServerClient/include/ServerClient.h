@@ -40,24 +40,38 @@ namespace b3d::tools::project
 		ServerClient() = default;
 		ServerClient(ServerConnectionDescription serverConnectionDescription);
 
+		/// \brief Replace the current connection information with the new one
+		/// \param serverConnectionDescription The new connection information
 		auto setNewConnectionInfo(ServerConnectionDescription serverConnectionDescription) -> void;
+
+		/// \brief Get the current connection information
 		auto getConnectionInfo() -> const ServerConnectionDescription&;
 
+		/// \brief Last known server status
 		auto getLastServerStatusState() -> ServerStatusState;
-		auto getServerStatusStateAsync() -> std::future<ServerStatusState>;
 
+		/// \brief Ask the client to request the server status.
+		auto getServerStatusStateAsync() const -> std::future<ServerStatusState>;
+
+		/// \brief Use the game loop to update the server status state in a heartbeat fashion
+		/// \param deltaTimeSeconds Time in seconds since the last call
 		auto updateServerStatusState(float deltaTimeSeconds) -> void;
+
+		/// \brief Force the client to request a server status update
 		auto forceUpdateServerStatusState() -> void;
 
-		auto getProjects() -> std::vector<Project>;
-		auto getProject(const std::string& projectUUID) -> Project;
+		/// \brief Get the projects from the server
+		auto getProjectsAsync() const -> std::future<std::optional<std::vector<Project>>>;
+
+		auto getProjectAsync(const std::string& projectUUID) -> Project;
 		auto getRequests(const std::string& projectUUID) -> std::vector<Request>;
 		auto getRequest(const std::string& projectUUID, const std::string& requestUUID) -> std::vector<Request>;
 
 		static constexpr float heartbeatIntervalSeconds = 5.0f;
 
 	private:
-		auto getServerStatusState(ServerConnectionDescription connectionDescription) -> ServerStatusState;
+		static auto getServerStatusState(const ServerConnectionDescription& connectionDescription) -> ServerStatusState;
+		static auto getProjects(const ServerConnectionDescription& connectionDescription) -> std::optional<std::vector<Project>>;
 
 		// IP or Hostname
 		ServerConnectionDescription serverConnectionDescription_
@@ -71,6 +85,7 @@ namespace b3d::tools::project
 
 		bool lastHeartbeatDone_ = true ;
 		float secondsSinceLastHeartbeat_ = heartbeatIntervalSeconds;
+
 		std::future<ServerStatusState> heartbeatFuture_;
 	};
 }

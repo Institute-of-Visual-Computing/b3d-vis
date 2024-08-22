@@ -12,7 +12,7 @@ target_sources(${MODULE_NAME}
 	PRIVATE
 		src/NanoTools.cpp
 		src/include/NanoTools_Internal.h
- )
+)
 
 target_include_directories(${MODULE_NAME}
 	PUBLIC

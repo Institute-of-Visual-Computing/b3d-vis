@@ -28,6 +28,8 @@ target_link_libraries(${MODULE_NAME}
 		httplib::httplib
 )
 
+target_compile_definitions(${MODULE_NAME} PRIVATE B3D_USE_NLOHMANN_JSON)
+
 if(MSVC)
 	set(MSVC_CXX_COMPILER_FLAGS "/Zc:__cplusplus")
 	target_compile_options(${MODULE_NAME} PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${MSVC_CXX_COMPILER_FLAGS}>)
