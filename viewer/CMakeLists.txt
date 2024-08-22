@@ -100,6 +100,7 @@ target_link_libraries(${viewerTargetName}
 	B3D::Renderer::FastVoxelTraversal
 	B3D::Renderer::NanoOutOfCore
 	B3D::Tools::ServerClient
+	B3D::Tools::ServerFileProvider
 	B3D::Tools::Project
 	OpenGL::GL
 	glad::glad

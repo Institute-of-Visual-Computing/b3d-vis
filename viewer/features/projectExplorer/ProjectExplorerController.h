@@ -30,6 +30,8 @@ public:
 private:
 	auto requestProjects() -> std::shared_future<void>;
 
+	auto loadAndShowFile(const std::string fileUUID) -> std::shared_future<void>;
+
 	ProjectExplorer* projectExplorer_;
 	std::unique_ptr<ProjectExplorerView> projectExplorerView_;
 	std::unique_ptr<ProjectSelectionView> projectSelectionView_;

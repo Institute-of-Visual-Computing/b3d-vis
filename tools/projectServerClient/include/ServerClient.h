@@ -63,6 +63,9 @@ namespace b3d::tools::project
 		/// \brief Get the projects from the server
 		auto getProjectsAsync() const -> std::future<std::optional<std::vector<Project>>>;
 
+		auto downloadFileAsync(const std::string &fileUUID, const std::filesystem::path &targetDirectoryPath) const
+			-> std::future<bool>;
+
 		auto getProjectAsync(const std::string& projectUUID) -> Project;
 		auto getRequests(const std::string& projectUUID) -> std::vector<Request>;
 		auto getRequest(const std::string& projectUUID, const std::string& requestUUID) -> std::vector<Request>;
@@ -70,8 +73,10 @@ namespace b3d::tools::project
 		static constexpr float heartbeatIntervalSeconds = 5.0f;
 
 	private:
-		static auto getServerStatusState(const ServerConnectionDescription& connectionDescription) -> ServerStatusState;
-		static auto getProjects(const ServerConnectionDescription& connectionDescription) -> std::optional<std::vector<Project>>;
+		static auto getServerStatusState(ServerConnectionDescription connectionDescription) -> ServerStatusState;
+		static auto getProjects(ServerConnectionDescription connectionDescription) -> std::optional<std::vector<Project>>;
+		static auto downloadFile(ServerConnectionDescription connectionDescription, std::string fileUUID,
+								 std::filesystem::path targetDirectoryPath) -> bool;
 
 		// IP or Hostname
 		ServerConnectionDescription serverConnectionDescription_

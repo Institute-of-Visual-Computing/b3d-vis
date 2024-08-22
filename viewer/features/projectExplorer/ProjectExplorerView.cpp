@@ -5,8 +5,10 @@
 #include "ProjectExplorerView.h"
 
 ProjectExplorerView::ProjectExplorerView(ApplicationContext& appContext, Dockspace* dockspace,
-										 std::function<void()> showSelectionModal)
-	: DockableWindowViewBase(appContext, "Project", dockspace, WindowFlagBits::none), showSelectionModal_(std::move(showSelectionModal))
+										 std::function<void()> showSelectionModal,
+										 std::function<std::shared_future<void>(const std::string& fileUUID)> loadAndShowFunction)
+	: DockableWindowViewBase(appContext, "Project", dockspace, WindowFlagBits::none),
+	  showSelectionModal_(std::move(showSelectionModal)), loadAndShowFunction_(std::move(loadAndShowFunction))
 {
 }
 
@@ -61,11 +63,23 @@ auto ProjectExplorerView::onDraw() -> void
 		ImGui::TableSetupColumn("Load & Show");
 		ImGui::TableHeadersRow();
 
+		auto blockLoadGet = false;
+		if (loadAndShowFileFuture_.valid())
+		{
+			blockLoadGet = true;
+			if( loadAndShowFileFuture_.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+			{
+				loadAndShowFileFuture_.get();
+				blockLoadGet = false;
+			}
+		}
+
 		for (const auto& request : model_.project->requests)
 		{
 			const auto reqSucc = request.result.wasSuccess();
 
 			ImGui::TableNextRow();
+			ImGui::PushID(request.uuid.c_str());
 			ImGui::TableNextColumn();
 			ImGui::Text(request.uuid.c_str());
 
@@ -84,18 +98,21 @@ auto ProjectExplorerView::onDraw() -> void
 			}
 
 			ImGui::TableNextColumn();
-			if (!reqSucc)
+			if (!reqSucc || blockLoadGet)
 			{
 				ImGui::BeginDisabled(true);
 			}
+
 			if(ImGui::Button("Load & Show"))
 			{
 				// Load & Show
+				loadAndShowFileFuture_ = loadAndShowFunction_(request.result.nanoResult.resultFile);
 			}
-			if (!reqSucc)
+			if (!reqSucc || blockLoadGet)
 			{
 				ImGui::EndDisabled();
 			}
+			ImGui::PopID();
 		}
 		ImGui::EndTable();
 	}

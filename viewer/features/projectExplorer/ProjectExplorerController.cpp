@@ -13,7 +13,8 @@ ProjectExplorerController::ProjectExplorerController(ApplicationContext& applica
 	: UpdatableComponentBase(applicationContext), projectExplorer_(&projectExplorer), projects_(&projects)
 {
 	projectExplorerView_ = std::make_unique<ProjectExplorerView>(
-		applicationContext, applicationContext.getMainDockspace(), [&] { projectSelectionView_->open(); });
+		applicationContext, applicationContext.getMainDockspace(), [&] { projectSelectionView_->open(); },
+		[&](const std::string& fileUUID) { return loadAndShowFile(fileUUID); });
 
 	projectSelectionView_ = std::make_unique<ProjectSelectionView>(
 		applicationContext, [&]() { return requestProjects();
@@ -66,4 +67,9 @@ auto ProjectExplorerController::update() -> void
 auto ProjectExplorerController::requestProjects() -> std::shared_future<void>
 {
 	return projectExplorer_->refreshProjects();
+}
+
+auto ProjectExplorerController::loadAndShowFile(const std::string fileUUID) -> std::shared_future<void>
+{
+	return projectExplorer_->loadAndShowFile(fileUUID);
 }

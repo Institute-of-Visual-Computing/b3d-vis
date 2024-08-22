@@ -1,4 +1,5 @@
 #include "ServerClient.h"
+#include "ServerFileProvider.h"
 
 #include "framework/ApplicationContext.h"
 
@@ -11,6 +12,7 @@ using namespace b3d::tools::project;
 ProjectExplorer::ProjectExplorer(ApplicationContext& applicationContext) : RendererExtensionBase(applicationContext)
 {
 	projectExplorerController_ = std::make_unique<ProjectExplorerController>(applicationContext, *this, projects_);
+	serverFileProvider_ = std::make_unique<ServerFileProvider>("./", appContext_->serverClient);
 	applicationContext.addUpdatableComponent(projectExplorerController_.get());
 	applicationContext.addRendererExtensionComponent(this);
 }
@@ -51,6 +53,25 @@ auto ProjectExplorer::updateRenderingData(b3d::renderer::RenderingDataWrapper& r
 			}
 		}
 	}
+
+	// TODO: Missing loading to renderer!
+	if (loadAndShowViewPromise_ && loadAndShowViewFuture_.valid())
+	{
+		if (loadFileFuture_.valid())
+		{
+			using namespace std::chrono_literals;
+			if (loadFileFuture_.wait_for(0s) == std::future_status::ready)
+			{
+				// Don't care about the result, just that it is done
+				const auto success = loadFileFuture_.get();
+				loadAndShowViewPromise_->set_value();
+				loadAndShowViewPromise_.reset();
+
+				// Shared Futures are only invalid when they are default constructed
+				loadAndShowViewFuture_ = {};
+			}
+		}
+	}
 }
 
 auto ProjectExplorer::refreshProjects() -> std::shared_future<void>
@@ -66,4 +87,20 @@ auto ProjectExplorer::refreshProjects() -> std::shared_future<void>
 	projectsViewPromise_ = std::make_unique<std::promise<void>>();
 	projectsViewSharedFuture_ = projectsViewPromise_->get_future();
 	return projectsViewSharedFuture_;
+}
+
+auto ProjectExplorer::loadAndShowFile(const std::string fileUUID) -> std::shared_future<void>
+{
+	// To be 100% safe we need to protect loadAndShowViewFuture_. But the updates are called synchronously so it
+	// should be fine.
+	if (loadAndShowViewPromise_ && loadAndShowViewFuture_.valid())
+	{
+		return loadAndShowViewFuture_;
+	}
+
+	loadFileFuture_ = serverFileProvider_->loadFileFromServerAsync(fileUUID, false);
+
+	loadAndShowViewPromise_ = std::make_unique<std::promise<void>>();
+	loadAndShowViewFuture_ = loadAndShowViewPromise_->get_future();
+	return loadAndShowViewFuture_;
 }

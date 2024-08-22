@@ -1,5 +1,7 @@
 #pragma once
 
+#include <future>
+
 #include "framework/DockableWindowViewBase.h"
 
 namespace b3d::tools::project
@@ -15,7 +17,8 @@ public:
 		b3d::tools::project::Project* project {};
 	};
 
-	ProjectExplorerView(ApplicationContext& appContext, Dockspace* dockspace, std::function<void()> showSelectionModal);
+	ProjectExplorerView(ApplicationContext& appContext, Dockspace* dockspace, std::function<void()> showSelectionModal,
+						std::function<std::shared_future<void>(const std::string& fileUUID)> loadAndShowFunction);
 	~ProjectExplorerView() override;
 
 	auto setModel(Model model) -> void;
@@ -26,4 +29,7 @@ private:
 
 	Model model_;
 	std::function<void()> showSelectionModal_;
+
+	std::function<std::shared_future<void>(const std::string& fileUUID)> loadAndShowFunction_{};
+	std::shared_future<void> loadAndShowFileFuture_{};
 };

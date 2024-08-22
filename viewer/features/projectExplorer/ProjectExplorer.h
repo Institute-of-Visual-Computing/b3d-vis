@@ -8,6 +8,7 @@
 
 namespace b3d::tools::project
 {
+	class ServerFileProvider;
 	struct Project;
 }
 
@@ -22,6 +23,7 @@ public:
 	~ProjectExplorer() override;
 	
 	auto refreshProjects() -> std::shared_future<void>;
+	auto loadAndShowFile(const std::string fileUUID) -> std::shared_future<void>;
 
 private:
 	auto initializeResources() -> void override;
@@ -29,10 +31,14 @@ private:
 	auto updateRenderingData(b3d::renderer::RenderingDataWrapper& renderingData) -> void override;
 
 	std::unique_ptr<ProjectExplorerController> projectExplorerController_;
+	std::unique_ptr<b3d::tools::project::ServerFileProvider> serverFileProvider_;
 	std::vector<b3d::tools::project::Project> projects_;
 
 	std::future<std::optional<std::vector<b3d::tools::project::Project>>> projectsRequestFuture_;
-
 	std::unique_ptr<std::promise<void>> projectsViewPromise_;
 	std::shared_future<void> projectsViewSharedFuture_;
+
+	std::future<bool> loadFileFuture_;
+	std::unique_ptr<std::promise<void>> loadAndShowViewPromise_;
+	std::shared_future<void> loadAndShowViewFuture_;
 };

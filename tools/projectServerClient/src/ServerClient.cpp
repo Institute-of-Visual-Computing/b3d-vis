@@ -1,3 +1,4 @@
+#include <filesystem>
 #include <future>
 #include <httplib.h>
 #include <string>
@@ -17,8 +18,7 @@ ServerClient::ServerClient(ServerConnectionDescription serverConnectionDescripti
 {
 }
 
-auto ServerClient::setNewConnectionInfo(
-	ServerConnectionDescription serverConnectionDescription) -> void
+auto ServerClient::setNewConnectionInfo(ServerConnectionDescription serverConnectionDescription) -> void
 {
 	serverConnectionDescription_ = std::move(serverConnectionDescription);
 	lastServerStatusState_ = ServerStatusState::unknown;
@@ -46,7 +46,7 @@ auto ServerClient::getLastServerStatusState() -> ServerStatusState
 }
 
 auto ServerClient::getServerStatusStateAsync() const -> std::future<ServerStatusState>
-{ 
+{
 	return std::async(std::launch::async, [this]() { return getServerStatusState(serverConnectionDescription_); });
 }
 
@@ -81,8 +81,13 @@ auto ServerClient::getProjectsAsync() const -> std::future<std::optional<std::ve
 	return std::async(std::launch::async, [this]() { return getProjects(serverConnectionDescription_); });
 }
 
-auto ServerClient::getServerStatusState(const ServerConnectionDescription& connectionDescription)
-	-> ServerStatusState
+auto ServerClient::downloadFileAsync(const std::string& fileUUID, const std::filesystem::path &targetDirectoryPath) const
+	-> std::future<bool>
+{
+	return std::async(std::launch::async,[this, fileUUID, targetDirectoryPath]() { return downloadFile(serverConnectionDescription_, fileUUID, targetDirectoryPath); });
+}
+
+auto ServerClient::getServerStatusState(const ServerConnectionDescription connectionDescription) -> ServerStatusState
 {
 	auto statusState = ServerStatusState::testing;
 	httplib::Client client(connectionDescription.ipHost, std::stoi(connectionDescription.port));
@@ -106,10 +111,9 @@ auto ServerClient::getServerStatusState(const ServerConnectionDescription& conne
 	return statusState;
 }
 
-auto ServerClient::getProjects(const ServerConnectionDescription& connectionDescription)
+auto ServerClient::getProjects(const ServerConnectionDescription connectionDescription)
 	-> std::optional<std::vector<Project>>
 {
-	nlohmann::json ja{""};
 	httplib::Client client(connectionDescription.ipHost, std::stoi(connectionDescription.port));
 	auto res = client.Get("/projects");
 
@@ -131,4 +135,32 @@ auto ServerClient::getProjects(const ServerConnectionDescription& connectionDesc
 		}
 	}
 	return std::nullopt;
+}
+
+auto ServerClient::downloadFile(const ServerConnectionDescription connectionDescription, const std::string fileUUID,
+								const std::filesystem::path targetDirectoryPath) -> bool
+{
+	httplib::Client client(connectionDescription.ipHost, std::stoi(connectionDescription.port));
+
+	const auto targetFilePath = targetDirectoryPath / (fileUUID + ".tmp");
+
+	std::ofstream myfile;
+	myfile.open(targetFilePath, std::ios::out | std::ios::binary | std::ios::trunc);
+
+	auto res = client.Get(std::format("/file/{}", fileUUID),
+						  [&](const char* data, size_t data_length)
+						  {
+							  myfile.write(data, data_length);
+							  return true;
+						  });
+	myfile.close();
+	if (!res || res.error() != httplib::Error::Success || res->status != 200)
+	{
+		std::filesystem::remove(targetFilePath);
+		return false;
+	}
+
+	const auto extension = res->get_header_value("Content-Type").substr(12 /* application/ */);
+	std::filesystem::rename(targetFilePath, targetDirectoryPath / (fileUUID + "." + extension));
+	return true;
 }

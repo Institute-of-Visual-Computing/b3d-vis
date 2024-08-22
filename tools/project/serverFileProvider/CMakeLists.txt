@@ -1,17 +1,13 @@
-set(MODULE_SIMPLE_NAME FileCatalog)
+set(MODULE_SIMPLE_NAME ServerFileProvider)
 set(MODULE_NAME "B3dTools${MODULE_SIMPLE_NAME}")
-
-find_package(stduuid CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
-
 
 add_library(${MODULE_NAME})
 
 target_sources(${MODULE_NAME}
 	PUBLIC
-		include/FileCatalog.h
+		include/ServerFileProvider.h
 	PRIVATE
-		src/FileCatalog.cpp
+		src/ServerFileProvider.cpp
  )
 
 target_include_directories(${MODULE_NAME}
@@ -24,12 +20,9 @@ target_include_directories(${MODULE_NAME}
 target_link_libraries(${MODULE_NAME}
 	PUBLIC
 	PRIVATE
-		stduuid
-		nlohmann_json::nlohmann_json
-
+		B3D::Tools::FileCatalog
+		B3D::Tools::ServerClient
 )
-
-target_compile_definitions(${MODULE_NAME} PRIVATE B3D_USE_NLOHMANN_JSON)
 
 if(MSVC)
 	set(MSVC_CXX_COMPILER_FLAGS "/Zc:__cplusplus")
