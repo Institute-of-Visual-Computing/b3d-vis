@@ -415,7 +415,7 @@ auto NanoRenderer::onGui() -> void
 
 	ImGui::Begin("[DEPRECATED] RT Settings");
 
-	ImGui::SeparatorText("Runtime Data Managment");
+	ImGui::SeparatorText("Runtime Data Management");
 
 	if (ImGui::Button("Load New NanoVDB File"))
 	{

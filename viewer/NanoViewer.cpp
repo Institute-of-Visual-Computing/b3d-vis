@@ -103,6 +103,7 @@ namespace
 		const auto dpiScales = requestRequiredDpiScales();
 		applicationContext.getFontCollection().rebuildFont(dpiScales);
 
+		
 
 		ImGui_ImplGlfw_InitForOpenGL(window, true);
 		ImGui_ImplOpenGL3_Init();
@@ -583,6 +584,8 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 
 
 	applicationContext.addMenuAction([&]() { isRunning_ = false; }, "Program", "Quit", "Alt+F4", std::nullopt, 100);
+	applicationContext.addMenuAction([&]() { applicationContext.settings_.restoreDefaultLayoutSettings(); }, "Program", "Restore Layout", "", std::nullopt, 10);
+
 
 	glfwMakeContextCurrent(applicationContext.mainWindowHandle_);
 
