@@ -152,5 +152,6 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/resources")
 endif()
 
 add_custom_target(copy_viewer_resources ALL COMMAND ${commands})
+set_property(TARGET copy_viewer_resources PROPERTY FOLDER "Utility")
 
 add_dependencies(viewer copy_viewer_resources)

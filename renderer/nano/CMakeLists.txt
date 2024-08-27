@@ -51,6 +51,7 @@ find_package(imgui CONFIG REQUIRED)
 add_library(cudaCode FoveatedRendering.cu FoveatedRendering.h FoveatedHelper.cuh)
 target_compile_features(cudaCode PUBLIC cxx_std_17)
 target_include_directories(cudaCode PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+set_property(TARGET cudaCode PROPERTY FOLDER "Renderer/Nano")
 
 target_link_libraries(cudaCode
 	PRIVATE
