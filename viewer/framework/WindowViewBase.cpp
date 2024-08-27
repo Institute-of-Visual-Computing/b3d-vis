@@ -34,6 +34,7 @@ WindowViewBase::WindowViewBase(ApplicationContext& appContext, const std::string
 auto WindowViewBase::beginDraw() -> void
 {
 	ImGui::SetNextWindowClass(&windowClass_);
+	drawContent_ = false;
 	if (isOpen_)
 	{
 		auto hasCloseButton = (flags_ & WindowFlagBits::noClose) != WindowFlagBits::noClose;
@@ -57,7 +58,7 @@ auto WindowViewBase::beginDraw() -> void
 
 auto WindowViewBase::endDraw() -> void
 {
-	if (isOpen_)
+	if (isOpen_ or drawContent_)
 	{
 		ImGui::End();
 	}

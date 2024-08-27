@@ -54,6 +54,11 @@ public:
 		isOpen_ = false;
 	}
 
+	[[nodiscard]] auto isOpen() const noexcept  -> bool
+	{
+		return isOpen_;
+	}
+
 protected:
 	virtual auto onDraw() -> void = 0;
 	virtual auto onResize() -> void
