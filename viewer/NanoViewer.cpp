@@ -383,35 +383,6 @@ auto NanoViewer::draw() -> void
 
 		ImGui::EndMenu();
 	}
-
-	if (ImGui::BeginMenu("Help"))
-	{
-
-		if (ImGui::MenuItem(ICON_FA_GITHUB " Source Code", nullptr, nullptr))
-		{
-			const auto url = "https://github.com/Institut-of-Visual-Computing/b3d-vis";
-			auto cmd = "";
-#ifdef __APPLE__
-#ifdef TARGET_OS_MAC
-			cmd = "open";
-#endif
-#elif __linux__
-			cmd = "xdg-open";
-#elif _WIN32
-			cmd = "start";
-#else
-
-#endif
-			std::system(std::format("{} {}", cmd, url).c_str());
-		}
-		ImGui::SeparatorText("Develop Tools");
-		ImGui::MenuItem(ICON_LC_BUG " Debug Options");
-		ImGui::MenuItem(ICON_LC_CIRCLE_GAUGE " Renderer Profiler");
-
-		ImGui::Separator();
-		ImGui::MenuItem("About", nullptr, nullptr);
-		ImGui::EndMenu();
-	}
 	ImGui::EndMainMenuBar();
 
 	mainMenu->draw();
@@ -664,6 +635,38 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 			}
 		});
 
+
+	applicationContext->addMenuToggleAction(
+		showProfiler, [](bool) {}, "Help", ICON_LC_CIRCLE_GAUGE " Renderer Profiler", std::nullopt, "Develop Tools");
+	applicationContext->addMenuToggleAction(
+		showDebugOptions, [](bool) {}, "Help", ICON_LC_BUG " Debug Options", std::nullopt, "Develop Tools");
+	applicationContext->addMenuToggleAction(
+		showImGuiDemo, [](bool) {}, "Help", "ImGui Demo", std::nullopt, "Develop Tools");
+
+
+	applicationContext->addMenuAction(
+		[]()
+		{
+			const auto url = "https://github.com/Institut-of-Visual-Computing/b3d-vis";
+			auto cmd = "";
+#ifdef __APPLE__
+#ifdef TARGET_OS_MAC
+			cmd = "open";
+#endif
+#elif __linux__
+			cmd = "xdg-open";
+#elif _WIN32
+			cmd = "start";
+#else
+
+#endif
+			std::system(std::format("{} {}", cmd, url).c_str());
+		},
+		"Help", ICON_FA_GITHUB " Source Code");
+
+
+	applicationContext->addMenuToggleAction(
+		showAboutWindow, [](bool) {}, "Help", "About");
 
 	applicationContext->addMenuAction([&]() { isRunning_ = false; }, "Program", "Quit", "Alt+F4", std::nullopt, 100);
 	applicationContext->addMenuAction([&]() { applicationContext->settings_.restoreDefaultLayoutSettings(); },
