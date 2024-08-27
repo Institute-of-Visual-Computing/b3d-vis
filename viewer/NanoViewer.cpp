@@ -2,7 +2,6 @@
 
 #include "passes/DebugDrawPass.h"
 
-#include "GLUtils.h"
 #include "InteropUtils.h"
 
 #include <GLFW/glfw3.h>
@@ -15,7 +14,6 @@
 
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
-#include <owl/helper/cuda.h>
 
 #include <stb_image.h>
 #include <tracy/Tracy.hpp>
@@ -42,7 +40,15 @@ using namespace owl;
 
 namespace
 {
-	ApplicationContext applicationContext{};
+	constexpr std::array colors = { legit::Colors::turqoise,  legit::Colors::greenSea,	  legit::Colors::emerald,
+									legit::Colors::nephritis, legit::Colors::peterRiver,  legit::Colors::belizeHole,
+									legit::Colors::amethyst,  legit::Colors::wisteria,	  legit::Colors::sunFlower,
+									legit::Colors::orange,	  legit::Colors::carrot,	  legit::Colors::pumpkin,
+									legit::Colors::alizarin,  legit::Colors::pomegranate, legit::Colors::clouds,
+									legit::Colors::silver };
+
+
+	std::unique_ptr<ApplicationContext> applicationContext{ nullptr };
 	std::unique_ptr<VolumeView> volumeView{};
 	std::unique_ptr<TransferMapping> transferMapping{};
 	std::unique_ptr<ProjectExplorer> projectExplorer{};
@@ -76,8 +82,8 @@ namespace
 									[[maybe_unused]] float scaleY)
 	{
 		const auto dpiScales = requestRequiredDpiScales();
-		applicationContext.getFontCollection().rebuildFont(dpiScales);
-		const auto defaultDpiScale = applicationContext.getFontCollection().getDefaultFontDpiScale();
+		applicationContext->getFontCollection().rebuildFont(dpiScales);
+		const auto defaultDpiScale = applicationContext->getFontCollection().getDefaultFontDpiScale();
 		ImGui::GetStyle().ScaleAllSizes(defaultDpiScale);
 	}
 
@@ -101,9 +107,8 @@ namespace
 		ImGui::StyleColorsDark();
 
 		const auto dpiScales = requestRequiredDpiScales();
-		applicationContext.getFontCollection().rebuildFont(dpiScales);
+		applicationContext->getFontCollection().rebuildFont(dpiScales);
 
-		
 
 		ImGui_ImplGlfw_InitForOpenGL(window, true);
 		ImGui_ImplOpenGL3_Init();
@@ -253,22 +258,36 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 	glfwWindowHint(GLFW_VISIBLE, true);
 
-	applicationContext.mainWindowHandle_ =
-		glfwCreateWindow(initWindowWidth, initWindowHeight, title.c_str(), nullptr, nullptr);
-	if (!applicationContext.mainWindowHandle_)
+	const auto mainWindowHandle = glfwCreateWindow(initWindowWidth, initWindowHeight, title.c_str(), nullptr, nullptr);
+	if (!mainWindowHandle)
 	{
 		glfwTerminate();
 		exit(EXIT_FAILURE);
 	}
 
-	glfwSetWindowUserPointer(applicationContext.mainWindowHandle_, this);
-	glfwMakeContextCurrent(applicationContext.mainWindowHandle_);
+	glfwSetWindowUserPointer(mainWindowHandle, this);
+	glfwMakeContextCurrent(mainWindowHandle);
 	glfwSwapInterval((enableVsync) ? 1 : 0);
 
 	debugDrawList_ = std::make_shared<DebugDrawList>();
 	gizmoHelper_ = std::make_shared<GizmoHelper>();
 
-	applicationContext.setExternalDrawLists(debugDrawList_, gizmoHelper_);
+	gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
+	gladLoadGL();
+	GLint numExtensions;
+	glGetIntegerv(GL_NUM_EXTENSIONS, &numExtensions);
+	std::cout << "- Extensions" << std::endl;
+	for (GLint i = 0; i < numExtensions; i++)
+	{
+		std::cout << glGetStringi(GL_EXTENSIONS, i) << std::endl;
+	}
+
+	applicationContext = std::make_unique<ApplicationContext>();
+	applicationContext->mainWindowHandle_ = mainWindowHandle;
+
+	applicationContext->setExternalDrawLists(debugDrawList_, gizmoHelper_);
+
+	applicationContext->setExternalDrawLists(debugDrawList_, gizmoHelper_);
 
 	nvmlInit();
 
@@ -324,14 +343,14 @@ auto NanoViewer::draw() -> void
 	ImGui_ImplGlfw_NewFrame();
 
 	ImGui::NewFrame();
-	ImGui::PushFont(applicationContext.getFontCollection().getDefaultFont());
+	ImGui::PushFont(applicationContext->getFontCollection().getDefaultFont());
 	// TODO: Investigate if this combination is always intercepted by OS
 	if (ImGui::IsKeyDown(ImGuiMod_Alt) and ImGui::IsKeyPressed(ImGuiKey_F4, false))
 	{
 		isRunning_ = false;
 	}
 
-	static auto connectView = ServerConnectSettingsView{ applicationContext, "Server Connect",
+	static auto connectView = ServerConnectSettingsView{ *applicationContext, "Server Connect",
 														 [](ModalViewBase*) { std::println("submit!!!"); } };
 
 	ImGui::BeginMainMenuBar();
@@ -391,32 +410,82 @@ auto NanoViewer::draw() -> void
 
 	mainMenu->draw();
 
-	applicationContext.getMainDockspace()->begin();
+	applicationContext->getMainDockspace()->begin();
 
 	volumeView->draw();
 	connectView.draw();
 
-	for (const auto component : applicationContext.updatableComponents_)
+	for (const auto component : applicationContext->updatableComponents_)
 	{
 		component->update();
 	}
 
-	/*for (auto component : applicationContext.drawableComponents_)
+	/*for (auto component : applicationContext->drawableComponents_)
 	{
 		component->draw();
 	}*/
 
-	for (const auto component : applicationContext.rendererExtensions_)
+	for (const auto component : applicationContext->rendererExtensions_)
 	{
 		component->updateRenderingData(renderingData);
 	}
 
-	// TODO: IT IS DEPRECATED AND IT WILL BE REMOVED!!!
-	currentRenderer_->gui();
+	//// TODO: IT IS DEPRECATED AND IT WILL BE REMOVED!!!
+	//currentRenderer_->gui();
 
-	applicationContext.getMainDockspace()->end();
+	applicationContext->getMainDockspace()->end();
 
 	ImGui::ShowDemoWindow();
+
+	const auto currentFrameTime = 1.0f / ImGui::GetIO().Framerate;
+	const auto maxFrameTimeTarget = currentFrameTime > (1.0f / 60.0f) ? 1.0f / 30.0f : 1.0f / 60.0f;
+
+	profilersWindow_.gpuGraph().maxFrameTime = maxFrameTimeTarget;
+
+	if (!profilersWindow_.isProfiling())
+	{
+		auto profilingData = std::vector<legit::ProfilerTask>{};
+		double lastEndTime = 0.0f;
+		auto colorIndex = 0;
+		{
+			const auto& gpuTimers = currentRenderer_->getGpuTimers();
+			const auto& currentTimings = gpuTimers.getAllCurrent();
+
+			for (const auto& [name, start, stop] : currentTimings)
+			{
+				auto profilerTask = legit::ProfilerTask{};
+				profilerTask.name = name;
+				profilerTask.startTime = start / 1000.0f;
+				profilerTask.endTime = stop / 1000.0f;
+				profilerTask.color = colors[colorIndex % colors.size()];
+				profilingData.push_back(profilerTask);
+				colorIndex++;
+
+				lastEndTime = glm::max(lastEndTime, profilerTask.endTime);
+			}
+		}
+
+		{
+			const auto& gpuTimers = applicationContext->getGlGpuTimers();
+			const auto& currentTimings = gpuTimers.getAllCurrent();
+
+			for (const auto& [name, start, stop] : currentTimings)
+			{
+				auto profilerTask = legit::ProfilerTask{};
+				profilerTask.name = name;
+				profilerTask.startTime = lastEndTime + start / 1000.0f;
+				profilerTask.endTime = lastEndTime + stop / 1000.0f;
+				profilerTask.color = colors[colorIndex % colors.size()];
+				profilingData.push_back(profilerTask);
+				colorIndex++;
+			}
+			applicationContext->getGlGpuTimers().nextFrame();
+		}
+
+		profilersWindow_.gpuGraph().LoadFrameData(profilingData.data(), profilingData.size());
+	}
+
+	profilersWindow_.render();
 
 	ImGui::PopFont();
 	ImGui::EndFrame();
@@ -436,7 +505,7 @@ auto NanoViewer::draw() -> void
 		glfwMakeContextCurrent(backupCurrentContext);
 	}
 
-	glfwSwapBuffers(applicationContext.mainWindowHandle_);
+	glfwSwapBuffers(applicationContext->mainWindowHandle_);
 	glfwPollEvents();
 	FrameMark;
 }
@@ -447,11 +516,11 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 
 
 	int width, height;
-	glfwGetFramebufferSize(applicationContext.mainWindowHandle_, &width, &height);
+	glfwGetFramebufferSize(applicationContext->mainWindowHandle_, &width, &height);
 
 
 	glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
-	glfwSetFramebufferSizeCallback(applicationContext.mainWindowHandle_,
+	glfwSetFramebufferSizeCallback(applicationContext->mainWindowHandle_,
 								   [](GLFWwindow* window, int, int)
 								   {
 									   auto* viewer = static_cast<NanoViewer*>(glfwGetWindowUserPointer(window));
@@ -459,27 +528,27 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 									   viewer->draw();
 								   });
 
-	glfwSetWindowContentScaleCallback(applicationContext.mainWindowHandle_, windowContentScaleCallback);
+	glfwSetWindowContentScaleCallback(applicationContext->mainWindowHandle_, windowContentScaleCallback);
 
-	initializeGui(applicationContext.mainWindowHandle_);
+	initializeGui(applicationContext->mainWindowHandle_);
 
-	volumeView = std::make_unique<VolumeView>(applicationContext, applicationContext.getMainDockspace());
+	volumeView = std::make_unique<VolumeView>(*applicationContext, applicationContext->getMainDockspace());
 	volumeView->setRenderVolume(currentRenderer_.get(), &renderingData);
 
-	transferMapping = std::make_unique<TransferMapping>(applicationContext);
+	transferMapping = std::make_unique<TransferMapping>(*applicationContext);
 	// TODO: we need a system for graphics resource initialization/deinitialization
 	transferMapping->initializeResources();
 	transferMapping->updateRenderingData(renderingData);
 
-	projectExplorer = std::make_unique<ProjectExplorer>(applicationContext);
+	projectExplorer = std::make_unique<ProjectExplorer>(*applicationContext);
 
-	mainMenu = std::make_unique<MenuBar>(applicationContext);
+	mainMenu = std::make_unique<MenuBar>(*applicationContext);
 
 
 	// TODO: Move this to server connection feature
 	static auto isServerConnected = false;
 
-	applicationContext.addMenuBarTray(
+	applicationContext->addMenuBarTray(
 		[&]()
 		{
 			const auto color = isServerConnected ? ImVec4{ 0.1, 0.5, 0.1, 1.0 } : ImVec4{ 0.5, 0.1, 0.1, 1.0 };
@@ -558,10 +627,9 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 
 						for (const auto& [progress, label, status] : actualRequests)
 						{
-							ImGui::BulletText(std::format("{}: {}",
-														  status == RequestStatus::pending ? "Pending" : "Ready",
-														  label)
-												  .c_str());
+							ImGui::BulletText(
+								std::format("{}: {}", status == RequestStatus::pending ? "Pending" : "Ready", label)
+									.c_str());
 						}
 						ImGui::TreePop();
 					}
@@ -583,13 +651,14 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 		});
 
 
-	applicationContext.addMenuAction([&]() { isRunning_ = false; }, "Program", "Quit", "Alt+F4", std::nullopt, 100);
-	applicationContext.addMenuAction([&]() { applicationContext.settings_.restoreDefaultLayoutSettings(); }, "Program", "Restore Layout", "", std::nullopt, 10);
+	applicationContext->addMenuAction([&]() { isRunning_ = false; }, "Program", "Quit", "Alt+F4", std::nullopt, 100);
+	applicationContext->addMenuAction([&]() { applicationContext->settings_.restoreDefaultLayoutSettings(); },
+									  "Program", "Restore Layout", "", std::nullopt, 10);
 
 
-	glfwMakeContextCurrent(applicationContext.mainWindowHandle_);
+	glfwMakeContextCurrent(applicationContext->mainWindowHandle_);
 
-	while (!glfwWindowShouldClose(applicationContext.mainWindowHandle_) && keepgoing())
+	while (!glfwWindowShouldClose(applicationContext->mainWindowHandle_) && keepgoing())
 	{
 		{
 			draw();
@@ -598,7 +667,7 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 
 	deinitializeGui();
 	currentRenderer_->deinitialize();
-	glfwDestroyWindow(applicationContext.mainWindowHandle_);
+	glfwDestroyWindow(applicationContext->mainWindowHandle_);
 	glfwTerminate();
 }
 NanoViewer::~NanoViewer()

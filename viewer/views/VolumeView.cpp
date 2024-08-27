@@ -20,6 +20,7 @@
 #include <RendererBase.h>
 
 #include "GLUtils.h"
+#include "GLGpuTimers.h"
 #include "GizmoHelper.h"
 #include "InteropUtils.h"
 #include "framework/ApplicationContext.h"
@@ -45,7 +46,7 @@ namespace
 
 VolumeView::VolumeView(ApplicationContext& appContext, Dockspace* dockspace)
 	: DockableWindowViewBase(appContext, "Volume Viewport", dockspace,
-							 WindowFlagBits::noTitleBar | WindowFlagBits::noUndocking | WindowFlagBits::hideTabBar |
+							 /*WindowFlagBits::noTitleBar | WindowFlagBits::noUndocking |*/ WindowFlagBits::hideTabBar |
 								 WindowFlagBits::noCollapse)
 {
 	fullscreenTexturePass_ = std::make_unique<FullscreenTexturePass>();
@@ -103,9 +104,10 @@ VolumeView::VolumeView(ApplicationContext& appContext, Dockspace* dockspace)
 				auto y = camera_.forward_.y;
 				auto z = camera_.forward_.z;
 
-				const auto forwardVelocity = cameraLastFrame_.position_ + cameraLastFrame_.forward_ - (camera_.forward_ + cameraCurrentPosition);
+				const auto forwardVelocity =
+					cameraLastFrame_.position_ + cameraLastFrame_.forward_ - (camera_.forward_ + cameraCurrentPosition);
 
-				
+
 				auto vx = forwardVelocity.x;
 				auto vy = forwardVelocity.y;
 				auto vz = forwardVelocity.z;
@@ -120,8 +122,7 @@ VolumeView::VolumeView(ApplicationContext& appContext, Dockspace* dockspace)
 
 
 				camera_.setOrientation(camera_.position_,
-									   camera_.position_ + camera_.forward_ + glm::vec3{ vx, vy, vz }, camera_.up_,
-									   60);
+									   camera_.position_ + camera_.forward_ + glm::vec3{ vx, vy, vz }, camera_.up_, 60);
 			}
 		});
 
@@ -395,7 +396,7 @@ auto VolumeView::onDraw() -> void
 		demoMode(!animator_.isRunning());
 	}
 
-#if 1
+#if 0
 	ImGui::SliderFloat("stiffness", &flyAnimationSettings_.stiffness, 0.0f, 100.0f);
 	ImGui::SliderFloat("damping", &flyAnimationSettings_.dumping, 0.0f, 100.0f);
 	/*const auto d = (flyAnimationSettings_.dumping * flyAnimationSettings_.dumping) / 4.0f;
@@ -598,7 +599,7 @@ auto VolumeView::deinitializeGraphicsResources() -> void
 {
 }
 
-auto VolumeView::renderVolume() const -> void
+auto VolumeView::renderVolume() -> void
 {
 
 	const auto width = viewportSize_.x;
@@ -637,10 +638,12 @@ auto VolumeView::renderVolume() const -> void
 		renderer_->render();
 	}
 
+	const auto& r1 = applicationContext_->getGlGpuTimers().record("Fullscreen Quad Pass");
+	r1.start();
 	fullscreenTexturePass_->setViewport(width, height);
 	fullscreenTexturePass_->setSourceTexture(graphicsResources_.framebufferTexture);
 	fullscreenTexturePass_->execute();
-
+	r1.stop();
 
 	if (viewerSettings_.enableGridFloor)
 	{

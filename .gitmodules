@@ -2,3 +2,6 @@
 	path = thirdParty/owl
 	url = https://github.com/AntonK47/owl.git
 	branch = dev
+[submodule "thirdParty/ImGuiUtils"]
+	path = thirdParty/ImGuiUtils
+	url = https://github.com/Raikiri/LegitProfiler.git

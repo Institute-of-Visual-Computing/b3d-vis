@@ -12,6 +12,8 @@
 #include "ApplicationSettings.h"
 #include "framework/Dockspace.h"
 
+#include "GLGpuTimers.h"
+
 class GLFWwindow;
 class DebugDrawList;
 class GizmoHelper;
@@ -29,6 +31,7 @@ namespace std_help
 } // namespace std_help
 using Action = std::function<void(void)>;
 using ToggleAction = std::function<void(bool)>;
+using GpuTimers = GlGpuTimers<20, 3>;
 
 class ApplicationContext final
 {
@@ -38,6 +41,11 @@ public:
 	[[nodiscard]] auto getFontCollection() -> FontCollection&
 	{
 		return fonts_;
+	}
+
+	[[nodiscard]] auto getGlGpuTimers() -> GpuTimers&
+	{
+		return glGpuTimers_;
 	}
 
 	auto setExternalDrawLists(const std::shared_ptr<DebugDrawList>& debugDrawList,
@@ -97,6 +105,7 @@ public:
 
 private:
 	FontCollection fonts_{};
+	GpuTimers glGpuTimers_{};
 
 	std::shared_ptr<DebugDrawList> debugDrawList_{};
 	std::shared_ptr<GizmoHelper> gizmoHelper_{};

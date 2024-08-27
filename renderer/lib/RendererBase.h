@@ -12,6 +12,7 @@
 #include "RenderData.h"
 #include "RenderFeature.h"
 
+#include "CudaGpuTimers.h"
 
 namespace b3d::renderer
 {
@@ -20,6 +21,9 @@ namespace b3d::renderer
 		std::shared_ptr<DebugDrawListBase> debugDrawList{};
 		std::shared_ptr<GizmoHelperBase> gizmoHelper{};
 	};
+
+	//TODO: add enable profiling flag
+	using GpuTimers = CudaGpuTimers<100, 10>;
 
 	class RendererBase
 	{
@@ -31,6 +35,16 @@ namespace b3d::renderer
 		auto deinitialize() -> void;
 		auto gui() -> void;
 		auto render() -> void;
+
+		[[nodiscard]] auto getGpuTimers() const -> const GpuTimers& 
+		{
+			return gpuTimers_;
+		}
+
+		[[nodiscard]] auto getGpuTimers() -> GpuTimers& 
+		{
+			return gpuTimers_;
+		}
 
 		[[nodiscard]] auto debugDraw() const -> DebugDrawListBase&
 		{
@@ -52,6 +66,8 @@ namespace b3d::renderer
 		RenderingDataBuffer* renderData_{};
 
 		DebugInitializationInfo debugInfo_{};
+
+		GpuTimers gpuTimers_{};
 
 		std::vector<std::unique_ptr<RenderFeature>> renderFeatures_{};
 

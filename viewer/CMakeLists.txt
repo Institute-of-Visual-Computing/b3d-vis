@@ -51,6 +51,8 @@ target_sources(${viewerTargetName} PRIVATE
 	GuiDefaultLayoutSettings.h
 	GuiDefaultLayoutSettings.cpp
 	Animation.h
+	GLGpuTimers.h
+	ProfilersWindow.h
 	framework/Dockspace.h
 	framework/Dockspace.cpp
 	framework/DockableWindowViewBase.h
@@ -110,6 +112,7 @@ target_link_libraries(${viewerTargetName}
 	imcurve_modefied
 	imspinner
 	nlohmann_json::nlohmann_json
+	legit
 )
 
 option(ENABLE_NANO_PROFILE "Enables Tracy profiling" OFF)
