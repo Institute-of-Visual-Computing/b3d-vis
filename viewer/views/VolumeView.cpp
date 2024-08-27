@@ -644,22 +644,28 @@ auto VolumeView::renderVolume() -> void
 	fullscreenTexturePass_->setSourceTexture(graphicsResources_.framebufferTexture);
 	fullscreenTexturePass_->execute();
 	r1.stop();
-
+	
 	if (viewerSettings_.enableGridFloor)
 	{
+		const auto& record = applicationContext_->getGlGpuTimers().record("Grid Floor Pass");
+		record.start();
 		infinitGridPass_->setViewProjectionMatrix(viewProjection);
 		infinitGridPass_->setViewport(width, height);
 		infinitGridPass_->setGridColor(
 			glm::vec3{ viewerSettings_.gridColor[0], viewerSettings_.gridColor[1], viewerSettings_.gridColor[2] });
 		infinitGridPass_->execute();
+		record.stop();
 	}
 
 	if (viewerSettings_.enableDebugDraw)
 	{
+		const auto& record = applicationContext_->getGlGpuTimers().record("Debug Draw Pass");
+		record.start();
 		debugDrawPass_->setViewProjectionMatrix(viewProjection);
 		debugDrawPass_->setViewport(width, height);
 		debugDrawPass_->setLineWidth(viewerSettings_.lineWidth);
 		debugDrawPass_->execute();
+		record.stop();
 	}
 
 	GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));

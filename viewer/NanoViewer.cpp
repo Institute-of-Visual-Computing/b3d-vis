@@ -55,6 +55,11 @@ namespace
 	std::unique_ptr<MenuBar> mainMenu{};
 	b3d::renderer::RenderingDataWrapper renderingData{};
 
+	static auto showProfiler = false;
+	static auto showDebugOptions = false;
+	static auto showAboutWindow = false;
+	static auto showImGuiDemo = false;
+
 
 	[[nodiscard]] auto requestRequiredDpiScales() -> std::vector<float>
 	{
@@ -136,8 +141,7 @@ namespace
 
 auto NanoViewer::gui() -> void
 {
-	static auto showDemoWindow = true;
-	ImGui::ShowDemoWindow(&showDemoWindow);
+	/*ImGui::ShowDemoWindow(&showImGuiDemo);*/
 
 	currentRenderer_->gui();
 	static auto showViewerSettings = true;
@@ -274,6 +278,8 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 
 	gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
 	gladLoadGL();
+
+#if 0
 	GLint numExtensions;
 	glGetIntegerv(GL_NUM_EXTENSIONS, &numExtensions);
 	std::cout << "- Extensions" << std::endl;
@@ -281,7 +287,7 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 	{
 		std::cout << glGetStringi(GL_EXTENSIONS, i) << std::endl;
 	}
-
+#endif
 	applicationContext = std::make_unique<ApplicationContext>();
 	applicationContext->mainWindowHandle_ = mainWindowHandle;
 
@@ -431,61 +437,66 @@ auto NanoViewer::draw() -> void
 	}
 
 	//// TODO: IT IS DEPRECATED AND IT WILL BE REMOVED!!!
-	//currentRenderer_->gui();
+	// currentRenderer_->gui();
 
 	applicationContext->getMainDockspace()->end();
 
-	ImGui::ShowDemoWindow();
-
-	const auto currentFrameTime = 1.0f / ImGui::GetIO().Framerate;
-	const auto maxFrameTimeTarget = currentFrameTime > (1.0f / 60.0f) ? 1.0f / 30.0f : 1.0f / 60.0f;
-
-	profilersWindow_.gpuGraph().maxFrameTime = maxFrameTimeTarget;
-
-	if (!profilersWindow_.isProfiling())
+	if (showImGuiDemo)
 	{
-		auto profilingData = std::vector<legit::ProfilerTask>{};
-		double lastEndTime = 0.0f;
-		auto colorIndex = 0;
-		{
-			const auto& gpuTimers = currentRenderer_->getGpuTimers();
-			const auto& currentTimings = gpuTimers.getAllCurrent();
-
-			for (const auto& [name, start, stop] : currentTimings)
-			{
-				auto profilerTask = legit::ProfilerTask{};
-				profilerTask.name = name;
-				profilerTask.startTime = start / 1000.0f;
-				profilerTask.endTime = stop / 1000.0f;
-				profilerTask.color = colors[colorIndex % colors.size()];
-				profilingData.push_back(profilerTask);
-				colorIndex++;
-
-				lastEndTime = glm::max(lastEndTime, profilerTask.endTime);
-			}
-		}
-
-		{
-			const auto& gpuTimers = applicationContext->getGlGpuTimers();
-			const auto& currentTimings = gpuTimers.getAllCurrent();
-
-			for (const auto& [name, start, stop] : currentTimings)
-			{
-				auto profilerTask = legit::ProfilerTask{};
-				profilerTask.name = name;
-				profilerTask.startTime = lastEndTime + start / 1000.0f;
-				profilerTask.endTime = lastEndTime + stop / 1000.0f;
-				profilerTask.color = colors[colorIndex % colors.size()];
-				profilingData.push_back(profilerTask);
-				colorIndex++;
-			}
-			applicationContext->getGlGpuTimers().nextFrame();
-		}
-
-		profilersWindow_.gpuGraph().LoadFrameData(profilingData.data(), profilingData.size());
+		ImGui::ShowDemoWindow(&showImGuiDemo);
 	}
 
-	profilersWindow_.render();
+	if (showProfiler)
+	{
+		const auto currentFrameTime = 1.0f / ImGui::GetIO().Framerate;
+		const auto maxFrameTimeTarget = currentFrameTime > (1.0f / 60.0f) ? 1.0f / 30.0f : 1.0f / 60.0f;
+
+		profilersWindow_.gpuGraph().maxFrameTime = maxFrameTimeTarget;
+
+		if (!profilersWindow_.isProfiling())
+		{
+			auto profilingData = std::vector<legit::ProfilerTask>{};
+			double lastEndTime = 0.0f;
+			auto colorIndex = 0;
+			{
+				const auto& gpuTimers = currentRenderer_->getGpuTimers();
+				const auto& currentTimings = gpuTimers.getAllCurrent();
+
+				for (const auto& [name, start, stop] : currentTimings)
+				{
+					auto profilerTask = legit::ProfilerTask{};
+					profilerTask.name = name;
+					profilerTask.startTime = start / 1000.0f;
+					profilerTask.endTime = stop / 1000.0f;
+					profilerTask.color = colors[colorIndex % colors.size()];
+					profilingData.push_back(profilerTask);
+					colorIndex += 2;
+
+					lastEndTime = glm::max(lastEndTime, profilerTask.endTime);
+				}
+			}
+
+			{
+				const auto& gpuTimers = applicationContext->getGlGpuTimers();
+				const auto& currentTimings = gpuTimers.getAllCurrent();
+
+				for (const auto& [name, start, stop] : currentTimings)
+				{
+					auto profilerTask = legit::ProfilerTask{};
+					profilerTask.name = name;
+					profilerTask.startTime = lastEndTime + start / 1000.0f;
+					profilerTask.endTime = lastEndTime + stop / 1000.0f;
+					profilerTask.color = colors[colorIndex % colors.size()];
+					profilingData.push_back(profilerTask);
+					colorIndex += 2;
+				}
+			}
+
+			profilersWindow_.gpuGraph().LoadFrameData(profilingData.data(), profilingData.size());
+		}
+
+		profilersWindow_.render();
+	}
 
 	ImGui::PopFont();
 	ImGui::EndFrame();
@@ -494,8 +505,10 @@ auto NanoViewer::draw() -> void
 
 	gizmoHelper_->clear();
 
-
+	const auto& record = applicationContext->getGlGpuTimers().record("ImGui Pass");
+	record.start();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+	record.stop();
 
 	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 	{
@@ -507,13 +520,14 @@ auto NanoViewer::draw() -> void
 
 	glfwSwapBuffers(applicationContext->mainWindowHandle_);
 	glfwPollEvents();
+	applicationContext->getGlGpuTimers().nextFrame();
+
 	FrameMark;
 }
 
 auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> void
 {
 	gladLoadGL();
-
 
 	int width, height;
 	glfwGetFramebufferSize(applicationContext->mainWindowHandle_, &width, &height);

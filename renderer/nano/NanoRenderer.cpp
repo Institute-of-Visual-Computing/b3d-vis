@@ -360,7 +360,7 @@ auto NanoRenderer::onRender() -> void
 		assert(cameraIndex < renderTargetFeatureParams.colorRT.surfaces.size());
 		owlParamsSetRaw(nanoContext_.launchParams, "cameraData", &rayCameraData[cameraIndex]);
 
-		const auto rtRecord = gpuTimers_.record("camera {}: foveated RT", stream);
+		
 
 		if (foveatedRenderingParams.isEnabled)
 		{
@@ -375,12 +375,12 @@ auto NanoRenderer::onRender() -> void
 			owlRayGenSet2i(nanoContext_.rayGenFoveated, "frameBufferSize", lrSize);
 			owlParamsSetRaw(nanoContext_.launchParams, "surfacePointer", &lpResource.surface.surface);
 			owlBuildSBT(nanoContext_.context);
-
+			const auto rtRecord = gpuTimers_.record("foveated RT", stream);
 			rtRecord.start();
 			owlAsyncLaunch2D(nanoContext_.rayGenFoveated, lrSize.x, lrSize.y, nanoContext_.launchParams);
 			rtRecord.stop();
 			
-		const auto resolveRecord = gpuTimers_.record("camera {}: foveated resolve", stream);
+			const auto resolveRecord = gpuTimers_.record("foveated resolve", stream);
 			resolveRecord.start();
 			foveatedFeature_->resolve(renderTargetFeatureParams.colorRT.surfaces[cameraIndex], framebufferSize.x,
 									  framebufferSize.y, stream, foveatedGaze[cameraIndex].x,
@@ -394,6 +394,7 @@ auto NanoRenderer::onRender() -> void
 							&renderTargetFeatureParams.colorRT.surfaces[cameraIndex].surface);
 			owlRayGenSet2i(nanoContext_.rayGen, "frameBufferSize", framebufferSize);
 			owlBuildSBT(nanoContext_.context);
+			const auto rtRecord = gpuTimers_.record("Raytrace [OptiX]", stream);
 			rtRecord.start();
 			owlAsyncLaunch2D(nanoContext_.rayGen, framebufferSize.x, framebufferSize.y, nanoContext_.launchParams);
 			rtRecord.stop();
