@@ -147,9 +147,9 @@ namespace ImGuiUtils
       float markerMidWidth = 30.0f;
       float markerRightRectWidth = 10.0f;
       float markerRigthRectMargin = 3.0f;
-      float markerRightRectHeight = 10.0f;
+      float markerRightRectHeight = 16.0f;
       float markerRightRectSpacing = 4.0f;
-      float nameOffset = 30.0f;
+      float nameOffset = 50.0f;
       glm::vec2 textMargin = glm::vec2(5.0f, -3.0f);
 
       auto &currFrame = frames[(currFrameIndex - frameIndexOffset - 1 + 2 * frames.size()) % frames.size()];
