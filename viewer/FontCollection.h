@@ -15,9 +15,12 @@ public:
 	[[nodiscard]] auto getDefaultFont() const noexcept -> ImFont*;
 	[[nodiscard]] auto getBigIconsFont() const noexcept -> ImFont*;
 	[[nodiscard]] auto getDefaultFontDpiScale() const noexcept -> float;
+	[[nodiscard]] auto getGpuCpuExtraBigTextFont() const noexcept -> ImFont*;
+
 
 private:
 	std::vector<ImFont*> loadedFonts_;
 	std::unordered_map<float, int> dpiToFont_{};
 	int currentFontIndex_{ 0 };
+	ImFont* gpuCpuExtraBigTextFont_{};
 };

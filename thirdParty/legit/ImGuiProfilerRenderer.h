@@ -118,7 +118,7 @@ namespace ImGuiUtils
     }
     void RenderGraph(ImDrawList *drawList, glm::vec2 graphPos, glm::vec2 graphSize, size_t frameIndexOffset)
     {
-      Rect(drawList, graphPos, graphPos + graphSize, 0xffffffff, false);
+      Rect(drawList, graphPos, graphPos + graphSize, 0x8a000000, true);
       float heightThreshold = 1.0f;
 
       for (size_t frameNumber = 0; frameNumber < frames.size(); frameNumber++)
