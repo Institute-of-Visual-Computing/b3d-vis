@@ -28,8 +28,13 @@ auto b3d::tools::project::ServerFileProvider::getFilePath(
 	return std::nullopt;
 }
 
+auto b3d::tools::project::ServerFileProvider::addLocalFile(const std::filesystem::path& filePath) const -> std::string
+{
+	return fileCatalog_->addFilePathAbsolute(filePath, false);
+}
+
 auto b3d::tools::project::ServerFileProvider::loadFileFromServerAsync(const std::string& fileUUID,
-																	  bool reloadFile) const
+                                                                      bool reloadFile) const
 	-> std::future<bool>
 {
 	if (fileCatalog_->contains(fileUUID))
@@ -66,9 +71,10 @@ auto b3d::tools::project::ServerFileProvider::loadFileFromServer(
 {
 	auto downloadFuture = serverClient_.downloadFileAsync(fileUUID, fileCatalog_->getDataPathAbsolute());
 	downloadFuture.wait();
-	if (downloadFuture.get())
+	const auto downloadPath = downloadFuture.get();
+	if (!downloadPath.empty())
 	{
-		return fileCatalog_->getFilePathAbsolute(fileUUID);
+		return downloadPath;
 	}
 	return std::nullopt;
 }

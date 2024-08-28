@@ -24,6 +24,8 @@ namespace b3d::tools::project
 		auto isFileAvailable(const std::string& fileUUID) const -> bool;
 		auto getFilePath(const std::string& fileUUID) const -> std::optional<std::filesystem::path>;
 
+		auto addLocalFile(const std::filesystem::path& filePath) const -> std::string;
+
 		auto loadFileFromServerAsync(const std::string& fileUUID, bool reloadFile) const -> std::future<bool>;
 
 	private:
