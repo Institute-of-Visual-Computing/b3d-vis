@@ -7,6 +7,8 @@
 
 #include "ProjectExplorer.h"
 
+#include "RenderData.h"
+
 using namespace b3d::tools::project;
 
 ProjectExplorer::ProjectExplorer(ApplicationContext& applicationContext) : RendererExtensionBase(applicationContext)
@@ -15,10 +17,15 @@ ProjectExplorer::ProjectExplorer(ApplicationContext& applicationContext) : Rende
 	serverFileProvider_ = std::make_unique<ServerFileProvider>("./", appContext_->serverClient);
 	applicationContext.addUpdatableComponent(projectExplorerController_.get());
 	applicationContext.addRendererExtensionComponent(this);
+
+	cudaStreamCreate(&stream_);
 }
 
-ProjectExplorer::~ProjectExplorer() = default;
-
+ProjectExplorer::~ProjectExplorer()
+{
+	cudaStreamSynchronize(stream_);
+	cudaStreamDestroy(stream_);
+}
 
 auto ProjectExplorer::initializeResources() -> void
 {
@@ -62,8 +69,43 @@ auto ProjectExplorer::updateRenderingData(b3d::renderer::RenderingDataWrapper& r
 			using namespace std::chrono_literals;
 			if (loadFileFuture_.wait_for(0s) == std::future_status::ready)
 			{
-				// Don't care about the result, just that it is done
 				const auto success = loadFileFuture_.get();
+				if (success)
+				{
+					const auto optPath = serverFileProvider_->getFilePath(requestedVolumeUUid);
+
+					if(optPath.has_value())
+					{
+						const auto path = optPath.value();
+						runtimeDataSet_.addNanoVdb(path, stream_, requestedVolumeUUid);
+					}
+					else
+					{
+						requestedVolumeUUid = "";
+						loadAndShowViewPromise_->set_value();
+						loadAndShowViewPromise_.reset();
+
+						// Shared Futures are only invalid when they are default constructed
+						loadAndShowViewFuture_ = {};
+					}
+				}
+			}
+		}
+		else
+		{
+			const auto optState = runtimeDataSet_.getVolumeState(requestedVolumeUUid);
+			if (optState.has_value() && optState.value() == b3d::renderer::RuntimeVolumeState::ready)
+			{
+				// Get nvdbVolume
+				// Set sharedBuffer
+				runtimeDataSet_.select(requestedVolumeUUid);
+
+				renderingData.data.runtimeVolumeData = {
+					.newVolumeAvailable = true,
+					.volume = runtimeDataSet_.getSelectedData(),
+				};
+
+				requestedVolumeUUid = "";
 				loadAndShowViewPromise_->set_value();
 				loadAndShowViewPromise_.reset();
 
@@ -89,6 +131,15 @@ auto ProjectExplorer::refreshProjects() -> std::shared_future<void>
 	return projectsViewSharedFuture_;
 }
 
+auto ProjectExplorer::loadAndShowFileWithPath(std::filesystem::path absoluteFilePath) -> std::shared_future<void>
+{
+	// To be 100% safe we need to protect loadAndShowViewFuture_. But the updates are called synchronously so it
+	// should be fine.
+	
+	const auto uuid = serverFileProvider_->addLocalFile(absoluteFilePath);
+	return loadAndShowFile(uuid);	
+}
+
 auto ProjectExplorer::loadAndShowFile(const std::string fileUUID) -> std::shared_future<void>
 {
 	// To be 100% safe we need to protect loadAndShowViewFuture_. But the updates are called synchronously so it
@@ -98,6 +149,7 @@ auto ProjectExplorer::loadAndShowFile(const std::string fileUUID) -> std::shared
 		return loadAndShowViewFuture_;
 	}
 
+	requestedVolumeUUid = fileUUID;
 	loadFileFuture_ = serverFileProvider_->loadFileFromServerAsync(fileUUID, false);
 
 	loadAndShowViewPromise_ = std::make_unique<std::promise<void>>();

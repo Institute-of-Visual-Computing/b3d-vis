@@ -148,10 +148,7 @@ auto NanoRenderer::prepareGeometry() -> void
 	const auto geometryType =
 		owlGeomTypeCreate(context, OWL_GEOM_USER, sizeof(GeometryData), geometryVars.data(), geometryVars.size());
 
-
 	{
-
-
 		const auto rayGenerationVars = std::array{
 			OWLVarDecl{ "frameBufferSize", OWL_INT2, OWL_OFFSETOF(RayGenerationFoveatedData, frameBufferSize) },
 			OWLVarDecl{ "world", OWL_GROUP, OWL_OFFSETOF(RayGenerationFoveatedData, world) },
@@ -181,7 +178,8 @@ auto NanoRenderer::prepareGeometry() -> void
 															 OWL_MATRIX_FORMAT_OWL, OPTIX_BUILD_FLAG_ALLOW_UPDATE);
 
 	// TODO: need better solution, see also bounds kernel in NanoRenderer.cu
-	owlGeomSetRaw(geometry, "volume", &runtimeDataSet_.getSelectedData().volume);
+	auto dataset = runtimeDataSet_.getSelectedData();
+	owlGeomSetRaw(geometry, "volume", &dataset.volume);
 
 	owlGeomTypeSetBoundsProg(geometryType, module, "volumeBounds");
 	owlBuildPrograms(context);
@@ -250,25 +248,30 @@ auto NanoRenderer::onRender() -> void
 {
 	gpuTimers_.nextFrame();
 
-	auto runtimeVolume = runtimeDataSet_.getSelectedData();
-	auto& nanoVdbVolume = runtimeVolume.volume;
+	
 	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
+	const auto runtimeVolumeData = renderData_->get<RuntimeVolumeData>("runtimeVolumeData");
+	
+	auto& runtimeVolume = runtimeVolumeData->volume;
+	auto& nanoVdbVolume = runtimeVolume.volume;
+
 	trs_ = volumeTransform->worldMatTRS * runtimeVolume.renormalizeScale;
+
 	const auto volumeTranslate = AffineSpace3f::translate(-nanoVdbVolume.indexBox.center());
 	const auto groupTransform = trs_ * volumeTranslate;
+
+
 	owlInstanceGroupSetTransform(nanoContext_.worldGeometryGroup, 0, reinterpret_cast<const float*>(&groupTransform));
 	owlGroupRefitAccel(nanoContext_.worldGeometryGroup);
 	// if (firstFrame)
-	//{
-
-
-	//	const auto volumeTranslate = AffineSpace3f::translate(-nanoVdbVolume.indexBox.center());
-	//	const auto groupTransform = trs_ * volumeTranslate;
-	//	owlInstanceGroupSetTransform(nanoContext_.worldGeometryGroup, 0,
+	// {
+	//	 const auto volumeTranslate = AffineSpace3f::translate(-nanoVdbVolume.indexBox.center());
+	//	 const auto groupTransform = trs_ * volumeTranslate;
+	//	 owlInstanceGroupSetTransform(nanoContext_.worldGeometryGroup, 0,
 	//								 reinterpret_cast<const float*>(&groupTransform));
-	//	owlGroupRefitAccel(nanoContext_.worldGeometryGroup);
-	//	firstFrame = false;
-	//}
+	//	 owlGroupRefitAccel(nanoContext_.worldGeometryGroup);
+	//	 firstFrame = false;
+	// }
 
 	volumeTransform->volumeVoxelBox = nanoVdbVolume.indexBox;
 	volumeTransform->renormalizedScale = runtimeVolume.renormalizeScale;
@@ -295,7 +298,10 @@ auto NanoRenderer::onRender() -> void
 
 	owlParamsSetRaw(nanoContext_.launchParams, "sampleIntegrationMethod", &guiData.sampleIntegrationMethode);
 
-	owlParamsSetRaw(nanoContext_.launchParams, "volume", &nanoVdbVolume);
+	if (runtimeVolumeData->newVolumeAvailable)
+	{
+		owlParamsSetRaw(nanoContext_.launchParams, "volume", &nanoVdbVolume);
+	}
 
 	auto renderTargetFeatureParams = renderTargetFeature_->getParamsData();
 

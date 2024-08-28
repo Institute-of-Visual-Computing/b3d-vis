@@ -5,6 +5,7 @@ find_package(glad CONFIG REQUIRED)
 #find_package(imguizmo CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(OpenVDB CONFIG REQUIRED COMPONENTS nanovdb)
 
 set(viewerTargetName viewer)
 add_executable(${viewerTargetName})
@@ -83,6 +84,8 @@ target_sources(${viewerTargetName} PRIVATE
 	features/projectExplorer/ProjectExplorerView.cpp
 	features/projectExplorer/ProjectExplorerController.cpp
 	features/projectExplorer/ProjectExplorerController.h
+	"features/fileDialog/OpenFileDialogView.h"
+	features/fileDialog/OpenFileDialogView.cpp
 )
 
 target_include_directories(${viewerTargetName} PUBLIC /)
@@ -111,6 +114,7 @@ target_link_libraries(${viewerTargetName}
 	${CUDA_nvml_LIBRARY}
 	imcurve_modefied
 	imspinner
+	OpenVDB::nanovdb
 	nlohmann_json::nlohmann_json
 )
 

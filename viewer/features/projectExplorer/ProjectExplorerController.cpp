@@ -7,6 +7,8 @@
 
 #include "ProjectExplorerController.h"
 
+#include "../fileDialog/OpenFileDialogView.h"
+
 ProjectExplorerController::ProjectExplorerController(ApplicationContext& applicationContext,
                                                      ProjectExplorer& projectExplorer,
                                                      std::vector<b3d::tools::project::Project>& projects)
@@ -14,10 +16,11 @@ ProjectExplorerController::ProjectExplorerController(ApplicationContext& applica
 {
 	projectExplorerView_ = std::make_unique<ProjectExplorerView>(
 		applicationContext, applicationContext.getMainDockspace(), [&] { projectSelectionView_->open(); },
-		[&](const std::string& fileUUID) { return loadAndShowFile(fileUUID); });
+		[&] { openFileDialogView_->open(); },
+		[&](const std::string& fileUUID) { return projectExplorer_->loadAndShowFile(fileUUID); });
 
 	projectSelectionView_ = std::make_unique<ProjectSelectionView>(
-		applicationContext, [&]() { return requestProjects();
+		applicationContext, [&]() { return projectExplorer_->refreshProjects();
 		},
 		[&](ModalViewBase* self) {
 			reinterpret_cast<ProjectSelectionView*>(self)->setModel({selectedProjectUUID_, projects_});
@@ -39,6 +42,24 @@ ProjectExplorerController::ProjectExplorerController(ApplicationContext& applica
 				}
 			}
 		});
+
+	openFileDialogView_ = std::make_unique<OpenFileDialogView>(
+		applicationContext,
+		[&](ModalViewBase* self)
+		{
+			reinterpret_cast<OpenFileDialogView*>(self)->setViewParams(std::filesystem::current_path(), {".nvdb"} );
+		},
+			[&](ModalViewBase* self)
+		{
+			const auto selectedPath = reinterpret_cast<OpenFileDialogView*>(self)->getModel().selectedPath_;
+			if (!selectedPath.empty())
+			{
+
+				
+				projectExplorer_->loadAndShowFileWithPath(selectedPath);
+			}
+		}
+	);
 
 	applicationContext.addMenuToggleAction(
 		showExplorerWindow_,
@@ -62,14 +83,5 @@ auto ProjectExplorerController::update() -> void
 		projectExplorerView_->draw();
 	}
 	projectSelectionView_->draw();
-}
-
-auto ProjectExplorerController::requestProjects() -> std::shared_future<void>
-{
-	return projectExplorer_->refreshProjects();
-}
-
-auto ProjectExplorerController::loadAndShowFile(const std::string fileUUID) -> std::shared_future<void>
-{
-	return projectExplorer_->loadAndShowFile(fileUUID);
+	openFileDialogView_->draw();
 }

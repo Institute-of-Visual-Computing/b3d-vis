@@ -18,6 +18,7 @@ public:
 	};
 
 	ProjectExplorerView(ApplicationContext& appContext, Dockspace* dockspace, std::function<void()> showSelectionModal,
+						std::function<void()> showNvdbSelectionModal,  
 						std::function<std::shared_future<void>(const std::string& fileUUID)> loadAndShowFunction);
 	~ProjectExplorerView() override;
 
@@ -29,6 +30,7 @@ private:
 
 	Model model_;
 	std::function<void()> showSelectionModal_;
+	std::function<void()> showNvdbSelectionModal_;
 
 	std::function<std::shared_future<void>(const std::string& fileUUID)> loadAndShowFunction_{};
 	std::shared_future<void> loadAndShowFileFuture_{};

@@ -21,6 +21,7 @@ namespace b3d::renderer
 		ColorMapInfos colorMapInfos;
 		ExternalTexture transferFunctionTexture;
 		FoveatedRenderingControl foveatedRenderingControl;
+		RuntimeVolumeData runtimeVolumeData;
 	};
 
 	using Schema = std::unordered_map<std::string_view, size_t>;
@@ -47,7 +48,8 @@ namespace b3d::renderer
 											  SCHEMA_ENTRY("coloringInfo", coloringInfo, RenderingData),
 												SCHEMA_ENTRY("colorMapInfos", colorMapInfos, RenderingData),
 												SCHEMA_ENTRY("transferFunctionTexture", transferFunctionTexture, RenderingData),
-		SCHEMA_ENTRY("foveatedRenderingControl", foveatedRenderingControl, RenderingData)
+												SCHEMA_ENTRY("foveatedRenderingControl", foveatedRenderingControl, RenderingData),
+			  SCHEMA_ENTRY("runtimeVolumeData", runtimeVolumeData, RenderingData)
 										  },
 										  sizeof(RenderingData) };
 

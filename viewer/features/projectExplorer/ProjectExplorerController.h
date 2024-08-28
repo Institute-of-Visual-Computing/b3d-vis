@@ -7,6 +7,8 @@
 
 #include "framework/UpdatableComponentBase.h"
 
+class OpenFileDialogView;
+
 namespace b3d::tools::project
 {
 	struct Project;
@@ -28,17 +30,14 @@ public:
 	auto setProjects(std::vector<b3d::tools::project::Project>* projects) -> void;
 
 private:
-	auto requestProjects() -> std::shared_future<void>;
-
-	auto loadAndShowFile(const std::string fileUUID) -> std::shared_future<void>;
 
 	ProjectExplorer* projectExplorer_;
 	std::unique_ptr<ProjectExplorerView> projectExplorerView_;
 	std::unique_ptr<ProjectSelectionView> projectSelectionView_;
+	std::unique_ptr<OpenFileDialogView> openFileDialogView_;
 
 	bool showExplorerWindow_{ true };
 
 	std::vector<b3d::tools::project::Project>* projects_;
 	std::string selectedProjectUUID_{};
-
 };

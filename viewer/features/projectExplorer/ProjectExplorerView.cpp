@@ -4,11 +4,12 @@
 
 #include "ProjectExplorerView.h"
 
-ProjectExplorerView::ProjectExplorerView(ApplicationContext& appContext, Dockspace* dockspace,
-										 std::function<void()> showSelectionModal,
+ProjectExplorerView::ProjectExplorerView(ApplicationContext& appContext, Dockspace* dockspace, std::function<void()> showSelectionModal,
+	std::function<void()> showNvdbSelectionModal,
 										 std::function<std::shared_future<void>(const std::string& fileUUID)> loadAndShowFunction)
 	: DockableWindowViewBase(appContext, "Project", dockspace, WindowFlagBits::none),
-	  showSelectionModal_(std::move(showSelectionModal)), loadAndShowFunction_(std::move(loadAndShowFunction))
+	  showSelectionModal_(std::move(showSelectionModal)), showNvdbSelectionModal_(std::move(showNvdbSelectionModal)),
+	  loadAndShowFunction_(std::move(loadAndShowFunction))
 {
 }
 
@@ -21,6 +22,10 @@ auto ProjectExplorerView::setModel(Model model) -> void
 
 auto ProjectExplorerView::onDraw() -> void
 {
+	if(ImGui::Button("Load .nvdb manually"))
+	{
+		showNvdbSelectionModal_();
+	}
 	if (!projectAvailable())
 	{
 		ImGui::Text("No project selected.");
