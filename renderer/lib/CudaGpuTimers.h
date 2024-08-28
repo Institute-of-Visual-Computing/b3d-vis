@@ -10,8 +10,10 @@
 #include <cuda_runtime.h>
 #include <owl/helper/cuda.h>
 
+#include "ProfilerResult.h"
 
-namespace b3d::renderer
+
+namespace b3d::profiler
 {
 	template <int PoolSize, int DoubleBufferedFrames = 2, bool WaitOnNotReady = false>
 	class CudaGpuTimers
@@ -21,13 +23,6 @@ namespace b3d::renderer
 		{
 			cudaEvent_t start;
 			cudaEvent_t stop;
-		};
-
-		struct ProfilerResult
-		{
-			std::string_view name;
-			float start;
-			float stop;
 		};
 
 		class Record
@@ -61,7 +56,7 @@ namespace b3d::renderer
 			return 0.0f;
 		}
 
-		[[nodiscard]] auto getAllCurrent() const -> std::vector<ProfilerResult>
+		[[nodiscard]] auto getAllCurrent() const -> const std::vector<ProfilerResult>&
 		{
 			return lastFrameResults_;
 		}

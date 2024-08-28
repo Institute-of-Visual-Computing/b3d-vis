@@ -8,6 +8,7 @@
 #include <cassert>
 
 #include "GLUtils.h"
+#include "ProfilerResult.h"
 
 template <int PoolSize, int DoubleBufferedFrames = 2, bool WaitOnNotReady = false>
 class GlGpuTimers final
@@ -17,13 +18,6 @@ public:
 	{
 		GLuint64 start;
 		GLuint64 stop;
-	};
-
-	struct ProfilerResult
-	{
-		std::string_view name;
-		float start;
-		float stop;
 	};
 
 	class Record
@@ -45,7 +39,6 @@ public:
 		GLuint64 stop_{};
 	};
 
-public:
 	auto nextFrame() -> void;
 
 	[[nodiscard]] auto get(std::string_view label) -> float
@@ -57,7 +50,7 @@ public:
 		return 0.0f;
 	}
 
-	[[nodiscard]] auto getAllCurrent() const -> std::vector<ProfilerResult>
+	[[nodiscard]] auto getAllCurrent() const -> const std::vector<b3d::profiler::ProfilerResult>&
 	{
 		return lastFrameResults_;
 	}
@@ -65,7 +58,7 @@ public:
 	[[nodiscard]] auto record(std::string label) -> Record;
 
 	GlGpuTimers();
-	virtual ~GlGpuTimers();
+	~GlGpuTimers();
 
 private:
 	friend Record;
@@ -84,7 +77,7 @@ private:
 
 	bool isFirstRecord_{ true };
 	std::string frameFirstRecord_;
-	std::vector<ProfilerResult> lastFrameResults_{};
+	std::vector<b3d::profiler::ProfilerResult> lastFrameResults_{};
 };
 template <int PoolSize, int DoubleBufferedFrames, bool WaitOnNotReady>
 auto GlGpuTimers<PoolSize, DoubleBufferedFrames, WaitOnNotReady>::Record::start() const -> void
@@ -164,8 +157,7 @@ auto GlGpuTimers<PoolSize, DoubleBufferedFrames, WaitOnNotReady>::nextFrame() ->
 			GL_CALL(glGetQueryObjectui64v(timings.stop, GL_QUERY_RESULT, &timeEnd));
 			const auto deltaStart = timeStart - frameStart;
 			const auto deltaEnd = timeEnd - frameStart;
-			lastFrameResults_.push_back(
-				ProfilerResult{ lable, (float)(deltaStart) / 1000000.0f, (float)(deltaEnd) / 1000000.0f });
+			lastFrameResults_.push_back(b3d::profiler::ProfilerResult{ lable, static_cast<float>(deltaStart) / 1000000.0f, static_cast<float>(deltaEnd) / 1000000.0f });
 		}
 	}
 }
@@ -214,7 +206,7 @@ GlGpuTimers<PoolSize, DoubleBufferedFrames, WaitOnNotReady>::~GlGpuTimers()
 		for (auto& event : pool)
 		{
 			// OWL_CUDA_CHECK(cudaEventDestroy(event));
-			// GL_CALL(glDeleteQueries(1, event));
+			//GL_CALL(glDeleteQueries(1, event));
 		}
 	}
 }
