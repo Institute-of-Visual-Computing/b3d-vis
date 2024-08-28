@@ -32,7 +32,7 @@ extern "C" uint32_t NanoOutOfCoreRenderer_optixir_length;
 using namespace b3d::renderer;
 using namespace b3d::renderer::nano;
 using namespace owl::common;
-
+using namespace b3d::profiler;
 
 namespace
 {

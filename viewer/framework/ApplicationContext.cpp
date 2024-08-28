@@ -8,6 +8,7 @@
 ApplicationContext::ApplicationContext()
 {
 	mainDockspace_ = std::make_unique<Dockspace>();
+	profiler_ = std::make_unique<b3d::profiler::Profiler>();
 }
 
 auto ApplicationContext::setExternalDrawLists(const std::shared_ptr<DebugDrawList>& debugDrawList,

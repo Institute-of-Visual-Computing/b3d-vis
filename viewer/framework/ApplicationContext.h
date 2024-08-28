@@ -12,7 +12,10 @@
 #include "ApplicationSettings.h"
 #include "framework/Dockspace.h"
 
+#include <glm/glm.hpp>
 #include "GLGpuTimers.h"
+#include "ImGuiProfilerRenderer.h"
+#include "Profiler.h"
 
 class GLFWwindow;
 class DebugDrawList;
@@ -110,8 +113,11 @@ private:
 	std::shared_ptr<DebugDrawList> debugDrawList_{};
 	std::shared_ptr<GizmoHelper> gizmoHelper_{};
 
+
 public:
 	std::vector<UpdatableComponentBase*> updatableComponents_{};
 	std::vector<RendererExtensionBase*> rendererExtensions_{};
 	std::unique_ptr<Dockspace> mainDockspace_{ nullptr };
+	std::unique_ptr<b3d::profiler::Profiler> profiler_{};
+	ImGuiUtils::ProfilerGraph gpuGraph_{300};
 };

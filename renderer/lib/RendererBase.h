@@ -23,7 +23,7 @@ namespace b3d::renderer
 	};
 
 	//TODO: add enable profiling flag
-	using GpuTimers = CudaGpuTimers<100, 10>;
+	using GpuTimers = profiler::CudaGpuTimers<10, 4>;
 
 	class RendererBase
 	{

@@ -417,10 +417,11 @@ auto NanoViewer::draw() -> void
 		ImGui::ShowDemoWindow(&showImGuiDemo);
 	}
 
+	const auto currentFrameTime = 1.0f / ImGui::GetIO().Framerate;
+	const auto maxFrameTimeTarget = currentFrameTime > (1.0f / 60.0f) ? 1.0f / 30.0f : 1.0f / 60.0f;
 	if (showProfiler)
 	{
-		const auto currentFrameTime = 1.0f / ImGui::GetIO().Framerate;
-		const auto maxFrameTimeTarget = currentFrameTime > (1.0f / 60.0f) ? 1.0f / 30.0f : 1.0f / 60.0f;
+
 
 		profilersWindow_.gpuGraph().maxFrameTime = maxFrameTimeTarget;
 
@@ -469,6 +470,25 @@ auto NanoViewer::draw() -> void
 		profilersWindow_.render();
 	}
 
+	applicationContext->profiler_->collectGpuTimers(currentRenderer_->getGpuTimers().getAllCurrent());
+	applicationContext->profiler_->collectGpuTimers(applicationContext->getGlGpuTimers().getAllCurrent());
+	
+	auto& tasks = applicationContext->profiler_->gpuProfilerTasks();
+	applicationContext->gpuGraph_.maxFrameTime = maxFrameTimeTarget;
+	applicationContext->gpuGraph_.LoadFrameData(tasks.data(), tasks.size());
+
+	static float maxFrameTime = 0;
+	maxFrameTime = maxFrameTime * 0.998 + 0.002 * ImGui::GetIO().DeltaTime;
+
+	constexpr auto frameWidth = 3;
+	constexpr auto frameSpacing = 1;
+	constexpr auto useColoredLegendText = true;
+	applicationContext->gpuGraph_.frameWidth = frameWidth;
+	applicationContext->gpuGraph_.frameSpacing = frameSpacing;
+	applicationContext->gpuGraph_.maxFrameTime = maxFrameTime * 3.0f;
+	applicationContext->gpuGraph_.useColoredLegendText = useColoredLegendText;
+
+
 	ImGui::PopFont();
 	ImGui::EndFrame();
 
@@ -492,6 +512,7 @@ auto NanoViewer::draw() -> void
 	glfwSwapBuffers(applicationContext->mainWindowHandle_);
 	glfwPollEvents();
 	applicationContext->getGlGpuTimers().nextFrame();
+	applicationContext->profiler_->nextFrame();
 
 	FrameMark;
 }
