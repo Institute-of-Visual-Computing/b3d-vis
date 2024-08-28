@@ -21,12 +21,16 @@ b3d::tools::project::catalog::FileCatalog::FileCatalog(const std::filesystem::pa
 }
 
 // Absolute Path!
-auto b3d::tools::project::catalog::FileCatalog::addFilePathAbsolute(
-	const std::filesystem::path& absoluteFilePath)
+auto b3d::tools::project::catalog::FileCatalog::addFilePathAbsolute(const std::filesystem::path& absoluteFilePath,
+																	bool relativizePath)
 	->const std::string
 {
-	const auto relativePath = absoluteFilePath.lexically_relative(rootPath_);
-	return addFilePathRelativeToRoot(relativePath);
+	if (relativizePath)
+	{
+		const auto relativePath = absoluteFilePath.lexically_relative(rootPath_);
+		return addFilePathRelativeToRoot(relativePath);
+	}
+	return addFilePathRelativeToRoot(absoluteFilePath);
 }
 
 auto b3d::tools::project::catalog::FileCatalog::addFilePathRelativeToRoot( 
@@ -34,6 +38,10 @@ auto b3d::tools::project::catalog::FileCatalog::addFilePathRelativeToRoot(
 	-> const std::string
 {
 	auto fileUUID = uuids::to_string(gNameGenerator(relativeFilePath.generic_string()));
+	if (mappings_.contains(fileUUID))
+	{
+		return fileUUID;
+	}
 	FileCatalogEntry ce{ relativeFilePath, relativeFilePath.filename() };
 	
 	mappings_.insert(std::make_pair(fileUUID, ce));

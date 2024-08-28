@@ -31,7 +31,7 @@ namespace b3d::tools::project::catalog
 		FileCatalog(const std::filesystem::path& rootPath, const std::filesystem::path& dataPath);
 
 		/// \brief Adds a file path to the catalog. Absolute path. The path must be inside the root path of the catalog
-		auto addFilePathAbsolute(const std::filesystem::path& filePath) -> const std::string;
+		auto addFilePathAbsolute(const std::filesystem::path& filePath, bool relativizePath = true) -> const std::string;
 
 		/// \brief Adds a file path to the catalog. Path is relative to the root path of the catalog.
 		auto addFilePathRelativeToRoot(const std::filesystem::path& filePath) -> const std::string;
