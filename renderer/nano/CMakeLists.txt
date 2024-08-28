@@ -59,6 +59,7 @@ target_link_libraries(cudaCode
 )
 set_property(TARGET cudaCode PROPERTY CUDA_STANDARD 17)
 
+find_package(Tracy CONFIG REQUIRED)
 
 add_b3d_renderer(
 	NAME
@@ -79,4 +80,5 @@ add_b3d_renderer(
 		imgui::imgui
 		NanoCutterParser
 		B3D::Tools::ColorMap
+		Tracy::TracyClient
 )

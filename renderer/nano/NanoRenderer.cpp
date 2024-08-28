@@ -27,6 +27,8 @@
 
 #include "FoveatedRendering.h"
 
+#include <tracy/Tracy.hpp>
+
 
 #define FOVEATED
 
@@ -259,7 +261,11 @@ auto NanoRenderer::onRender() -> void
 	const auto volumeTranslate = AffineSpace3f::translate(-nanoVdbVolume.indexBox.center());
 	const auto groupTransform = trs_ * volumeTranslate;
 	owlInstanceGroupSetTransform(nanoContext_.worldGeometryGroup, 0, reinterpret_cast<const float*>(&groupTransform));
-	owlGroupRefitAccel(nanoContext_.worldGeometryGroup);
+
+	{
+		ZoneScopedN("Refit AS");
+		owlGroupRefitAccel(nanoContext_.worldGeometryGroup);
+	}
 	// if (firstFrame)
 	//{
 
@@ -285,38 +291,43 @@ auto NanoRenderer::onRender() -> void
 	}
 
 	debugInfo_.gizmoHelper->drawGizmo(volumeTransform->worldMatTRS);
-
-	const auto colorMapParams = colorMapFeature_->getParamsData();
-
-	using namespace owl::extensions;
-
-	owlParamsSetRaw(nanoContext_.launchParams, "coloringInfo.colorMode", &colorMapParams.mode);
-	owlParamsSet4f(nanoContext_.launchParams, "coloringInfo.singleColor", colorMapParams.uniformColor);
-
-	owlParamsSet1f(nanoContext_.launchParams, "coloringInfo.selectedColorMap", colorMapParams.selectedColorMap);
-
-	owlParamsSetRaw(nanoContext_.launchParams, "sampleIntegrationMethod", &guiData.sampleIntegrationMethode);
-
-	owlParamsSetRaw(nanoContext_.launchParams, "volume", &nanoVdbVolume);
-
 	auto renderTargetFeatureParams = renderTargetFeature_->getParamsData();
 
-	owlParamsSetRaw(nanoContext_.launchParams, "colormaps", &colorMapParams.colorMapTexture);
-	owlParamsSet2f(nanoContext_.launchParams, "sampleRemapping",
-				   owl2f{ guiData.sampleRemapping[0], guiData.sampleRemapping[1] });
+	{
+		ZoneScopedNS("Setup Launch Params Common", 10);
 
-	auto transferFunctionParams = transferFunctionFeature_->getParamsData();
+		const auto colorMapParams = colorMapFeature_->getParamsData();
 
-	owlParamsSetRaw(nanoContext_.launchParams, "transferFunctionTexture",
-					&transferFunctionParams.transferFunctionTexture);
+		using namespace owl::extensions;
 
-	const auto backgroundColorParams = backgroundColorFeature_->getParamsData();
-	owlParamsSet4f(nanoContext_.launchParams, "bg.color0", backgroundColorParams.colors[0]);
-	owlParamsSet4f(nanoContext_.launchParams, "bg.color1", backgroundColorParams.colors[1]);
 
-	owlParamsSet1b(nanoContext_.launchParams, "bg.fillBox", guiData.fillBox);
-	owlParamsSet3f(nanoContext_.launchParams, "bg.fillColor",
-				   owl3f{ guiData.fillColor[0], guiData.fillColor[1], guiData.fillColor[2] });
+		owlParamsSetRaw(nanoContext_.launchParams, "coloringInfo.colorMode", &colorMapParams.mode);
+		owlParamsSet4f(nanoContext_.launchParams, "coloringInfo.singleColor", colorMapParams.uniformColor);
+
+		owlParamsSet1f(nanoContext_.launchParams, "coloringInfo.selectedColorMap", colorMapParams.selectedColorMap);
+
+		owlParamsSetRaw(nanoContext_.launchParams, "sampleIntegrationMethod", &guiData.sampleIntegrationMethode);
+
+		owlParamsSetRaw(nanoContext_.launchParams, "volume", &nanoVdbVolume);
+
+
+		owlParamsSetRaw(nanoContext_.launchParams, "colormaps", &colorMapParams.colorMapTexture);
+		owlParamsSet2f(nanoContext_.launchParams, "sampleRemapping",
+					   owl2f{ guiData.sampleRemapping[0], guiData.sampleRemapping[1] });
+
+		auto transferFunctionParams = transferFunctionFeature_->getParamsData();
+
+		owlParamsSetRaw(nanoContext_.launchParams, "transferFunctionTexture",
+						&transferFunctionParams.transferFunctionTexture);
+
+		const auto backgroundColorParams = backgroundColorFeature_->getParamsData();
+		owlParamsSet4f(nanoContext_.launchParams, "bg.color0", backgroundColorParams.colors[0]);
+		owlParamsSet4f(nanoContext_.launchParams, "bg.color1", backgroundColorParams.colors[1]);
+
+		owlParamsSet1b(nanoContext_.launchParams, "bg.fillBox", guiData.fillBox);
+		owlParamsSet3f(nanoContext_.launchParams, "bg.fillColor",
+					   owl3f{ guiData.fillColor[0], guiData.fillColor[1], guiData.fillColor[2] });
+	}
 
 	constexpr auto deviceId = 0; // TODO: Research on device id, in multi gpu system it might be tricky
 	const auto stream = owlParamsGetCudaStream(nanoContext_.launchParams, deviceId);
@@ -357,10 +368,10 @@ auto NanoRenderer::onRender() -> void
 	};
 	for (const auto cameraIndex : cameraIndices)
 	{
+		ZoneScopedN("Left Eye");
 		assert(cameraIndex < renderTargetFeatureParams.colorRT.surfaces.size());
 		owlParamsSetRaw(nanoContext_.launchParams, "cameraData", &rayCameraData[cameraIndex]);
 
-		
 
 		if (foveatedRenderingParams.isEnabled)
 		{
@@ -379,7 +390,7 @@ auto NanoRenderer::onRender() -> void
 			rtRecord.start();
 			owlAsyncLaunch2D(nanoContext_.rayGenFoveated, lrSize.x, lrSize.y, nanoContext_.launchParams);
 			rtRecord.stop();
-			
+
 			const auto resolveRecord = gpuTimers_.record("foveated resolve", stream);
 			resolveRecord.start();
 			foveatedFeature_->resolve(renderTargetFeatureParams.colorRT.surfaces[cameraIndex], framebufferSize.x,
@@ -393,7 +404,11 @@ auto NanoRenderer::onRender() -> void
 			owlParamsSetRaw(nanoContext_.launchParams, "surfacePointer",
 							&renderTargetFeatureParams.colorRT.surfaces[cameraIndex].surface);
 			owlRayGenSet2i(nanoContext_.rayGen, "frameBufferSize", framebufferSize);
-			owlBuildSBT(nanoContext_.context);
+
+			{
+				ZoneScopedN("SBT Build");
+				owlBuildSBT(nanoContext_.context);
+			}
 			const auto rtRecord = gpuTimers_.record("Raytrace [OptiX]", stream);
 			rtRecord.start();
 			owlAsyncLaunch2D(nanoContext_.rayGen, framebufferSize.x, framebufferSize.y, nanoContext_.launchParams);
@@ -496,6 +511,6 @@ auto NanoRenderer::onGui() -> void
 	const auto center = ImGui::GetMainViewport()->GetCenter();
 	ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
 	openFileDialog_.gui();
-	
+
 	ImGui::End();
 }
