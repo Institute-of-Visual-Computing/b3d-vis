@@ -64,7 +64,7 @@ namespace b3d::tools::project
 		auto getProjectsAsync() const -> std::future<std::optional<std::vector<Project>>>;
 
 		auto downloadFileAsync(const std::string &fileUUID, const std::filesystem::path &targetDirectoryPath) const
-			-> std::future<bool>;
+			-> std::future<std::filesystem::path>;
 
 		auto getProjectAsync(const std::string& projectUUID) -> Project;
 		auto getRequests(const std::string& projectUUID) -> std::vector<Request>;
@@ -76,7 +76,7 @@ namespace b3d::tools::project
 		static auto getServerStatusState(ServerConnectionDescription connectionDescription) -> ServerStatusState;
 		static auto getProjects(ServerConnectionDescription connectionDescription) -> std::optional<std::vector<Project>>;
 		static auto downloadFile(ServerConnectionDescription connectionDescription, std::string fileUUID,
-								 std::filesystem::path targetDirectoryPath) -> bool;
+								 std::filesystem::path targetDirectoryPath) -> std::filesystem::path;
 
 		// IP or Hostname
 		ServerConnectionDescription serverConnectionDescription_

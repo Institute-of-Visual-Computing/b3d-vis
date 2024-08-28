@@ -82,7 +82,7 @@ auto ServerClient::getProjectsAsync() const -> std::future<std::optional<std::ve
 }
 
 auto ServerClient::downloadFileAsync(const std::string& fileUUID, const std::filesystem::path &targetDirectoryPath) const
-	-> std::future<bool>
+	-> std::future<std::filesystem::path>
 {
 	return std::async(std::launch::async,[this, fileUUID, targetDirectoryPath]() { return downloadFile(serverConnectionDescription_, fileUUID, targetDirectoryPath); });
 }
@@ -138,7 +138,7 @@ auto ServerClient::getProjects(const ServerConnectionDescription connectionDescr
 }
 
 auto ServerClient::downloadFile(const ServerConnectionDescription connectionDescription, const std::string fileUUID,
-								const std::filesystem::path targetDirectoryPath) -> bool
+								const std::filesystem::path targetDirectoryPath) -> std::filesystem::path
 {
 	httplib::Client client(connectionDescription.ipHost, std::stoi(connectionDescription.port));
 
@@ -157,10 +157,11 @@ auto ServerClient::downloadFile(const ServerConnectionDescription connectionDesc
 	if (!res || res.error() != httplib::Error::Success || res->status != 200)
 	{
 		std::filesystem::remove(targetFilePath);
-		return false;
+		return {};
 	}
 
 	const auto extension = res->get_header_value("Content-Type").substr(12 /* application/ */);
-	std::filesystem::rename(targetFilePath, targetDirectoryPath / (fileUUID + "." + extension));
-	return true;
+	const auto finalFilePath = targetDirectoryPath / (fileUUID + "." + extension); 
+	std::filesystem::rename(targetFilePath,finalFilePath);
+	return finalFilePath;
 }
