@@ -10,8 +10,14 @@
 #include "FontCollection.h"
 
 #include "ApplicationSettings.h"
+#include "RuntimeDataSet.h"
 #include "ServerClient.h"
 #include "framework/Dockspace.h"
+
+#include <glm/glm.hpp>
+#include "GLGpuTimers.h"
+#include "ImGuiProfilerRenderer.h"
+#include "Profiler.h"
 
 class GLFWwindow;
 class DebugDrawList;
@@ -30,6 +36,7 @@ namespace std_help
 } // namespace std_help
 using Action = std::function<void(void)>;
 using ToggleAction = std::function<void(bool)>;
+using GpuTimers = GlGpuTimers<20, 3>;
 
 class ApplicationContext final
 {
@@ -39,6 +46,11 @@ public:
 	[[nodiscard]] auto getFontCollection() -> FontCollection&
 	{
 		return fonts_;
+	}
+
+	[[nodiscard]] auto getGlGpuTimers() -> GpuTimers&
+	{
+		return glGpuTimers_;
 	}
 
 	auto setExternalDrawLists(const std::shared_ptr<DebugDrawList>& debugDrawList,
@@ -98,14 +110,19 @@ public:
 
 private:
 	FontCollection fonts_{};
+	GpuTimers glGpuTimers_{};
 
 	std::shared_ptr<DebugDrawList> debugDrawList_{};
 	std::shared_ptr<GizmoHelper> gizmoHelper_{};
+
 
 public:
 	std::vector<UpdatableComponentBase*> updatableComponents_{};
 	std::vector<RendererExtensionBase*> rendererExtensions_{};
 	std::unique_ptr<Dockspace> mainDockspace_{ nullptr };
+	std::unique_ptr<b3d::profiler::Profiler> profiler_{};
+	ImGuiUtils::ProfilerGraph gpuGraph_{300};
 
-	b3d::tools::project::ServerClient serverClient { };
+	b3d::renderer::nano::RuntimeDataSet runtimeDataSet_{};
+	b3d::tools::project::ServerClient serverClient_{};
 };

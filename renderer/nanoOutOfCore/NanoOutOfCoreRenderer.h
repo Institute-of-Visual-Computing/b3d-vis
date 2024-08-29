@@ -10,7 +10,7 @@
 
 
 #include "NanoCutterParser.h"
-#include "OpenFileDialog.h"
+#include "Old_OpenFileDialog.h"
 #include "features/RenderSyncFeature.h"
 #include "features/RenderTargetFeature.h"
 
@@ -50,7 +50,7 @@ namespace b3d::renderer::nano
 
 		nanovdb::Map currentMap_{};
 
-		CudaGpuTimers<100, 4> gpuTimers_{};
+		profiler::CudaGpuTimers<100, 4> gpuTimers_{};
 
 		OpenFileDialog openFileDialog_{ SelectMode::singleFile, { ".b3d" } };
 

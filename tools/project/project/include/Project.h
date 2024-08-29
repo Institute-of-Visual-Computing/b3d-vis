@@ -1,14 +1,12 @@
 #pragma once
 
-#include "nlohmann/json.hpp"
+#ifdef B3D_USE_NLOHMANN_JSON
+	#include "nlohmann/json.hpp"
+#endif
 
 #include "Request.h"
 
 #include "FitsCommon.h"
-
-#ifdef B3D_USE_NLOHMANN_JSON
-	#include "nlohmann/json.hpp"
-#endif
 
 namespace b3d::tools::project
 {
@@ -33,4 +31,3 @@ namespace b3d::tools::project
 			return x.projectUUID == y.projectUUID;
 		}
 } // namespace b3d::tools::project
-

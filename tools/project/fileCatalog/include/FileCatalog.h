@@ -28,14 +28,19 @@ namespace b3d::tools::project::catalog
 	public:
 		FileCatalog() = default;
 		FileCatalog(const std::filesystem::path& rootPath);
-		FileCatalog(const std::filesystem::path& rootPath, const std::filesystem::path& dataPath,
-				const std::filesystem::path& projectsPath);
+		FileCatalog(const std::filesystem::path& rootPath, const std::filesystem::path& dataPath);
 
-		/// \brief Adds a file path to the catalog. Absolute path.
-		auto addFilePathAbsolute(const std::filesystem::path& filePath) -> const std::string;
+		/// \brief Adds a file path to the catalog. Absolute path. The path must be inside the root path of the catalog
+		auto addFilePathAbsolute(const std::filesystem::path& filePath, bool relativizePath = true) -> const std::string;
 
 		/// \brief Adds a file path to the catalog. Path is relative to the root path of the catalog.
 		auto addFilePathRelativeToRoot(const std::filesystem::path& filePath) -> const std::string;
+
+		/// \brief Adds a file path with a given uuid to the catalog. Absolute path. The path must be inside the root path of the catalog.
+		auto addFilePathAbsoluteWithUUID(const std::filesystem::path& filePath, const std::string& fileUUID) -> void;
+
+		/// \brief Does the catalog contain a file with the given UUID?
+		auto contains(const std::string& fileUUID) const -> bool;
 
 		/// \brief Get the file path relative to the root path of the catalog for a given file UUID.
 		auto getFilePathRelativeToRoot(const std::string& fileUUID) const -> const std::filesystem::path;
@@ -64,6 +69,11 @@ namespace b3d::tools::project::catalog
 		/// \brief Get the absolute path to the data folder.
 		auto getDataPathAbsolute() const -> const std::filesystem::path;
 
+		///	\brief returns a Catalog from a existing catalog file in absoluteRootPath or creates a new one.
+		///	\param absoluteRootPath The absolute path to the root folder of the catalog.
+		///	\param relativeDataPath path to the data folder relative to the absoluteRootPath.
+		static FileCatalog createOrLoadCatalogFromPathes(const std::filesystem::path& absoluteRootPath, const std::filesystem::path& relativeDataPath);
+
 	private:
 		std::string b3dUuidFileCatalogVersion_{ "1.0" };
 
@@ -73,13 +83,10 @@ namespace b3d::tools::project::catalog
 		// relative to root path
 		std::filesystem::path dataPath_{ "data" };
 
-		// relative to root path
-		std::filesystem::path projectsPath_ { "projects" };
-
 		std::map<std::string, FileCatalogEntry> mappings_ {};
 
 		#ifdef B3D_USE_NLOHMANN_JSON
-				NLOHMANN_DEFINE_TYPE_INTRUSIVE(FileCatalog, b3dUuidFileCatalogVersion_, mappings_, dataPath_, projectsPath_);
+				NLOHMANN_DEFINE_TYPE_INTRUSIVE(FileCatalog, b3dUuidFileCatalogVersion_, mappings_, dataPath_);
 		#endif
 	};
 } // namespace b3d::tools::project::catalog

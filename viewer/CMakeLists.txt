@@ -5,6 +5,7 @@ find_package(glad CONFIG REQUIRED)
 #find_package(imguizmo CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(OpenVDB CONFIG REQUIRED COMPONENTS nanovdb)
 
 set(viewerTargetName viewer)
 add_executable(${viewerTargetName})
@@ -47,6 +48,9 @@ target_sources(${viewerTargetName} PRIVATE
 	ApplicationSettings.cpp
 	GuiDefaultLayoutSettings.h
 	GuiDefaultLayoutSettings.cpp
+	Animation.h
+	GLGpuTimers.h
+	ProfilersWindow.h
 	framework/Dockspace.h
 	framework/Dockspace.cpp
 	framework/DockableWindowViewBase.h
@@ -79,6 +83,16 @@ target_sources(${viewerTargetName} PRIVATE
 	features/serverConnect/ServerConnectSettingsView.cpp
 	features/serverConnect/ServerAddEditView.h
 	features/serverConnect/ServerAddEditView.cpp
+	features/projectExplorer/ProjectExplorerView.h
+	features/projectExplorer/ProjectExplorerView.cpp
+	features/projectExplorer/ProjectExplorerController.cpp
+	features/projectExplorer/ProjectExplorerController.h
+	"features/fileDialog/OpenFileDialogView.h"
+	features/fileDialog/OpenFileDialogView.cpp
+	features/sofiaSearch/SoFiaSearch.h
+	features/sofiaSearch/SoFiaSearch.cpp
+	features/sofiaSearch/SoFiaSearchView.h
+	features/sofiaSearch/SoFiaSearchView.cpp
 )
 
 target_include_directories(${viewerTargetName} PUBLIC /)
@@ -96,6 +110,8 @@ target_link_libraries(${viewerTargetName}
 	B3D::Renderer::FastVoxelTraversal
 	B3D::Renderer::NanoOutOfCore
 	B3D::Tools::ServerClient
+	B3D::Tools::ServerFileProvider
+	B3D::Tools::Project
 	OpenGL::GL
 	glad::glad
 	imguizmo_modefied
@@ -105,7 +121,10 @@ target_link_libraries(${viewerTargetName}
 	${CUDA_nvml_LIBRARY}
 	imcurve_modefied
 	imspinner
+	OpenVDB::nanovdb
 	nlohmann_json::nlohmann_json
+	legit
+	B3D::Header::Sofia
 )
 
 target_compile_definitions(${viewerTargetName} PUBLIC B3D_USE_NLOHMANN_JSON)
@@ -147,5 +166,6 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/resources")
 endif()
 
 add_custom_target(copy_viewer_resources ALL COMMAND ${commands})
+set_property(TARGET copy_viewer_resources PROPERTY FOLDER "Utility")
 
 add_dependencies(viewer copy_viewer_resources)

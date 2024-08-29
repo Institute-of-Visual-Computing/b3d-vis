@@ -51,7 +51,8 @@
 		},
 		"cpp-httplib",
 		"boost-process",
-		"stduuid"
+		"stduuid",
+		"plog"
 	],
 	"builtin-baseline": "ad3bae57455a3c3ce528fcd47d8e8027d0498add"
 }

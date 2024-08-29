@@ -13,7 +13,7 @@
 #include "features/RenderSyncFeature.h"
 #include "features/RenderTargetFeature.h"
 #include "features/TransferFunctionFeature.h"
-#include "..//nanoOutOfCore/OpenFileDialog.h"
+#include "..//nanoOutOfCore/Old_OpenFileDialog.h"
 #include "features/SoFiASubregionFeature.h"
 
 
@@ -68,8 +68,6 @@ namespace b3d::renderer
 		owl::AffineSpace3f trs_{};
 
 		nanovdb::Map currentMap_{};
-
-		CudaGpuTimers<100, 4> gpuTimers_{};
 
 		RenderTargetFeature* renderTargetFeature_;
 		// RenderSyncFeature* renderSyncFeature_;

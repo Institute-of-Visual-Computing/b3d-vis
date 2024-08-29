@@ -6,7 +6,6 @@
 #include <ranges>
 #include <string>
 
-
 #ifdef B3D_USE_NLOHMANN_JSON
 	#include <nlohmann/json.hpp>
 #endif

@@ -69,7 +69,7 @@ auto b3d::tools::sofia_nano_pipeline::runSearchAndUpdateNvdbSync(sofia::SofiaPro
 	// Disables Linker and all following steps.
 	pipelineParams.sofiaParams.setOrReplace("linker.enable", "false");
 
-	result.sofiaResult = processRunner.runSofiaSync(pipelineParams.sofiaParams);
+	result.sofiaResult = processRunner.runSofiaSync(pipelineParams.sofiaParams, pipelineParams.sofiaWorkingDirectoy);
 	if (result.sofiaResult.returnCode != 8)
 	{
 		result.message = "SoFiA failed.";
