@@ -15,7 +15,10 @@ auto ApplicationSettings::save(const std::filesystem::path& filePath) const -> v
 
 auto ApplicationSettings::load(const std::filesystem::path& filePath) -> void
 {
-	assert(std::filesystem::exists(filePath));
+	if (not std::filesystem::exists(filePath))
+	{
+		return;
+	}
 	std::ifstream f(filePath);
 
 	try
@@ -31,11 +34,9 @@ auto ApplicationSettings::load(const std::filesystem::path& filePath) -> void
 auto ApplicationSettings::load() -> void
 {
 	load(settingsStorageLocationPath_);
-
-	
 }
 auto ApplicationSettings::restoreDefaultLayoutSettings() -> void
 {
-	
+
 	ImGui::LoadIniSettingsFromMemory(defaultLayoutSettings.data(), defaultLayoutSettings.size());
 }

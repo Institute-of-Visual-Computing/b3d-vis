@@ -30,6 +30,7 @@ ServerConnectSettingsView::ServerConnectSettingsView(ApplicationContext& appCont
 	: ModalViewBase(appContext, name, ModalType::okCancel, ImVec2(40 * ImGui::GetFontSize(), 10 * ImGui::GetFontSize()))
 {
 	setOnSubmit(onSubmitCallback);
+	applicationContext_->settings_.load();
 	addServerView_ = std::make_unique<ServerAddEditView>(
 		appContext, "Add Server",
 		[](ModalViewBase* self)
@@ -41,6 +42,7 @@ ServerConnectSettingsView::ServerConnectSettingsView(ApplicationContext& appCont
 			selectedItem_ = applicationContext_->settings_.configuredServerSettings_.size() - 1;
 			
 			serverClient_ = b3d::tools::project::ServerClient(model);
+			applicationContext_->settings_.save();
 		});
 
 	editServerView_ = std::make_unique<ServerAddEditView>(
@@ -55,6 +57,7 @@ ServerConnectSettingsView::ServerConnectSettingsView(ApplicationContext& appCont
 			const auto model = reinterpret_cast<ServerAddEditView*>(self)->model();
 			applicationContext_->settings_.configuredServerSettings_[selectedItem_] = model;
 			serverClient_ = b3d::tools::project::ServerClient(model);
+			applicationContext_->settings_.save();
 		});
 }
 
