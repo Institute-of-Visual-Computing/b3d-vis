@@ -113,7 +113,7 @@ VolumeView::VolumeView(ApplicationContext& appContext, Dockspace* dockspace)
 				auto vx = forwardVelocity.x;
 				auto vy = forwardVelocity.y;
 				auto vz = forwardVelocity.z;
-				const auto targetForwardVelocity = glm::vec3{ 0.0, 0.0, 0.0f }; // forwardVelocity;
+				constexpr auto targetForwardVelocity = glm::vec3{ 0.0, 0.0, 0.0f }; // forwardVelocity;
 
 				animation::springDamperExact2(x, vx, targetNormalized.x, targetForwardVelocity.x,
 											  flyAnimationSettings_.stiffness, flyAnimationSettings_.dumping, dt);
@@ -402,10 +402,8 @@ auto VolumeView::onDraw() -> void
 		demoMode(!animator_.isRunning());
 	}
 
-
 	if (viewerSettings_.enableFrameGraph)
 	{
-
 		const auto cursorPositionY = ImGui::GetCursorPosY();
 
 		const auto remainingSizeY = this->viewportSize_.y - cursorPositionY;
@@ -421,11 +419,6 @@ auto VolumeView::onDraw() -> void
 			ImGui::SetCursorPosY(cursorPositionY + offsetY);
 			ImGui::SetCursorPosX(controlPadding);
 			{
-				/*ImGui::GetWindowDrawList()->AddRect(windowPosition + ImGui::GetCursorPos(),
-													windowPosition + ImGui::GetCursorPos() + ImVec2(400,
-				   profilerHeight), ImColor{ 0.8f, 0.2f, 0.2f }, 10, 0, 4);*/
-
-
 				const auto canvasSize = ImGui::GetContentRegionAvail();
 
 				const auto sizeMargin = static_cast<int>(ImGui::GetStyle().ItemSpacing.y);
@@ -434,16 +427,16 @@ auto VolumeView::onDraw() -> void
 				const auto graphHeight = std::min(maxGraphHeight, availableGraphHeight);
 				constexpr auto legendWidth = 400;
 				const auto graphWidth = static_cast<int>(glm::min(canvasSize.x, 1200.0f)) - legendWidth;
-				const auto frameOffset_ = 0;
+				constexpr auto frameOffset = 0;
 
-				const auto p = ImGui::GetCursorPos();
+				const auto position = ImGui::GetCursorPos();
 				ImGui::PushFont(applicationContext_->getFontCollection().getGpuCpuExtraBigTextFont());
 				ImGui::SetNextItemAllowOverlap();
 				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4{ 0.6, 0.6, 0.6, 0.4 });
 				ImGui::Text("GPU");
 				ImGui::PopStyleColor();
 				ImGui::PopFont();
-				ImGui::SetCursorPos(p);
+				ImGui::SetCursorPos(position);
 
 
 				ImGui::PushClipRect(windowPosition + ImGui::GetCursorPos(),
@@ -451,18 +444,8 @@ auto VolumeView::onDraw() -> void
 										ImVec2(ImGui::GetContentRegionAvail().x, profilerHeight),
 									true);
 
-				applicationContext_->gpuGraph_.RenderTimings(graphWidth, legendWidth, graphHeight, frameOffset_);
+				applicationContext_->gpuGraph_.RenderTimings(graphWidth, legendWidth, graphHeight, frameOffset);
 				ImGui::PopClipRect();
-				// if (!stopProfiling_)
-				//{
-				//	frameOffset_ = 0;
-				// }
-				// gpuGraph_.frameWidth = frameWidth_;
-				// gpuGraph_.frameSpacing = frameSpacing_;
-				// gpuGraph_.useColoredLegendText = useColoredLegendText_;
-				// cpuGraph_.frameWidth = frameWidth_;
-				// cpuGraph_.frameSpacing = frameSpacing_;
-				// cpuGraph_.useColoredLegendText = useColoredLegendText_;
 			}
 		}
 	}

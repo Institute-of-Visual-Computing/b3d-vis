@@ -392,7 +392,6 @@ auto NanoViewer::draw() -> void
 
 	applicationContext->getMainDockspace()->begin();
 
-	volumeView->draw();
 	connectView.draw();
 
 	for (const auto component : applicationContext->updatableComponents_)
@@ -409,6 +408,7 @@ auto NanoViewer::draw() -> void
 	{
 		component->updateRenderingData(renderingData);
 	}
+	volumeView->draw();
 
 	//// TODO: IT IS DEPRECATED AND IT WILL BE REMOVED!!!
 	// currentRenderer_->gui();
