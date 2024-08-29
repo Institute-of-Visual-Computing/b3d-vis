@@ -6,22 +6,6 @@
 
 namespace b3d::renderer::nano
 {
-
-	enum class RuntimeVolumeState
-	{
-		loadingRequested,
-		ready,
-		unloadedRequested,
-		unloaded
-	};
-
-	struct RuntimeVolume
-	{
-		NanoVdbVolume volume{};
-		RuntimeVolumeState state{};
-		owl::AffineSpace3f renormalizeScale{};
-	};
-
 	struct VolumeStatistics
 	{
 		std::map<float, int> histogram;
@@ -37,10 +21,15 @@ namespace b3d::renderer::nano
 	public:
 		RuntimeDataSet();
 		auto select(std::size_t index) -> void;
-		auto getSelectedData() -> RuntimeVolume&;
-		auto addNanoVdb(const std::filesystem::path& path) -> void;
+		auto select(const std::string& uuid) -> bool;
+		auto getVolumeState(const std::string& uuid) -> std::optional<RuntimeVolumeState>;
+		auto getSelectedData() -> RuntimeVolume;
+
+		auto addNanoVdb(const std::filesystem::path& path, cudaStream_t stream = 0, const std::string& volumeUuid = "") -> void;
 		auto addNanoVdb(const NanoVdbVolume& volume, const VolumeStatistics& statistics) -> void;
-		[[nodiscard]] auto getValideVolumeIndicies() const -> std::vector<size_t>;
+
+
+		[[nodiscard]] auto getValideVolumeIndicies() -> std::vector<size_t>;
 		[[nodiscard]] auto getStatistics(std::size_t index) const -> const VolumeStatistics& {return volumeStatistics_[index];} 
 
 		RuntimeDataSet(RuntimeDataSet&) = delete;
@@ -55,6 +44,8 @@ namespace b3d::renderer::nano
 
 		std::size_t activeVolume_{ 0 };
 		RuntimeVolume dummyVolume_{};
+
+		std::mutex listMutex_;
 	};
 
 }

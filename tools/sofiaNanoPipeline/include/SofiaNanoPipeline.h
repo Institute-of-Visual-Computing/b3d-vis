@@ -25,6 +25,8 @@ namespace b3d::tools::sofia_nano_pipeline
 		std::filesystem::path maskInputFilePath;
 		std::filesystem::path inputNvdbFilePath;
 		std::filesystem::path outputNvdbFilePath;
+		std::filesystem::path sofiaWorkingDirectoy;
+		std::filesystem::path nanoWorkingDirectoy;
 	};
 
 	/// \brief Run SoFiA with given params and create a new NVDB based on the output mask

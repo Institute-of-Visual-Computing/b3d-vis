@@ -16,6 +16,7 @@ namespace b3d::tools::projectServer
 		std::filesystem::path fitsMaskInputFilePath;
 		std::filesystem::path inputNvdbFilePath;
 		std::filesystem::path outputNvdbFilePath;
+		std::filesystem::path nvdbOutputDirectoryPath;
 
 	};
 } // namespace b3d::tools::projectServer

@@ -5,6 +5,7 @@ find_package(glad CONFIG REQUIRED)
 #find_package(imguizmo CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(OpenVDB CONFIG REQUIRED COMPONENTS nanovdb)
 
 set(viewerTargetName viewer)
 add_executable(${viewerTargetName})
@@ -38,14 +39,11 @@ target_sources(${viewerTargetName} PRIVATE
 	views/VolumeView.cpp
 	views/ServerConnectView.h
 	views/ServerConnectView.cpp
-	ServerConnect.h
-	ServerConnect.cpp
 	IdGenerator.h
 	GizmoOperationFlags.h
 	FontCollection.h
 	FontCollection.cpp
 	Flags.h
-	ServerConnectionDescription.h
 	ApplicationSettings.h
 	ApplicationSettings.cpp
 	GuiDefaultLayoutSettings.h
@@ -79,13 +77,22 @@ target_sources(${viewerTargetName} PRIVATE
 	features/projectExplorer/ProjectExplorer.cpp
 	features/projectExplorer/ProjectSelectionView.h
 	features/projectExplorer/ProjectSelectionView.cpp
-	features/serverConnect/ServerConnect.h
 	features/serverConnect/ServerConnectView.h
 	features/serverConnect/ServerConnectView.cpp
 	features/serverConnect/ServerConnectSettingsView.h
 	features/serverConnect/ServerConnectSettingsView.cpp
 	features/serverConnect/ServerAddEditView.h
 	features/serverConnect/ServerAddEditView.cpp
+	features/projectExplorer/ProjectExplorerView.h
+	features/projectExplorer/ProjectExplorerView.cpp
+	features/projectExplorer/ProjectExplorerController.cpp
+	features/projectExplorer/ProjectExplorerController.h
+	"features/fileDialog/OpenFileDialogView.h"
+	features/fileDialog/OpenFileDialogView.cpp
+	features/sofiaSearch/SoFiaSearch.h
+	features/sofiaSearch/SoFiaSearch.cpp
+	features/sofiaSearch/SoFiaSearchView.h
+	features/sofiaSearch/SoFiaSearchView.cpp
 )
 
 target_include_directories(${viewerTargetName} PUBLIC /)
@@ -102,6 +109,9 @@ target_link_libraries(${viewerTargetName}
 	B3D::Renderer::Nano
 	B3D::Renderer::FastVoxelTraversal
 	B3D::Renderer::NanoOutOfCore
+	B3D::Tools::ServerClient
+	B3D::Tools::ServerFileProvider
+	B3D::Tools::Project
 	OpenGL::GL
 	glad::glad
 	imguizmo_modefied
@@ -111,9 +121,13 @@ target_link_libraries(${viewerTargetName}
 	${CUDA_nvml_LIBRARY}
 	imcurve_modefied
 	imspinner
+	OpenVDB::nanovdb
 	nlohmann_json::nlohmann_json
 	legit
+	B3D::Header::Sofia
 )
+
+target_compile_definitions(${viewerTargetName} PUBLIC B3D_USE_NLOHMANN_JSON)
 
 option(ENABLE_NANO_PROFILE "Enables Tracy profiling" OFF)
 option(ENABLE_NANO_SANITIZERS "Enables address sanitizers" OFF)

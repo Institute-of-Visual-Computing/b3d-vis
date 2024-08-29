@@ -3,7 +3,7 @@
 #include <algorithm>
 
 #ifdef B3D_USE_NLOHMANN_JSON
-	#include "nlohmann/json.hpp"
+#include "nlohmann/json.hpp"
 #endif
 
 namespace b3d::common
@@ -70,11 +70,20 @@ namespace b3d::common
 			static_cast<uint64_t>(axisSize.x) * y + x;
 	}
 
-	#ifdef B3D_USE_NLOHMANN_JSON
-		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Vec3F, x, y, z);
-		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Vec3d, x, y, z);
-		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Vec3I, x, y, z);
-		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Vec3i64, x, y, z);
-	#endif
+	/// \brief Returns the index of a 3D array when flattened.
+	/// \param axisSize Size of the array in each dimension.
+	///	\param coordinate 3D coordinate.
+	/// \return Index of the 3D array when flattened.
+	[[nodiscard]] inline auto flattenIndex(const Vec3I& axisSize, const Vec3I& coordinate) -> uint64_t
+	{
+		return flattenIndex(axisSize, coordinate.x, coordinate.y, coordinate.z);
+	}
+
+#ifdef B3D_USE_NLOHMANN_JSON
+	NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Vec3F, x, y, z);
+	NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Vec3d, x, y, z);
+	NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Vec3I, x, y, z);
+	NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Vec3i64, x, y, z);
+#endif
 
 } // namespace b3d::common

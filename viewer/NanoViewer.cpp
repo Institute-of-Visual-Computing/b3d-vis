@@ -28,6 +28,7 @@
 #include "GizmoOperationFlags.h"
 
 #include "features/projectExplorer/ProjectExplorer.h"
+#include "features/sofiaSearch/SoFiaSearch.h"
 #include "features/serverConnect/ServerConnectSettingsView.h"
 #include "features/transferMapping/TransferMapping.h"
 #include "framework/ApplicationContext.h"
@@ -52,6 +53,7 @@ namespace
 	std::unique_ptr<VolumeView> volumeView{};
 	std::unique_ptr<TransferMapping> transferMapping{};
 	std::unique_ptr<ProjectExplorer> projectExplorer{};
+	std::unique_ptr<SoFiaSearch> soFiaSearch{};
 	std::unique_ptr<MenuBar> mainMenu{};
 	b3d::renderer::RenderingDataWrapper renderingData{};
 
@@ -349,6 +351,7 @@ auto NanoViewer::draw() -> void
 	ImGui_ImplGlfw_NewFrame();
 
 	ImGui::NewFrame();
+	applicationContext->serverClient.updateServerStatusState(ImGui::GetIO().DeltaTime);
 	ImGui::PushFont(applicationContext->getFontCollection().getDefaultFont());
 	// TODO: Investigate if this combination is always intercepted by OS
 	if (ImGui::IsKeyDown(ImGuiMod_Alt) and ImGui::IsKeyPressed(ImGuiKey_F4, false))
@@ -551,35 +554,38 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 	transferMapping->initializeResources();
 	transferMapping->updateRenderingData(renderingData);
 
+	soFiaSearch = std::make_unique<SoFiaSearch>(*applicationContext);
 	projectExplorer = std::make_unique<ProjectExplorer>(*applicationContext);
 
 	mainMenu = std::make_unique<MenuBar>(*applicationContext);
 
-
-	// TODO: Move this to server connection feature
-	static auto isServerConnected = false;
-
 	applicationContext->addMenuBarTray(
 		[&]()
 		{
-			const auto color = isServerConnected ? ImVec4{ 0.1, 0.5, 0.1, 1.0 } : ImVec4{ 0.5, 0.1, 0.1, 1.0 };
-
-			ImGui::PushStyleColor(ImGuiCol_Button, color);
-			if (ImGui::Button(isServerConnected ? ICON_LC_SERVER : ICON_LC_SERVER_OFF))
+			auto icon = ICON_LC_SERVER;
+			if (applicationContext.serverClient.getLastServerStatusState() == b3d::tools::project::ServerStatusState::ok
+				)
 			{
-				isServerConnected = !isServerConnected;
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.1, 0.5, 0.1, 1.0 });
 			}
+			else if (applicationContext.serverClient.getLastServerStatusState() ==
+					 b3d::tools::project::ServerStatusState::testing)
+			{
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 1, 0.65, 0.0, 1.0 });
+			}
+			else
+			{
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.5, 0.1, 0.1, 1.0 });
+				icon = ICON_LC_SERVER_OFF;
+			}
+
+			if (ImGui::Button(icon))
+			{
+				// TODO: Open Server Connection Dialog?
+			}
+			// TODO: Hover to show Status Tooltip.
+			
 			ImGui::PopStyleColor();
-
-			if (ImGui::IsItemHovered())
-			{
-				if (ImGui::BeginTooltip())
-				{
-					ImGui::Text("Setup Server Connection...");
-					ImGui::EndTooltip();
-				}
-			}
-
 
 			const auto sampleRequest = std::vector<std::string>{
 				"Ready: SoFiA search [10, 30, 50] [20, 40, 100]",

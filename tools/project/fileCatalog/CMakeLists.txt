@@ -2,6 +2,7 @@ set(MODULE_SIMPLE_NAME FileCatalog)
 set(MODULE_NAME "B3dTools${MODULE_SIMPLE_NAME}")
 
 find_package(stduuid CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
 
 add_library(${MODULE_NAME})
@@ -24,7 +25,11 @@ target_link_libraries(${MODULE_NAME}
 	PUBLIC
 	PRIVATE
 		stduuid
+		nlohmann_json::nlohmann_json
+
 )
+
+target_compile_definitions(${MODULE_NAME} PRIVATE B3D_USE_NLOHMANN_JSON)
 
 if(MSVC)
 	set(MSVC_CXX_COMPILER_FLAGS "/Zc:__cplusplus")

@@ -1,12 +1,12 @@
 #pragma once
 
-#include "ServerConnectionDescription.h"
-
 #include <filesystem>
 #include <nlohmann/json.hpp>
 
 #include <string_view>
 #include <vector>
+
+#include "ServerClient.h"
 
 class ApplicationSettings
 {
@@ -22,7 +22,7 @@ public:
 
 	static auto restoreDefaultLayoutSettings() -> void;
 
-	std::vector<ServerConnectionDescription> configuredServerSettings_;
+	std::vector<b3d::tools::project::ServerConnectionDescription> configuredServerSettings_;
 	std::filesystem::path settingsStorageLocationPath_ = std::filesystem::current_path() / "app_setting.json";
 
 private:

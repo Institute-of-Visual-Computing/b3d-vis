@@ -11,18 +11,21 @@
 #include "util/IO.h"
 #include "util/Primitives.h"
 
+
 using namespace b3d::renderer::nano;
 
 namespace
 {
-	auto createVolume(const nanovdb::GridHandle<>& gridVolume) -> NanoVdbVolume
+	auto createVolume(const nanovdb::GridHandle<>& gridVolume, cudaStream_t stream) -> b3d::renderer::NanoVdbVolume
 	{
-		auto volume = NanoVdbVolume{};
+		auto volume = b3d::renderer::NanoVdbVolume{};
 
-
-		OWL_CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&volume.grid), gridVolume.size()));
-		OWL_CUDA_CHECK(cudaMemcpy(reinterpret_cast<void*>(volume.grid), gridVolume.data(), gridVolume.size(),
-								  cudaMemcpyHostToDevice));
+		std::cout << "starting transfer\n";
+		OWL_CUDA_CHECK(cudaMallocAsync(reinterpret_cast<void**>(&volume.grid), gridVolume.size(), stream));
+		OWL_CUDA_CHECK(cudaMemcpyAsync(reinterpret_cast<void*>(volume.grid), gridVolume.data(), gridVolume.size(),
+									   cudaMemcpyHostToDevice, stream));
+		cudaStreamSynchronize(stream);
+		std::cout << "Transfer dones\n";
 
 		const auto gridHandle = gridVolume.grid<float>();
 		const auto& map = gridHandle->mMap;
@@ -56,6 +59,61 @@ namespace
 		}
 
 		return volume;
+	}
+
+	auto setRuntimeVolumeReady(void* runtimeVolumePointer) -> void
+	{
+		static_cast<b3d::renderer::RuntimeVolume*>(runtimeVolumePointer)->state =
+			b3d::renderer::RuntimeVolumeState::ready;
+	}
+
+	
+	auto loadVolumeToDevice(b3d::renderer::RuntimeVolume& container, const nanovdb::GridHandle<>& gridVolume,
+							cudaStream_t stream)
+		-> void
+	{
+		std::cout << "starting transfer\n";
+		OWL_CUDA_CHECK(cudaMallocAsync(reinterpret_cast<void**>(&container.volume.grid), gridVolume.size(), stream));
+		OWL_CUDA_CHECK(cudaMemcpyAsync(reinterpret_cast<void*>(container.volume.grid), gridVolume.data(), gridVolume.size(),
+									   cudaMemcpyHostToDevice, stream));
+		// TODO: 
+		OWL_CUDA_CHECK(cudaLaunchHostFunc(stream, &setRuntimeVolumeReady, &container));
+				
+		// cudaStreamSynchronize(stream);
+		container.state = b3d::renderer::RuntimeVolumeState::ready;
+		std::cout << "Transfer dones\n";
+
+		const auto gridHandle = gridVolume.grid<float>();
+		const auto& map = gridHandle->mMap;
+		const auto orientation =
+			owl::LinearSpace3f{ map.mMatF[0], map.mMatF[1], map.mMatF[2], map.mMatF[3], map.mMatF[4],
+								map.mMatF[5], map.mMatF[6], map.mMatF[7], map.mMatF[8] };
+		const auto position = owl::vec3f{ 0.0, 0.0, 0.0 };
+
+		container.volume.transform = owl::AffineSpace3f{ orientation, position };
+
+		{
+			const auto& box = gridVolume.gridMetaData()->worldBBox();
+			const auto min = owl::vec3f{ static_cast<float>(box.min()[0]), static_cast<float>(box.min()[1]),
+										 static_cast<float>(box.min()[2]) };
+			const auto max = owl::vec3f{ static_cast<float>(box.max()[0]), static_cast<float>(box.max()[1]),
+										 static_cast<float>(box.max()[2]) };
+			container.volume.worldAabb = owl::box3f{ min, max };
+		}
+
+		{
+			const auto indexBox = gridHandle->indexBBox();
+			const auto boundsMin = nanovdb::Coord{ indexBox.min() };
+			const auto boundsMax = nanovdb::Coord{ indexBox.max() + nanovdb::Coord(1) };
+
+			const auto min = owl::vec3f{ static_cast<float>(boundsMin[0]), static_cast<float>(boundsMin[1]),
+										 static_cast<float>(boundsMin[2]) };
+			const auto max = owl::vec3f{ static_cast<float>(boundsMax[0]), static_cast<float>(boundsMax[1]),
+										 static_cast<float>(boundsMax[2]) };
+
+			container.volume.indexBox = owl::box3f{ min, max };
+		}
+
 	}
 
 	auto computeStatistics(const nanovdb::GridHandle<>& gridVolume) -> VolumeStatistics
@@ -204,7 +262,7 @@ namespace
 	}
 
 
-	auto createVolumeFromFile(const std::filesystem::path& file) -> NanoVdbVolume
+	auto createVolumeFromFile(const std::filesystem::path& file, cudaStream_t stream) -> b3d::renderer::NanoVdbVolume
 	{
 		// TODO: Let's use shared parameters to grab an initial volume path from the viewer
 		//  const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
@@ -217,7 +275,7 @@ namespace
 
 		assert(std::filesystem::exists(file));
 		const auto gridVolume = nanovdb::io::readGrid(file.string());
-		return createVolume(gridVolume);
+		return createVolume(gridVolume, stream);
 	}
 } // namespace
 
@@ -227,7 +285,7 @@ b3d::renderer::nano::RuntimeDataSet::RuntimeDataSet()
 
 	// addNanoVdb(createVolume(nanovdb::createFogVolumeTorus()));
 	auto gridHandle = nanovdb::createFogVolumeSphere();
-	const auto volume = createVolume(gridHandle);
+	const auto volume = createVolume(gridHandle, 0);
 	const auto volumeSize = volume.indexBox.size();
 	const auto longestAxis = std::max({ volumeSize.x, volumeSize.y, volumeSize.z });
 
@@ -237,24 +295,63 @@ b3d::renderer::nano::RuntimeDataSet::RuntimeDataSet()
 	dummyVolume_ = RuntimeVolume{ volume, RuntimeVolumeState::ready, renormalizeScale };
 	dummyVolumeStatistics_ = computeStatistics(gridHandle);
 }
+
 auto RuntimeDataSet::select(const std::size_t index) -> void
 {
+	const std::lock_guard listGuard(listMutex_);
 	assert(index <= runtimeVolumes_.size());
 	activeVolume_ = index;
 }
-auto RuntimeDataSet::getSelectedData() -> RuntimeVolume&
+
+auto RuntimeDataSet::select(const std::string& uuid) -> bool
 {
+	const auto found = std::ranges::find_if(runtimeVolumes_, [&](const auto& volume) { return volume.uuid == uuid; });
+	if (found != runtimeVolumes_.end())
+	{
+		activeVolume_ = std::distance(runtimeVolumes_.begin(), found);
+		return true;
+	}
+	return false;
+}
+
+auto RuntimeDataSet::getVolumeState(const std::string& uuid) -> std::optional<RuntimeVolumeState>
+{
+	const auto found = std::ranges::find_if(runtimeVolumes_, [&](const auto& volume) { return volume.uuid == uuid; });
+	if (found != runtimeVolumes_.end())
+	{
+		return found->state;
+	}
+	return std::nullopt;
+}
+
+auto RuntimeDataSet::getSelectedData() -> RuntimeVolume
+{
+	const std::lock_guard listGuard(listMutex_);
 	if (runtimeVolumes_.empty())
 	{
 		return dummyVolume_;
 	}
 	return runtimeVolumes_[activeVolume_];
 }
-auto RuntimeDataSet::addNanoVdb(const std::filesystem::path& path) -> void
+auto RuntimeDataSet::addNanoVdb(const std::filesystem::path& path, cudaStream_t stream, const std::string& volumeUuid)
+	-> void
 {
 	assert(std::filesystem::exists(path));
+	listMutex_.lock();
+	runtimeVolumes_.push_back({ .uuid = volumeUuid });
+	volumeStatistics_.push_back({});
+	auto& volume = runtimeVolumes_.back();
+	listMutex_.unlock();
+
 	const auto gridVolume = nanovdb::io::readGrid(path.string());
-	addNanoVdb(createVolume(gridVolume), computeStatistics(gridVolume));
+		
+	loadVolumeToDevice(volume, gridVolume, stream);
+	const auto volumeSize = volume.volume.indexBox.size();
+	const auto longestAxis = std::max({ volumeSize.x, volumeSize.y, volumeSize.z });
+	const auto scale = 1.0f / longestAxis;
+	const auto renormalizeScale = owl::AffineSpace3f::scale(owl::vec3f{ scale, scale, scale });
+	volume.renormalizeScale = renormalizeScale;
+	
 }
 auto RuntimeDataSet::addNanoVdb(const NanoVdbVolume& volume, const VolumeStatistics& statistics) -> void
 {
@@ -264,8 +361,8 @@ auto RuntimeDataSet::addNanoVdb(const NanoVdbVolume& volume, const VolumeStatist
 	const auto scale = 1.0f / longestAxis;
 
 	const auto renormalizeScale = owl::AffineSpace3f::scale(owl::vec3f{ scale, scale, scale });
-
-	runtimeVolumes_.push_back(RuntimeVolume{ volume, RuntimeVolumeState::ready, renormalizeScale });
+	const std::lock_guard listGuard(listMutex_);
+	runtimeVolumes_.push_back(RuntimeVolume{ volume, RuntimeVolumeState::ready, renormalizeScale, "" });
 	volumeStatistics_.push_back(statistics);
 }
 RuntimeDataSet::~RuntimeDataSet()
@@ -277,8 +374,9 @@ RuntimeDataSet::~RuntimeDataSet()
 	}
 }
 
-auto RuntimeDataSet::getValideVolumeIndicies() const -> std::vector<size_t>
+auto RuntimeDataSet::getValideVolumeIndicies() -> std::vector<size_t>
 {
+	const std::lock_guard listGuard(listMutex_);
 	auto indicies = std::vector<size_t>{};
 
 	for (auto i = 0u; i < runtimeVolumes_.size(); i++)

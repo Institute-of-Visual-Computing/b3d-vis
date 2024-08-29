@@ -10,6 +10,8 @@
 #include "FontCollection.h"
 
 #include "ApplicationSettings.h"
+#include "RuntimeDataSet.h"
+#include "ServerClient.h"
 #include "framework/Dockspace.h"
 
 #include <glm/glm.hpp>
@@ -120,4 +122,7 @@ public:
 	std::unique_ptr<Dockspace> mainDockspace_{ nullptr };
 	std::unique_ptr<b3d::profiler::Profiler> profiler_{};
 	ImGuiUtils::ProfilerGraph gpuGraph_{300};
+
+	b3d::renderer::nano::RuntimeDataSet runtimeDataSet_{};
+	b3d::tools::project::ServerClient serverClient {};
 };

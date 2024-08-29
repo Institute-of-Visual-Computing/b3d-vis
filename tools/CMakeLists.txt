@@ -8,5 +8,6 @@ add_subdirectory(sofia)
 add_subdirectory(sofiaNanoPipeline)
 add_subdirectory(project)
 add_subdirectory(projectServer)
+add_subdirectory(projectServerClient)
 
 add_subdirectory(nanoCutterParser)

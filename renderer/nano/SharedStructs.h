@@ -30,14 +30,6 @@ namespace b3d
 				averageIntensityProjection
 			};
 
-			struct NanoVdbVolume
-			{
-				owl::box3f indexBox{};
-				owl::box3f worldAabb{};
-				owl::AffineSpace3f transform{};
-				CUdeviceptr grid = 0;
-			};
-
 			struct LaunchParams
 			{
 				RayCameraData cameraData;

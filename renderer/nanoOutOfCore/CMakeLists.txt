@@ -42,10 +42,10 @@ add_b3d_renderer(
 		NanoOutOfCore
 	SOURCES
 		NanoOutOfCoreRenderer.cpp
-		OpenFileDialog.cpp
+		Old_OpenFileDialog.cpp
 	HEADERS
 		NanoOutOfCoreRenderer.h
-		OpenFileDialog.h
+		Old_OpenFileDialog.h
 	LIBRARIES
 		nanoOutOfCore-ptx
 		nanoOutOfCore-optixir
