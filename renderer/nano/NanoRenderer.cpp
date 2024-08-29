@@ -300,6 +300,7 @@ auto NanoRenderer::onRender() -> void
 
 	if (runtimeVolumeData->newVolumeAvailable)
 	{
+		runtimeVolumeData->newVolumeAvailable = false;
 		owlParamsSetRaw(nanoContext_.launchParams, "volume", &nanoVdbVolume);
 	}
 
