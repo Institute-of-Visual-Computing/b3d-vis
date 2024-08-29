@@ -86,6 +86,10 @@ target_sources(${viewerTargetName} PRIVATE
 	features/projectExplorer/ProjectExplorerController.h
 	"features/fileDialog/OpenFileDialogView.h"
 	features/fileDialog/OpenFileDialogView.cpp
+	features/sofiaSearch/SoFiaSearch.h
+	features/sofiaSearch/SoFiaSearch.cpp
+	features/sofiaSearch/SoFiaSearchView.h
+	features/sofiaSearch/SoFiaSearchView.cpp
 )
 
 target_include_directories(${viewerTargetName} PUBLIC /)

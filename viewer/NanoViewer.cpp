@@ -30,6 +30,7 @@
 #include "GizmoOperationFlags.h"
 
 #include "features/projectExplorer/ProjectExplorer.h"
+#include "features/sofiaSearch/SoFiaSearch.h"
 #include "features/serverConnect/ServerConnectSettingsView.h"
 #include "features/transferMapping/TransferMapping.h"
 #include "framework/ApplicationContext.h"
@@ -46,6 +47,7 @@ namespace
 	std::unique_ptr<VolumeView> volumeView{};
 	std::unique_ptr<TransferMapping> transferMapping{};
 	std::unique_ptr<ProjectExplorer> projectExplorer{};
+	std::unique_ptr<SoFiaSearch> soFiaSearch{};
 	std::unique_ptr<MenuBar> mainMenu{};
 	b3d::renderer::RenderingDataWrapper renderingData{};
 
@@ -473,6 +475,7 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 	transferMapping->updateRenderingData(renderingData);
 
 	projectExplorer = std::make_unique<ProjectExplorer>(applicationContext);
+	soFiaSearch = std::make_unique<SoFiaSearch>(applicationContext);
 
 	mainMenu = std::make_unique<MenuBar>(applicationContext);
 
