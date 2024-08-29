@@ -45,7 +45,10 @@ public:
 		glm::mat4 viewProjection;
 	};
 
-
+	auto enableFrameGraph(const bool enable) -> void
+	{
+		viewerSettings_.enableFrameGraph = enable;
+	}
 	auto setRenderVolume(b3d::renderer::RendererBase* renderer, b3d::renderer::RenderingDataWrapper* renderingData)
 		-> void;
 
@@ -87,6 +90,7 @@ private:
 		bool enableDebugDraw{ true };
 		bool enableGridFloor{ true };
 		bool enableControlToolBar{ true };
+		bool enableFrameGraph{ false };
 	};
 
 	ViewerSettings viewerSettings_{};

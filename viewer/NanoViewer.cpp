@@ -419,9 +419,12 @@ auto NanoViewer::draw() -> void
 
 	const auto currentFrameTime = 1.0f / ImGui::GetIO().Framerate;
 	const auto maxFrameTimeTarget = currentFrameTime > (1.0f / 60.0f) ? 1.0f / 30.0f : 1.0f / 60.0f;
+#if 0
+
+	
 	if (showProfiler)
 	{
-
+		
 
 		profilersWindow_.gpuGraph().maxFrameTime = maxFrameTimeTarget;
 
@@ -469,10 +472,12 @@ auto NanoViewer::draw() -> void
 
 		profilersWindow_.render();
 	}
-
+#endif
 	applicationContext->profiler_->collectGpuTimers(currentRenderer_->getGpuTimers().getAllCurrent());
 	applicationContext->profiler_->collectGpuTimers(applicationContext->getGlGpuTimers().getAllCurrent());
-	
+
+	volumeView->enableFrameGraph(showProfiler);
+
 	auto& tasks = applicationContext->profiler_->gpuProfilerTasks();
 	applicationContext->gpuGraph_.maxFrameTime = maxFrameTimeTarget;
 	applicationContext->gpuGraph_.LoadFrameData(tasks.data(), tasks.size());

@@ -402,63 +402,71 @@ auto VolumeView::onDraw() -> void
 		demoMode(!animator_.isRunning());
 	}
 
-	const auto cursorPositionY = ImGui::GetCursorPosY();
 
-	const auto remainingSizeY = this->viewportSize_.y - cursorPositionY;
-	constexpr auto profilerHeight = 200.0f;
-
-	if (remainingSizeY > profilerHeight)
+	if (viewerSettings_.enableFrameGraph)
 	{
-		const auto scale = ImGui::GetWindowDpiScale();
-		const auto controlPadding = scale * 16.0f;
-		const auto offsetY = remainingSizeY - profilerHeight - controlPadding;
 
-		const auto windowPosition = ImGui::GetWindowPos();
-		ImGui::SetCursorPosY(cursorPositionY + offsetY);
-		ImGui::SetCursorPosX(controlPadding);
+		const auto cursorPositionY = ImGui::GetCursorPosY();
+
+		const auto remainingSizeY = this->viewportSize_.y - cursorPositionY;
+		constexpr auto profilerHeight = 200.0f;
+
+		if (remainingSizeY > profilerHeight)
 		{
-			/*ImGui::GetWindowDrawList()->AddRect(windowPosition + ImGui::GetCursorPos(),
-												windowPosition + ImGui::GetCursorPos() + ImVec2(400, profilerHeight),
-												ImColor{ 0.8f, 0.2f, 0.2f }, 10, 0, 4);*/
+			const auto scale = ImGui::GetWindowDpiScale();
+			const auto controlPadding = scale * 16.0f;
+			const auto offsetY = remainingSizeY - profilerHeight - controlPadding;
 
-			
-
-			const auto canvasSize = ImGui::GetContentRegionAvail();
-
-			const auto sizeMargin = static_cast<int>(ImGui::GetStyle().ItemSpacing.y);
-			constexpr auto maxGraphHeight = 140;
-			const auto availableGraphHeight = (static_cast<int>(canvasSize.y) - sizeMargin); // /2;
-			const auto graphHeight = std::min(maxGraphHeight, availableGraphHeight);
-			constexpr auto legendWidth = 400;
-			const auto graphWidth = static_cast<int>(glm::min(canvasSize.x, 1200.0f)) - legendWidth;
-			const auto frameOffset_ = 0;
-
-			const auto p = ImGui::GetCursorPos();
-			ImGui::PushFont(applicationContext_->getFontCollection().getGpuCpuExtraBigTextFont());
-			ImGui::SetNextItemAllowOverlap();
-			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4{0.6,0.6,0.6,0.4});
-			ImGui::Text("GPU");
-			ImGui::PopStyleColor();
-			ImGui::PopFont();
-			ImGui::SetCursorPos(p);
+			const auto windowPosition = ImGui::GetWindowPos();
+			ImGui::SetCursorPosY(cursorPositionY + offsetY);
+			ImGui::SetCursorPosX(controlPadding);
+			{
+				/*ImGui::GetWindowDrawList()->AddRect(windowPosition + ImGui::GetCursorPos(),
+													windowPosition + ImGui::GetCursorPos() + ImVec2(400,
+				   profilerHeight), ImColor{ 0.8f, 0.2f, 0.2f }, 10, 0, 4);*/
 
 
-			ImGui::PushClipRect(windowPosition + ImGui::GetCursorPos(),windowPosition + ImGui::GetCursorPos() + ImVec2(ImGui::GetContentRegionAvail().x, profilerHeight), true);
+				const auto canvasSize = ImGui::GetContentRegionAvail();
 
-			applicationContext_->gpuGraph_.RenderTimings(graphWidth, legendWidth, graphHeight, frameOffset_);
-			ImGui::PopClipRect();
-			//if (!stopProfiling_)
-			//{
-			//	frameOffset_ = 0;
-			//}
-			//gpuGraph_.frameWidth = frameWidth_;
-			//gpuGraph_.frameSpacing = frameSpacing_;
-			//gpuGraph_.useColoredLegendText = useColoredLegendText_;
-			//cpuGraph_.frameWidth = frameWidth_;
-			//cpuGraph_.frameSpacing = frameSpacing_;
-			//cpuGraph_.useColoredLegendText = useColoredLegendText_;
+				const auto sizeMargin = static_cast<int>(ImGui::GetStyle().ItemSpacing.y);
+				constexpr auto maxGraphHeight = 140;
+				const auto availableGraphHeight = (static_cast<int>(canvasSize.y) - sizeMargin); // /2;
+				const auto graphHeight = std::min(maxGraphHeight, availableGraphHeight);
+				constexpr auto legendWidth = 400;
+				const auto graphWidth = static_cast<int>(glm::min(canvasSize.x, 1200.0f)) - legendWidth;
+				const auto frameOffset_ = 0;
+
+				const auto p = ImGui::GetCursorPos();
+				ImGui::PushFont(applicationContext_->getFontCollection().getGpuCpuExtraBigTextFont());
+				ImGui::SetNextItemAllowOverlap();
+				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4{ 0.6, 0.6, 0.6, 0.4 });
+				ImGui::Text("GPU");
+				ImGui::PopStyleColor();
+				ImGui::PopFont();
+				ImGui::SetCursorPos(p);
+
+
+				ImGui::PushClipRect(windowPosition + ImGui::GetCursorPos(),
+									windowPosition + ImGui::GetCursorPos() +
+										ImVec2(ImGui::GetContentRegionAvail().x, profilerHeight),
+									true);
+
+				applicationContext_->gpuGraph_.RenderTimings(graphWidth, legendWidth, graphHeight, frameOffset_);
+				ImGui::PopClipRect();
+				// if (!stopProfiling_)
+				//{
+				//	frameOffset_ = 0;
+				// }
+				// gpuGraph_.frameWidth = frameWidth_;
+				// gpuGraph_.frameSpacing = frameSpacing_;
+				// gpuGraph_.useColoredLegendText = useColoredLegendText_;
+				// cpuGraph_.frameWidth = frameWidth_;
+				// cpuGraph_.frameSpacing = frameSpacing_;
+				// cpuGraph_.useColoredLegendText = useColoredLegendText_;
+			}
 		}
 	}
+
 #if 0
 	ImGui::SliderFloat("stiffness", &flyAnimationSettings_.stiffness, 0.0f, 100.0f);
 	ImGui::SliderFloat("damping", &flyAnimationSettings_.dumping, 0.0f, 100.0f);
