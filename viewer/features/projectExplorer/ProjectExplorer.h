@@ -43,12 +43,10 @@ private:
 	std::unique_ptr<std::promise<void>> projectsViewPromise_;
 	std::shared_future<void> projectsViewSharedFuture_;
 
-
-
 	std::future<bool> loadFileFuture_;
 	std::unique_ptr<std::promise<void>> loadAndShowViewPromise_;
 	std::shared_future<void> loadAndShowViewFuture_;
 
-	b3d::renderer::nano::RuntimeDataSet runtimeDataSet_{};
+	
 	cudaStream_t stream_{ 0 };
 };

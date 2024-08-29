@@ -35,7 +35,7 @@ namespace b3d::renderer
 		std::string message;
 	};
 
-	struct SoFiaSearch
+	struct SoFiaSearchRequest
 	{
 		SoFiaRequest request;
 		std::string searchHash;
@@ -71,13 +71,13 @@ namespace b3d::renderer
 		GizmoHelperBase* debugDrawList_;
 		owl::AffineSpace3f boxTransform_{};
 
-		std::future<SoFiaSearch> currentSearch;
+		std::future<SoFiaSearchRequest> currentSearch;
 
-		std::unique_ptr<SoFiaSearch> lastSearch{ nullptr };
+		std::unique_ptr<SoFiaSearchRequest> lastSearch{ nullptr };
 
 
 		auto prepareAndExecuteSearch(owl::box3f volumeVoxelBox) -> SoFiaRequest;
-		SoFiaSearch search(SoFiaRequest request, std::atomic_bool &stopToken);
+		SoFiaSearchRequest search(SoFiaRequest request, std::atomic_bool &stopToken);
 	public:
 		~SoFiASubregionFeature() override;
 

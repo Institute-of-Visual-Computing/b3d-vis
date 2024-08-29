@@ -34,7 +34,6 @@ void SoFiASubregionFeature::onInitialize()
 	debugDrawList_ = &renderer_->gizmoDraw();
 }
 
-
 auto SoFiASubregionFeature::gui() -> void
 {
 	using namespace std::chrono_literals;
@@ -48,7 +47,7 @@ auto SoFiASubregionFeature::gui() -> void
 		if (currentSearch.wait_for(0s) == std::future_status::ready)
 		{
 			auto la = currentSearch.get();
-			lastSearch = std::make_unique<SoFiaSearch>(std::move(la));
+			lastSearch = std::make_unique<SoFiaSearchRequest>(std::move(la));
 		}
 	}
 
@@ -134,12 +133,12 @@ auto SoFiASubregionFeature::prepareAndExecuteSearch(owl::box3f volumeVoxelBox) -
 
 }
 
-SoFiaSearch SoFiASubregionFeature::search(SoFiaRequest request, std::atomic_bool &stopToken)
+SoFiaSearchRequest SoFiASubregionFeature::search(SoFiaRequest request, std::atomic_bool &stopToken)
 {
 	using namespace std::chrono_literals;
 	const std::lock_guard<std::mutex> lock(searchMutex_);
 	
-	SoFiaSearch search = { .request = request };
+	SoFiaSearchRequest search = { .request = request };
 
 	httplib::Client cli("127.0.0.1", 8080);
 

@@ -77,7 +77,7 @@ auto ProjectExplorer::updateRenderingData(b3d::renderer::RenderingDataWrapper& r
 					if(optPath.has_value())
 					{
 						const auto path = optPath.value();
-						runtimeDataSet_.addNanoVdb(path, stream_, requestedVolumeUUid);
+						appContext_->runtimeDataSet_.addNanoVdb(path, stream_, requestedVolumeUUid);
 					}
 					else
 					{
@@ -93,16 +93,16 @@ auto ProjectExplorer::updateRenderingData(b3d::renderer::RenderingDataWrapper& r
 		}
 		else
 		{
-			const auto optState = runtimeDataSet_.getVolumeState(requestedVolumeUUid);
+			const auto optState = appContext_->runtimeDataSet_.getVolumeState(requestedVolumeUUid);
 			if (optState.has_value() && optState.value() == b3d::renderer::RuntimeVolumeState::ready)
 			{
 				// Get nvdbVolume
 				// Set sharedBuffer
-				runtimeDataSet_.select(requestedVolumeUUid);
+				appContext_->runtimeDataSet_.select(requestedVolumeUUid);
 
 				renderingData.data.runtimeVolumeData = {
 					.newVolumeAvailable = true,
-					.volume = runtimeDataSet_.getSelectedData(),
+					.volume = appContext_->runtimeDataSet_.getSelectedData(),
 				};
 
 				requestedVolumeUUid = "";

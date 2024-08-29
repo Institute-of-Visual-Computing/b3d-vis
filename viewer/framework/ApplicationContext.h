@@ -10,6 +10,7 @@
 #include "FontCollection.h"
 
 #include "ApplicationSettings.h"
+#include "RuntimeDataSet.h"
 #include "ServerClient.h"
 #include "framework/Dockspace.h"
 
@@ -106,6 +107,8 @@ public:
 	std::vector<UpdatableComponentBase*> updatableComponents_{};
 	std::vector<RendererExtensionBase*> rendererExtensions_{};
 	std::unique_ptr<Dockspace> mainDockspace_{ nullptr };
+
+	b3d::renderer::nano::RuntimeDataSet runtimeDataSet_{};
 
 	b3d::tools::project::ServerClient serverClient { };
 };
