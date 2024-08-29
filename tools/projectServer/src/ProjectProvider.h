@@ -14,6 +14,7 @@ namespace b3d::tools::projectServer
 		{
 			generateCatalog();
 			findProjects();
+			flagInvalidFilesInProjects();
 		}
 
 		auto getProjects() -> const std::map<std::string, b3d::tools::project::Project>&
@@ -68,6 +69,8 @@ namespace b3d::tools::projectServer
 		auto findProjects() -> void;
 
 		auto generateCatalog() -> void;
+
+		auto flagInvalidFilesInProjects() -> void;
 
 		// Absolute Path!
 		std::filesystem::path rootPath_ {"/" };

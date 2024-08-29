@@ -23,10 +23,11 @@ namespace b3d::common::pipeline
 	{
 		// either a UUID or a path
 		std::string resultFile{ "" };
+		bool fileAvailable{ true };
 	};
 
 	#ifdef B3D_USE_NLOHMANN_JSON
 		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(BaseResult, returnCode, message, finished);
-		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(BaseFileResult, returnCode, message, finished, resultFile);
+	NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(BaseFileResult, returnCode, message, finished, resultFile, fileAvailable);
 	#endif
 } // namespace b3d::tools::common::pipeline

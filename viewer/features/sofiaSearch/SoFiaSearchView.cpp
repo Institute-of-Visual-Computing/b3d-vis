@@ -27,10 +27,7 @@ auto SoFiaSearchView::getModel() const -> const Model&
 
 auto SoFiaSearchView::onDraw() -> void
 {
-	owl::AffineSpace3f worldTransform = owl::AffineSpace3f::scale(10);
-
-	// transform_ ist das transform des gizmos
-	gizmoHelper_->drawBoundGizmo(transform_, worldTransform, { 1, 1, 1 });
+	owl::AffineSpace3f worldTransform = owl::AffineSpace3f::scale(1);
 
 	// ImGui::BeginChild("sofia-params");
 	// ImGui::InputFloat("reliability.minSNR", &minSNR_);
@@ -50,6 +47,8 @@ auto SoFiaSearchView::onDraw() -> void
 
 	owl::box3f regionBox = intersection(owl::box3f{ lowerPos, upperPos }, owl::box3f{ { 0, 0, 0 }, { 1, 1, 1 } });
 
+	// transform_ ist das transform des gizmos
+	gizmoHelper_->drawBoundGizmo(transform_, worldTransform, { 1, 1, 1 });
 
 	ImGui::InputFloat3("Scale", &scale.x);
 	ImGui::InputFloat3("Position", &position.x);

@@ -140,3 +140,39 @@ auto b3d::tools::projectServer::ProjectProvider::generateCatalog() -> void
 	catalog_ = c;
 	saveRootCatalog();
 }
+
+auto b3d::tools::projectServer::ProjectProvider::flagInvalidFilesInProjects() -> void
+{
+	for (auto& project : knownProjects_) {
+		for (auto& request : project.second.requests)
+		{
+			if (request.result.sofiaResult.wasSuccess() || request.result.sofiaResult.resultFile.empty())
+			{
+				const auto filePath = catalog_.getFilePathAbsolute(request.result.sofiaResult.resultFile);
+				if (filePath.empty())
+				{
+					request.result.sofiaResult.fileAvailable = false;
+				}
+			}
+			else
+			{
+				request.result.sofiaResult.fileAvailable = false;
+			}
+
+			if (request.result.nanoResult.wasSuccess() || request.result.nanoResult.resultFile.empty())
+			{
+				const auto filePath = catalog_.getFilePathAbsolute(request.result.nanoResult.resultFile);
+				if (filePath.empty())
+				{
+					request.result.nanoResult.fileAvailable = false;
+				}
+			}
+			else
+			{
+				request.result.nanoResult.fileAvailable = false;
+			}
+
+		}
+		saveProject(project.first);
+	}
+}
