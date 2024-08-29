@@ -13,6 +13,7 @@ class SoFiaSearch final : public UpdatableComponentBase, public RendererExtensio
 {
 public:
 	SoFiaSearch(ApplicationContext& applicationContext);
+
 	~SoFiaSearch() override;
 
 	auto update() -> void override;
@@ -26,7 +27,6 @@ private:
 	owl::AffineSpace3f transform_ {};
 
 	bool showSearchWindow_{ true };
-
 
 	std::unique_ptr<SoFiaSearchView> sofiaSearchView_;
 	std::shared_ptr<GizmoHelper> gizmoHelper_;

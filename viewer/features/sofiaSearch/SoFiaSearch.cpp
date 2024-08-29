@@ -19,7 +19,6 @@ SoFiaSearch::SoFiaSearch(ApplicationContext& applicationContext)
 	applicationContext.addUpdatableComponent(this);
 	applicationContext.addRendererExtensionComponent(this);
 
-	gizmoHelper_ = applicationContext.getGizmoHelper();
 }
 
 SoFiaSearch::~SoFiaSearch() = default;
@@ -35,10 +34,6 @@ auto SoFiaSearch::deinitializeResources() -> void
 auto SoFiaSearch::updateRenderingData(b3d::renderer::RenderingDataWrapper& renderingData) -> void
 {
 
-	owl::AffineSpace3f worldTransform = owl::AffineSpace3f::scale(10);
-	
-	// transform_ ist das transform des gizmos
-	gizmoHelper_->drawBoundGizmo(transform_, worldTransform, { 1, 1, 1 });
 }
 
 auto SoFiaSearch::update() -> void

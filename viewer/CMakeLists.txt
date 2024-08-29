@@ -120,6 +120,7 @@ target_link_libraries(${viewerTargetName}
 	imspinner
 	OpenVDB::nanovdb
 	nlohmann_json::nlohmann_json
+	B3D::Header::Sofia
 )
 
 target_compile_definitions(${viewerTargetName} PUBLIC B3D_USE_NLOHMANN_JSON)
