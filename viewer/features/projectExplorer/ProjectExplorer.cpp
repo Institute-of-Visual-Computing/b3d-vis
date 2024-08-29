@@ -14,7 +14,7 @@ using namespace b3d::tools::project;
 ProjectExplorer::ProjectExplorer(ApplicationContext& applicationContext) : RendererExtensionBase(applicationContext)
 {
 	projectExplorerController_ = std::make_unique<ProjectExplorerController>(applicationContext, *this, projects_);
-	serverFileProvider_ = std::make_unique<ServerFileProvider>("./", appContext_->serverClient);
+	serverFileProvider_ = std::make_unique<ServerFileProvider>("./", appContext_->serverClient_);
 	applicationContext.addUpdatableComponent(projectExplorerController_.get());
 	applicationContext.addRendererExtensionComponent(this);
 
@@ -124,7 +124,7 @@ auto ProjectExplorer::refreshProjects() -> std::shared_future<void>
 		return projectsViewSharedFuture_;
 	}
 
-	projectsRequestFuture_ = appContext_->serverClient.getProjectsAsync();
+	projectsRequestFuture_ = appContext_->serverClient_.getProjectsAsync();
 
 	projectsViewPromise_ = std::make_unique<std::promise<void>>();
 	projectsViewSharedFuture_ = projectsViewPromise_->get_future();

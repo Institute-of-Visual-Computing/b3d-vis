@@ -124,5 +124,5 @@ public:
 	ImGuiUtils::ProfilerGraph gpuGraph_{300};
 
 	b3d::renderer::nano::RuntimeDataSet runtimeDataSet_{};
-	b3d::tools::project::ServerClient serverClient {};
+	b3d::tools::project::ServerClient serverClient_{};
 };

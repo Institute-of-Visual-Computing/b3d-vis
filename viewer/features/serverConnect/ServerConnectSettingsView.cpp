@@ -181,7 +181,7 @@ auto ServerConnectSettingsView::onDraw() -> void
 
 	if (ImGui::Button("Set"))
 	{
-		applicationContext_->serverClient.setNewConnectionInfo(serverClient_.getConnectionInfo());
+		applicationContext_->serverClient_.setNewConnectionInfo(serverClient_.getConnectionInfo());
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Test Connection"))

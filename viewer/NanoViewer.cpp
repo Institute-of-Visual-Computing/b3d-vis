@@ -351,7 +351,7 @@ auto NanoViewer::draw() -> void
 	ImGui_ImplGlfw_NewFrame();
 
 	ImGui::NewFrame();
-	applicationContext->serverClient.updateServerStatusState(ImGui::GetIO().DeltaTime);
+	applicationContext->serverClient_.updateServerStatusState(ImGui::GetIO().DeltaTime);
 	ImGui::PushFont(applicationContext->getFontCollection().getDefaultFont());
 	// TODO: Investigate if this combination is always intercepted by OS
 	if (ImGui::IsKeyDown(ImGuiMod_Alt) and ImGui::IsKeyPressed(ImGuiKey_F4, false))
@@ -563,12 +563,12 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 		[&]()
 		{
 			auto icon = ICON_LC_SERVER;
-			if (applicationContext.serverClient.getLastServerStatusState() == b3d::tools::project::ServerStatusState::ok
+			if (applicationContext->serverClient_.getLastServerStatusState() == b3d::tools::project::ServerStatusState::ok
 				)
 			{
 				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.1, 0.5, 0.1, 1.0 });
 			}
-			else if (applicationContext.serverClient.getLastServerStatusState() ==
+			else if (applicationContext->serverClient_.getLastServerStatusState() ==
 					 b3d::tools::project::ServerStatusState::testing)
 			{
 				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 1, 0.65, 0.0, 1.0 });
