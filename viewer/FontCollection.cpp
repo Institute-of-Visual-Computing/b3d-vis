@@ -32,8 +32,10 @@ auto FontCollection::rebuildFont(const std::vector<float>& dpiList) -> void
 
 			static auto iconRangesLucide = ImVector<ImWchar>{};
 			ImFontGlyphRangesBuilder builder;
-			builder.AddText(ICON_LC_ROTATE_3D ICON_LC_MOVE_3D ICON_LC_SCALE_3D ICON_LC_BAR_CHART_3 ICON_LC_UNPLUG
-								ICON_LC_LOG_OUT ICON_LC_CIRCLE_GAUGE ICON_LC_BUG ICON_LC_SERVER ICON_LC_SERVER_COG ICON_LC_SERVER_CRASH ICON_LC_SERVER_OFF ICON_LC_CIRCLE_CHECK ICON_LC_HARD_DRIVE ICON_LC_TRIANGLE_ALERT);
+			builder.AddText(
+				ICON_LC_ROTATE_3D ICON_LC_MOVE_3D ICON_LC_SCALE_3D ICON_LC_BAR_CHART_3 ICON_LC_UNPLUG ICON_LC_LOG_OUT
+					ICON_LC_CIRCLE_GAUGE ICON_LC_BUG ICON_LC_SERVER ICON_LC_SERVER_COG ICON_LC_SERVER_CRASH
+						ICON_LC_SERVER_OFF ICON_LC_CIRCLE_CHECK ICON_LC_HARD_DRIVE ICON_LC_TRIANGLE_ALERT);
 			builder.BuildRanges(&iconRangesLucide);
 
 			const auto iconFontSize = dpiScale * baseFontSize * 2.0f / 3.0f;
@@ -65,6 +67,20 @@ auto FontCollection::rebuildFont(const std::vector<float>& dpiList) -> void
 			dpiToFont_[dpi] = fontIndex;
 		}
 	}
+
+	{
+
+		config.SizePixels = 8 * baseFontSize;
+		static auto gpuCpuText = ImVector<ImWchar>{};
+		ImFontGlyphRangesBuilder builder;
+		builder.Clear();
+		builder.AddText("GCPU");
+		builder.BuildRanges(&gpuCpuText);
+
+		
+		gpuCpuExtraBigTextFont_ = io.Fonts->AddFontFromFileTTF("resources/fonts/Roboto-Medium.ttf", config.SizePixels, &config,
+												 gpuCpuText.Data);
+	}
 }
 
 auto FontCollection::containsDpi(const float dpi) const noexcept -> bool
@@ -88,4 +104,8 @@ auto FontCollection::getDefaultFontDpiScale() const noexcept -> float
 {
 	return getDefaultFont()->Scale;
 	;
+}
+auto FontCollection::getGpuCpuExtraBigTextFont() const noexcept -> ImFont*
+{
+	return gpuCpuExtraBigTextFont_;
 }

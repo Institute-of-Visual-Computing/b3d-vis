@@ -69,8 +69,6 @@ namespace b3d::renderer
 
 		nanovdb::Map currentMap_{};
 
-		CudaGpuTimers<100, 4> gpuTimers_{};
-
 		RenderTargetFeature* renderTargetFeature_;
 		// RenderSyncFeature* renderSyncFeature_;
 		ColorMapFeature* colorMapFeature_;

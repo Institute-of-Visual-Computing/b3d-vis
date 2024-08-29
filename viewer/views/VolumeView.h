@@ -4,6 +4,7 @@
 #endif
 #include "Camera.h"
 
+#include "Animation.h"
 #include "GizmoOperationFlags.h"
 #include "framework/DockableWindowViewBase.h"
 #include "passes/InfinitGridPass.h"
@@ -44,21 +45,43 @@ public:
 		glm::mat4 viewProjection;
 	};
 
-
+	auto enableFrameGraph(const bool enable) -> void
+	{
+		viewerSettings_.enableFrameGraph = enable;
+	}
 	auto setRenderVolume(b3d::renderer::RendererBase* renderer, b3d::renderer::RenderingDataWrapper* renderingData)
 		-> void;
 
 private:
-	auto drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec2& position, const glm::vec2& size) -> void;
+	auto drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec2& position, const glm::vec2& size) const
+		-> void;
 	auto initializeGraphicsResources() -> void;
 	auto deinitializeGraphicsResources() -> void;
 
 	auto renderVolume() -> void;
 
+	auto demoMode(const bool enable) -> void;
+
 	b3d::renderer::RendererBase* renderer_{};
 	b3d::renderer::RenderingDataWrapper* renderingData_{};
 
 	Camera camera_{};
+	Camera cameraLastFrame_{};
+
+	animation::PropertyAnimator animator_;
+	bool demoModeEnabled_{ false };
+
+	struct CameraFlyAroundAnimationSetting
+	{
+		glm::vec3 origin{};
+		glm::vec3 target{ 0.0f, 0.0f, 0.0f };
+		float height{ 1.0f };
+		float radius{ 1.0f };
+		float stiffness{ 12.0f };
+		float dumping{ 1.0f };
+	};
+
+	CameraFlyAroundAnimationSetting flyAnimationSettings_ = {};
 
 	struct ViewerSettings
 	{
@@ -66,6 +89,8 @@ private:
 		std::array<float, 3> gridColor{ 0.95f, 0.9f, 0.92f };
 		bool enableDebugDraw{ true };
 		bool enableGridFloor{ true };
+		bool enableControlToolBar{ true };
+		bool enableFrameGraph{ false };
 	};
 
 	ViewerSettings viewerSettings_{};

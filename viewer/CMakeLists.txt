@@ -48,6 +48,9 @@ target_sources(${viewerTargetName} PRIVATE
 	ApplicationSettings.cpp
 	GuiDefaultLayoutSettings.h
 	GuiDefaultLayoutSettings.cpp
+	Animation.h
+	GLGpuTimers.h
+	ProfilersWindow.h
 	framework/Dockspace.h
 	framework/Dockspace.cpp
 	framework/DockableWindowViewBase.h
@@ -120,6 +123,7 @@ target_link_libraries(${viewerTargetName}
 	imspinner
 	OpenVDB::nanovdb
 	nlohmann_json::nlohmann_json
+	legit
 	B3D::Header::Sofia
 )
 
@@ -162,5 +166,6 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/resources")
 endif()
 
 add_custom_target(copy_viewer_resources ALL COMMAND ${commands})
+set_property(TARGET copy_viewer_resources PROPERTY FOLDER "Utility")
 
 add_dependencies(viewer copy_viewer_resources)

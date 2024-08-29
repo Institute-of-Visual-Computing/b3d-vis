@@ -27,6 +27,8 @@
 
 #include "FoveatedRendering.h"
 
+#include <tracy/Tracy.hpp>
+
 
 #define FOVEATED
 
@@ -50,7 +52,7 @@ namespace
 
 		std::array<float, 2> sampleRemapping{ 0.0f, 0.1f };
 
-		std::array<float, 2> fovealPoint{ 0.0f,0.0f };
+		std::array<float, 2> fovealPoint{ 0.0f, 0.0f };
 
 		SampleIntegrationMethod sampleIntegrationMethode{ SampleIntegrationMethod::maximumIntensityProjection };
 	};
@@ -153,20 +155,22 @@ auto NanoRenderer::prepareGeometry() -> void
 			OWLVarDecl{ "frameBufferSize", OWL_INT2, OWL_OFFSETOF(RayGenerationFoveatedData, frameBufferSize) },
 			OWLVarDecl{ "world", OWL_GROUP, OWL_OFFSETOF(RayGenerationFoveatedData, world) },
 			OWLVarDecl{ "foveal", OWL_FLOAT2, OWL_OFFSETOF(RayGenerationFoveatedData, foveal) },
-			OWLVarDecl{ "resolutionScaleRatio", OWL_FLOAT, OWL_OFFSETOF(RayGenerationFoveatedData, resolutionScaleRatio) },
-			OWLVarDecl{ "kernelParameter", OWL_FLOAT, OWL_OFFSETOF(RayGenerationFoveatedData, kernelParameter)}
+			OWLVarDecl{ "resolutionScaleRatio", OWL_FLOAT,
+						OWL_OFFSETOF(RayGenerationFoveatedData, resolutionScaleRatio) },
+			OWLVarDecl{ "kernelParameter", OWL_FLOAT, OWL_OFFSETOF(RayGenerationFoveatedData, kernelParameter) }
 		};
-		const auto rayGen = owlRayGenCreate(context, optixirModule, "rayGenerationFoveated", sizeof(RayGenerationFoveatedData),
-			rayGenerationVars.data(), rayGenerationVars.size());
+		const auto rayGen =
+			owlRayGenCreate(context, optixirModule, "rayGenerationFoveated", sizeof(RayGenerationFoveatedData),
+							rayGenerationVars.data(), rayGenerationVars.size());
 		nanoContext_.rayGenFoveated = rayGen;
 	}
 	{
 		const auto rayGenerationVars = std::array{
-		OWLVarDecl{ "frameBufferSize", OWL_INT2, OWL_OFFSETOF(RayGenerationData, frameBufferSize) },
-		OWLVarDecl{ "world", OWL_GROUP, OWL_OFFSETOF(RayGenerationData, world) },
+			OWLVarDecl{ "frameBufferSize", OWL_INT2, OWL_OFFSETOF(RayGenerationData, frameBufferSize) },
+			OWLVarDecl{ "world", OWL_GROUP, OWL_OFFSETOF(RayGenerationData, world) },
 		};
 		const auto rayGen = owlRayGenCreate(context, optixirModule, "rayGeneration", sizeof(RayGenerationData),
-			rayGenerationVars.data(), rayGenerationVars.size());
+											rayGenerationVars.data(), rayGenerationVars.size());
 		nanoContext_.rayGen = rayGen;
 	}
 
@@ -242,7 +246,7 @@ auto NanoRenderer::prepareGeometry() -> void
 	owlBuildSBT(context);
 }
 
-bool firstFrame = true;
+auto firstFrame = true;
 
 auto NanoRenderer::onRender() -> void
 {
@@ -262,7 +266,11 @@ auto NanoRenderer::onRender() -> void
 
 
 	owlInstanceGroupSetTransform(nanoContext_.worldGeometryGroup, 0, reinterpret_cast<const float*>(&groupTransform));
-	owlGroupRefitAccel(nanoContext_.worldGeometryGroup);
+
+	{
+		ZoneScopedN("Refit AS");
+		owlGroupRefitAccel(nanoContext_.worldGeometryGroup);
+	}
 	// if (firstFrame)
 	// {
 	//	 const auto volumeTranslate = AffineSpace3f::translate(-nanoVdbVolume.indexBox.center());
@@ -286,17 +294,22 @@ auto NanoRenderer::onRender() -> void
 	}
 
 	debugInfo_.gizmoHelper->drawGizmo(volumeTransform->worldMatTRS);
+	auto renderTargetFeatureParams = renderTargetFeature_->getParamsData();
 
-	const auto colorMapParams = colorMapFeature_->getParamsData();
+	{
+		ZoneScopedNS("Setup Launch Params Common", 10);
 
-	using namespace owl::extensions;
+		const auto colorMapParams = colorMapFeature_->getParamsData();
 
-	owlParamsSetRaw(nanoContext_.launchParams, "coloringInfo.colorMode", &colorMapParams.mode);
-	owlParamsSet4f(nanoContext_.launchParams, "coloringInfo.singleColor", colorMapParams.uniformColor);
+		using namespace owl::extensions;
 
-	owlParamsSet1f(nanoContext_.launchParams, "coloringInfo.selectedColorMap", colorMapParams.selectedColorMap);
 
-	owlParamsSetRaw(nanoContext_.launchParams, "sampleIntegrationMethod", &guiData.sampleIntegrationMethode);
+		owlParamsSetRaw(nanoContext_.launchParams, "coloringInfo.colorMode", &colorMapParams.mode);
+		owlParamsSet4f(nanoContext_.launchParams, "coloringInfo.singleColor", colorMapParams.uniformColor);
+
+		owlParamsSet1f(nanoContext_.launchParams, "coloringInfo.selectedColorMap", colorMapParams.selectedColorMap);
+
+		owlParamsSetRaw(nanoContext_.launchParams, "sampleIntegrationMethod", &guiData.sampleIntegrationMethode);
 
 	if (runtimeVolumeData->newVolumeAvailable)
 	{
@@ -304,38 +317,37 @@ auto NanoRenderer::onRender() -> void
 		owlParamsSetRaw(nanoContext_.launchParams, "volume", &nanoVdbVolume);
 	}
 
-	auto renderTargetFeatureParams = renderTargetFeature_->getParamsData();
 
-	owlParamsSetRaw(nanoContext_.launchParams, "colormaps", &colorMapParams.colorMapTexture);
-	owlParamsSet2f(nanoContext_.launchParams, "sampleRemapping",
-				   owl2f{ guiData.sampleRemapping[0], guiData.sampleRemapping[1] });
+		owlParamsSetRaw(nanoContext_.launchParams, "colormaps", &colorMapParams.colorMapTexture);
+		owlParamsSet2f(nanoContext_.launchParams, "sampleRemapping",
+					   owl2f{ guiData.sampleRemapping[0], guiData.sampleRemapping[1] });
 
-	auto transferFunctionParams = transferFunctionFeature_->getParamsData();
+		auto transferFunctionParams = transferFunctionFeature_->getParamsData();
 
-	owlParamsSetRaw(nanoContext_.launchParams, "transferFunctionTexture",
-					&transferFunctionParams.transferFunctionTexture);
+		owlParamsSetRaw(nanoContext_.launchParams, "transferFunctionTexture",
+						&transferFunctionParams.transferFunctionTexture);
 
-	const auto backgroundColorParams = backgroundColorFeature_->getParamsData();
-	owlParamsSet4f(nanoContext_.launchParams, "bg.color0", backgroundColorParams.colors[0]);
-	owlParamsSet4f(nanoContext_.launchParams, "bg.color1", backgroundColorParams.colors[1]);
+		const auto backgroundColorParams = backgroundColorFeature_->getParamsData();
+		owlParamsSet4f(nanoContext_.launchParams, "bg.color0", backgroundColorParams.colors[0]);
+		owlParamsSet4f(nanoContext_.launchParams, "bg.color1", backgroundColorParams.colors[1]);
 
-	owlParamsSet1b(nanoContext_.launchParams, "bg.fillBox", guiData.fillBox);
-	owlParamsSet3f(nanoContext_.launchParams, "bg.fillColor",
-				   owl3f{ guiData.fillColor[0], guiData.fillColor[1], guiData.fillColor[2] });
+		owlParamsSet1b(nanoContext_.launchParams, "bg.fillBox", guiData.fillBox);
+		owlParamsSet3f(nanoContext_.launchParams, "bg.fillColor",
+					   owl3f{ guiData.fillColor[0], guiData.fillColor[1], guiData.fillColor[2] });
+	}
 
-	constexpr auto deviceId = 0; //TODO: Research on device id, in multi gpu system it might be tricky
+	constexpr auto deviceId = 0; // TODO: Research on device id, in multi gpu system it might be tricky
 	const auto stream = owlParamsGetCudaStream(nanoContext_.launchParams, deviceId);
-	const auto record = gpuTimers_.record("basic owl rt", stream);
 
 	const auto view = renderData_->get<View>("view");
 	assert(view->cameras.size() > 0);
 
 	auto rayCameraData = std::array<RayCameraData, 2>{};
-	const auto cameraIndices = view->mode == RenderMode::stereo ? std::vector{ 0,1 } : std::vector{ 0 };
-	assert(view->mode == RenderMode::stereo ? renderTargetFeatureParams.colorRT.extent.depth > 1: true);
+	const auto cameraIndices = view->mode == RenderMode::stereo ? std::vector{ 0, 1 } : std::vector{ 0 };
+	assert(view->mode == RenderMode::stereo ? renderTargetFeatureParams.colorRT.extent.depth > 1 : true);
 
 	const auto framebufferSize = owl2i{ static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.width),
-							   static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.height) };
+										static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.height) };
 
 	for (const auto cameraIndex : cameraIndices)
 	{
@@ -349,12 +361,9 @@ auto NanoRenderer::onRender() -> void
 		else
 		{
 			rayCameraData[cameraIndex] = createRayCameraData(camera,
-				Extent
-				{
-					static_cast<uint32_t>(framebufferSize.x),
-					static_cast<uint32_t>(framebufferSize.y),
-					1
-				}/*renderTargetFeatureParams.colorRT.extent*/);
+															 Extent{ static_cast<uint32_t>(framebufferSize.x),
+																	 static_cast<uint32_t>(framebufferSize.y),
+																	 1 } /*renderTargetFeatureParams.colorRT.extent*/);
 		}
 	}
 
@@ -364,38 +373,55 @@ auto NanoRenderer::onRender() -> void
 		owl2f{ foveatedRenderingParams.leftEyeGazeScreenSpace.x, foveatedRenderingParams.leftEyeGazeScreenSpace.y },
 		owl2f{ foveatedRenderingParams.rightEyeGazeScreenSpace.x, foveatedRenderingParams.rightEyeGazeScreenSpace.y }
 	};
-	record.start();
 	for (const auto cameraIndex : cameraIndices)
 	{
+		ZoneScopedN("Left Eye");
 		assert(cameraIndex < renderTargetFeatureParams.colorRT.surfaces.size());
 		owlParamsSetRaw(nanoContext_.launchParams, "cameraData", &rayCameraData[cameraIndex]);
+
 
 		if (foveatedRenderingParams.isEnabled)
 		{
 			owlRayGenSet2f(nanoContext_.rayGenFoveated, "foveal", foveatedGaze[cameraIndex]);
-			owlRayGenSet1f(nanoContext_.rayGenFoveated, "resolutionScaleRatio", foveatedFeature_->getResolutionScaleRatio());
+			owlRayGenSet1f(nanoContext_.rayGenFoveated, "resolutionScaleRatio",
+						   foveatedFeature_->getResolutionScaleRatio());
 			owlRayGenSet1f(nanoContext_.rayGenFoveated, "kernelParameter", foveatedRenderingParams.kernelParameter);
 			const auto lpResource = foveatedFeature_->getLpResources()[cameraIndex];
 
 			const auto lrSize = owl2i{ static_cast<int32_t>(lpResource.surface.width),
-								   static_cast<int32_t>(lpResource.surface.height) };
+									   static_cast<int32_t>(lpResource.surface.height) };
 			owlRayGenSet2i(nanoContext_.rayGenFoveated, "frameBufferSize", lrSize);
 			owlParamsSetRaw(nanoContext_.launchParams, "surfacePointer", &lpResource.surface.surface);
 			owlBuildSBT(nanoContext_.context);
+			const auto rtRecord = gpuTimers_.record("foveated RT", stream);
+			rtRecord.start();
 			owlAsyncLaunch2D(nanoContext_.rayGenFoveated, lrSize.x, lrSize.y, nanoContext_.launchParams);
+			rtRecord.stop();
 
-			foveatedFeature_->resolve(renderTargetFeatureParams.colorRT.surfaces[cameraIndex], framebufferSize.x, framebufferSize.y, stream, foveatedGaze[cameraIndex].x, foveatedGaze[cameraIndex].y);
+			const auto resolveRecord = gpuTimers_.record("foveated resolve", stream);
+			resolveRecord.start();
+			foveatedFeature_->resolve(renderTargetFeatureParams.colorRT.surfaces[cameraIndex], framebufferSize.x,
+									  framebufferSize.y, stream, foveatedGaze[cameraIndex].x,
+									  foveatedGaze[cameraIndex].y);
+			resolveRecord.stop();
 		}
 		else
 		{
-			//TODO: pass enable foveated flag to the kernel!
-			owlParamsSetRaw(nanoContext_.launchParams, "surfacePointer", &renderTargetFeatureParams.colorRT.surfaces[cameraIndex].surface);
+			// TODO: pass enable foveated flag to the kernel!
+			owlParamsSetRaw(nanoContext_.launchParams, "surfacePointer",
+							&renderTargetFeatureParams.colorRT.surfaces[cameraIndex].surface);
 			owlRayGenSet2i(nanoContext_.rayGen, "frameBufferSize", framebufferSize);
-			owlBuildSBT(nanoContext_.context);
+
+			{
+				ZoneScopedN("SBT Build");
+				owlBuildSBT(nanoContext_.context);
+			}
+			const auto rtRecord = gpuTimers_.record("Raytrace [OptiX]", stream);
+			rtRecord.start();
 			owlAsyncLaunch2D(nanoContext_.rayGen, framebufferSize.x, framebufferSize.y, nanoContext_.launchParams);
+			rtRecord.stop();
 		}
 	}
-	record.stop();
 }
 
 auto NanoRenderer::onInitialize() -> void
@@ -406,7 +432,7 @@ auto NanoRenderer::onInitialize() -> void
 
 	nanoContext_.context = context;
 
-	//runtimeDataSet_.addNanoVdb(std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" });
+	// runtimeDataSet_.addNanoVdb(std::filesystem::path{ "D:/datacubes/n4565_cut/nano_level_0_224_257_177.nvdb" });
 
 	prepareGeometry();
 }
@@ -422,7 +448,7 @@ auto NanoRenderer::onGui() -> void
 
 	ImGui::Begin("[DEPRECATED] RT Settings");
 
-	ImGui::SeparatorText("Runtime Data Managment");
+	ImGui::SeparatorText("Runtime Data Management");
 
 	if (ImGui::Button("Load New NanoVDB File"))
 	{
@@ -478,28 +504,6 @@ auto NanoRenderer::onGui() -> void
 	{
 		volumeTransform->worldMatTRS = AffineSpace3f{};
 	}
-	ImGui::SeparatorText("Data File (.b3d)");
-	ImGui::InputText("##source", const_cast<char*>(b3dFilePath.string().c_str()), b3dFilePath.string().size(),
-					 ImGuiInputTextFlags_ReadOnly);
-	ImGui::SameLine();
-	if (ImGui::Button("Select"))
-	{
-		// ImGui::OpenPopup("FileSelectDialog");
-	}
-	ImGui::SameLine();
-	if (ImGui::Button("Load"))
-	{
-		if (std::filesystem::exists(b3dFilePath))
-		{
-			const auto t = cutterParser::load(b3dFilePath.generic_string());
-
-			const auto nanoFile = t.clusters.front().accelerationStructureRoot.nanoVdbFile;
-		}
-		else
-		{
-			ImGui::TextColored(ImVec4{ 0.9f, 0.1f, 0.1f, 1.0f }, "Error: Can't load file!");
-		}
-	}
 
 	ImGui::Checkbox("Fill Box", &guiData.fillBox);
 
@@ -508,101 +512,12 @@ auto NanoRenderer::onGui() -> void
 		ImGui::ColorEdit3("Fill Color", guiData.fillColor.data());
 	}
 
-	ImGui::SeparatorText("Timings");
-
-	const auto timing = gpuTimers_.get("basic owl rt");
-
-	static float values[100] = {};
-	static auto valuesOffset = 0;
-
-	values[valuesOffset] = timing;
-	valuesOffset = (valuesOffset + 1) % IM_ARRAYSIZE(values);
-
-	{
-		auto average = 0.0f;
-		for (auto n = 0; n < IM_ARRAYSIZE(values); n++)
-		{
-			average += values[n];
-		}
-		average /= static_cast<float>(IM_ARRAYSIZE(values));
-		ImGui::SetNextItemWidth(-1);
-		ImGui::PlotHistogram("##perfGraph", values, IM_ARRAYSIZE(values), valuesOffset,
-							 std::format("avg {:3.2f} ms", average).c_str(), 0.0f, 16.0f, ImVec2(0, 200.0f));
-	}
-
-	ImGui::Text("%1.3f", timing);
-
-	
-
 	static auto currentPath = std::filesystem::current_path();
 	static auto selectedPath = std::filesystem::path{};
 
 	const auto center = ImGui::GetMainViewport()->GetCenter();
 	ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
 	openFileDialog_.gui();
-	/*if (ImGui::BeginPopupModal("FileSelectDialog", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-	{
-		constexpr auto roots = std::array{ "A:/", "B:/", "C:/", "D:/", "E:/", "F:/", "G:/", "H:/", "I:/" };
 
-		for (auto i = 0; i < roots.size(); i++)
-		{
-			const auto root = std::filesystem::path{ roots[i] };
-			if (is_directory(root))
-			{
-				ImGui::SameLine();
-				if (ImGui::Button(roots[i]))
-				{
-					currentPath = root;
-				}
-			}
-		}
-		if (ImGui::BeginListBox("##dirs", ImVec2(ImGui::GetFontSize() * 40, ImGui::GetFontSize() * 16)))
-		{
-			if (ImGui::Selectable("...", false))
-			{
-				currentPath = currentPath.parent_path();
-			}
-			auto i = 0;
-			for (auto& dir : std::filesystem::directory_iterator{ currentPath })
-			{
-				i++;
-				const auto path = dir.path();
-				if (is_directory(path))
-				{
-					if (ImGui::Selectable(dir.path().string().c_str(), false))
-					{
-						currentPath = path;
-					}
-				}
-				if (path.has_extension() && path.extension() == ".b3d")
-				{
-					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.1f, 0.9f, 0.1f, 1.0f));
-					if (ImGui::Selectable(dir.path().string().c_str(), dir.path() == selectedPath))
-					{
-						selectedPath = dir.path();
-					}
-					ImGui::PopStyleColor();
-				}
-			}
-			ImGui::EndListBox();
-		}
-		if (ImGui::Button("OK", ImVec2(120, 0)))
-		{
-			if (!selectedPath.empty() != 0)
-			{
-				b3dFilePath = selectedPath;
-			}
-			ImGui::CloseCurrentPopup();
-		}
-		ImGui::SetItemDefaultFocus();
-		ImGui::SameLine();
-		if (ImGui::Button("Cancel", ImVec2(120, 0)))
-		{
-			selectedPath.clear();
-			ImGui::CloseCurrentPopup();
-		}
-		ImGui::EndPopup();
-	}
-	*/
 	ImGui::End();
 }

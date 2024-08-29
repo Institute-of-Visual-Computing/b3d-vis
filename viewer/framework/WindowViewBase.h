@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <imgui.h>
+#include <string>
 #include <string_view>
 
 #include <string>
@@ -52,6 +53,11 @@ public:
 	auto close() noexcept -> void
 	{
 		isOpen_ = false;
+	}
+
+	[[nodiscard]] auto isOpen() const noexcept  -> bool
+	{
+		return isOpen_;
 	}
 
 protected:

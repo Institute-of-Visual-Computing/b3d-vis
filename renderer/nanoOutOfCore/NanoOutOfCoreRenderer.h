@@ -50,7 +50,7 @@ namespace b3d::renderer::nano
 
 		nanovdb::Map currentMap_{};
 
-		CudaGpuTimers<100, 4> gpuTimers_{};
+		profiler::CudaGpuTimers<100, 4> gpuTimers_{};
 
 		OpenFileDialog openFileDialog_{ SelectMode::singleFile, { ".b3d" } };
 

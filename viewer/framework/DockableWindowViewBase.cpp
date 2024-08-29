@@ -26,6 +26,9 @@ auto DockableWindowViewBase::draw() -> void
 	assert(dockspace_->hasDrawn());
 	ImGui::SetNextWindowDockID(dockspace_->id(), ImGuiCond_FirstUseEver);
 	beginDraw();
-	onDraw();
+	if (drawContent_)
+	{
+		onDraw();
+	}
 	endDraw();
 }

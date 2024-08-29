@@ -102,6 +102,11 @@ namespace b3d::renderer
 			return dataPtr_;
 		}
 
+		template <typename T>
+		inline auto hasKey(const std::string_view key) const -> bool
+		{
+			return get<T>(key) != nullptr;
+		}
 
 		template <typename T>
 		auto get(const std::string_view key) -> T*

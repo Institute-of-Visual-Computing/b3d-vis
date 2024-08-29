@@ -19,6 +19,7 @@ TransferMappingController::TransferMappingController(ApplicationContext& applica
 
 auto TransferMappingController::update() -> void
 {
+	showToolWindow_ = mappingView_->isOpen();
 	if (showToolWindow_)
 	{
 		mappingView_->setColorMapInfos(transferMapping_->colorMapResources_.colorMap.colorMapNames,

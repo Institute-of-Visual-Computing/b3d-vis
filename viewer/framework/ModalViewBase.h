@@ -3,6 +3,7 @@
 #include "WindowViewBase.h"
 
 #include <functional>
+#include <string>
 
 enum class ModalType
 {

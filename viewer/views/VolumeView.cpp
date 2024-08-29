@@ -3,14 +3,15 @@
 
 #include <print>
 
-#include <glm/glm.hpp>
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
+#include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 
+#include <GLFW/glfw3.h>
 #include <IconsLucide.h>
 #include <ImGuizmo.h>
-#include <GLFW/glfw3.h>
+
 
 #include <cuda_gl_interop.h>
 #include <cuda_runtime.h>
@@ -18,13 +19,17 @@
 
 #include <RendererBase.h>
 
-#include "GizmoHelper.h"
+#include "GLGpuTimers.h"
 #include "GLUtils.h"
+#include "GizmoHelper.h"
 #include "InteropUtils.h"
 #include "framework/ApplicationContext.h"
 #include "passes/DebugDrawPass.h"
 #include "passes/FullscreenTexturePass.h"
 #include "passes/InfinitGridPass.h"
+
+#include <ImGuiProfilerRenderer.h>
+
 
 namespace
 {
@@ -36,8 +41,6 @@ namespace
 		VolumeView::CameraMatrices mat;
 		mat.projection = glm::perspective(glm::radians(camera.getFovYInDegrees()), aspect, 0.01f, 10000.0f);
 		mat.view = glm::lookAt(camera.getFrom(), camera.getAt(), glm::normalize(camera.getUp()));
-
-
 		mat.viewProjection = mat.projection * mat.view;
 		return mat;
 	}
@@ -45,7 +48,7 @@ namespace
 
 VolumeView::VolumeView(ApplicationContext& appContext, Dockspace* dockspace)
 	: DockableWindowViewBase(appContext, "Volume Viewport", dockspace,
-							 WindowFlagBits::noTitleBar | WindowFlagBits::noUndocking | WindowFlagBits::hideTabBar |
+							 /*WindowFlagBits::noTitleBar | WindowFlagBits::noUndocking |*/ WindowFlagBits::hideTabBar |
 								 WindowFlagBits::noCollapse)
 {
 	fullscreenTexturePass_ = std::make_unique<FullscreenTexturePass>();
@@ -54,6 +57,79 @@ VolumeView::VolumeView(ApplicationContext& appContext, Dockspace* dockspace)
 
 	camera_.setOrientation(glm::vec3(1.0, 1.0, 1.0), glm::vec3(0.0, 0.0, 0.0), camera_.getUp(),
 						   camera_.getFovYInDegrees());
+
+	cameraLastFrame_ = camera_;
+
+	flyAnimationSettings_.radius = 3.0f;
+	animator_.addPropertyAnimation(
+		[&](const float t, const float dt)
+		{
+			const auto radius = flyAnimationSettings_.radius;
+			const auto height = flyAnimationSettings_.height;
+			const auto& origin = flyAnimationSettings_.origin;
+			const auto sin = glm::sin(t);
+			const auto cos = glm::cos(t);
+
+			const auto offset = glm::vec3{ sin * radius, height, cos * radius };
+
+			const auto lastPosition = cameraLastFrame_.position_;
+			const auto position = origin + offset;
+			const auto targetVelocity = position - lastPosition;
+
+			const auto cameraCurrentPosition = camera_.position_;
+			{
+
+				const auto cameraVelocity = position - camera_.position_;
+
+				auto x = camera_.position_.x;
+				auto y = camera_.position_.y;
+				auto z = camera_.position_.z;
+
+				auto vx = cameraVelocity.x;
+				auto vy = cameraVelocity.y;
+				auto vz = cameraVelocity.z;
+
+
+				animation::springDamperExact2(x, vx, position.x, targetVelocity.x, flyAnimationSettings_.stiffness,
+											  flyAnimationSettings_.dumping, dt);
+				animation::springDamperExact2(y, vy, position.y, targetVelocity.y, flyAnimationSettings_.stiffness,
+											  flyAnimationSettings_.dumping, dt);
+				animation::springDamperExact2(z, vz, position.z, targetVelocity.z, flyAnimationSettings_.stiffness,
+											  flyAnimationSettings_.dumping, dt);
+				camera_.position_ = glm::vec3{ x, y, z };
+			}
+
+			{
+				auto targetNormalized = glm::normalize(flyAnimationSettings_.target - cameraCurrentPosition);
+
+				auto x = camera_.forward_.x;
+				auto y = camera_.forward_.y;
+				auto z = camera_.forward_.z;
+
+				const auto forwardVelocity =
+					cameraLastFrame_.position_ + cameraLastFrame_.forward_ - (camera_.forward_ + cameraCurrentPosition);
+
+
+				auto vx = forwardVelocity.x;
+				auto vy = forwardVelocity.y;
+				auto vz = forwardVelocity.z;
+				const auto targetForwardVelocity = glm::vec3{ 0.0, 0.0, 0.0f }; // forwardVelocity;
+
+				animation::springDamperExact2(x, vx, targetNormalized.x, targetForwardVelocity.x,
+											  flyAnimationSettings_.stiffness, flyAnimationSettings_.dumping, dt);
+				animation::springDamperExact2(y, vy, targetNormalized.y, targetForwardVelocity.y,
+											  flyAnimationSettings_.stiffness, flyAnimationSettings_.dumping, dt);
+				animation::springDamperExact2(z, vz, targetNormalized.z, targetForwardVelocity.z,
+											  flyAnimationSettings_.stiffness, flyAnimationSettings_.dumping, dt);
+
+
+				camera_.setOrientation(camera_.position_,
+									   camera_.position_ + camera_.forward_ + glm::vec3{ vx, vy, vz }, camera_.up_, 60);
+			}
+		});
+
+	applicationContext_->addMenuToggleAction(
+		demoModeEnabled_, [&](const bool isOn) { demoMode(isOn); }, "Help", "Demo Mode", "F2", std::nullopt, 0);
 }
 
 VolumeView::~VolumeView()
@@ -61,8 +137,10 @@ VolumeView::~VolumeView()
 	deinitializeGraphicsResources();
 }
 
+
 auto VolumeView::onDraw() -> void
 {
+	cameraLastFrame_ = camera_;
 	renderVolume();
 
 	if (ImGui::IsKeyPressed(ImGuiKey_1, false))
@@ -78,8 +156,7 @@ auto VolumeView::onDraw() -> void
 		currentGizmoOperation_.flip(GizmoOperationFlagBits::rotate);
 	}
 
-
-	ImVec2 p = ImGui::GetCursorScreenPos();
+	const auto p = ImGui::GetCursorScreenPos();
 	ImGui::SetNextItemAllowOverlap();
 	ImGui::InvisibleButton("##volumeViewport", viewportSize_,
 						   ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
@@ -89,24 +166,65 @@ auto VolumeView::onDraw() -> void
 	auto& io = ImGui::GetIO();
 
 
-	if (ImGui::IsKeyDown(ImGuiKey_LeftShift))
+	class CameraController
 	{
-		moveCameraFaster = true;
-	}
+	public:
+		virtual ~CameraController()
+		{
+		}
 
-	if (ImGui::IsKeyReleased(ImGuiKey_LeftShift))
+	private:
+		Camera* camera_{};
+	};
+
+	class FirstPersonCameraController : public CameraController
 	{
-		moveCameraFaster = false;
-	}
+	private:
+	};
 
-	const auto fastSpeed = 25.0f;
-	const auto cameraMoveVelocity = 0.0f;
+	class OrbitCameraController : public CameraController
+	{
+	};
+
+	class AnimatedCameraController : public CameraController
+	{
+	public:
+		auto animatePosition(const glm::vec3& position) -> void
+		{
+			// camera_->position_ = position;
+		}
+		auto animateOrientation(const glm::quat& orientation) -> void
+		{
+		}
+		auto enableTwinning() -> void
+		{
+			isTwinningEnabled_ = true;
+		}
+		auto disableTwinning() -> void
+		{
+			isTwinningEnabled_ = false;
+		}
+
+	private:
+		bool isTwinningEnabled_{ false };
+		glm::vec3 desiredPosition_{};
+		glm::quat desiredOrientation_{};
+	};
+
+	constexpr auto fastSpeed = 25.0f;
 	auto cameraMoveAcceleration = glm::vec3{ 0 };
-	const auto maxCameraMoveAcceleration = 1.0f;
-	static auto AccelerationExpire = 0.0;
-	const auto sensitivity = 0.1f;
 	if (viewportIsFocused)
 	{
+
+		if (ImGui::IsKeyDown(ImGuiKey_LeftShift))
+		{
+			moveCameraFaster = true;
+		}
+
+		if (ImGui::IsKeyReleased(ImGuiKey_LeftShift))
+		{
+			moveCameraFaster = false;
+		}
 
 		if (ImGui::IsKeyDown(ImGuiKey_W))
 		{
@@ -149,8 +267,6 @@ auto VolumeView::onDraw() -> void
 			}
 			if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
 			{
-
-				auto mouseScreenLocation = io.MousePos;
 				const auto up = camera_.getUp();
 				const auto right = glm::normalize(glm::cross(up, camera_.forward_));
 
@@ -160,6 +276,7 @@ auto VolumeView::onDraw() -> void
 
 				if (glm::length(rotationAxis) >= 0.001f)
 				{
+					constexpr auto sensitivity = 0.1f;
 					const auto rotation =
 						glm::rotate(glm::identity<glm::mat4>(),
 									glm::radians(glm::length(glm::vec2{ delta.x, delta.y }) * sensitivity), f);
@@ -175,7 +292,8 @@ auto VolumeView::onDraw() -> void
 
 	ImGui::SetCursorScreenPos(p);
 	ImGui::SetNextItemAllowOverlap();
-	ImGui::Image((ImTextureID)graphicsResources_.framebufferTexture, viewportSize_, { 0.0f, 1.0f }, { 1.0f, 0.0f });
+	ImGui::Image(reinterpret_cast<ImTextureID>(graphicsResources_.framebufferTexture), viewportSize_, { 0.0f, 1.0f },
+				 { 1.0f, 0.0f });
 
 	if (viewerSettings_.enableDebugDraw)
 	{
@@ -185,8 +303,8 @@ auto VolumeView::onDraw() -> void
 		drawGizmos(cameraMatrices, glm::vec2{ p.x, p.y }, glm::vec2{ viewportSize_.x, viewportSize_.y });
 	}
 
-	const auto showControls = true;
-	if (showControls)
+
+	if (viewerSettings_.enableControlToolBar)
 	{
 		ImGui::SetNextItemAllowOverlap();
 
@@ -273,7 +391,93 @@ auto VolumeView::onDraw() -> void
 		{
 			ImGui::PopStyleColor();
 		}
+#if 0
+		ImGui::SetCursorPosY(500.0f);
+		ImGui::Text("test");
+#endif
 	}
+
+	if (ImGui::IsKeyPressed(ImGuiKey_F2, false))
+	{
+		demoMode(!animator_.isRunning());
+	}
+
+
+	if (viewerSettings_.enableFrameGraph)
+	{
+
+		const auto cursorPositionY = ImGui::GetCursorPosY();
+
+		const auto remainingSizeY = this->viewportSize_.y - cursorPositionY;
+		constexpr auto profilerHeight = 200.0f;
+
+		if (remainingSizeY > profilerHeight)
+		{
+			const auto scale = ImGui::GetWindowDpiScale();
+			const auto controlPadding = scale * 16.0f;
+			const auto offsetY = remainingSizeY - profilerHeight - controlPadding;
+
+			const auto windowPosition = ImGui::GetWindowPos();
+			ImGui::SetCursorPosY(cursorPositionY + offsetY);
+			ImGui::SetCursorPosX(controlPadding);
+			{
+				/*ImGui::GetWindowDrawList()->AddRect(windowPosition + ImGui::GetCursorPos(),
+													windowPosition + ImGui::GetCursorPos() + ImVec2(400,
+				   profilerHeight), ImColor{ 0.8f, 0.2f, 0.2f }, 10, 0, 4);*/
+
+
+				const auto canvasSize = ImGui::GetContentRegionAvail();
+
+				const auto sizeMargin = static_cast<int>(ImGui::GetStyle().ItemSpacing.y);
+				constexpr auto maxGraphHeight = 140;
+				const auto availableGraphHeight = (static_cast<int>(canvasSize.y) - sizeMargin); // /2;
+				const auto graphHeight = std::min(maxGraphHeight, availableGraphHeight);
+				constexpr auto legendWidth = 400;
+				const auto graphWidth = static_cast<int>(glm::min(canvasSize.x, 1200.0f)) - legendWidth;
+				const auto frameOffset_ = 0;
+
+				const auto p = ImGui::GetCursorPos();
+				ImGui::PushFont(applicationContext_->getFontCollection().getGpuCpuExtraBigTextFont());
+				ImGui::SetNextItemAllowOverlap();
+				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4{ 0.6, 0.6, 0.6, 0.4 });
+				ImGui::Text("GPU");
+				ImGui::PopStyleColor();
+				ImGui::PopFont();
+				ImGui::SetCursorPos(p);
+
+
+				ImGui::PushClipRect(windowPosition + ImGui::GetCursorPos(),
+									windowPosition + ImGui::GetCursorPos() +
+										ImVec2(ImGui::GetContentRegionAvail().x, profilerHeight),
+									true);
+
+				applicationContext_->gpuGraph_.RenderTimings(graphWidth, legendWidth, graphHeight, frameOffset_);
+				ImGui::PopClipRect();
+				// if (!stopProfiling_)
+				//{
+				//	frameOffset_ = 0;
+				// }
+				// gpuGraph_.frameWidth = frameWidth_;
+				// gpuGraph_.frameSpacing = frameSpacing_;
+				// gpuGraph_.useColoredLegendText = useColoredLegendText_;
+				// cpuGraph_.frameWidth = frameWidth_;
+				// cpuGraph_.frameSpacing = frameSpacing_;
+				// cpuGraph_.useColoredLegendText = useColoredLegendText_;
+			}
+		}
+	}
+
+#if 0
+	ImGui::SliderFloat("stiffness", &flyAnimationSettings_.stiffness, 0.0f, 100.0f);
+	ImGui::SliderFloat("damping", &flyAnimationSettings_.dumping, 0.0f, 100.0f);
+	/*const auto d = (flyAnimationSettings_.dumping * flyAnimationSettings_.dumping) / 4.0f;
+
+	if (d > flyAnimationSettings_.stiffness)
+	{
+		flyAnimationSettings_.stiffness = d;
+	}*/
+#endif
+	animator_.animate(io.DeltaTime);
 }
 
 auto VolumeView::onResize() -> void
@@ -290,27 +494,27 @@ auto VolumeView::setRenderVolume(b3d::renderer::RendererBase* renderer,
 }
 
 
-auto VolumeView::drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec2& position, const glm::vec2& size)
-	-> void
+auto VolumeView::drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec2& position,
+							const glm::vec2& size) const -> void
 {
-	const auto currentGizmoMode = ImGuizmo::LOCAL;
+	constexpr auto currentGizmoMode = ImGuizmo::LOCAL;
 	ImGuizmo::SetDrawlist(); // TODO: set before if statement, otherwise it can lead to crashes
 	ImGuizmo::SetRect(position.x, position.y, size.x, size.y);
 	if (currentGizmoOperation_ != GizmoOperationFlagBits::none)
 	{
 
-		auto guizmoOperation = ImGuizmo::OPERATION{};
+		auto gizmoOperation = ImGuizmo::OPERATION{};
 		if (currentGizmoOperation_.containsBit(GizmoOperationFlagBits::rotate))
 		{
-			guizmoOperation = guizmoOperation | ImGuizmo::ROTATE;
+			gizmoOperation = gizmoOperation | ImGuizmo::ROTATE;
 		}
 		if (currentGizmoOperation_.containsBit(GizmoOperationFlagBits::translate))
 		{
-			guizmoOperation = guizmoOperation | ImGuizmo::TRANSLATE;
+			gizmoOperation = gizmoOperation | ImGuizmo::TRANSLATE;
 		}
 		if (currentGizmoOperation_.containsBit(GizmoOperationFlagBits::scale))
 		{
-			guizmoOperation = guizmoOperation | ImGuizmo::SCALE;
+			gizmoOperation = gizmoOperation | ImGuizmo::SCALE;
 		}
 
 
@@ -340,7 +544,7 @@ auto VolumeView::drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec
 			mat[9] = transform->l.vz.y;
 			mat[10] = transform->l.vz.z;
 			ImGuizmo::Manipulate(reinterpret_cast<const float*>(&cameraMatrices.view),
-								 reinterpret_cast<const float*>(&cameraMatrices.projection), guizmoOperation,
+								 reinterpret_cast<const float*>(&cameraMatrices.projection), gizmoOperation,
 								 currentGizmoMode, mat, nullptr, nullptr);
 
 			transform->p.x = mat[12];
@@ -471,7 +675,7 @@ auto VolumeView::renderVolume() -> void
 
 	const auto width = viewportSize_.x;
 	const auto height = viewportSize_.y;
-	const auto cameraMatrices = computeViewProjectionMatrixFromCamera(camera_, width, height);
+	const auto [view, projection, viewProjection] = computeViewProjectionMatrixFromCamera(camera_, width, height);
 
 	GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, graphicsResources_.framebuffer));
 	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -505,27 +709,54 @@ auto VolumeView::renderVolume() -> void
 		renderer_->render();
 	}
 
+	const auto& r1 = applicationContext_->getGlGpuTimers().record("Fullscreen Quad Pass");
+	r1.start();
 	fullscreenTexturePass_->setViewport(width, height);
 	fullscreenTexturePass_->setSourceTexture(graphicsResources_.framebufferTexture);
 	fullscreenTexturePass_->execute();
-
+	r1.stop();
 
 	if (viewerSettings_.enableGridFloor)
 	{
-		infinitGridPass_->setViewProjectionMatrix(cameraMatrices.viewProjection);
+		const auto& record = applicationContext_->getGlGpuTimers().record("Grid Floor Pass");
+		record.start();
+		infinitGridPass_->setViewProjectionMatrix(viewProjection);
 		infinitGridPass_->setViewport(width, height);
 		infinitGridPass_->setGridColor(
 			glm::vec3{ viewerSettings_.gridColor[0], viewerSettings_.gridColor[1], viewerSettings_.gridColor[2] });
 		infinitGridPass_->execute();
+		record.stop();
 	}
 
 	if (viewerSettings_.enableDebugDraw)
 	{
-		debugDrawPass_->setViewProjectionMatrix(cameraMatrices.viewProjection);
+		const auto& record = applicationContext_->getGlGpuTimers().record("Debug Draw Pass");
+		record.start();
+		debugDrawPass_->setViewProjectionMatrix(viewProjection);
 		debugDrawPass_->setViewport(width, height);
 		debugDrawPass_->setLineWidth(viewerSettings_.lineWidth);
 		debugDrawPass_->execute();
+		record.stop();
 	}
 
 	GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+}
+
+auto VolumeView::demoMode(const bool enable) -> void
+{
+	static auto backup = viewerSettings_;
+	demoModeEnabled_ = enable;
+
+	if (enable)
+	{
+		viewerSettings_.enableDebugDraw = false;
+		viewerSettings_.enableGridFloor = false;
+		viewerSettings_.enableControlToolBar = false;
+		animator_.start();
+	}
+	else
+	{
+		viewerSettings_ = backup;
+		animator_.pause();
+	}
 }

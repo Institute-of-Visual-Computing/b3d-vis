@@ -13,10 +13,13 @@ set(SHARED_HEADERS
 	GizmoHelperBase.h
 	NullDebugDrawList.h
 	NullGizmoHelper.h
-	CudaGpuTimers.h
 	OwlExtensions.h
 	Common.h
 	RenderFeature.h
+	ProfilerResult.h
+	CudaGpuTimers.h
+	Profiler.h
+	Profiler.cpp
 	features/ColorMapFeature.h
 	features/ColorMapFeature.cpp
 	features/TransferFunctionFeature.h
@@ -39,6 +42,7 @@ target_link_libraries(${MODULE_NAME}
   PUBLIC
 	owl::owl
 	imgui::imgui
+	legit_task
   PRIVATE
 	httplib::httplib
 )
