@@ -51,6 +51,8 @@ target_sources(${viewerTargetName} PRIVATE
 	Animation.h
 	GLGpuTimers.h
 	ProfilersWindow.h
+	ImGuiExtension.h
+	ImGuiExtension.cpp
 	framework/Dockspace.h
 	framework/Dockspace.cpp
 	framework/DockableWindowViewBase.h
