@@ -54,6 +54,8 @@ auto b3d::tools::nano::convertFitsWithMaskToNano(const std::filesystem::path& fi
 	const auto gridHandle =
 		generateNanoVdb(maskedValues.box.size() + Vec3I{ 1, 1, 1 }, -100.0f, 0.0f, maskedValues.data);
 
+	extractOffsetSizeToNanoResult(gridHandle, result);
+
 	try
 	{
 		nanovdb::io::writeGrid(destinationNanoVdbFilePath.generic_string(), gridHandle,
@@ -152,6 +154,8 @@ auto b3d::tools::nano::createNanoVdbWithExistingAndSubregion(
 
 	auto gridHandle = generateNanoVdb(originalFitsFileBounds.size() + Vec3I{ 1, 1, 1 }, 0.0f, func);
 
+	extractOffsetSizeToNanoResult(gridHandle, result);
+
 	// Save nvdb
 	try
 	{
@@ -171,3 +175,18 @@ auto b3d::tools::nano::createNanoVdbWithExistingAndSubregion(
 
 	return result;
 }
+
+auto b3d::tools::nano::extractOffsetSizeToNanoResult(const nanovdb::GridHandle<>& gridHandle,
+													 b3d::tools::nano::NanoResult& result)
+	-> void
+{
+	const auto gridMetaData = gridHandle.gridMetaData(0);
+
+	const auto& gridBox = gridMetaData->indexBBox();
+	const auto lower = gridBox.min();
+	const auto size = gridBox.dim();
+
+	result.voxelOffset = Vec3I{ lower.x(), lower.y(), lower.z() };
+	result.voxelSize = Vec3I{ size.x(), size.y(), size.z() };
+}
+
