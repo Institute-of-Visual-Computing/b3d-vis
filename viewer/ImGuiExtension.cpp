@@ -5,7 +5,7 @@
 
 namespace
 {
-	auto startHeaderPosition = ImVec2{};
+	thread_local auto startHeaderPosition = ImVec2{};
 }
 
 auto ImGui::BeginUnderDevelopmentScope() -> void
