@@ -1,6 +1,7 @@
 #pragma once
 #include <filesystem>
 
+#include "Box.h"
 #include "PipelineResult.h"
 #include "SofiaParams.h"
 

@@ -23,7 +23,6 @@ target_link_libraries(${MODULE_NAME}
 		B3D::Tools::Sofia
 		B3D::Tools::Nano
 		B3D::Header::SofiaNanoPipeline
-	PRIVATE
 		B3D::Header::Shared::Common
 )
 
