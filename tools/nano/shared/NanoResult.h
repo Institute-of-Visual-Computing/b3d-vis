@@ -12,7 +12,7 @@ namespace b3d::tools::nano
 {
 	struct NanoResult : common::pipeline::BaseFileResult
 	{
-		// Size of the vdb 
+		// Size and position of the vdb
 		// Due to not existing values for empty space the vdb can be cropped to the bounding box of the data.
 		// The bounding box of the original data and the vdb can be different.
 		b3d::common::Vec3I voxelSize{};

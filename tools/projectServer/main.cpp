@@ -94,6 +94,7 @@ auto startUpdateRequest(b3d::tools::projectServer::InternalRequest internalReque
 	LOG_INFO << "Starting update request " << internalRequest.userRequest.uuid;
 	auto pipelineParams = b3d::tools::sofia_nano_pipeline::SofiaNanoPipelineUpdateParams{
 		.sofiaParams = internalRequest.internalParams,
+		.subRegion = internalRequest.userRequest.subRegion,
 		.fitsInputFilePath = internalRequest.fitsDataInputFilePath,
 		.maskInputFilePath = internalRequest.fitsMaskInputFilePath,
 		.inputNvdbFilePath = internalRequest.inputNvdbFilePath,
@@ -328,6 +329,28 @@ auto postStartSearch(const httplib::Request& req, httplib::Response& res, const 
 		res.set_content(retJ.dump(), "application/json");
 		return;
 	}
+
+	// Extract region from sofiaParameters
+	// Calculate Offset of Subregion
+	// xmin, xmax, ymin, ymax, zmin, zmax
+	auto regionString = internalRequest.userRequest.sofiaParameters.getStringValue("input.region").value();
+
+	std::array<int, 6> subRegionValues;
+	// Extract subregion values from string
+	{
+		std::stringstream ss(regionString);
+		std::string item;
+		auto arrayPos = 0;
+		while (std::getline(ss, item, ','))
+		{
+			subRegionValues[arrayPos] = std::stoi(item);
+			arrayPos++;
+		}
+	}
+	internalRequest.userRequest.subRegion =
+		b3d::common::Box3I{ { subRegionValues[0], subRegionValues[2], subRegionValues[4] },
+							{ subRegionValues[1], subRegionValues[3], subRegionValues[5] } };
+
 	// Ignore the following settings
 	//  - output.writeMask
 	//  - output.writeRawMask
@@ -360,6 +383,7 @@ auto postStartSearch(const httplib::Request& req, httplib::Response& res, const 
 		else
 		{
 			// Report ignored parameter
+			LOG_WARNING << "Ignoring parameter " << key;
 		}
 	}
 

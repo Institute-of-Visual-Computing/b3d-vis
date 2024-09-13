@@ -93,29 +93,10 @@ auto b3d::tools::sofia_nano_pipeline::runSearchAndUpdateNvdbSync(sofia::SofiaPro
 		return result;
 	}
 
-	// Calculate Offset of Subregion
-	// xmin, xmax, ymin, ymax, zmin, zmax
-	auto regionString = pipelineParams.sofiaParams.getStringValue("input.region").value();
-	
-	std::array<int, 6> subRegionValues;
-	// Extract subregion values from string
-	{
-		std::stringstream ss(regionString);
-		std::string item;
-		auto arrayPos = 0;
-		while (std::getline(ss, item, ','))
-		{
-			subRegionValues[arrayPos] = std::stoi(item);
-			arrayPos++;
-		}
-	}
-	const auto subregion = b3d::common::Box3I{ { subRegionValues[0], subRegionValues[2], subRegionValues[4] },
-								  { subRegionValues[1], subRegionValues[3], subRegionValues[5] } };
-
 	// Run nvdb
 	result.nanoResult = b3d::tools::nano::createNanoVdbWithExistingAndSubregion(
 		pipelineParams.inputNvdbFilePath, pipelineParams.fitsInputFilePath, pipelineParams.maskInputFilePath,
-		maskFilePath, subregion.lower, pipelineParams.outputNvdbFilePath);
+		maskFilePath, pipelineParams.subRegion.lower, pipelineParams.outputNvdbFilePath);
 
 	if (!result.nanoResult.wasSuccess())
 	{
