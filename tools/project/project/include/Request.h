@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ctime>
 #include <filesystem>
 #include <string>
 
@@ -25,8 +26,11 @@ namespace b3d::tools::project
 		sofia::SofiaParams sofiaParameters;
 		b3d::tools::sofia_nano_pipeline::PipelineResult result;
 
+		// Timestamp of creation. Since Epoch in seconds. 
+		long long createdAt;
+
 		#ifdef B3D_USE_NLOHMANN_JSON
-			NLOHMANN_DEFINE_TYPE_INTRUSIVE(Request, uuid, sofiaParameters, result, subRegion);
+			NLOHMANN_DEFINE_TYPE_INTRUSIVE(Request, uuid, sofiaParameters, result, subRegion, createdAt);
 		#endif
 
 		auto createUUID() const -> std::string;

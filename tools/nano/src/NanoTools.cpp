@@ -2,6 +2,7 @@
 #include <util/IO.h>
 
 #include "FitsTools.h"
+#include "TimeStamp.h"
 
 #include "NanoTools.h"
 #include "include/NanoTools_Internal.h"
@@ -64,9 +65,10 @@ auto b3d::tools::nano::convertFitsWithMaskToNano(const std::filesystem::path& fi
 	catch (...)
 	{
 		result.message = "Failed to write NanoVDB.";
+		result.finishedAt = b3d::common::helper::getSecondsSinceEpochUtc();
 		return result;
 	}
-
+	result.finishedAt = b3d::common::helper::getSecondsSinceEpochUtc();
 	result.finished = true;
 	result.resultFile = destinationNanoVdbFilePath.string();
 	result.message = "Finished.";
@@ -164,10 +166,12 @@ auto b3d::tools::nano::createNanoVdbWithExistingAndSubregion(
 	}
 	catch (...)
 	{
+		result.finishedAt = b3d::common::helper::getSecondsSinceEpochUtc();
 		result.message = "Failed to write NanoVDB.";
 		return result;
 	}
 
+	result.finishedAt = b3d::common::helper::getSecondsSinceEpochUtc();
 	result.finished = true;
 	result.resultFile = destinationNanoVdbFilePath.generic_string();
 	result.message = "Finished.";

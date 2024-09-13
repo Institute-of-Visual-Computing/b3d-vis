@@ -16,6 +16,7 @@
 
 #include "Internals.h"
 #include "ProjectProvider.h"
+#include "TimeStamp.h"
 
 using namespace b3d::tools::projectServer;
 
@@ -429,6 +430,8 @@ auto postStartSearch(const httplib::Request& req, httplib::Response& res, const 
 			return;
 		}
 	}
+
+	internalRequest.userRequest.createdAt = b3d::common::helper::getSecondsSinceEpochUtc();
 
 	currentRequest = std::make_unique<std::future<InternalRequest>>(
 		std::async(std::launch::async, &startUpdateRequest, internalRequest));

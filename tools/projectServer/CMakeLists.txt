@@ -15,6 +15,7 @@ target_link_libraries(ProjectServer
 		B3D::Tools::Nano
 		B3D::Tools::Fits
 		B3D::Tools::SofiaNanoPipeline
+		B3D::Header::Shared::Helper
 		nlohmann_json::nlohmann_json
 		httplib::httplib
 		Boost::boost
@@ -22,6 +23,7 @@ target_link_libraries(ProjectServer
 		taywee::args
 		stduuid
 		plog::plog
+
 )
 
 target_include_directories(ProjectServer

@@ -29,6 +29,7 @@ target_link_libraries(${MODULE_NAME}
 		B3D::Header::Nano
 	PRIVATE
 		B3D::Tools::Fits
+		B3D::Header::Shared::Helper
 )
 
 if(MSVC)

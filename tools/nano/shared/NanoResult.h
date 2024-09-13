@@ -19,11 +19,12 @@ namespace b3d::tools::nano
 
 		// Offset of the vdb in the world space with respect to the original data.
 		b3d::common::Vec3I voxelOffset{};
+
 	};
 
 	#ifdef B3D_USE_NLOHMANN_JSON
 	NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(NanoResult, returnCode, message, finished, resultFile, fileAvailable, voxelSize,
-									   voxelOffset);
+									   voxelOffset, finishedAt);
 	#endif
 
 } // namespace b3d::tools::nano

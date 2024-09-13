@@ -1,6 +1,7 @@
 #include <boost/process.hpp>
 
 #include "SofiaProcessRunner.h"
+#include "TimeStamp.h"
 
 // ReSharper disable once CppPassValueParameterByConstReference
 auto b3d::tools::sofia::SofiaProcessRunner::runSofiaSync(const SofiaParams params,
@@ -27,6 +28,7 @@ auto b3d::tools::sofia::SofiaProcessRunner::runSofiaSync(const SofiaParams param
 	{
 		result.message = "Process not valid";
 	}
+	result.finishedAt = b3d::common::helper::getSecondsSinceEpochUtc();
 	result.message = result.getSofiaResultMessage();
 	return result;
 }
