@@ -1,6 +1,7 @@
 #pragma once
 #include <filesystem>
 
+#include "Box.h"
 #include "PipelineResult.h"
 #include "SofiaParams.h"
 
@@ -21,6 +22,9 @@ namespace b3d::tools::sofia_nano_pipeline
 	struct SofiaNanoPipelineUpdateParams
 	{
 		sofia::SofiaParams sofiaParams;
+		// Region the request is defined on. Inside original fits volume.
+		// lower inclusive, upper exclusive -> size = upper - lower
+		common::Box3I subRegion;
 		std::filesystem::path fitsInputFilePath;
 		std::filesystem::path maskInputFilePath;
 		std::filesystem::path inputNvdbFilePath;

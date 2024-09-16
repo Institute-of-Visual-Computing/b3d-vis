@@ -27,6 +27,7 @@ target_link_libraries(${MODULE_NAME}
 	PRIVATE
 		Boost::boost
 		Boost::filesystem
+		B3D::Header::Shared::Helper
 )
 
 if(MSVC)

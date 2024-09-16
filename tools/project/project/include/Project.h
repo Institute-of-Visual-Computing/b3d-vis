@@ -17,6 +17,7 @@ namespace b3d::tools::project
 			std::string projectUUID;
 			std::string fitsOriginUUID;
 			std::string fitsOriginFileName;
+			// TODO: Creator Name, Creation Date
 			b3d::tools::fits::FitsProperties fitsOriginProperties;
 			std::vector<b3d::tools::project::Request> requests;
 			std::filesystem::path projectPathAbsolute;

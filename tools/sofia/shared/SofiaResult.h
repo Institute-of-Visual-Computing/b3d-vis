@@ -33,7 +33,8 @@ namespace b3d::tools::sofia
 	};
 
 	#ifdef B3D_USE_NLOHMANN_JSON
-	NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SofiaResult, returnCode, message, finished, resultFile, fileAvailable);
+	NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(SofiaResult, returnCode, message, finished, resultFile, fileAvailable,
+									   finishedAt);
 	#endif
 
 } // b3d::tools::sofia

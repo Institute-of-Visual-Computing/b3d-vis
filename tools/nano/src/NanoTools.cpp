@@ -2,6 +2,7 @@
 #include <util/IO.h>
 
 #include "FitsTools.h"
+#include "TimeStamp.h"
 
 #include "NanoTools.h"
 #include "include/NanoTools_Internal.h"
@@ -54,6 +55,8 @@ auto b3d::tools::nano::convertFitsWithMaskToNano(const std::filesystem::path& fi
 	const auto gridHandle =
 		generateNanoVdb(maskedValues.box.size() + Vec3I{ 1, 1, 1 }, -100.0f, 0.0f, maskedValues.data);
 
+	extractOffsetSizeToNanoResult(gridHandle, result);
+
 	try
 	{
 		nanovdb::io::writeGrid(destinationNanoVdbFilePath.generic_string(), gridHandle,
@@ -62,9 +65,10 @@ auto b3d::tools::nano::convertFitsWithMaskToNano(const std::filesystem::path& fi
 	catch (...)
 	{
 		result.message = "Failed to write NanoVDB.";
+		result.finishedAt = b3d::common::helper::getSecondsSinceEpochUtc();
 		return result;
 	}
-
+	result.finishedAt = b3d::common::helper::getSecondsSinceEpochUtc();
 	result.finished = true;
 	result.resultFile = destinationNanoVdbFilePath.string();
 	result.message = "Finished.";
@@ -152,6 +156,8 @@ auto b3d::tools::nano::createNanoVdbWithExistingAndSubregion(
 
 	auto gridHandle = generateNanoVdb(originalFitsFileBounds.size() + Vec3I{ 1, 1, 1 }, 0.0f, func);
 
+	extractOffsetSizeToNanoResult(gridHandle, result);
+
 	// Save nvdb
 	try
 	{
@@ -160,10 +166,12 @@ auto b3d::tools::nano::createNanoVdbWithExistingAndSubregion(
 	}
 	catch (...)
 	{
+		result.finishedAt = b3d::common::helper::getSecondsSinceEpochUtc();
 		result.message = "Failed to write NanoVDB.";
 		return result;
 	}
 
+	result.finishedAt = b3d::common::helper::getSecondsSinceEpochUtc();
 	result.finished = true;
 	result.resultFile = destinationNanoVdbFilePath.generic_string();
 	result.message = "Finished.";
@@ -171,3 +179,18 @@ auto b3d::tools::nano::createNanoVdbWithExistingAndSubregion(
 
 	return result;
 }
+
+auto b3d::tools::nano::extractOffsetSizeToNanoResult(const nanovdb::GridHandle<>& gridHandle,
+													 b3d::tools::nano::NanoResult& result)
+	-> void
+{
+	const auto gridMetaData = gridHandle.gridMetaData(0);
+
+	const auto& gridBox = gridMetaData->indexBBox();
+	const auto lower = gridBox.min();
+	const auto size = gridBox.dim();
+
+	result.voxelOffset = Vec3I{ lower.x(), lower.y(), lower.z() };
+	result.voxelSize = Vec3I{ size.x(), size.y(), size.z() };
+}
+
