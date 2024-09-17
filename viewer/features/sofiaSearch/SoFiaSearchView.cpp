@@ -3,8 +3,18 @@
 #include "framework/ApplicationContext.h"
 
 
+auto SoFiaSearchView::SofiaParamsTyped::buildSoFiaParams() const -> b3d::tools::sofia::SofiaParams
+{
+	b3d::tools::sofia::SofiaParams sofiaParams;
+	sofiaParams.setOrReplace("input.region",
+							 std::format("{},{},{},{},{},{}", input.region.lower.x, input.region.upper.x,
+										 input.region.lower.y, input.region.upper.y, input.region.lower.z,
+										 input.region.upper.z));
+	return sofiaParams;
+}
+
 SoFiaSearchView::SoFiaSearchView(ApplicationContext& appContext, Dockspace* dockspace,
-								 std::function<void()> startSearchFunction)
+                                 std::function<void()> startSearchFunction)
 	: DockableWindowViewBase(appContext, "SoFiA-Search", dockspace, WindowFlagBits::none),
 	  startSearchFunction_(std::move(startSearchFunction))
 {

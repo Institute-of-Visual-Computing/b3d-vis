@@ -192,6 +192,8 @@ public:
 		DilationParams dilation;
 		ParameterParams parameter;
 		OutputParams output;
+
+		auto buildSoFiaParams() const -> b3d::tools::sofia::SofiaParams;
 	};
 
 

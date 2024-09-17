@@ -11,8 +11,7 @@ SoFiaSearch::SoFiaSearch(ApplicationContext& applicationContext)
 	: UpdatableComponentBase(applicationContext), RendererExtensionBase(applicationContext)
 {
 	sofiaSearchView_ = std::make_unique<SoFiaSearchView>(applicationContext, applicationContext.getMainDockspace(), [&]() {
-		//
-		// sofiaSearchView_->getModel().params
+											  startSearch(sofiaSearchView_->getModel().params.buildSoFiaParams());
 	});
 
 	applicationContext.addMenuToggleAction(
@@ -55,7 +54,8 @@ auto SoFiaSearch::updateRenderingData(b3d::renderer::RenderingDataWrapper& rende
 
 auto SoFiaSearch::startSearch(b3d::tools::sofia::SofiaParams params) -> void
 {
-	
+	appContext_->serverClient_.startSearchAsync(appContext_->selectedProject_.value().projectUUID, params, false);
+
 }
 
 auto SoFiaSearch::update() -> void
