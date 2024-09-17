@@ -48,7 +48,6 @@ private:
 	std::unique_ptr<std::promise<void>> loadAndShowViewPromise_;
 	std::shared_future<void> loadAndShowViewFuture_;
 
-	std::string selectedProjectUUID_;
 	bool projectChanged_{ false };
 
 	

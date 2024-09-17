@@ -42,7 +42,7 @@ auto ProjectExplorer::updateRenderingData(b3d::renderer::RenderingDataWrapper& r
 	if (projectChanged_)
 	{
 		const auto it = std::ranges::find_if(projects_.begin(), projects_.end(),
-											 [&uuid = selectedProjectUUID_](const Project& currProject)
+											 [&uuid = appContext_->selectedProject_.value().projectUUID](const Project& currProject)
 											 { return currProject.projectUUID == uuid; });
 
 		if (it != projects_.end())
@@ -128,7 +128,7 @@ auto ProjectExplorer::updateRenderingData(b3d::renderer::RenderingDataWrapper& r
 
 
 				const auto it = std::ranges::find_if(projects_.begin(), projects_.end(),
-													 [&uuid = selectedProjectUUID_](const Project& currProject)
+													 [&uuid = appContext_->selectedProject_->projectUUID](const Project& currProject)
 													 { return currProject.projectUUID == uuid; });
 
 				if (it != projects_.end())
@@ -200,7 +200,5 @@ auto ProjectExplorer::loadAndShowFile(const std::string fileUUID) -> std::shared
 
 auto ProjectExplorer::setCurrentProject(const std::string& projectUUID) -> void
 {
-	projectChanged_ = selectedProjectUUID_ != projectUUID;
-
-	selectedProjectUUID_ = projectUUID;
+	
 }
