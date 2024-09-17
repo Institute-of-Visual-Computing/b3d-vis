@@ -185,7 +185,7 @@ auto b3d::renderer::FitsNvdbRenderer::onRender() -> void
 
 			const auto vol = FitsNanoVdbVolume{ runtimeVolumeData->volume.volume.grid };
 			owlParamsSetRaw(context_.launchParams, "volume", &vol);
-			runtimeVolumeData->newVolumeAvailable;
+			runtimeVolumeData->newVolumeAvailable = false;
 			hasVolume_ = true;
 		}
 	}
