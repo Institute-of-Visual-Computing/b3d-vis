@@ -9,8 +9,8 @@
 
 ProjectSelectionView::ProjectSelectionView(ApplicationContext& applicationContext,
 										   std::function<std::shared_future<void>()> refreshProjectsFunction,
-                                           std::function<void(ModalViewBase* self)> onOpenCallback,
-                                           std::function<void(ModalViewBase* self)> onSubmitCallback)
+										   std::function<void(ModalViewBase* self)> onOpenCallback,
+										   std::function<void(ModalViewBase* self)> onSubmitCallback)
 	: ModalViewBase(applicationContext, "Project Selection", ModalType::okCancel,
 					ImVec2(40 * ImGui::GetFontSize(), 10 * ImGui::GetFontSize())),
 	  refreshProjectsFunction_(std::move(refreshProjectsFunction))
@@ -31,7 +31,7 @@ auto ProjectSelectionView::onDraw() -> void
 	const auto startFrameRequestOngoing = requestOngoing();
 	if (startFrameRequestOngoing)
 	{
-		ImGui::BeginDisabled(true);	
+		ImGui::BeginDisabled(true);
 	}
 
 	if (ImGui::Button("Reload"))
@@ -58,7 +58,7 @@ auto ProjectSelectionView::onDraw() -> void
 	for (const auto& project : *model_.projects)
 	{
 		ImGui::PushID(project.projectUUID.c_str());
-		
+
 		ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 4.0f);
 		ImGui::BeginChild("", ImVec2{ 0, 0 },
 						  ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeX |
@@ -68,7 +68,7 @@ auto ProjectSelectionView::onDraw() -> void
 		{
 			model_.selectedProjectUUID = project.projectUUID;
 		}
-		
+
 		ImGui::EndChild();
 		ImGui::PopStyleVar();
 		ImGui::PopID();
@@ -78,8 +78,13 @@ auto ProjectSelectionView::onDraw() -> void
 
 auto ProjectSelectionView::setModel(Model model) -> void
 {
+
 	model_ = std::move(model);
-	if (model_.projects != nullptr || model_.projects->empty())
+	if (model_.projects == nullptr)
+	{
+		return;
+	}
+	if (model_.projects->empty())
 	{
 		availableProjectString_ = "No projects available!";
 	}

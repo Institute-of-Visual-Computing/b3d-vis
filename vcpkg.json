@@ -1,58 +1,60 @@
 {
-	"vcpkg-configuration": {
-		"overlay-triplets": [
-			"./triplets"
-		]
-	},
-	"dependencies": [
-		"args",
-		"glfw3",
-		"tinyxml2",
-		{
-			"name": "cfitsio",
-			"default-features": false,
-			"features": [
-				"pthreads"
-			]
-		},
-		"glew",
-		"glm",
-		"nlohmann-json",
-		{
-			"name": "openvdb",
-			"default-features": false,
-			"features": [
-				"nanovdb",
-				"tools"
-			]
-		},
-		{
-			"name": "imgui",
-			"default-features": false,
-			"features": [
-				"opengl3-binding",
-				"glfw-binding",
-				"docking-experimental"
-			]
-		},
-		"tbb",
-		"opengl",
-		{
-			"name": "glad",
-			"features": [
-				"extensions"
-			]
-		},
-		"stb",
-		"boost-program-options",
-		{
-			"name": "tracy",
-			"features": [ "gui-tools" ]
-		},
-		"cpp-httplib",
-		"boost-process",
-		"stduuid",
-		"plog"
-	],
-	"builtin-baseline": "ad3bae57455a3c3ce528fcd47d8e8027d0498add"
+  "vcpkg-configuration": {
+    "overlay-triplets": [
+      "./triplets"
+    ]
+  },
+  "dependencies": [
+    "args",
+    "glfw3",
+    "tinyxml2",
+    {
+      "name": "cfitsio",
+      "default-features": false,
+      "features": [
+        "pthreads"
+      ]
+    },
+    "glew",
+    "glm",
+    "nlohmann-json",
+    {
+      "name": "openvdb",
+      "default-features": false,
+      "features": [
+        "nanovdb",
+        "tools"
+      ]
+    },
+    {
+      "name": "imgui",
+      "default-features": false,
+      "features": [
+        "opengl3-binding",
+        "glfw-binding",
+        "docking-experimental"
+      ]
+    },
+    "tbb",
+    "opengl",
+    {
+      "name": "glad",
+      "features": [
+        "extensions"
+      ]
+    },
+    "stb",
+    "boost-program-options",
+    {
+      "name": "tracy",
+      "features": [
+        "gui-tools"
+      ]
+    },
+    "cpp-httplib",
+    "boost-process",
+    "stduuid",
+    "plog"
+  ],
+  "builtin-baseline": "f0c8848cde589649bca3ab3649668540403786ce"
 }

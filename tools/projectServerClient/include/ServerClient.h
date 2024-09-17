@@ -45,7 +45,7 @@ namespace b3d::tools::project
 		auto setNewConnectionInfo(ServerConnectionDescription serverConnectionDescription) -> void;
 
 		/// \brief Get the current connection information
-		auto getConnectionInfo() -> const ServerConnectionDescription&;
+		auto getConnectionInfo() const -> const ServerConnectionDescription&;
 
 		/// \brief Last known server status
 		auto getLastServerStatusState() -> ServerStatusState;
@@ -70,7 +70,7 @@ namespace b3d::tools::project
 		auto getRequests(const std::string& projectUUID) -> std::vector<Request>;
 		auto getRequest(const std::string& projectUUID, const std::string& requestUUID) -> std::vector<Request>;
 
-		static constexpr float heartbeatIntervalSeconds = 5.0f;
+		static constexpr auto heartbeatIntervalSeconds = 5.0f;
 
 	private:
 		static auto getServerStatusState(ServerConnectionDescription connectionDescription) -> ServerStatusState;

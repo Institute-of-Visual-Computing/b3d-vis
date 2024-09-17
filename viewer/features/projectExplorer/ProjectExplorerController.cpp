@@ -17,7 +17,10 @@ ProjectExplorerController::ProjectExplorerController(ApplicationContext& applica
 	projectExplorerView_ = std::make_unique<ProjectExplorerView>(
 		applicationContext, applicationContext.getMainDockspace(), [&] { projectSelectionView_->open(); },
 		[&] { openFileDialogView_->open(); },
-		[&](const std::string& fileUUID) { return projectExplorer_->loadAndShowFile(fileUUID); });
+		[&](const std::string& fileUUID) { return projectExplorer_->loadAndShowFile(fileUUID); },
+		[&]() { return projectExplorer_->refreshProjects();
+		}
+		);
 
 	projectSelectionView_ = std::make_unique<ProjectSelectionView>(
 		applicationContext, [&]() { return projectExplorer_->refreshProjects();
@@ -38,7 +41,7 @@ ProjectExplorerController::ProjectExplorerController(ApplicationContext& applica
 				});
 				if (it != projects_->end())
 				{
-					projectExplorerView_->setModel({ &*it });
+					//projectExplorerView_->setModel({ &*it });
 				}
 			}
 		});
@@ -74,6 +77,7 @@ auto ProjectExplorerController::setProjects(std::vector<b3d::tools::project::Pro
 {
 	projects_ = projects;
 	projectSelectionView_->setModel({ projectSelectionView_->getSelectedProjectUUID(), projects_ });
+	projectExplorerView_->setModel(ProjectExplorerView::Model{projects_});
 }
 
 auto ProjectExplorerController::update() -> void
@@ -81,6 +85,14 @@ auto ProjectExplorerController::update() -> void
 	if (showExplorerWindow_)
 	{
 		projectExplorerView_->draw();
+	}
+
+	const auto isConnectedToAnyServer =
+		applicationContext_->serverClient_.getLastServerStatusState() == b3d::tools::project::ServerStatusState::ok;
+
+	if(not isConnectedToAnyServer)
+	{
+		setProjects(nullptr);
 	}
 	projectSelectionView_->draw();
 	openFileDialogView_->draw();
