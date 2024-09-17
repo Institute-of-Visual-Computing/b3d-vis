@@ -57,9 +57,11 @@ auto processCurrentRequest() -> void
 	const auto waitResult = currentRequest->wait_for(0s);
 	if (waitResult != std::future_status::ready)
 	{
+		LOG_INFO << "Current request running";
 		return;
 	}
 
+	LOG_INFO << "Current request done";
 	// Save request and modify paths to UUIDs
 
 	auto req = currentRequest->get();
@@ -82,6 +84,7 @@ auto processCurrentRequest() -> void
 			projectProvider->getCatalog().addFilePathAbsolute(req.userRequest.result.nanoResult.resultFile);
 	}
 
+	LOG_INFO << "Saving current request";
 	projectProvider->getProject(req.projectUUID).requests.emplace_back(req.userRequest);
 	projectProvider->saveProject(req.projectUUID);
 	projectProvider->saveRootCatalog();
@@ -131,6 +134,8 @@ auto startCreateRequest(b3d::tools::projectServer::InternalRequest internalReque
 auto getStatus(const httplib::Request& req, httplib::Response& res) -> void
 {
 	LOG_INFO << req.path << " from " << req.remote_addr;
+	processCurrentRequest();
+
 	nlohmann::json retJ;
 	retJ["status"] = "OK";
 	res.set_content(retJ.dump(), "application/json");
