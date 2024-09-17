@@ -66,6 +66,13 @@ namespace b3d::tools::project
 		auto downloadFileAsync(const std::string &fileUUID, const std::filesystem::path &targetDirectoryPath) const
 			-> std::future<std::filesystem::path>;
 
+		/// \brief Start a search on the server
+		/// \param projectUUID 
+		/// \param params 
+		/// \param force Force server to run request again
+		/// \return UUID of the request, if started
+		auto startSearchAsync(const std::string& projectUUID, const sofia::SofiaParams& params, bool force = false) -> std::future<std::string>;
+
 		auto getProjectAsync(const std::string& projectUUID) -> Project;
 		auto getRequests(const std::string& projectUUID) -> std::vector<Request>;
 		auto getRequest(const std::string& projectUUID, const std::string& requestUUID) -> std::vector<Request>;
@@ -78,6 +85,9 @@ namespace b3d::tools::project
 		static auto downloadFile(ServerConnectionDescription connectionDescription, std::string fileUUID,
 								 std::filesystem::path targetDirectoryPath) -> std::filesystem::path;
 
+		auto startSearch(ServerConnectionDescription connectionDescription, const std::string& projectUUID,
+						 const sofia::SofiaParams& params,
+						 bool force = false) -> std::string;
 		// IP or Hostname
 		ServerConnectionDescription serverConnectionDescription_
 		{
