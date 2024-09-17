@@ -39,6 +39,29 @@ auto ProjectExplorer::deinitializeResources() -> void
 
 auto ProjectExplorer::updateRenderingData(b3d::renderer::RenderingDataWrapper& renderingData) -> void
 {
+	if (projectChanged_)
+	{
+		const auto it = std::ranges::find_if(projects_.begin(), projects_.end(),
+											 [&uuid = selectedProjectUUID_](const Project& currProject)
+											 { return currProject.projectUUID == uuid; });
+
+		if (it != projects_.end())
+		{
+			renderingData.data.runtimeVolumeData.originalIndexBox = {
+				{ 0, 0, 0 },
+				{ static_cast<float>(it->fitsOriginProperties.axisDimensions[0]),
+				  static_cast<float>(it->fitsOriginProperties.axisDimensions[1]),
+				  static_cast<float>(it->fitsOriginProperties.axisDimensions[2]) }
+			};
+			renderingData.data.runtimeVolumeData.newProjectAvailable = true;
+		}
+		else
+		{
+			renderingData.data.runtimeVolumeData.originalIndexBox = { { 0, 0, 0 }, { 0, 0, 0 } };
+		}
+	}
+
+
 	if (projectsViewPromise_ && projectsViewSharedFuture_.valid())
 	{
 		if (projectsRequestFuture_.valid())
@@ -100,10 +123,28 @@ auto ProjectExplorer::updateRenderingData(b3d::renderer::RenderingDataWrapper& r
 				// Set sharedBuffer
 				appContext_->runtimeDataSet_.select(requestedVolumeUUid);
 
-				renderingData.data.runtimeVolumeData = {
-					.newVolumeAvailable = true,
-					.volume = appContext_->runtimeDataSet_.getSelectedData(),
-				};
+				renderingData.data.runtimeVolumeData.newVolumeAvailable = true;
+				renderingData.data.runtimeVolumeData.volume = appContext_->runtimeDataSet_.getSelectedData();
+
+
+				const auto it = std::ranges::find_if(projects_.begin(), projects_.end(),
+													 [&uuid = selectedProjectUUID_](const Project& currProject)
+													 { return currProject.projectUUID == uuid; });
+
+				if (it != projects_.end())
+				{
+					renderingData.data.runtimeVolumeData.originalIndexBox = {
+						{ 0, 0, 0 },
+						{ static_cast<float>(it->fitsOriginProperties.axisDimensions[0]),
+						  static_cast<float>(it->fitsOriginProperties.axisDimensions[1]),
+						  static_cast<float>(it->fitsOriginProperties.axisDimensions[2]) }
+					};
+				}
+				else
+				{
+					renderingData.data.runtimeVolumeData.originalIndexBox =
+						renderingData.data.runtimeVolumeData.volume.volume.indexBox;
+				}
 
 				requestedVolumeUUid = "";
 				loadAndShowViewPromise_->set_value();
@@ -155,4 +196,11 @@ auto ProjectExplorer::loadAndShowFile(const std::string fileUUID) -> std::shared
 	loadAndShowViewPromise_ = std::make_unique<std::promise<void>>();
 	loadAndShowViewFuture_ = loadAndShowViewPromise_->get_future();
 	return loadAndShowViewFuture_;
+}
+
+auto ProjectExplorer::setCurrentProject(const std::string& projectUUID) -> void
+{
+	projectChanged_ = selectedProjectUUID_ != projectUUID;
+
+	selectedProjectUUID_ = projectUUID;
 }

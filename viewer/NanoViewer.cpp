@@ -271,26 +271,9 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 		exit(EXIT_FAILURE);
 	}
 
-	
-
 	glfwSetWindowUserPointer(mainWindowHandle, this);
 	glfwMakeContextCurrent(mainWindowHandle);
 	glfwSwapInterval((enableVsync) ? 1 : 0);
-
-
-
-	/*glfwWindowHint(GLFW_DECORATED, false);
-	const auto splashScreenWindowHandle = glfwCreateWindow(initWindowWidth, initWindowHeight, title.c_str(), nullptr, nullptr);
-	if (!splashScreenWindowHandle)
-	{
-		glfwTerminate();
-		exit(EXIT_FAILURE);
-	}
-
-	glfwSetWindowUserPointer(splashScreenWindowHandle, this);
-	glfwMakeContextCurrent(splashScreenWindowHandle);
-	glfwSwapInterval((enableVsync) ? 1 : 0);*/
-
 
 	debugDrawList_ = std::make_shared<DebugDrawList>();
 	gizmoHelper_ = std::make_shared<GizmoHelper>();
@@ -309,7 +292,6 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 #endif
 	applicationContext = std::make_unique<ApplicationContext>();
 	applicationContext->mainWindowHandle_ = mainWindowHandle;
-//	applicationContext->splashScreenWindowHandle_ = splashScreenWindowHandle;
 
 	applicationContext->setExternalDrawLists(debugDrawList_, gizmoHelper_);
 
@@ -369,7 +351,6 @@ auto NanoViewer::draw() -> void
 	ImGui_ImplGlfw_NewFrame();
 
 	ImGui::NewFrame();
-
 	applicationContext->serverClient_.updateServerStatusState(ImGui::GetIO().DeltaTime);
 	ImGui::PushFont(applicationContext->getFontCollection().getDefaultFont());
 	// TODO: Investigate if this combination is always intercepted by OS
@@ -574,6 +555,7 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 	transferMapping->updateRenderingData(renderingData);
 
 	soFiaSearch = std::make_unique<SoFiaSearch>(*applicationContext);
+	soFiaSearch->initializeResources();
 	projectExplorer = std::make_unique<ProjectExplorer>(*applicationContext);
 
 	mainMenu = std::make_unique<MenuBar>(*applicationContext);
@@ -725,8 +707,6 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 
 
 	glfwMakeContextCurrent(applicationContext->mainWindowHandle_);
-	//glfwSetWindowSize(applicationContext->mainWindowHandle_, 1000, 600);
-
 
 	while (!glfwWindowShouldClose(applicationContext->mainWindowHandle_) && keepgoing())
 	{

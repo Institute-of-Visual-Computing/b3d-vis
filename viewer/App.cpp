@@ -3,6 +3,7 @@
 #include "CudaSurfaceObjectWriteTestRenderer.h"
 #include "NanoOutOfCoreRenderer.h"
 #include "NanoRenderer.h"
+#include "FitsNvdbRenderer.h"
 #include "NanoViewer.h"
 #include "NullRenderer.h"
 #include "SimpleTrianglesRenderer.h"
@@ -103,6 +104,7 @@ auto Application::initialization(const std::vector<Param>& parameters) -> void
 {
 	registerRenderer<NullRenderer>("nullRenderer");
 	registerRenderer<NanoRenderer>("NanoRenderer");
+	registerRenderer<FitsNvdbRenderer>("FitsNvdbRenderer");
 	registerRenderer<nano::NanoRenderer>("NanoOutOfCoreRenderer");
 	registerRenderer<SimpleTrianglesRenderer>("SimpleTrianglesRenderer");
 	registerRenderer<CudaSurfaceObjectWriteTestRenderer>("CudaSurfaceObjectWriteTestRenderer");

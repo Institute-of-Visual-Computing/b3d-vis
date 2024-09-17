@@ -1,6 +1,7 @@
 #include "SoFiaSearch.h"
 
 #include "GizmoHelper.h"
+#include "RenderData.h"
 #include "framework/ApplicationContext.h"
 #include "framework/ModalViewBase.h"
 
@@ -9,7 +10,10 @@
 SoFiaSearch::SoFiaSearch(ApplicationContext& applicationContext)
 	: UpdatableComponentBase(applicationContext), RendererExtensionBase(applicationContext)
 {
-	sofiaSearchView_ = std::make_unique<SoFiaSearchView>(applicationContext, applicationContext.getMainDockspace());
+	sofiaSearchView_ = std::make_unique<SoFiaSearchView>(applicationContext, applicationContext.getMainDockspace(), [&]() {
+		//
+		// sofiaSearchView_->getModel().params
+	});
 
 	applicationContext.addMenuToggleAction(
 		showSearchWindow_, [&](const bool isOn) { isOn ? sofiaSearchView_->open() : sofiaSearchView_->close(); },
@@ -18,13 +22,13 @@ SoFiaSearch::SoFiaSearch(ApplicationContext& applicationContext)
 
 	applicationContext.addUpdatableComponent(this);
 	applicationContext.addRendererExtensionComponent(this);
-
 }
 
 SoFiaSearch::~SoFiaSearch() = default;
 
 auto SoFiaSearch::initializeResources() -> void
 {
+	gizmoHelper_ = appContext_->getGizmoHelper();
 }
 
 auto SoFiaSearch::deinitializeResources() -> void
@@ -33,7 +37,25 @@ auto SoFiaSearch::deinitializeResources() -> void
 
 auto SoFiaSearch::updateRenderingData(b3d::renderer::RenderingDataWrapper& renderingData) -> void
 {
+	const auto& volumeTransform = renderingData.data.volumeTransform;
+	const auto& runtimeVolumeData = renderingData.data.runtimeVolumeData;
 
+	auto &model = sofiaSearchView_->getModel();
+
+	if (!applicationContext_->selectedProject_.has_value() || !model.showRoiGizmo)
+	{
+		return;
+	}
+	if (runtimeVolumeData.volume.state == b3d::renderer::RuntimeVolumeState::ready)
+	{
+		const auto trs = volumeTransform.worldMatTRS * runtimeVolumeData.volume.renormalizeScale * owl::AffineSpace3f::scale(runtimeVolumeData.originalIndexBox.size());
+		gizmoHelper_->drawBoundGizmo(model.transform_, trs, { 1, 1, 1 });
+	}
+}
+
+auto SoFiaSearch::startSearch(b3d::tools::sofia::SofiaParams params) -> void
+{
+	
 }
 
 auto SoFiaSearch::update() -> void

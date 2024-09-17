@@ -28,10 +28,11 @@ public:
 	auto loadAndShowFileWithPath(std::filesystem::path absoluteFilePath) -> std::shared_future<void>;
 
 private:
+	friend ProjectExplorerController;
 	auto initializeResources() -> void override;
 	auto deinitializeResources() -> void override;
 	auto updateRenderingData(b3d::renderer::RenderingDataWrapper& renderingData) -> void override;
-
+	auto setCurrentProject(const std::string& projectUUID) -> void;
 
 	std::string requestedVolumeUUid;
 
@@ -46,6 +47,9 @@ private:
 	std::future<bool> loadFileFuture_;
 	std::unique_ptr<std::promise<void>> loadAndShowViewPromise_;
 	std::shared_future<void> loadAndShowViewFuture_;
+
+	std::string selectedProjectUUID_;
+	bool projectChanged_{ false };
 
 	
 	cudaStream_t stream_{ 0 };

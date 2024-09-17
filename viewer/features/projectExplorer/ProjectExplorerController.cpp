@@ -41,6 +41,10 @@ ProjectExplorerController::ProjectExplorerController(ApplicationContext& applica
 				});
 				if (it != projects_->end())
 				{
+
+					applicationContext_->selectedProject_ = *it;
+
+					projectExplorer_->setCurrentProject(selectedProjectUUID);
 					//projectExplorerView_->setModel({ &*it });
 				}
 			}
@@ -57,8 +61,6 @@ ProjectExplorerController::ProjectExplorerController(ApplicationContext& applica
 			const auto selectedPath = reinterpret_cast<OpenFileDialogView*>(self)->getModel().selectedPath_;
 			if (!selectedPath.empty())
 			{
-
-				
 				projectExplorer_->loadAndShowFileWithPath(selectedPath);
 			}
 		}
