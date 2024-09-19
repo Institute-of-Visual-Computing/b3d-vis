@@ -5,6 +5,7 @@
 
 #include "ProjectExplorerView.h"
 
+#include "DebugDrawList.h"
 #include "IconsLucide.h"
 #include "IdGenerator.h"
 #include "ImGuiExtension.h"
@@ -184,14 +185,17 @@ auto ProjectExplorerView::onDraw() -> void
 	const auto switchServerPressed = ImGui::Button(ICON_LC_ARROW_RIGHT_LEFT);
 	ImGui::SetItemTooltip("Switch Server");
 
-
-	ImGui::BeginUnderDevelopmentScope();
-	if (ImGui::Button("Load .nvdb manually"))
+	if (applicationContext_->isDevelopmentModeEnabled)
 	{
-		showNvdbSelectionModal_();
-	}
-	ImGui::EndUnderDevelopmentScope();
 
+
+		ImGui::BeginUnderDevelopmentScope();
+		if (ImGui::Button("Load .nvdb manually"))
+		{
+			showNvdbSelectionModal_();
+		}
+		ImGui::EndUnderDevelopmentScope();
+	}
 	if (isConnectedToAnyServer and not projectAvailable())
 	{
 		static auto timer = 0.0f;
@@ -274,30 +278,51 @@ auto ProjectExplorerView::onDraw() -> void
 
 
 			// TODO: list, item "name", "id", "request status", Button "Jump TO" and highlight in volume view on
-				// hover
+			// hover
 
-				static auto selectedRequest = -1;
+			static auto selectedRequest = -1;
 
-				if (ImGui::TreeNode("Requests"))
+			if (ImGui::TreeNode("Requests"))
+			{
+				for (auto i = 0; i < project.requests.size(); i++)
 				{
-					for (auto i = 0; i < project.requests.size(); i++)
+					const auto& request = project.requests[i];
+					ImGui::SetNextItemAllowOverlap();
+					if (ImGui::Selectable(request.uuid.c_str(), selectedRequest == i))
 					{
-						const auto& request = project.requests[i];
-						ImGui::SetNextItemAllowOverlap();
-						if (ImGui::Selectable(request.uuid.c_str(), selectedRequest == i))
-						{
-							selectedRequest = i;
-						}
-						if (ImGui::IsItemHovered())
-						{
-							ImGui::SameLine();
-							ImGui::Text("Hovered");
-						}
-						ImGui::SameLine();
-						ImGui::SmallButton("Go To");
+						selectedRequest = i;
 					}
-					ImGui::TreePop();
+					if (ImGui::IsItemHovered())
+					{
+						ImGui::SameLine();
+						ImGui::Text("Hovered");
+						const auto box = owl::common::box3f{ { static_cast<float>(request.subRegion.lower.x),
+															   static_cast<float>(request.subRegion.lower.y),
+															   static_cast<float>(request.subRegion.lower.z) },
+
+															 { static_cast<float>(request.subRegion.upper.x),
+															   static_cast<float>(request.subRegion.upper.y),
+															   static_cast<float>(request.subRegion.upper.z) } };
+
+						constexpr auto blinkFrequency = 10.0f;
+						const auto blinkIntensity =
+							0.5f + 0.5f * glm::sin(ImGui::GetCurrentContext()->HoveredIdTimer * blinkFrequency);
+
+
+						applicationContext_->getDrawList()->drawBox(
+							volumeTransform_.p / 2, volumeTransform_.p, box.size(),
+							{ 1.0, 0.0, 0.0,
+							  1.0f -
+								  blinkIntensity * blinkIntensity * blinkIntensity * blinkIntensity * blinkIntensity },
+							volumeTransform_.l);
+					}
+					ImGui::SameLine();
+					if (ImGui::SmallButton("Go To"))
+					{
+					}
 				}
+				ImGui::TreePop();
+			}
 
 
 			constexpr auto tableFlags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable |
@@ -323,7 +348,6 @@ auto ProjectExplorerView::onDraw() -> void
 					}
 				}
 
-				
 
 				for (const auto& request : project.requests)
 				{

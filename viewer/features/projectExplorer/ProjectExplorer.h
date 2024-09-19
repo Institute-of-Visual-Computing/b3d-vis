@@ -27,13 +27,14 @@ public:
 	auto loadAndShowFile(const std::string fileUUID) -> std::shared_future<void>;
 	auto loadAndShowFileWithPath(std::filesystem::path absoluteFilePath) -> std::shared_future<void>;
 
-private:
+
 	friend ProjectExplorerController;
 	auto initializeResources() -> void override;
 	auto deinitializeResources() -> void override;
 	auto updateRenderingData(b3d::renderer::RenderingDataWrapper& renderingData) -> void override;
 	auto setCurrentProject(const std::string& projectUUID) -> void;
 
+private:
 	std::string requestedVolumeUUid;
 
 	std::unique_ptr<ProjectExplorerController> projectExplorerController_;

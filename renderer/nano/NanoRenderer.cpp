@@ -124,6 +124,8 @@ namespace
 	}
 
 	std::filesystem::path b3dFilePath{};
+
+
 } // namespace
 
 
@@ -251,7 +253,7 @@ auto NanoRenderer::onRender() -> void
 {
 	gpuTimers_.nextFrame();
 
-	
+
 	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
 	const auto runtimeVolumeData = renderData_->get<RuntimeVolumeData>("runtimeVolumeData");
 
@@ -315,11 +317,11 @@ auto NanoRenderer::onRender() -> void
 
 		owlParamsSetRaw(nanoContext_.launchParams, "sampleIntegrationMethod", &guiData.sampleIntegrationMethode);
 
-	if (runtimeVolumeData->newVolumeAvailable)
-	{
-		runtimeVolumeData->newVolumeAvailable = false;
-		owlParamsSetRaw(nanoContext_.launchParams, "volume", &nanoVdbVolume);
-	}
+		if (runtimeVolumeData->newVolumeAvailable)
+		{
+			runtimeVolumeData->newVolumeAvailable = false;
+			owlParamsSetRaw(nanoContext_.launchParams, "volume", &nanoVdbVolume);
+		}
 
 
 		owlParamsSetRaw(nanoContext_.launchParams, "colormaps", &colorMapParams.colorMapTexture);

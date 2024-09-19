@@ -39,29 +39,7 @@ auto ProjectExplorer::deinitializeResources() -> void
 
 auto ProjectExplorer::updateRenderingData(b3d::renderer::RenderingDataWrapper& renderingData) -> void
 {
-	if (projectChanged_)
-	{
-		const auto it = std::ranges::find_if(projects_.begin(), projects_.end(),
-											 [&uuid = appContext_->selectedProject_.value().projectUUID](const Project& currProject)
-											 { return currProject.projectUUID == uuid; });
-
-		if (it != projects_.end())
-		{
-			renderingData.data.runtimeVolumeData.originalIndexBox = {
-				{ 0, 0, 0 },
-				{ static_cast<float>(it->fitsOriginProperties.axisDimensions[0]),
-				  static_cast<float>(it->fitsOriginProperties.axisDimensions[1]),
-				  static_cast<float>(it->fitsOriginProperties.axisDimensions[2]) }
-			};
-			renderingData.data.runtimeVolumeData.newProjectAvailable = true;
-		}
-		else
-		{
-			renderingData.data.runtimeVolumeData.originalIndexBox = { { 0, 0, 0 }, { 0, 0, 0 } };
-		}
-	}
-
-
+	projectExplorerController_->updateRenderingData(renderingData);
 	if (projectsViewPromise_ && projectsViewSharedFuture_.valid())
 	{
 		if (projectsRequestFuture_.valid())

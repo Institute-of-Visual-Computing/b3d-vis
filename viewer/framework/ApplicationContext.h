@@ -19,7 +19,7 @@
 #include "ImGuiProfilerRenderer.h"
 #include "Profiler.h"
 
-class GLFWwindow;
+struct GLFWwindow;
 class DebugDrawList;
 class GizmoHelper;
 class UpdatableComponentBase;
@@ -107,6 +107,7 @@ public:
 	std::vector<Action> trayCallbacks_;
 
 	ApplicationSettings settings_{};
+	bool isDevelopmentModeEnabled{false};
 
 private:
 	FontCollection fonts_{};
