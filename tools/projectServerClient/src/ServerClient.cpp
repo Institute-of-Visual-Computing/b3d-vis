@@ -87,6 +87,14 @@ auto ServerClient::downloadFileAsync(const std::string& fileUUID, const std::fil
 	return std::async(std::launch::async,[this, fileUUID, targetDirectoryPath]() { return downloadFile(serverConnectionDescription_, fileUUID, targetDirectoryPath); });
 }
 
+auto ServerClient::startSearchAsync(const std::string& projectUUID, const sofia::SofiaParams& params,
+	bool force) -> std::future<std::string>
+{
+	return std::async(std::launch::async,
+					  [this, projectUUID, params, force]()
+					  { return startSearch(serverConnectionDescription_, projectUUID, params, force); });
+}
+
 auto ServerClient::getServerStatusState(const ServerConnectionDescription connectionDescription) -> ServerStatusState
 {
 	auto statusState = ServerStatusState::testing;
@@ -164,4 +172,33 @@ auto ServerClient::downloadFile(const ServerConnectionDescription connectionDesc
 	const auto finalFilePath = targetDirectoryPath / (fileUUID + "." + extension); 
 	std::filesystem::rename(targetFilePath,finalFilePath);
 	return finalFilePath;
+}
+
+auto ServerClient::startSearch(ServerConnectionDescription connectionDescription, const std::string& projectUUID,
+							   const sofia::SofiaParams& params,
+	bool force) -> std::string
+{
+	httplib::Client client(connectionDescription.ipHost, std::stoi(connectionDescription.port));
+	nlohmann::json requestJSON;
+
+	requestJSON["projectUUID"] = projectUUID;
+	requestJSON["force"] = force;
+	requestJSON["sofia_params"] = params;
+	const auto requestString = requestJSON.dump();
+
+	auto res = client.Post("/startSearch", requestString.c_str(), "application/json");
+
+	if (!res || res.error() != httplib::Error::Success)
+	{
+		return "";
+	}
+	if (res->status == 200)
+	{
+		const auto jsonObj = nlohmann::json::parse(res->body);
+		if (jsonObj.contains("requestUUID"))
+		{
+			return jsonObj["requestUUID"];
+		}
+	}
+	return "";
 }

@@ -548,6 +548,7 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 	transferMapping_->updateRenderingData(renderingData_);
 
 	soFiaSearch_ = std::make_unique<SoFiaSearch>(*applicationContext_);
+	soFiaSearch_->initializeResources();
 	projectExplorer_ = std::make_unique<ProjectExplorer>(*applicationContext_);
 
 	mainMenu_ = std::make_unique<MenuBar>(*applicationContext_);

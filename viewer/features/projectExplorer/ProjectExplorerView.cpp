@@ -58,8 +58,9 @@ auto drawSelectableItemGridPanel(
 	const char* panelId, int& selectedItemIndex, const int items,
 	const std::function<const char*(const int index)>& name, const char* icon, ImFont* iconFont,
 	const std::function<void(const int index)>& popup = [](const int) {}, const ImVec2 itemSize = { 100, 100 },
-	const ImVec2 panelSize = { 0, 300 })
+	const ImVec2 panelSize = { 0, 300 }) -> bool
 {
+	auto projectSelected{ false };
 	const auto& style = ImGui::GetStyle();
 	const auto windowVisibleX2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
 	ImGui::PushID(panelId);
@@ -88,6 +89,7 @@ auto drawSelectableItemGridPanel(
 							  ImGuiSelectableFlags_DontClosePopups | ImGuiSelectableFlags_AllowOverlap, itemSize))
 		{
 			selectedItemIndex = n;
+			projectSelected = true;
 		}
 		if (ImGui::BeginItemTooltip())
 		{
@@ -155,6 +157,7 @@ auto drawSelectableItemGridPanel(
 	}
 	ImGui::EndChild();
 	ImGui::PopID();
+	return projectSelected;
 }
 
 
@@ -227,7 +230,7 @@ auto ProjectExplorerView::onDraw() -> void
 
 	if (model_.projects)
 	{
-		drawSelectableItemGridPanel(
+		const auto projectChanged = drawSelectableItemGridPanel(
 			"projects", selectedProjectItemIndex_, model_.projects->size(),
 			[&](const int index) { return model_.projects->at(index).projectName.c_str(); }, ICON_LC_BOX,
 			applicationContext_->getFontCollection().getBigIconsFont(),
@@ -243,8 +246,14 @@ auto ProjectExplorerView::onDraw() -> void
 			},
 			ImVec2{ 100, 100 });
 
+		
+
 		if (selectedProjectItemIndex_ >= 0)
 		{
+			if (projectChanged)
+			{
+				applicationContext_->selectedProject_ = model_.projects->at(selectedProjectItemIndex_);
+			}
 			const auto& project = model_.projects->at(selectedProjectItemIndex_);
 			ImGui::Text(project.projectName.c_str());
 			if (ImGui::CollapsingHeader(project.fitsOriginFileName.c_str()))

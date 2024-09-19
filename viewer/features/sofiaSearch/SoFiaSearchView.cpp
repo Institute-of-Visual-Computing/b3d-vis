@@ -3,14 +3,30 @@
 #include "GizmoHelper.h"
 #include "framework/ApplicationContext.h"
 
-
-SoFiaSearchView::SoFiaSearchView(ApplicationContext& appContext, Dockspace* dockspace)
-	: DockableWindowViewBase(appContext, "SoFiA-Search", dockspace, WindowFlagBits::none)
+namespace
 {
+	const auto lower = owl::vec3f{ -.5f, -.5f, -.5f };
+	const auto upper = owl::vec3f{ .5f, .5f, .5f };
+	const auto unityBoxSize = owl::vec3f{ 1.0f };
+	const auto unitBox = owl::box3f{0.0f, unityBoxSize };
+}
 
-	gizmoHelper_ = appContext.getGizmoHelper();
+auto SoFiaSearchView::SofiaParamsTyped::buildSoFiaParams() const -> b3d::tools::sofia::SofiaParams
+{
+	b3d::tools::sofia::SofiaParams sofiaParams;
+	sofiaParams.setOrReplace("input.region",
+							 std::format("{},{},{},{},{},{}", input.region.lower.x, input.region.upper.x,
+										 input.region.lower.y, input.region.upper.y, input.region.lower.z,
+										 input.region.upper.z));
+	return sofiaParams;
+}
 
-	model_.params.setOrReplace("reliability.minSNR", "3.0");
+SoFiaSearchView::SoFiaSearchView(ApplicationContext& appContext, Dockspace* dockspace,
+                                 std::function<void()> startSearchFunction)
+	: DockableWindowViewBase(appContext, "SoFiA-Search", dockspace, WindowFlagBits::none),
+	  startSearchFunction_(std::move(startSearchFunction))
+{
+	gizmoHelper_ = applicationContext_->getGizmoHelper();
 }
 
 SoFiaSearchView::~SoFiaSearchView() = default;
@@ -20,42 +36,161 @@ auto SoFiaSearchView::setModel(Model model) -> void
 	model_ = std::move(model);
 }
 
-auto SoFiaSearchView::getModel() const -> const Model&
+auto SoFiaSearchView::getModel() -> Model&
 {
 	return model_;
 }
 
 auto SoFiaSearchView::onDraw() -> void
 {
-	owl::AffineSpace3f worldTransform = owl::AffineSpace3f::scale(1);
+	const auto disableInteraction = !model_.interactionEnabled;
+	const auto hasProject = applicationContext_->selectedProject_.has_value();
 
-	// ImGui::BeginChild("sofia-params");
-	// ImGui::InputFloat("reliability.minSNR", &minSNR_);
-	ImGui::SliderFloat("reliability.minSNR", &minSNR_, 0.0f, 10.0f);
+	if (disableInteraction)
+	{
+		ImGui::Text("Dataset not loaded.");
+		ImGui::BeginDisabled(true);
+	}
+
+	ImGui::Checkbox("Show Subregion Tool", &model_.showRoiGizmo);
+	ImGui::SameLine();
+	if (ImGui::Button("Reset Selection"))
+	{
+		resetSelection();
+	}
+
+	if (disableInteraction)
+	{
+		ImGui::EndDisabled();
+	}
+
+	if (!disableInteraction && model_.showRoiGizmo)
+	{
+		gizmoHelper_->drawBoundGizmo(model_.transform, model_.worldTransform, unityBoxSize);
+	}
 
 
-	ImGui::BeginDisabled(true);
+	const auto lowerPos = xfmPoint(model_.transform, lower) + upper;
+	const auto upperPos = xfmPoint(model_.transform, upper) + upper;
+	model_.selectedLocalRegion = intersection(owl::box3f{ lowerPos, upperPos }, unitBox);
 
-	auto scale = owl::vec3f{ length(transform_.l.vx), length(transform_.l.vx), length(transform_.l.vx) };
-	auto position = transform_.p;
+	model_.transform.p = model_.selectedLocalRegion.center() + lower;
 
-	auto lower = owl::vec3f{ -.5f, -.5f, -.5f };
-	auto upper = owl::vec3f{ .5f, .5f, .5f };
+	const auto scale = model_.selectedLocalRegion.span();
+	model_.transform.l.vx.x = scale.x;
+	model_.transform.l.vy.y = scale.y;
+	model_.transform.l.vz.z = scale.z;
 
-	owl::vec3f lowerPos = xfmPoint(transform_, lower) + owl::vec3f{ .5, .5, .5 };
-	owl::vec3f upperPos = xfmPoint(transform_, upper) + owl::vec3f{ .5, .5, .5 };
+	auto dimensions = owl::vec3i{ 0 };
+	if (hasProject)
+	{
+		const auto& dims = applicationContext_->selectedProject_.value().fitsOriginProperties.axisDimensions;
+		dimensions = { dims[0], dims[1], dims[2] };
+	}
 
-	owl::box3f regionBox = intersection(owl::box3f{ lowerPos, upperPos }, owl::box3f{ { 0, 0, 0 }, { 1, 1, 1 } });
+	model_.params.input.region.lower =
+		owl::vec3i{ static_cast<int>(model_.selectedLocalRegion.lower.x * dimensions[0]),
+					static_cast<int>(model_.selectedLocalRegion.lower.y * dimensions[1]),
+					static_cast<int>(model_.selectedLocalRegion.lower.z * dimensions[2]) };
 
-	// transform_ ist das transform des gizmos
-	gizmoHelper_->drawBoundGizmo(transform_, worldTransform, { 1, 1, 1 });
+	model_.params.input.region.upper =
+		owl::vec3i{ static_cast<int>(model_.selectedLocalRegion.upper.x * dimensions[0]),
+					static_cast<int>(model_.selectedLocalRegion.upper.y * dimensions[1]),
+					static_cast<int>(model_.selectedLocalRegion.upper.z * dimensions[2]) };
 
-	ImGui::InputFloat3("Scale", &scale.x);
-	ImGui::InputFloat3("Position", &position.x);
+	model_.params.input.region.lower = owl::clamp(model_.params.input.region.lower, model_.params.input.region.upper);
+	model_.params.input.region.upper =
+		owl::clamp(model_.params.input.region.upper, model_.params.input.region.lower, dimensions);
 
-	ImGui::InputFloat3("LowerTransformed", &regionBox.lower.x);
-		ImGui::InputFloat3("UpperTransformed", &regionBox.upper.x);
+	/* Not used
+	if (ImGui::CollapsingHeader("Pipeline", ImGuiTreeNodeFlags_None))
+	{
 
-	ImGui::EndDisabled();
-	//ImGui::EndChild();
+	}
+	*/
+	if (disableInteraction)
+	{
+		ImGui::BeginDisabled(true);
+	}
+
+	if (ImGui::CollapsingHeader("Input", ImGuiTreeNodeFlags_DefaultOpen))
+	{
+		ImGui::Text("Region");
+
+		ImGui::BeginDisabled(true);
+
+		ImGui::DragInt3("Min", &model_.params.input.region.lower.x);
+
+
+		ImGui::DragInt3("Max", &model_.params.input.region.upper.x);
+
+
+		ImGui::EndDisabled();
+	}
+
+	if (ImGui::CollapsingHeader("Preconditioning Continuum Substraction", ImGuiTreeNodeFlags_None))
+	{
+	}
+
+	if (ImGui::CollapsingHeader("Preconditioning Flagging", ImGuiTreeNodeFlags_None))
+	{
+	}
+
+	if (ImGui::CollapsingHeader("Preconditioning Ripple Filter", ImGuiTreeNodeFlags_None))
+	{
+	}
+
+	if (ImGui::CollapsingHeader("Preconditioning Noise Scaling", ImGuiTreeNodeFlags_None))
+	{
+	}
+
+	if (ImGui::CollapsingHeader("Source Finding", ImGuiTreeNodeFlags_None))
+	{
+	}
+
+	if (ImGui::CollapsingHeader("Linking", ImGuiTreeNodeFlags_None))
+	{
+	}
+
+	if (ImGui::CollapsingHeader("Reliability", ImGuiTreeNodeFlags_None))
+	{
+	}
+
+	if (ImGui::CollapsingHeader("Mask Dilation", ImGuiTreeNodeFlags_None))
+	{
+	}
+
+	if (ImGui::CollapsingHeader("Parametrisation", ImGuiTreeNodeFlags_None))
+	{
+	}
+
+	/* Not used
+	if (ImGui::CollapsingHeader("Output", ImGuiTreeNodeFlags_None))
+	{
+	}
+	*/
+
+	if (ImGui::Button("Search"))
+	{
+		startSearchFunction_();
+		resetParams();
+		resetSelection();
+		resetSelection();
+	}
+	if (disableInteraction)
+	{
+		ImGui::EndDisabled();
+	}
+}
+
+auto SoFiaSearchView::resetSelection() -> void
+{
+	model_.transform = owl::AffineSpace3f{};
+	model_.selectedLocalRegion = owl::box3f{};
+}
+
+auto SoFiaSearchView::resetParams() -> void
+{
+	model_.transform = owl::AffineSpace3f{};
+	model_.selectedLocalRegion = owl::box3f{};
 }

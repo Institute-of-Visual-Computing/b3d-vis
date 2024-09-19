@@ -198,7 +198,6 @@ auto NanoRenderer::prepareGeometry() -> void
 	owlRayGenSetGroup(nanoContext_.rayGen, "world", nanoContext_.worldGeometryGroup);
 	owlRayGenSetGroup(nanoContext_.rayGenFoveated, "world", nanoContext_.worldGeometryGroup);
 
-
 	owlGeomTypeSetIntersectProg(geometryType, 0, optixirModule, "nano_intersection");
 	owlGeomTypeSetClosestHit(geometryType, 0, optixirModule, "nano_closestHit");
 
@@ -258,8 +257,12 @@ auto NanoRenderer::onRender() -> void
 	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
 	const auto runtimeVolumeData = renderData_->get<RuntimeVolumeData>("runtimeVolumeData");
 
+	const auto coloringInfo = renderData_->get<ColoringInfo>("coloringInfo");
+
 	auto& runtimeVolume = runtimeVolumeData->volume;
 	auto& nanoVdbVolume = runtimeVolume.volume;
+
+
 
 	trs_ = volumeTransform->worldMatTRS * runtimeVolume.renormalizeScale;
 
@@ -306,10 +309,11 @@ auto NanoRenderer::onRender() -> void
 		using namespace owl::extensions;
 
 
-		owlParamsSetRaw(nanoContext_.launchParams, "coloringInfo.colorMode", &colorMapParams.mode);
-		owlParamsSet4f(nanoContext_.launchParams, "coloringInfo.singleColor", colorMapParams.uniformColor);
+		owlParamsSetRaw(nanoContext_.launchParams, "coloringInfo.colorMode", &coloringInfo->coloringMode);
+		owlParamsSet4f(nanoContext_.launchParams, "coloringInfo.singleColor", coloringInfo->singleColor.x,
+					   coloringInfo->singleColor.y, coloringInfo->singleColor.z, coloringInfo->singleColor.w);
 
-		owlParamsSet1f(nanoContext_.launchParams, "coloringInfo.selectedColorMap", colorMapParams.selectedColorMap);
+		owlParamsSet1f(nanoContext_.launchParams, "coloringInfo.selectedColorMap", coloringInfo->selectedColorMap);
 
 		owlParamsSetRaw(nanoContext_.launchParams, "sampleIntegrationMethod", &guiData.sampleIntegrationMethode);
 
@@ -447,7 +451,7 @@ auto NanoRenderer::onDeinitialize() -> void
 auto NanoRenderer::onGui() -> void
 {
 	const auto volumeTransform = renderData_->get<VolumeTransform>("volumeTransform");
-
+	/*
 	ImGui::Begin("[DEPRECATED] RT Settings");
 
 	ImGui::SeparatorText("Runtime Data Management");
@@ -522,4 +526,5 @@ auto NanoRenderer::onGui() -> void
 	openFileDialog_.gui();
 
 	ImGui::End();
+	*/
 }

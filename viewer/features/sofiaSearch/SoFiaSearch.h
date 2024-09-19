@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include "SofiaParams.h"
 #include "framework/RendererExtensionBase.h"
 #include "framework/UpdatableComponentBase.h"
 #include "owl/common/math/AffineSpace.h"
@@ -16,14 +17,15 @@ public:
 	~SoFiaSearch() override;
 	auto update() -> void override;
 
-private:
 	auto initializeResources() -> void override;
 	auto deinitializeResources() -> void override;
+
+private:
 	auto updateRenderingData(b3d::renderer::RenderingDataWrapper& renderingData) -> void override;
 
-	owl::AffineSpace3f transform_ {};
-
 	bool showSearchWindow_{ true };
+
+	auto startSearch(b3d::tools::sofia::SofiaParams params) -> void;
 
 	std::unique_ptr<SoFiaSearchView> sofiaSearchView_;
 };

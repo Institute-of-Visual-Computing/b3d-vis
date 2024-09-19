@@ -61,7 +61,6 @@ public:
 	[[nodiscard]] auto getDrawList() const -> std::shared_ptr<DebugDrawList>;
 
 	GLFWwindow* mainWindowHandle_{};
-	GLFWwindow* splashScreenWindowHandle_{};
 
 	[[nodiscard]] auto getMainDockspace() const -> Dockspace*;
 
@@ -126,5 +125,7 @@ public:
 	ImGuiUtils::ProfilerGraph gpuGraph_{300};
 
 	b3d::renderer::nano::RuntimeDataSet runtimeDataSet_{};
+	std::optional<b3d::tools::project::Project> selectedProject_{};
+
 	b3d::tools::project::ServerClient serverClient_{};
 };

@@ -79,10 +79,6 @@ namespace
 		// TODO: 
 		OWL_CUDA_CHECK(cudaLaunchHostFunc(stream, &setRuntimeVolumeReady, &container));
 				
-		// cudaStreamSynchronize(stream);
-		container.state = b3d::renderer::RuntimeVolumeState::ready;
-		std::cout << "Transfer dones\n";
-
 		const auto gridHandle = gridVolume.grid<float>();
 		const auto& map = gridHandle->mMap;
 		const auto orientation =
@@ -292,7 +288,7 @@ b3d::renderer::nano::RuntimeDataSet::RuntimeDataSet()
 	const auto scale = 1.0f / longestAxis;
 
 	const auto renormalizeScale = owl::AffineSpace3f::scale(owl::vec3f{ scale, scale, scale });
-	dummyVolume_ = RuntimeVolume{ volume, RuntimeVolumeState::ready, renormalizeScale };
+	dummyVolume_ = RuntimeVolume{ volume, RuntimeVolumeState::ready,  renormalizeScale };
 	dummyVolumeStatistics_ = computeStatistics(gridHandle);
 }
 
@@ -362,9 +358,11 @@ auto RuntimeDataSet::addNanoVdb(const NanoVdbVolume& volume, const VolumeStatist
 
 	const auto renormalizeScale = owl::AffineSpace3f::scale(owl::vec3f{ scale, scale, scale });
 	const std::lock_guard listGuard(listMutex_);
-	runtimeVolumes_.push_back(RuntimeVolume{ volume, RuntimeVolumeState::ready, renormalizeScale, "" });
+	runtimeVolumes_.push_back(
+		RuntimeVolume{ volume, RuntimeVolumeState::ready, renormalizeScale, "" });
 	volumeStatistics_.push_back(statistics);
 }
+
 RuntimeDataSet::~RuntimeDataSet()
 {
 	for (auto& volume : runtimeVolumes_)
