@@ -4,7 +4,7 @@
 #include "DebugDrawVertex.h"
 #include "GLUtils.h"
 
-DebugDrawPass::DebugDrawPass(DebugDrawList* debugDrawList) : viewProjection_{}, debugDrawList_{ *debugDrawList }
+DebugDrawPass::DebugDrawPass(DebugDrawList* debugDrawList) : viewProjection_{}, debugDrawList_{ debugDrawList }
 {
 	using namespace std::string_literals;
 	const auto vertexShader = "#version 400\n"
@@ -74,7 +74,7 @@ DebugDrawPass::~DebugDrawPass()
 
 auto DebugDrawPass::execute() const -> void
 {
-	if (debugDrawList_.vertices_.empty())
+	if (debugDrawList_->vertices_.empty())
 	{
 		return;
 	}
@@ -101,11 +101,11 @@ auto DebugDrawPass::execute() const -> void
 						  reinterpret_cast<GLvoid*>(offsetof(DebugDrawVertex, color)));
 
 
-	GL_CALL(glBufferData(GL_ARRAY_BUFFER, debugDrawList_.vertices_.size() * sizeof(DebugDrawVertex),
-						 debugDrawList_.vertices_.data(), GL_STREAM_DRAW));
+	GL_CALL(glBufferData(GL_ARRAY_BUFFER, debugDrawList_->vertices_.size() * sizeof(DebugDrawVertex),
+						 debugDrawList_->vertices_.data(), GL_STREAM_DRAW));
 
 
-	GL_CALL(glDrawArrays(GL_TRIANGLES, 0, debugDrawList_.vertices_.size()));
+	GL_CALL(glDrawArrays(GL_TRIANGLES, 0, debugDrawList_->vertices_.size()));
 	glUseProgram(0);
 	if (lastIsEnabledDepthTest)
 	{
@@ -114,7 +114,7 @@ auto DebugDrawPass::execute() const -> void
 	// glDisable(GL_CULL_FACE);
 	glDisable(GL_MULTISAMPLE);
 	glDeleteVertexArrays(1, &vertexArrayObject);
-	debugDrawList_.reset();
+	debugDrawList_->reset();
 }
 auto DebugDrawPass::setViewport(const int width, const int height) -> void
 {

@@ -7,6 +7,8 @@
 #include "Animation.h"
 #include "GizmoOperationFlags.h"
 #include "framework/DockableWindowViewBase.h"
+#include "passes/DebugDrawPass.h"
+#include "passes/FullscreenTexturePass.h"
 #include "passes/InfinitGridPass.h"
 
 
@@ -16,10 +18,6 @@
 
 
 class GizmoHelper;
-
-class FullscreenTexturePass;
-class InfinitGridPass;
-class DebugDrawPass;
 
 class DebugDrawList;
 
@@ -111,7 +109,7 @@ private:
 
 	GizmoOperationFlags currentGizmoOperation_{ GizmoOperationFlagBits::none };
 
-	std::unique_ptr<FullscreenTexturePass> fullscreenTexturePass_;
+	std::unique_ptr<FullscreenTexturePass> fullscreenTexturePass_{};
 	std::unique_ptr<InfinitGridPass> infinitGridPass_{};
 	std::unique_ptr<DebugDrawPass> debugDrawPass_{};
 };

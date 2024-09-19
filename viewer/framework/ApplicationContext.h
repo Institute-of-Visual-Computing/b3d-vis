@@ -19,7 +19,7 @@
 #include "ImGuiProfilerRenderer.h"
 #include "Profiler.h"
 
-class GLFWwindow;
+struct GLFWwindow;
 class DebugDrawList;
 class GizmoHelper;
 class UpdatableComponentBase;
