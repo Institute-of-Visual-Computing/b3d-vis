@@ -196,13 +196,14 @@ public:
 		auto buildSoFiaParams() const -> b3d::tools::sofia::SofiaParams;
 	};
 
-
 	struct Model
 	{
 		SofiaParamsTyped params {};
-		owl::AffineSpace3f transform_{};
+		owl::AffineSpace3f transform{};
+		owl::AffineSpace3f worldTransform{};
 		owl::box3f selectedLocalRegion{};
 		bool showRoiGizmo{ false };
+		bool interactionEnabled{ false };
 	};
 
 	SoFiaSearchView(ApplicationContext& appContext, Dockspace* dockspace, std::function<void()> startSearchFunction);
@@ -216,6 +217,7 @@ private:
 
 	Model model_;
 	std::function<void()> startSearchFunction_;
+	std::shared_ptr<GizmoHelper> gizmoHelper_;
 
 	auto resetSelection() -> void;
 	auto resetParams() -> void;

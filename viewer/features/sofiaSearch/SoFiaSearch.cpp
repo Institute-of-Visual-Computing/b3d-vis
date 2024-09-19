@@ -3,7 +3,6 @@
 #include "GizmoHelper.h"
 #include "RenderData.h"
 #include "framework/ApplicationContext.h"
-#include "framework/ModalViewBase.h"
 
 #include "SoFiaSearchView.h"
 
@@ -27,7 +26,6 @@ SoFiaSearch::~SoFiaSearch() = default;
 
 auto SoFiaSearch::initializeResources() -> void
 {
-	gizmoHelper_ = appContext_->getGizmoHelper();
 }
 
 auto SoFiaSearch::deinitializeResources() -> void
@@ -41,21 +39,25 @@ auto SoFiaSearch::updateRenderingData(b3d::renderer::RenderingDataWrapper& rende
 
 	auto &model = sofiaSearchView_->getModel();
 
-	if (!applicationContext_->selectedProject_.has_value() || !model.showRoiGizmo)
+
+	if (applicationContext_->selectedProject_.has_value() && runtimeVolumeData.volume.state == b3d::renderer::RuntimeVolumeState::ready)
 	{
-		return;
-	}
-	if (runtimeVolumeData.volume.state == b3d::renderer::RuntimeVolumeState::ready)
-	{
+
+		model.interactionEnabled = true;
+
 		const auto trs = volumeTransform.worldMatTRS * runtimeVolumeData.volume.renormalizeScale * owl::AffineSpace3f::scale(runtimeVolumeData.originalIndexBox.size());
-		gizmoHelper_->drawBoundGizmo(model.transform_, trs, { 1, 1, 1 });
+		model.worldTransform = trs;
 	}
+	else
+	{
+		model.interactionEnabled = false;
+	}
+
 }
 
 auto SoFiaSearch::startSearch(b3d::tools::sofia::SofiaParams params) -> void
 {
 	appContext_->serverClient_.startSearchAsync(appContext_->selectedProject_.value().projectUUID, params, false);
-
 }
 
 auto SoFiaSearch::update() -> void

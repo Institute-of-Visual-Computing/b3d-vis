@@ -1,7 +1,15 @@
 #include "SoFiaSearchView.h"
 
+#include "GizmoHelper.h"
 #include "framework/ApplicationContext.h"
 
+namespace
+{
+	const auto lower = owl::vec3f{ -.5f, -.5f, -.5f };
+	const auto upper = owl::vec3f{ .5f, .5f, .5f };
+	const auto unityBoxSize = owl::vec3f{ 1.0f };
+	const auto unitBox = owl::box3f{0.0f, unityBoxSize };
+}
 
 auto SoFiaSearchView::SofiaParamsTyped::buildSoFiaParams() const -> b3d::tools::sofia::SofiaParams
 {
@@ -18,7 +26,7 @@ SoFiaSearchView::SoFiaSearchView(ApplicationContext& appContext, Dockspace* dock
 	: DockableWindowViewBase(appContext, "SoFiA-Search", dockspace, WindowFlagBits::none),
 	  startSearchFunction_(std::move(startSearchFunction))
 {
-	
+	gizmoHelper_ = applicationContext_->getGizmoHelper();
 }
 
 SoFiaSearchView::~SoFiaSearchView() = default;
@@ -35,16 +43,16 @@ auto SoFiaSearchView::getModel() -> Model&
 
 auto SoFiaSearchView::onDraw() -> void
 {
-	const auto disableInteraction = !applicationContext_->selectedProject_.has_value();
+	const auto disableInteraction = !model_.interactionEnabled;
 	const auto hasProject = applicationContext_->selectedProject_.has_value();
 
 	if (disableInteraction)
 	{
-		ImGui::Text("No project selected.");
+		ImGui::Text("Dataset not loaded.");
 		ImGui::BeginDisabled(true);
 	}
 
-	ImGui::Checkbox("Gizmo visible", &model_.showRoiGizmo);
+	ImGui::Checkbox("Show Subregion Tool", &model_.showRoiGizmo);
 	ImGui::SameLine();
 	if (ImGui::Button("Reset Selection"))
 	{
@@ -56,26 +64,30 @@ auto SoFiaSearchView::onDraw() -> void
 		ImGui::EndDisabled();
 	}
 
-	const auto lower = owl::vec3f{ -.5f, -.5f, -.5f };
-	const auto upper = owl::vec3f{ .5f, .5f, .5f };
-	const auto lowerPos = xfmPoint(model_.transform_, lower) + owl::vec3f{ .5, .5, .5 };
-	const auto upperPos = xfmPoint(model_.transform_, upper) + owl::vec3f{ .5, .5, .5 };
+	if (!disableInteraction && model_.showRoiGizmo)
+	{
+		gizmoHelper_->drawBoundGizmo(model_.transform, model_.worldTransform, unityBoxSize);
+	}
 
-	model_.selectedLocalRegion =
-		intersection(owl::box3f{ lowerPos, upperPos }, owl::box3f{ { 0, 0, 0 }, { 1, 1, 1 } });
 
-	//ImGui::InputFloat3("Position", &model_.transform_.p.x);
-	//ImGui::InputFloat3("LowerTransformed", &model_.selectedLocalRegion.lower.x);
-	//ImGui::InputFloat3("UpperTransformed", &model_.selectedLocalRegion.upper.x);
+	const auto lowerPos = xfmPoint(model_.transform, lower) + upper;
+	const auto upperPos = xfmPoint(model_.transform, upper) + upper;
+	model_.selectedLocalRegion = intersection(owl::box3f{ lowerPos, upperPos }, unitBox);
+
+	model_.transform.p = model_.selectedLocalRegion.center() + lower;
+
+	const auto scale = model_.selectedLocalRegion.span();
+	model_.transform.l.vx.x = scale.x;
+	model_.transform.l.vy.y = scale.y;
+	model_.transform.l.vz.z = scale.z;
 
 	auto dimensions = owl::vec3i{ 0 };
-
 	if (hasProject)
 	{
 		const auto& dims = applicationContext_->selectedProject_.value().fitsOriginProperties.axisDimensions;
 		dimensions = { dims[0], dims[1], dims[2] };
 	}
-	
+
 	model_.params.input.region.lower =
 		owl::vec3i{ static_cast<int>(model_.selectedLocalRegion.lower.x * dimensions[0]),
 					static_cast<int>(model_.selectedLocalRegion.lower.y * dimensions[1]),
@@ -85,14 +97,21 @@ auto SoFiaSearchView::onDraw() -> void
 		owl::vec3i{ static_cast<int>(model_.selectedLocalRegion.upper.x * dimensions[0]),
 					static_cast<int>(model_.selectedLocalRegion.upper.y * dimensions[1]),
 					static_cast<int>(model_.selectedLocalRegion.upper.z * dimensions[2]) };
-	
+
+	model_.params.input.region.lower = owl::clamp(model_.params.input.region.lower, model_.params.input.region.upper);
+	model_.params.input.region.upper =
+		owl::clamp(model_.params.input.region.upper, model_.params.input.region.lower, dimensions);
 
 	/* Not used
 	if (ImGui::CollapsingHeader("Pipeline", ImGuiTreeNodeFlags_None))
 	{
-		
+
 	}
 	*/
+	if (disableInteraction)
+	{
+		ImGui::BeginDisabled(true);
+	}
 
 	if (ImGui::CollapsingHeader("Input", ImGuiTreeNodeFlags_DefaultOpen))
 	{
@@ -101,12 +120,10 @@ auto SoFiaSearchView::onDraw() -> void
 		ImGui::BeginDisabled(true);
 
 		ImGui::DragInt3("Min", &model_.params.input.region.lower.x);
-		model_.params.input.region.lower =
-			owl::clamp(model_.params.input.region.lower, model_.params.input.region.upper);
+
 
 		ImGui::DragInt3("Max", &model_.params.input.region.upper.x);
-		model_.params.input.region.upper =
-			owl::clamp(model_.params.input.region.upper, model_.params.input.region.lower, dimensions);
+
 
 		ImGui::EndDisabled();
 	}
@@ -159,18 +176,21 @@ auto SoFiaSearchView::onDraw() -> void
 		resetParams();
 		resetSelection();
 		resetSelection();
-		// reset params
+	}
+	if (disableInteraction)
+	{
+		ImGui::EndDisabled();
 	}
 }
 
 auto SoFiaSearchView::resetSelection() -> void
 {
-	model_.transform_ = owl::AffineSpace3f{};
+	model_.transform = owl::AffineSpace3f{};
 	model_.selectedLocalRegion = owl::box3f{};
 }
 
 auto SoFiaSearchView::resetParams() -> void
 {
-	model_.transform_ = owl::AffineSpace3f{};
+	model_.transform = owl::AffineSpace3f{};
 	model_.selectedLocalRegion = owl::box3f{};
 }

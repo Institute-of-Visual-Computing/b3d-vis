@@ -28,5 +28,4 @@ private:
 	auto startSearch(b3d::tools::sofia::SofiaParams params) -> void;
 
 	std::unique_ptr<SoFiaSearchView> sofiaSearchView_;
-	std::shared_ptr<GizmoHelper> gizmoHelper_;
 };
