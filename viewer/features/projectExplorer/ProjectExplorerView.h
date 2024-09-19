@@ -24,6 +24,10 @@ public:
 	~ProjectExplorerView() override;
 
 	auto setModel(Model model) -> void;
+	auto setVolumeTransform(const owl::AffineSpace3f& transform) -> void
+	{
+		volumeTransform_ = transform;
+	}
 
 private:
 	auto onDraw() -> void override;
@@ -31,12 +35,13 @@ private:
 
 	int selectedProjectItemIndex_{ -1 };
 
-	Model model_{nullptr};
+	Model model_{ nullptr };
+	 owl::AffineSpace3f volumeTransform_{};
 	std::function<void()> showSelectionModal_;
 	std::function<void()> showNvdbSelectionModal_;
 
 	std::function<std::shared_future<void>(const std::string& fileUUID)> loadAndShowFunction_{};
-	std::function<std::shared_future<void>()> refreshProjectsFunction_ {};
-	std::shared_future<void> refreshProjectsFuture_ {};
+	std::function<std::shared_future<void>()> refreshProjectsFunction_{};
+	std::shared_future<void> refreshProjectsFuture_{};
 	std::shared_future<void> loadAndShowFileFuture_{};
 };

@@ -27,11 +27,11 @@ public:
 	auto loadAndShowFile(const std::string fileUUID) -> std::shared_future<void>;
 	auto loadAndShowFileWithPath(std::filesystem::path absoluteFilePath) -> std::shared_future<void>;
 
-private:
+
 	auto initializeResources() -> void override;
 	auto deinitializeResources() -> void override;
 	auto updateRenderingData(b3d::renderer::RenderingDataWrapper& renderingData) -> void override;
-
+private:
 
 	std::string requestedVolumeUUid;
 
