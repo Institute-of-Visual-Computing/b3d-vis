@@ -39,6 +39,7 @@ auto ProjectExplorer::deinitializeResources() -> void
 
 auto ProjectExplorer::updateRenderingData(b3d::renderer::RenderingDataWrapper& renderingData) -> void
 {
+	projectExplorerController_->updateRenderingData(renderingData);
 	if (projectsViewPromise_ && projectsViewSharedFuture_.valid())
 	{
 		if (projectsRequestFuture_.valid())

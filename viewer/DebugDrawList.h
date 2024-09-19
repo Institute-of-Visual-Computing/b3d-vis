@@ -5,13 +5,9 @@
 
 #include "DebugDrawListBase.h"
 
+
 class DebugDrawList final : public b3d::renderer::DebugDrawListBase
 {
-private:
-	friend class DebugDrawPass;
-
-	auto reset() -> void;
-
 public:
 	// void drawSphere(const glm::vec3& midPoint, float radius, glm::vec4 color = glm::vec4{1.0f,1.0f,1.0f,1.0f});
 	// void drawLine(const glm::vec3& p0, const glm::vec3& p1, glm::vec4 color = glm::vec4{1.0f,1.0f,1.0f,1.0f});
@@ -19,5 +15,7 @@ public:
 				 const owl::LinearSpace3f& orientation) -> void override;
 
 private:
+	friend class DebugDrawPass;
+	auto reset() -> void;
 	std::vector<DebugDrawVertex> vertices_;
 };

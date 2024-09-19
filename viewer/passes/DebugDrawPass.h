@@ -33,7 +33,7 @@ private:
 	int width_{};
 	int height_{};
 
-	DebugDrawList& debugDrawList_;
+	DebugDrawList* debugDrawList_{};
 
 	float lineWidth_{1.0f};
 };

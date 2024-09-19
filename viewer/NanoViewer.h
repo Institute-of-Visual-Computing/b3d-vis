@@ -1,9 +1,8 @@
 #pragma once
-#include <ColorMap.h>
+
 #include <RendererBase.h>
 
 #include <nvml.h>
-
 
 #include "Camera.h"
 #include "DebugDrawList.h"
@@ -11,6 +10,12 @@
 
 #include <ProfilersWindow.h>
 
+#include "features/projectExplorer/ProjectExplorer.h"
+#include "features/sofiaSearch/SoFiaSearch.h"
+#include "features/transferMapping/TransferMapping.h"
+#include "framework/ApplicationContext.h"
+#include "framework/MenuBar.h"
+#include "views/VolumeView.h"
 
 class NanoViewer final
 {
@@ -19,9 +24,20 @@ public:
 						int initWindowHeight = 1080, bool enableVsync = false, int rendererIndex = 0);
 	auto showAndRunWithGui() -> void;
 	auto showAndRunWithGui(const std::function<bool()>& keepgoing) -> void;
+
+	auto enableDevelopmentMode(const bool enable = true) const -> void
+	{
+		applicationContext_->isDevelopmentModeEnabled = enable;
+	}
+
 	[[nodiscard]] auto getCamera() -> ::Camera&
 	{
 		return camera_;
+	}
+
+	[[nodiscard]] auto getApplicationContext() const -> ApplicationContext&
+	{
+		return *applicationContext_.get();
 	}
 	~NanoViewer();
 
@@ -55,4 +71,28 @@ private:
 	::Camera camera_{};
 
 	bool isRunning_{ true };
+
+
+	struct ViewerSettings
+	{
+		float lineWidth{ 4.0 };
+		std::array<float, 3> gridColor{ 0.95f, 0.9f, 0.92f };
+		bool enableDebugDraw{ true };
+		bool enableGridFloor{ true };
+	};
+
+	ViewerSettings viewerSettings_{};
+
+	std::unique_ptr<ApplicationContext> applicationContext_{};
+	std::unique_ptr<VolumeView> volumeView_{};
+	std::unique_ptr<TransferMapping> transferMapping_{};
+	std::unique_ptr<ProjectExplorer> projectExplorer_{};
+	std::unique_ptr<SoFiaSearch> soFiaSearch_{};
+	std::unique_ptr<MenuBar> mainMenu_{};
+	b3d::renderer::RenderingDataWrapper renderingData_{};
+
+	bool showProfiler_{ false };
+	bool showDebugOptions_{ false };
+	bool showAboutWindow_{ false };
+	bool showImGuiDemo_{ false };
 };

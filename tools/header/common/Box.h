@@ -10,7 +10,7 @@ namespace b3d::common
 		Vec3<T> lower{};
 		Vec3<T> upper{};
 
-		[[nodiscard]] inline static auto maxBox() -> Box3<T>
+		[[nodiscard]] static auto maxBox() -> Box3<T>
 		{
 			Box3<T> r;
 			r.upper.x = std::numeric_limits<T>::max();
@@ -23,25 +23,30 @@ namespace b3d::common
 			return r;
 		}
 
-		inline auto extend(const Vec3<T>& point) -> void
+		auto extend(const Vec3<T>& point) -> void
 		{
 			lower = min(lower, point);
 			upper = max(upper, point);
 		}
 
-		inline auto extend(const Box3<T>& box) -> void
+		[[nodiscard]] auto midPoint() const -> Vec3<T>
+		{
+			return (lower + upper) / T(2);
+		}
+
+		auto extend(const Box3<T>& box) -> void
 		{
 			extend(box.lower);
 			extend(box.upper);
 		}
 
-		inline auto clip(const Box3<T>& clipBox)
+		auto clip(const Box3<T>& clipBox)
 		{
 			lower = clamp(lower, clipBox.lower, clipBox.upper);
 			upper = clamp(upper, clipBox.lower, clipBox.upper);
 		}
 
-		[[nodiscard]] inline auto size() const -> Vec3<T>
+		[[nodiscard]] auto size() const -> Vec3<T>
 		{
 			Vec3<T> r;
 			r.x = std::abs(upper.x - lower.x);
@@ -50,19 +55,29 @@ namespace b3d::common
 			return r;
 		}
 
-		[[nodiscard]] inline auto volume() const -> Vec3<T>
+		[[nodiscard]] auto volume() const -> Vec3<T>
 		{
 			Vec3<T> s = size();
 			return s.x * s.y * s.z;
 		}
 
-		[[nodiscard]] inline auto contains(const Vec3<T>& value) const -> bool
+		[[nodiscard]] auto contains(const Vec3<T>& value) const -> bool
 		{
 			return (value >= lower) && (value <= upper);
 		}
 
 		auto operator<=>(const Box3<T>& other) const -> auto = default;
 	};
+
+	template <typename T>
+	[[nodiscard]] auto operator/(const Vec3<T>& a, T b) -> Vec3<T>
+	{
+		Vec3<T> r;
+		r.x = a.x / b;
+		r.y = a.y / b;
+		r.z = a.z / b;
+		return r;
+	}
 
 	template <typename T>
 	[[nodiscard]] auto operator*(const Vec3<T>& a, const Vec3<T>& b) -> Vec3<T>
@@ -125,10 +140,10 @@ namespace b3d::common
 	using Box3I = Box3<int>;
 	using Box3i64 = Box3<int64_t>;
 
-	#ifdef B3D_USE_NLOHMANN_JSON
-		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Box3F, lower, upper);
-		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Box3d, lower, upper);
-		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Box3I, lower, upper);
-		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Box3i64, lower, upper);
-	#endif
+#ifdef B3D_USE_NLOHMANN_JSON
+	NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Box3F, lower, upper);
+	NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Box3d, lower, upper);
+	NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Box3I, lower, upper);
+	NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Box3i64, lower, upper);
+#endif
 } // namespace b3d::common

@@ -19,7 +19,7 @@
 #include "ImGuiProfilerRenderer.h"
 #include "Profiler.h"
 
-class GLFWwindow;
+struct GLFWwindow;
 class DebugDrawList;
 class GizmoHelper;
 class UpdatableComponentBase;
@@ -61,6 +61,7 @@ public:
 	[[nodiscard]] auto getDrawList() const -> std::shared_ptr<DebugDrawList>;
 
 	GLFWwindow* mainWindowHandle_{};
+	GLFWwindow* splashScreenWindowHandle_{};
 
 	[[nodiscard]] auto getMainDockspace() const -> Dockspace*;
 
@@ -107,6 +108,7 @@ public:
 	std::vector<Action> trayCallbacks_;
 
 	ApplicationSettings settings_{};
+	bool isDevelopmentModeEnabled{false};
 
 private:
 	FontCollection fonts_{};

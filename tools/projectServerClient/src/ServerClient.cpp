@@ -26,7 +26,7 @@ auto ServerClient::setNewConnectionInfo(ServerConnectionDescription serverConnec
 	updateServerStatusState(100.0f);
 }
 
-auto ServerClient::getConnectionInfo() -> const ServerConnectionDescription&
+auto ServerClient::getConnectionInfo() const -> const ServerConnectionDescription&
 {
 	return serverConnectionDescription_;
 }

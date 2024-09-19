@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "framework/RendererExtensionBase.h"
 #include "framework/UpdatableComponentBase.h"
 
 class OpenFileDialogView;
@@ -18,7 +19,7 @@ class ProjectExplorer;
 class ProjectExplorerView;
 class ProjectSelectionView;
 
-class ProjectExplorerController final : public UpdatableComponentBase
+class ProjectExplorerController final : public UpdatableComponentBase, public RendererExtensionBase
 {
 public:
 	ProjectExplorerController(ApplicationContext& applicationContext, ProjectExplorer& projectExplorer,
@@ -28,8 +29,12 @@ public:
 	auto update() -> void override;
 
 	auto setProjects(std::vector<b3d::tools::project::Project>* projects) -> void;
+	auto initializeResources() -> void override{};
+	auto deinitializeResources() -> void override{};
+	auto updateRenderingData(b3d::renderer::RenderingDataWrapper& renderingData) -> void override;
 
 private:
+	b3d::renderer::RenderingDataWrapper* renderingData_{nullptr};
 
 	ProjectExplorer* projectExplorer_;
 	std::unique_ptr<ProjectExplorerView> projectExplorerView_;
