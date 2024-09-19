@@ -181,14 +181,17 @@ auto ProjectExplorerView::onDraw() -> void
 	const auto switchServerPressed = ImGui::Button(ICON_LC_ARROW_RIGHT_LEFT);
 	ImGui::SetItemTooltip("Switch Server");
 
-
-	ImGui::BeginUnderDevelopmentScope();
-	if (ImGui::Button("Load .nvdb manually"))
+	if (applicationContext_->isDevelopmentModeEnabled)
 	{
-		showNvdbSelectionModal_();
-	}
-	ImGui::EndUnderDevelopmentScope();
 
+
+		ImGui::BeginUnderDevelopmentScope();
+		if (ImGui::Button("Load .nvdb manually"))
+		{
+			showNvdbSelectionModal_();
+		}
+		ImGui::EndUnderDevelopmentScope();
+	}
 	if (isConnectedToAnyServer and not projectAvailable())
 	{
 		static auto timer = 0.0f;

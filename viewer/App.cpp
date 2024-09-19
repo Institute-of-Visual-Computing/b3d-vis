@@ -8,6 +8,7 @@
 #include "SimpleTrianglesRenderer.h"
 
 #include "FastVoxelTraversalRenderer.h"
+#include "samples/common/owlViewer/OWLViewer.h"
 
 
 using namespace b3d::renderer;
@@ -17,6 +18,7 @@ namespace
 	auto rendererIndex = 0;
 	auto disableVsync = false;
 	auto shouldRun = true;
+	auto enableDevMode = false;
 
 	struct Command
 	{
@@ -94,6 +96,8 @@ auto Application::run() -> void
 	auto viewer = NanoViewer{ "Default Viewer"s, 1980, 1080, !disableVsync, rendererIndex };
 	//viewer.enableFlyMode();
 	//viewer.enableInspectMode();
+	viewer.enableDevelopmentMode(enableDevMode);
+	
 	auto& camera = viewer.getCamera();
 	camera.setOrientation(glm::vec3(1.0,1.0,1.0), glm::vec3(0.0,0.0,0.0), camera.getUp(), camera.getFovYInDegrees());
 	viewer.showAndRunWithGui();
@@ -145,6 +149,18 @@ auto Application::initialization(const std::vector<Param>& parameters) -> void
 						if (values.size() == 0)
 						{
 							disableVsync = false;
+						}
+						else
+						{
+							notifyFaultyArguments();
+						}
+					});
+	addParamCommand(parameters, "enable_dev_mode", "Enables under development features.",
+					[&](const std::vector<std::string>& values)
+					{
+						if (values.size() == 0)
+						{
+							enableDevMode = true;
 						}
 						else
 						{

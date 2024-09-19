@@ -108,6 +108,7 @@ public:
 	std::vector<Action> trayCallbacks_;
 
 	ApplicationSettings settings_{};
+	bool isDevelopmentModeEnabled{false};
 
 private:
 	FontCollection fonts_{};
