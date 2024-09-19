@@ -571,7 +571,7 @@ auto VolumeView::drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec
 
 		const auto halfSize = bound / 2.0f;
 
-		const auto bounds = std::array{ halfSize.x, halfSize.y, halfSize.z, -halfSize.x, -halfSize.y, -halfSize.z };
+		const auto bounds = std::array{ -halfSize.x, -halfSize.y, -halfSize.z, halfSize.x, halfSize.y, halfSize.z };
 
 		glm::mat4 worldTransformMat{ { worldTransform.l.vx.x, worldTransform.l.vx.y, worldTransform.l.vx.z, 0.0f },
 									 { worldTransform.l.vy.x, worldTransform.l.vy.y, worldTransform.l.vy.z, 0.0f },
