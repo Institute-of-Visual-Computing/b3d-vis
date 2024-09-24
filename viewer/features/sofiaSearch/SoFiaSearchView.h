@@ -36,7 +36,7 @@ public:
 
 		struct FlagParams
 		{
-			std::string flagAutoMode{ "false" }; // true, false, channels, pixels
+			std::string autoMode{ "false" }; // true, false, channels, pixels
 			std::array<int, 3> regionMin{ 0, 0, 0 };
 			std::array<int, 3> regionMax{ 1, 1, 1 };
 			std::string catalog;
@@ -185,6 +185,9 @@ public:
 		PipelineParams pipeline;
 		InputParams input;
 		ContsubParams contsub;
+		FlagParams flag;
+		RippleFilterParams ripple;
+		ScaleNoiseParams scaleNoise;
 		ScfindParams scfind;
 		ThresholdParams threshold;
 		LinkerParams linker;
