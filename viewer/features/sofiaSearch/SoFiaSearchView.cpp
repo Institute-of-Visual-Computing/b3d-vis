@@ -64,11 +64,11 @@ namespace
 	}
 
 	auto DragFloatInputWidget(const char* label, float* value, float v_speed, float v_min, float v_max,
-							  float defaultValue, float btnSizeX, const char* helpText = nullptr)-> bool
+							  float defaultValue, float btnSizeX, const char* helpText = nullptr, const char* format = "%.2f")-> bool
 	{
 		auto changed = false;
 		ImGui::PushID(label);
-		changed = ImGui::DragFloat("Threshold", value, v_speed, v_min, v_max, "%.2f",
+		changed = ImGui::DragFloat("Threshold", value, v_speed, v_min, v_max, format,
 						 ImGuiSliderFlags_None);
 		if (helpText != nullptr)
 		{
@@ -76,6 +76,26 @@ namespace
 			HelpMarker(helpText);
 		}
 		changed = ResetButtonOnSameLine(btnSizeX, value, defaultValue);
+		ImGui::PopID();
+		return changed;
+	}
+
+	auto ComboWidget(const char* label, const char* itemValues[], int itemCount, int* selectedItemIndex,
+					 std::string* target, int defaultItemIndex, float btnSizeX, const char* helperText = nullptr) -> bool
+	{
+		ImGui::PushID(label);
+		auto changed = ImGui::Combo(label, selectedItemIndex, itemValues, itemCount);
+		if (helperText != nullptr)
+		{
+			ImGui::SameLine();
+			HelpMarker(helperText);
+		}
+		changed = changed || ResetButtonOnSameLine(btnSizeX, selectedItemIndex, defaultItemIndex);
+
+		if (changed)
+		{
+			*target = itemValues[*selectedItemIndex];
+		}
 		ImGui::PopID();
 		return changed;
 	}
@@ -188,6 +208,8 @@ auto SoFiaSearchView::onDraw() -> void
 
 	if (ImGui::CollapsingHeader("Input", ImGuiTreeNodeFlags_DefaultOpen))
 	{
+
+		ImGui::PushID("InputSettings");
 		ImGui::Text("Region");
 
 		ImGui::BeginDisabled(true);
@@ -199,10 +221,13 @@ auto SoFiaSearchView::onDraw() -> void
 
 
 		ImGui::EndDisabled();
+		ImGui::PopID();
 	}
 
 	if (ImGui::CollapsingHeader("Preconditioning Continuum Substraction", ImGuiTreeNodeFlags_None))
 	{
+
+		ImGui::PushID("PreconditioningContinuumSettings");
 		ImGui::Checkbox("Enabled##contsub", &model_.params.contsub.enable);
 		ImGui::SameLine();
 		HelpMarker("If enabled, SoFiA will try to subtract any residual continuum emission from the data cube prior to source finding by fitting and subtracting a polynomial of order 0 (offset) or 1 (offset + slope). The order of the polynomial is defined by contsub.order.");
@@ -229,11 +254,14 @@ auto SoFiaSearchView::onDraw() -> void
 		{
 			ImGui::EndDisabled();
 		}
+
+		ImGui::PopID();
 	}
 
 	ImGui::BeginDisabled(true);
 	if (ImGui::CollapsingHeader("Preconditioning Flagging", ImGuiTreeNodeFlags_None))
 	{
+		ImGui::PushID("PreconditioningFlaggingSettings");
 		const char* items[] = { "false", "true", "channels", "pixels" };
 		static auto item_current = 0;
 		ImGui::Combo("Auto", &item_current, items, 4);
@@ -256,12 +284,17 @@ auto SoFiaSearchView::onDraw() -> void
 		{
 			ImGui::EndDisabled();
 		}
+
+		ImGui::PopID();
 	}
 	ImGui::EndDisabled();
 	
 
 	if (ImGui::CollapsingHeader("Preconditioning Ripple Filter", ImGuiTreeNodeFlags_None))
 	{
+
+		ImGui::PushID("PreconditioningRippleSettings");
+
 		ImGui::Checkbox("Enabled##Ripple", &model_.params.ripple.enable);
 		ImGui::SameLine();
 		HelpMarker("If set to true, then the ripple filter will be applied to the data cube prior to source finding. The filter works by measuring and subtracting either the mean or median across a running window. This can be useful if a DC offset or spatial/spectral ripple is present in the data.");
@@ -315,47 +348,385 @@ auto SoFiaSearchView::onDraw() -> void
 		{
 			ImGui::EndDisabled();
 		}
+		ImGui::PopID();
 	}
 
-	if (ImGui::CollapsingHeader("Preconditioning Noise Scaling", ImGuiTreeNodeFlags_DefaultOpen))
+	if (ImGui::CollapsingHeader("Preconditioning Noise Scaling", ImGuiTreeNodeFlags_None))
 	{
+		ImGui::PushID("NoiseScaleSettings");
+
 		ImGui::Checkbox("Enabled##Noise", &model_.params.scaleNoise.enable);
+		ImGui::SameLine();
+		HelpMarker(
+			"If set to true, noise scaling will be enabled. The purpose of the noise scaling modules is to measure the "
+			"noise level in the input cube and then divide the input cube by the noise. This can be used to correct "
+			"for spatial or spectral noise variations across the input cube prior to running the source finder.");
 
 		if (!model_.params.scaleNoise.enable)
+		{
+			ImGui::BeginDisabled(true);
+		}
+		const char* fluxRangeItems[] = { "negative", "positive", "full" };
+		static auto fluxRangeItem = 0;
+		ComboWidget("Flux Range", fluxRangeItems, 3, &fluxRangeItem, &model_.params.scaleNoise.fluxRange, 0,
+					btnDefaultSize,"Flux range to be used in the noise measurement. If set to negative or positive, only pixels with "
+					"negative or positive flux will be used, respectively. This can be useful to prevent real emission "
+					"or artefacts from affecting the noise measurement. If set to full, all pixels will be used in the "
+					"noise measurement irrespective of their flux.");
+
+		DragIntInputWidget(
+			"Grid XY", &model_.params.scaleNoise.gridXY, 2, 0, 1001, 0, btnDefaultSize,
+			"Size of the spatial grid across which noise measurement window will be moved across the data cube. It must be an odd integer value. If set to 0 instead, the spatial grid size will default to half the spatial window size.",
+			true);
+
+		DragIntInputWidget(
+			"Grid Z", &model_.params.scaleNoise.gridZ, 2, 0, 1001, 0, btnDefaultSize,
+			"Size of the spectral grid across which noise measurement window will be moved across the data cube. It must be an odd integer value. If set to 0 instead, the spectral grid size will default to half the spectral window size.",
+			true);
+
+		ImGui::Checkbox("Interpolate", &model_.params.scaleNoise.interpolate);
+		ImGui::SameLine();
+		HelpMarker(
+			"If set to true, linear interpolation will be used to interpolate the measured local noise values in "
+			"between grid points. If set to false, the entire grid cell will instead be filled with the measured noise "
+			"value.");
+		ResetButtonOnSameLine(btnDefaultSize, &model_.params.scaleNoise.interpolate, false);
+
+		const char* scaleNoiseModeItems[] = { "spectral", "local" };
+		static auto scaleNoiseModeItem = 0;
+		ComboWidget("Mode", scaleNoiseModeItems, 2, &scaleNoiseModeItem, &model_.params.scaleNoise.mode, 0,
+					btnDefaultSize,
+					"Noise scaling mode. If set to spectral, the noise level will be determined for each spectral channel by measuring the noise within each image plane. This is useful for data cubes where the noise varies with frequency. If set to local, the noise level will be measured locally in window running across the entire cube in all three dimensions. This is useful for data cubes with more complex noise variations, such as interferometric images with primary-beam correction applied.");
+
+
+		ImGui::Checkbox("ScFind", &model_.params.scaleNoise.scfind);
+		ImGui::SameLine();
+		HelpMarker("If true and global or local noise scaling is enabled, then noise scaling will additionally be applied after each smoothing operation in the S+C finder. This might be useful in certain situations where large-scale artefacts are present in interferometric data. However, this feature should be used with great caution, as it has the potential to do more harm than good.");
+		ResetButtonOnSameLine(btnDefaultSize, &model_.params.scaleNoise.scfind, false);
+
+		const char* scaleNoiseStatisticItems[] = { "std", "mad", "gauss" };
+		static auto scaleNoiseStatisticItem = 1;
+		ComboWidget("Statistic", scaleNoiseStatisticItems, 3, &scaleNoiseStatisticItem, &model_.params.scaleNoise.statistic,
+					1,
+					btnDefaultSize, "Statistic to be used in the noise measurement process. Possible values are std, mad and gauss for standard deviation, median absolute deviation and Gaussian fitting to the flux histogram, respectively. Standard deviation is by far the fastest algorithm, but it is also the least robust one with respect to emission and artefacts in the data. Median absolute deviation and Gaussian fitting are far more robust in the presence of strong, extended emission or artefacts, but will usually take longer.");
+
+		DragIntInputWidget("Window XY", &model_.params.scaleNoise.windowXY, 2, 0, 1001, 25, btnDefaultSize,
+						   "Spatial size of the window used in determining the local noise level. It must be an odd integer value. If set to 0, the pipeline will use the default value instead.",
+						   true);
+
+		
+		DragIntInputWidget("Window Z", &model_.params.scaleNoise.windowZ, 2, 0, 1001, 15, btnDefaultSize,
+						   "Spectral size of the window used in determining the local noise level.It must be an odd integer value.If set to 0, the pipeline will use the default value instead.",
+						   true);
+
+		if (!model_.params.scaleNoise.enable)
+		{
+			ImGui::EndDisabled();
+		}
+		ImGui::PopID();
+	}
+
+	if (ImGui::CollapsingHeader("Source Finding", ImGuiTreeNodeFlags_None))
+	{
+		ImGui::PushID("SourceFindingSettings");
+
+		ImGui::Checkbox("Enabled##ScFind", &model_.params.scfind.enable);
+		ImGui::SameLine();
+		HelpMarker("If set to true, the Smooth + Clip (S+C) finder will be enabled. The S+C finder operates by iteratively smoothing the data cube with a user-defined set of smoothing kernels, measuring the noise level on each smoothing scale, and adding all pixels with an absolute flux above a user-defined relative threshold to the source detection mask.");
+
+		if (!model_.params.scfind.enable)
 		{
 			ImGui::BeginDisabled(true);
 		}
 
 		const char* fluxRangeItems[] = { "negative", "positive", "full" };
 		static auto fluxRangeItem = 0;
+		ComboWidget("Flux Range", fluxRangeItems, 3, &fluxRangeItem, &model_.params.scfind.fluxRange, 0,
+					btnDefaultSize,
+					"Flux range to be used in the noise measurement. If set to negative or positive, only pixels with negative or positive flux will be used, respectively. This can be useful to prevent real emission or artefacts from affecting the noise measurement. If set to full, all pixels will be used in the noise measurement irrespective of their flux.");
+
+		/*
+		 * scfind.kernelsXY
+		 * scfind.kernelsZ
+		 */
+
+		DragFloatInputWidget("Replacement", &model_.params.scfind.replacement, 0.01f, -1.0f, 9999.0f, 2.0f, btnDefaultSize,
+							 "Before smoothing the data cube during an S+C iteration, every pixel in the data cube that was already detected in a previous iteration will be replaced by this value multiplied by the original noise level in the non-smoothed data cube, while keeping the original sign of the data value. This feature can be disabled altogether by specifying a value of < 0.");
 
 
+		DragFloatInputWidget("Threshold", &model_.params.scfind.threshold, 0.01f, 0.0f, 100.0f, 5.0f, btnDefaultSize,
+							 "Flux threshold to be used by the S+C finder relative to the measured noise level in each "
+							 "smoothing iteration. In practice, values in the range of about 3 to 5 have proven to be "
+							 "useful in most situations, with lower values in that range requiring use of the "
+							 "reliability filter to reduce the number of false detections.");
+
+		
+		const char* scaleNoiseStatisticItems[] = { "std", "mad", "gauss" };
+		static auto scaleNoiseStatisticItem = 1;
+		ComboWidget(
+			"Statistic", scaleNoiseStatisticItems, 3, &scaleNoiseStatisticItem, &model_.params.scfind.statistic, 1,
+			btnDefaultSize,
+			"Statistic to be used in the noise measurement process. Possible values are std, mad and gauss for standard deviation, median absolute deviation and Gaussian fitting to the flux histogram, respectively. Standard deviation is by far the fastest algorithm, but it is also the least robust one with respect to emission and artefacts in the data. Median absolute deviation and Gaussian fitting are far more robust in the presence of strong, extended emission or artefacts, but will usually take longer.");
 
 
-		if (!model_.params.scaleNoise.enable)
+		if (!model_.params.scfind.enable)
 		{
 			ImGui::EndDisabled();
 		}
-	}
 
-	if (ImGui::CollapsingHeader("Source Finding", ImGuiTreeNodeFlags_None))
-	{
+		ImGui::PopID();
 	}
 
 	if (ImGui::CollapsingHeader("Linking", ImGuiTreeNodeFlags_None))
 	{
+		ImGui::PushID("LinkingSettings");
+
+		ImGui::Checkbox("Enabled##Linking", &model_.params.linker.enable);
+		ImGui::SameLine();
+		HelpMarker("If true, then the linker will be run to merge the pixels detected by the source finder into coherent detections that can then be parameterised and catalogued. If false, the pipeline will be terminated after source finding, and no catalogue or source products will be created. Disabling the linker can be useful if only the raw mask from the source finder is needed.");
+
+		if (!model_.params.linker.enable)
+		{
+			ImGui::BeginDisabled(true);
+		}
+
+		ImGui::Checkbox("Keep Negative##KeepNeg", &model_.params.linker.keepNegative);
+		ImGui::SameLine();
+		HelpMarker("If set to true, then the linker will not discard detections with negative flux. Reliability filtering must be disabled for negative sources to be retained. Also note that negative sources will not appear in moment 1 and 2 maps. This option should only ever be used for testing or debugging purposes, but never in production mode.");
+
+
+		DragFloatInputWidget(
+			"Max Fill", &model_.params.linker.maxFill, 0.01f, 0.0f, 100.0f, .0f, btnDefaultSize,
+							 "Maximum allowed filling factor of a source within its rectangular bounding box, defined as the number of spatial and spectral pixels that make up the source divided by the number of pixels in the bounding box. The default value of 0.0 disables maximum filling factor filtering.");
+
+		DragIntInputWidget("Max Pixels", &model_.params.linker.maxPixels, 1, 0, 999999, 0, btnDefaultSize,
+						   "Maximum allowed number of spatial and spectral pixels that a source must not exceed.The "
+						   "default value of 0 disables maximum size filtering.",
+						   false);
+
+		DragIntInputWidget(
+			"Max Size XY", &model_.params.linker.maxSizeXY, 1, 0, 999999, 0, btnDefaultSize,
+			"Maximum size of sources in the spatial dimension in pixels.Sources that exceed this limit will be "
+			"discarded by the linker.If the value is set to 0, maximum size filtering will be disabled.",
+			false);
+
+		DragIntInputWidget(
+			"Max Size Z", &model_.params.linker.maxSizeZ, 1, 0, 999999, 0, btnDefaultSize,
+			"Maximum size of sources in the spectral dimension in pixels. Sources that exceed this limit will be discarded by the linker. If the value is set to 0, maximum size filtering will be disabled.",
+			false);
+
+
+
+		DragFloatInputWidget(
+			"Min Fill", &model_.params.linker.minFill, 0.01f, 0.0f, 100.0f, .0f, btnDefaultSize,
+			"Minimum allowed filling factor of a source within its rectangular bounding box, defined as the number of spatial and spectral pixels that make up the source divided by the number of pixels in the bounding box. The default value of 0.0 disables minimum filling factor filtering.");
+
+		DragIntInputWidget(
+			"Min Pixels", &model_.params.linker.minPixels, 1, 0, 999999, 0, btnDefaultSize,
+						   "Minimum allowed number of spatial and spectral pixels that a source must have. The default value of 0 disables minimum size filtering.",
+						   false);
+
+		DragIntInputWidget(
+			"Min Size XY", &model_.params.linker.minSizeXY, 1, 1, 999999, 5, btnDefaultSize,
+			"Minimum size of sources in the spatial dimension in pixels. Sources that fall below this limit will be discarded by the linker.",
+			false);
+
+		DragIntInputWidget(
+			"Min Size Z", &model_.params.linker.minSizeZ, 1, 1, 999999, 5, btnDefaultSize,
+			"Minimum size of sources in the spectral dimension in pixels. Sources that fall below this limit will be discarded by the linker.",
+			false);
+
+		ImGui::Checkbox("Positivity##positivity", &model_.params.linker.positivity);
+		ImGui::SameLine();
+		HelpMarker("If set to true, then the linker will only merge positive pixels and discard all negative pixels by removing them from the mask. This option should be used with extreme caution and will render the reliability filter useless. It can be useful, though, if there are significant negative artefacts such as residual sidelobes in the data.");
+
+		DragIntInputWidget("Radius XY", &model_.params.linker.radiusXY, 1, 1, 999999, 1, btnDefaultSize,
+						   "Maximum merging length in the spatial dimension. Pixels with a separation of up to this value will be merged into the same source.",
+						   false);
+
+		DragIntInputWidget("Radius Z", &model_.params.linker.radiusZ, 1, 1, 999999, 1, btnDefaultSize,
+						   "Maximum merging length in the spectral dimension. Pixels with a separation of up to this value will be merged into the same source.",
+						   false);
+
+		if (!model_.params.linker.enable)
+		{
+			ImGui::EndDisabled();
+		}
+
+		ImGui::PopID();
 	}
 
 	if (ImGui::CollapsingHeader("Reliability", ImGuiTreeNodeFlags_None))
 	{
+		ImGui::PushID("ReliabilitySettings");
+
+		ImGui::Checkbox("Enabled##Reliability", &model_.params.reliability.enable);
+		ImGui::SameLine();
+		HelpMarker("If set to true, reliability calculation and filtering will be enabled. This will determine the reliability of each detection with positive total flux by comparing the density of positive and negative detections in a three-dimensional parameter space. Sources below the specified reliability threshold will then be discarded. Note that this will require a sufficient number of negative detections, which can usually be achieved by setting the source finding threshold to somewhere around 3 to 4 times the noise level.");
+
+		if (!model_.params.reliability.enable)
+		{
+			ImGui::BeginDisabled(true);
+		}
+
+		ImGui::Checkbox("Auto Kernel##autoKernel", &model_.params.reliability.autoKernel);
+		ImGui::SameLine();
+		HelpMarker("If set to true, SoFiA will try to automatically determine the optimal reliability kernel scale factor by iteratively increasing the kernel size until the absolute value of the median of the Skellam distribution decreases below reliability.tolerance. If the algorithm fails to converge after reliability.iterations steps, then the default value of reliability.scaleKernel will be used instead.");
+
+		// SKipped
+		// reliability.catalog
+		// reliability.debug
+
+		DragIntInputWidget("Iterations", &model_.params.reliability.iterations, 1, 1, 999, 30, btnDefaultSize,
+						   "Maximum number of iterations for the reliability kernel auto-scaling algorithm to converge. If convergence is not achieved, then reliability.scaleKernel will instead be applied.",
+						   false);
+
+		DragIntInputWidget(
+			"Min Pixels", &model_.params.reliability.minPixels, 1, 0, 999999, 1, btnDefaultSize,
+						   "Minimum total number of spatial and spectral pixels within the source mask for detections to be considered reliable. The reliability of any detection with fewer pixels will be set to zero by default.",
+						   false);
+
+		DragFloatInputWidget(
+			"Min SNR", &model_.params.reliability.minSNR, 0.01f, 0.0f, 100.0f, 3.0f, btnDefaultSize,
+			"Lower signal-to-noise limit for reliable sources. Detections that fall below this threshold will be deemed unreliable and assigned a reliability of 0. The value denotes the integrated signal-to-noise ratio, SNR = F_sum / [RMS * sqrt(N * Ω)], of the source, where Ω is the solid angle (in pixels) of the point spread function of the data, N is the number of spatial and spectral pixels of the source, F_sum is the summed flux density and RMS is the local RMS noise level (assumed to be constant). Note that the spectral resolution is assumed to be equal to the channel width.");
+
+		const char* reliabilityParamItems[9] = { "peak", "sum", "mean", "chan", "pix", "fill", "std", "skew", "kurt" };
+		static std::array<bool, 9> reliabilityParamItemBoxes = { true, true, true, false, false, false, false, false, false  };
+		ImGui::Text("Parameters");
+		ImGui::SameLine();
+		HelpMarker("Parameter space to be used in deriving the reliability of detections. This must be a list of "
+				   "parameters the number of which defines the dimensionality of the parameter space. Possible values "
+				   "are peak for the peak flux density, sum for the summed flux density, mean for mean flux density, "
+				   "chan for the number of spectral channels, pix for the total number of spatial and spectral pixels, "
+				   "fill for the filling factor, std for the standard deviation, skew for the skewness and kurt for "
+				   "the kurtosis across the source mask. Flux densities will be divided by the global RMS noise level. "
+				   "peak, sum, mean, pix and fill will be logarithmic, all other parameters linear.");
+		ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnDefaultSize);
+		if (ImGui::Button(ICON_LC_UNDO_2))
+		{
+
+			reliabilityParamItemBoxes = { true, true, true, false, false, false, false, false, false };
+		}
+		if (ImGui::BeginChild("##Parameters", ImVec2(-FLT_MIN, ImGui::GetFontSize() * 5),
+							  ImGuiChildFlags_Border))
+		{
+			ImGuiMultiSelectIO* ms_io =
+				ImGui::BeginMultiSelect(ImGuiMultiSelectFlags_NoAutoSelect | ImGuiMultiSelectFlags_NoAutoClear, -1,
+										reliabilityParamItemBoxes.size());
+			ImGuiSelectionExternalStorage storage_wrapper;
+			storage_wrapper.UserData = reliabilityParamItemBoxes.data();
+			storage_wrapper.AdapterSetItemSelected = [](ImGuiSelectionExternalStorage* self, int n, bool selected)
+			{
+				bool* array = (bool*)self->UserData;
+				array[n] = selected;
+			};
+			storage_wrapper.ApplyRequests(ms_io);
+			for (int n = 0; n < 9; n++)
+			{
+				ImGui::SetNextItemSelectionUserData(n);
+				ImGui::Checkbox(reliabilityParamItems[n], &reliabilityParamItemBoxes[n]);
+			}
+			ms_io = ImGui::EndMultiSelect();
+			storage_wrapper.ApplyRequests(ms_io);
+		}
+		ImGui::EndChild();
+
+		// Skipped
+		// reliability.plot
+
+		DragFloatInputWidget("Scale Kernel", &model_.params.reliability.scaleKernel, 0.001f, -100.0f, 100.0f, 0.4f,
+							 btnDefaultSize,
+							 "When estimating the density of positive and negative detections in parameter space, the "
+							 "size of the Gaussian kernel used in this process is determined from the covariance of "
+							 "the distribution of negative detections in parameter space. This parameter setting can "
+							 "be used to scale that kernel by a constant factor.");
+
+		DragFloatInputWidget("Threshold", &model_.params.reliability.threshold, 0.001f, 0.0f, 1.0f, 0.9f,
+							 btnDefaultSize,
+							 "Reliability threshold in the range of 0 to 1. Sources with a reliability below this "
+							 "threshold will be discarded.");
+
+		DragFloatInputWidget("Tolerance ", &model_.params.reliability.tolerance, 0.001f, -100.0f, 100.0f, 0.05f,
+							 btnDefaultSize,
+							 "Convergence tolerance for the reliability kernel auto-scaling algorithm. Convergence is achieved when the absolute value of the median of the Skellam distribution drops below this tolerance.",
+								"%.4f");
+
+
+		if (!model_.params.reliability.enable)
+		{
+			ImGui::EndDisabled();
+		}
+
+
+		ImGui::PopID();
 	}
 
 	if (ImGui::CollapsingHeader("Mask Dilation", ImGuiTreeNodeFlags_None))
 	{
+		ImGui::PushID("MaskDilationSettings");
+		ImGui::Checkbox("Enabled##MaskDilation", &model_.params.dilation.enable);
+		ImGui::SameLine();
+		HelpMarker("Set to true to enable source mask dilation whereby the mask of each source will be grown outwards until the resulting increase in integrated flux drops below a given threshold or the maximum number of iterations is reached.");
+
+		if (!model_.params.dilation.enable)
+		{
+			ImGui::BeginDisabled(true);
+		}
+
+		DragIntInputWidget("Iterations XY", &model_.params.dilation.iterationsXY, 1, 1, 999999, 10, btnDefaultSize,
+			"Sets the maximum number of spatial iterations for the mask dilation algorithm. Once this number of iterations has been reached, mask dilation in the spatial plane will stop even if the flux increase still exceeds the threshold set by dilation.threshold.",
+			false);
+
+		DragIntInputWidget("Iterations Z", &model_.params.dilation.iterationsZ, 1, 1, 999999, 5, btnDefaultSize,
+			"Sets the maximum number of spectral iterations for the mask dilation algorithm. Once this number of iterations has been reached, mask dilation along the spectral axis will stop even if the flux increase still exceeds the threshold set by dilation.threshold.",
+			false);
+
+		DragFloatInputWidget(
+			"Threshold", &model_.params.dilation.threshold, 0.0001f, -5.0f, 5.0f, 0.001f, btnDefaultSize,
+			"If a positive value is provided, mask dilation will end when the increment in the integrated flux during a single iteration drops below this value times the total integrated flux (from the previous iteration), or when the maximum number of iterations has been reached. Specifying a negative threshold will disable flux checking altogether and always carry out the maximum number of iterations.",
+			"%.5f");
+
+
+		if (!model_.params.dilation.enable)
+		{
+			ImGui::EndDisabled();
+		}
+		
+
+		ImGui::PopID();
 	}
 
 	if (ImGui::CollapsingHeader("Parametrisation", ImGuiTreeNodeFlags_None))
 	{
+		ImGui::PushID("ParametrisationSettings");
+		ImGui::Checkbox("Enabled##Parametrisation", &model_.params.parameter.enable);
+		ImGui::SameLine();
+		HelpMarker("If set to true, the parametrisation module will be enabled to measure the basic parameters of each detected source.");
+
+		if (!model_.params.parameter.enable)
+		{
+			ImGui::BeginDisabled(true);
+		}
+
+		//Skipped
+		// parameter.offset
+
+		ImGui::Checkbox("Parametrisation##physical", &model_.params.parameter.physical);
+		ImGui::SameLine();
+		HelpMarker("If set to true, SoFiA will attempt to convert relevant parameters to physical units. This involves conversion of channel widths to frequency/velocity units and division of flux-based parameters by the solid angle of the beam. For this to work, the relevant header parameters, including CTYPE3, CDELT3, BMAJ and BMIN, must have been correctly set. It is further assumed that the beam does not vary with frequency or position.");
+
+		ImGui::BeginDisabled(true);
+		ImGui::Checkbox("Parametrisation##wcs", &model_.params.parameter.wcs);
+		ImGui::SameLine();
+		HelpMarker("If set to true, SoFiA will attempt to convert the source centroid position (x, y, z) to world coordinates using the WCS information stored in the header. In addition, spectra and moment map units will be converted from channels to WCS units as well.");
+		ImGui::EndDisabled();
+
+		if (!model_.params.parameter.enable)
+		{
+			ImGui::EndDisabled();
+		}
+
+		ImGui::PopID();
 	}
 
 	/* Not used
