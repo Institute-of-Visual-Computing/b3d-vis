@@ -1,4 +1,5 @@
 #include "SoFiaSearchView.h"
+#include "SoFiaSearchView.h"
 
 #include "GizmoHelper.h"
 #include "framework/ApplicationContext.h"
@@ -20,7 +21,7 @@ namespace
 			ImGui::TextUnformatted(desc);
 			ImGui::PopTextWrapPos();
 			ImGui::EndTooltip();
-		}
+		}	
 	}
 
 	template <typename T>
@@ -99,11 +100,15 @@ namespace
 		ImGui::PopID();
 		return changed;
 	}
+
+	
 }
 
-auto SoFiaSearchView::SofiaParamsTyped::buildSoFiaParams() const -> b3d::tools::sofia::SofiaParams
+auto SoFiaSearchView::SofiaParamsTyped::buildSoFiaParams() -> b3d::tools::sofia::SofiaParams
 {
 	b3d::tools::sofia::SofiaParams sofiaParams;
+
+	//serialize(*this, sofiaParams);
 	sofiaParams.setOrReplace("input.region",
 							 std::format("{},{},{},{},{},{}", input.region.lower.x, input.region.upper.x,
 										 input.region.lower.y, input.region.upper.y, input.region.lower.z,
@@ -426,7 +431,7 @@ auto SoFiaSearchView::onDraw() -> void
 		ImGui::PopID();
 	}
 
-	if (ImGui::CollapsingHeader("Source Finding", ImGuiTreeNodeFlags_None))
+	if (ImGui::CollapsingHeader("Source Finding", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		ImGui::PushID("SourceFindingSettings");
 
@@ -449,6 +454,93 @@ auto SoFiaSearchView::onDraw() -> void
 		 * scfind.kernelsXY
 		 * scfind.kernelsZ
 		 */
+		ImGui::PushID("ScFindKernelXY");
+
+		ImGui::Text("Kernels XY");
+		ImGui::SameLine();
+		HelpMarker("Comma-separated list of spatial Gaussian kernel sizes to apply. The individual kernel sizes must be floating-point values and denote the full width at half maximum (FWHM) of the Gaussian used to smooth the data in the spatial domain. A value of 0 means that no spatial smoothing will be applied.");
+		ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnDefaultSize);
+		if (ImGui::Button(ICON_LC_UNDO_2))
+		{
+			model_.params.scfind.kernelsXY = { 0, 3, 6 };
+		}
+		if (ImGui::BeginChild("##KernelsXY", ImVec2(-FLT_MIN, ImGui::GetFontSize() * (model_.params.scfind.kernelsXY.size() + 2)), ImGuiChildFlags_Border))
+		{
+			for (auto i = 0; i < model_.params.scfind.kernelsXY.size(); ++i)
+			{
+				auto& kernel = model_.params.scfind.kernelsXY[i];
+				ImGui::PushID(i);
+				ImGui::Text(std::format("{}", kernel).c_str());
+				ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnDefaultSize);
+				if (ImGui::Button(ICON_LC_X))
+				{
+					model_.params.scfind.kernelsXY.erase(model_.params.scfind.kernelsXY.begin() + i);
+				}
+				ImGui::PopID();
+			}
+		}
+		ImGui::EndChild();
+
+		static int inputXY = 7;
+		ImGui::InputInt("", &inputXY, 1, 5);
+		inputXY = std::max(0, inputXY);
+		ImGui::SameLine();
+		if (ImGui::Button("Add##AddKernelXY"))
+		{
+			if (model_.params.scfind.kernelsXY.end() == std::ranges::find(model_.params.scfind.kernelsXY, inputXY))
+			{
+				model_.params.scfind.kernelsXY.push_back(inputXY++);
+			}
+		}
+
+		ImGui::PopID();
+
+		ImGui::PushID("ScFindKernelZ");
+		ImGui::Text("Kernels Z");
+		ImGui::SameLine();
+		HelpMarker(
+			"Comma-separated list of spectral Boxcar kernel sizes to apply. The individual kernel sizes must be odd integer values of 3 or greater and denote the full width of the Boxcar filter used to smooth the data in the spectral domain. A value of 0 means that no spectral smoothing will be applied.");
+		ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnDefaultSize);
+		if (ImGui::Button(ICON_LC_UNDO_2))
+		{
+			model_.params.scfind.kernelsZ = { 0, 3, 7, 15 };
+		}
+		if (ImGui::BeginChild("##KernelsZ",
+							  ImVec2(-FLT_MIN, ImGui::GetFontSize() * (model_.params.scfind.kernelsZ.size() + 2)),
+							  ImGuiChildFlags_Border))
+		{
+			for (auto i = 0; i < model_.params.scfind.kernelsZ.size(); ++i)
+			{
+				auto& kernel = model_.params.scfind.kernelsZ[i];
+				ImGui::PushID(i);
+				ImGui::Text(std::format("{}", kernel).c_str());
+				ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnDefaultSize);
+				if (ImGui::Button(ICON_LC_X))
+				{
+					model_.params.scfind.kernelsZ.erase(model_.params.scfind.kernelsZ.begin() + i);
+				}
+				ImGui::PopID();
+			}
+		}
+		ImGui::EndChild();
+
+		static int inputZ = 17;
+		inputZ = std::max(0, inputZ);
+		
+		inputZ = (inputZ > 0 && inputZ % 2 == 0) ? inputZ + 1 : inputZ;
+		ImGui::InputInt("", &inputZ, 2, 5);
+
+		ImGui::SameLine();
+		if (ImGui::Button("Add##AddKernelZ"))
+		{
+			if (model_.params.scfind.kernelsZ.end() == std::ranges::find(model_.params.scfind.kernelsZ, inputZ))
+			{
+				model_.params.scfind.kernelsZ.push_back(inputZ++);
+			}
+		}
+
+		ImGui::PopID();
+
 
 		DragFloatInputWidget("Replacement", &model_.params.scfind.replacement, 0.01f, -1.0f, 9999.0f, 2.0f, btnDefaultSize,
 							 "Before smoothing the data cube during an S+C iteration, every pixel in the data cube that was already detected in a previous iteration will be replaced by this value multiplied by the original noise level in the non-smoothed data cube, while keeping the original sign of the data value. This feature can be disabled altogether by specifying a value of < 0.");
@@ -604,7 +696,6 @@ auto SoFiaSearchView::onDraw() -> void
 		ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnDefaultSize);
 		if (ImGui::Button(ICON_LC_UNDO_2))
 		{
-
 			reliabilityParamItemBoxes = { true, true, true, false, false, false, false, false, false };
 		}
 		if (ImGui::BeginChild("##Parameters", ImVec2(-FLT_MIN, ImGui::GetFontSize() * 5),
@@ -629,7 +720,17 @@ auto SoFiaSearchView::onDraw() -> void
 			ms_io = ImGui::EndMultiSelect();
 			storage_wrapper.ApplyRequests(ms_io);
 		}
+
 		ImGui::EndChild();
+
+		model_.params.reliability.parameters.clear();
+		for (int i = 0; i < reliabilityParamItemBoxes.size(); ++i)
+		{
+			if (reliabilityParamItemBoxes[i])
+			{
+				model_.params.reliability.parameters.push_back(reliabilityParamItems[i]);
+			}
+		}
 
 		// Skipped
 		// reliability.plot
