@@ -3,6 +3,7 @@
 #include <future>
 
 #include "framework/DockableWindowViewBase.h"
+#include "features/projectExplorer/SofiaParameterSummaryView.h"
 
 namespace b3d::tools::project
 {
@@ -44,4 +45,6 @@ private:
 	std::function<std::shared_future<void>()> refreshProjectsFunction_{};
 	std::shared_future<void> refreshProjectsFuture_{};
 	std::shared_future<void> loadAndShowFileFuture_{};
+
+	std::unique_ptr<SofiaParameterSummaryView> parameterSummaryView_{};
 };
