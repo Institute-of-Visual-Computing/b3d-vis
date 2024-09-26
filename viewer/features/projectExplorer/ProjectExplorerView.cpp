@@ -45,6 +45,7 @@ ProjectExplorerView::ProjectExplorerView(
 	  loadAndShowFunction_(std::move(loadAndShowFunction)), refreshProjectsFunction_(std::move(refreshProjectsFunction))
 {
 	populateTestModelData();
+	parameterSummaryView_ = std::make_unique<SofiaParameterSummaryView>(appContext);
 }
 
 ProjectExplorerView::~ProjectExplorerView() = default;
@@ -187,8 +188,6 @@ auto ProjectExplorerView::onDraw() -> void
 
 	if (applicationContext_->isDevelopmentModeEnabled)
 	{
-
-
 		ImGui::BeginUnderDevelopmentScope();
 		if (ImGui::Button("Load .nvdb manually"))
 		{
@@ -246,56 +245,94 @@ auto ProjectExplorerView::onDraw() -> void
 			},
 			ImVec2{ 100, 100 });
 
-		
 
 		if (selectedProjectItemIndex_ >= 0)
 		{
+			struct RequestLoad
+			{
+				bool blocked;
+				std::shared_future<void> loadAndShowFileFuture;
+			};
+
+			constexpr auto defaultVolumeDataRequest = 0; // TODO: always load the first request at startup
+
+
+			static std::vector<RequestLoad> loadAndShowFileFuturePerRequest{};
 			if (projectChanged)
 			{
 				applicationContext_->selectedProject_ = model_.projects->at(selectedProjectItemIndex_);
+				loadAndShowFileFuturePerRequest.resize(applicationContext_->selectedProject_->requests.size());
+				loadAndShowFileFuturePerRequest[defaultVolumeDataRequest].loadAndShowFileFuture = loadAndShowFunction_(
+					applicationContext_->selectedProject_->requests[0].result.nanoResult.resultFile);
 			}
 			const auto& project = model_.projects->at(selectedProjectItemIndex_);
-			ImGui::Text(project.projectName.c_str());
-			if (ImGui::CollapsingHeader(project.fitsOriginFileName.c_str()))
+			ImGui::Separator();
+			ImGui::Text(std::format("Selected Dataset: {}", project.projectName).c_str());
+			ImGui::Separator();
+			if (applicationContext_->isDevelopmentModeEnabled)
 			{
-				ImGuiWindowFlags window_flags = ImGuiWindowFlags_None;
-				// window_flags |= ImGuiWindowFlags_MenuBar;
-				ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
-				ImGui::BeginChild("Properties", ImVec2(0, 260), ImGuiChildFlags_Border, window_flags);
-
-				// Common Properties
-				// Size
-				// Properties per Axis
-				for (auto i = 0; i < project.fitsOriginProperties.axisTypes.size(); i++)
+				ImGui::BeginUnderDevelopmentScope();
+				if (ImGui::CollapsingHeader(project.fitsOriginFileName.c_str()))
 				{
-					ImGui::LabelText(std::format("Axis {}", i).c_str(),
-									 project.fitsOriginProperties.axisTypes[i].c_str());
-				}
+					ImGuiWindowFlags window_flags = ImGuiWindowFlags_None;
+					// window_flags |= ImGuiWindowFlags_MenuBar;
+					ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
+					ImGui::BeginChild("Properties", ImVec2(0, 260), ImGuiChildFlags_Border, window_flags);
 
-				ImGui::EndChild();
-				ImGui::PopStyleVar();
+					// Common Properties
+					// Size
+					// Properties per Axis
+					for (auto i = 0; i < project.fitsOriginProperties.axisTypes.size(); i++)
+					{
+						ImGui::LabelText(std::format("Axis {}", i).c_str(),
+										 project.fitsOriginProperties.axisTypes[i].c_str());
+					}
+
+					ImGui::EndChild();
+					ImGui::PopStyleVar();
+				}
+				ImGui::EndUnderDevelopmentScope();
 			}
 
 
-			// TODO: list, item "name", "id", "request status", Button "Jump TO" and highlight in volume view on
-			// hover
+			// TODO: list, item "name", "id", "request status", Button "Jump TO" and highlight in volume view onhover
 
-			static auto selectedRequest = -1;
+			static auto selectedRequest = defaultVolumeDataRequest;
 
-			if (ImGui::TreeNode("Requests"))
+			if (ImGui::TreeNodeEx("Requests", ImGuiTreeNodeFlags_DefaultOpen))
 			{
+
+
 				for (auto i = 0; i < project.requests.size(); i++)
 				{
+					ImGui::PushID(i);
 					const auto& request = project.requests[i];
 					ImGui::SetNextItemAllowOverlap();
+
+					if (loadAndShowFileFuturePerRequest[i].loadAndShowFileFuture.valid())
+					{
+						loadAndShowFileFuturePerRequest[i].blocked = true;
+						if (loadAndShowFileFuturePerRequest[i].loadAndShowFileFuture.wait_for(
+								std::chrono::seconds(0)) == std::future_status::ready)
+						{
+							loadAndShowFileFuturePerRequest[i].loadAndShowFileFuture.get();
+							loadAndShowFileFuturePerRequest[i].blocked = false;
+						}
+					}
+
+					const auto isItemEnabled =
+						(request.result.wasSuccess() or loadAndShowFileFuturePerRequest[i].blocked) and
+						request.result.nanoResult.fileAvailable;
+
+					ImGui::BeginDisabled(!isItemEnabled);
 					if (ImGui::Selectable(request.uuid.c_str(), selectedRequest == i))
 					{
 						selectedRequest = i;
+						loadAndShowFileFuturePerRequest[i].loadAndShowFileFuture =
+							loadAndShowFunction_(request.result.nanoResult.resultFile);
 					}
 					if (ImGui::IsItemHovered())
 					{
-						ImGui::SameLine();
-						ImGui::Text("Hovered");
 						const auto box = owl::common::box3f{ { static_cast<float>(request.subRegion.lower.x),
 															   static_cast<float>(request.subRegion.lower.y),
 															   static_cast<float>(request.subRegion.lower.z) },
@@ -316,83 +353,159 @@ auto ProjectExplorerView::onDraw() -> void
 								  blinkIntensity * blinkIntensity * blinkIntensity * blinkIntensity * blinkIntensity },
 							volumeTransform_.l);
 					}
-					ImGui::SameLine();
-					if (ImGui::SmallButton("Go To"))
+					if (!request.result.wasSuccess())
 					{
+						if (ImGui::BeginItemTooltip())
+						{
+							ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+							ImGui::TextWrapped(std::format("Failed with error code {} and message: {}",
+														   request.result.sofiaResult.returnCode,
+														   request.result.sofiaResult.message)
+												   .c_str());
+							ImGui::PopTextWrapPos();
+							ImGui::EndTooltip();
+						}
 					}
+					else if (!request.result.nanoResult.fileAvailable)
+					{
+						if (ImGui::BeginItemTooltip())
+						{
+							ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+							ImGui::TextWrapped(
+								"File couldn't be loaded! It might be corrupted or an error on server has occured.");
+							ImGui::PopTextWrapPos();
+							ImGui::EndTooltip();
+						}
+					}
+					const auto selectableSize = ImGui::GetItemRectSize();
+					const auto av = ImGui::GetContentRegionAvail();
+
+
+					const auto viewIconSize = ImGui::CalcTextSize(ICON_LC_VIEW).x;
+					const auto detailIconSize = ImGui::CalcTextSize(ICON_LC_VIEW).x;
+					constexpr auto spinnerThickness = 2.0f;
+					const auto spinnerRadius =
+						(selectableSize.y - spinnerThickness) / 2 - ImGui::GetStyle().FramePadding.y;
+					const auto spinnerWidth = spinnerRadius * 2;
+
+					const auto framePadding = ImGui::GetStyle().FramePadding.x * 4;
+					ImGui::SameLine(selectableSize.x - spinnerWidth - framePadding - detailIconSize - framePadding -
+									viewIconSize - framePadding);
+					if (loadAndShowFileFuturePerRequest[i].blocked)
+					{
+						ImSpinner::SpinnerRotateSegments("request_loading_spinner", spinnerRadius, spinnerThickness);
+					}
+
+
+					ImGui::SameLine(selectableSize.x - framePadding - detailIconSize - viewIconSize - framePadding);
+					if (ImGui::SmallButton(ICON_LC_VIEW))
+					{
+						// applicationContext_.
+					}
+					if (ImGui::BeginItemTooltip())
+					{
+						ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+						ImGui::TextWrapped("Move the camera view to the selected sub-volume.");
+						ImGui::PopTextWrapPos();
+						ImGui::EndTooltip();
+					}
+					ImGui::SameLine(selectableSize.x - framePadding - detailIconSize);
+					if (ImGui::SmallButton(ICON_LC_SCROLL_TEXT))
+					{
+						// applicationContext_.
+						parameterSummaryView_->setSofiaParams(request.sofiaParameters);
+						parameterSummaryView_->open();
+					}
+					if (ImGui::BeginItemTooltip())
+					{
+						ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+						ImGui::Text("Show SoFiA parameters applied for a given request.");
+						ImGui::PopTextWrapPos();
+						ImGui::EndTooltip();
+					}
+
+					ImGui::EndDisabled();
+
+					ImGui::PopID();
 				}
 				ImGui::TreePop();
 			}
 
-
-			constexpr auto tableFlags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable |
-				ImGuiTableFlags_SizingFixedFit;
-
-			// ID, Success, Cached, Load & Show
-			if (ImGui::BeginTable("RequestTable", 4, tableFlags))
+			if (applicationContext_->isDevelopmentModeEnabled)
 			{
-				ImGui::TableSetupColumn("ID");
-				ImGui::TableSetupColumn("Success");
-				ImGui::TableSetupColumn("Cached");
-				ImGui::TableSetupColumn("Load & Show");
-				ImGui::TableHeadersRow();
+				ImGui::BeginUnderDevelopmentScope();
 
-				auto blockLoadGet = false;
-				if (loadAndShowFileFuture_.valid())
+				constexpr auto tableFlags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+					ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingFixedFit;
+
+				// ID, Success, Cached, Load & Show
+				if (ImGui::BeginTable("RequestTable", 4, tableFlags))
 				{
-					blockLoadGet = true;
-					if (loadAndShowFileFuture_.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+					ImGui::TableSetupColumn("ID");
+					ImGui::TableSetupColumn("Success");
+					ImGui::TableSetupColumn("Cached");
+					ImGui::TableSetupColumn("Load & Show");
+					ImGui::TableHeadersRow();
+
+					auto blockLoadGet = false;
+					if (loadAndShowFileFuture_.valid())
 					{
-						loadAndShowFileFuture_.get();
-						blockLoadGet = false;
+						blockLoadGet = true;
+						if (loadAndShowFileFuture_.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+						{
+							loadAndShowFileFuture_.get();
+							blockLoadGet = false;
+						}
 					}
+
+
+					for (const auto& request : project.requests)
+					{
+						const auto reqSucc = request.result.wasSuccess();
+
+						ImGui::TableNextRow();
+						ImGui::PushID(request.uuid.c_str());
+						ImGui::TableNextColumn();
+						ImGui::Text(request.uuid.c_str());
+
+						ImGui::TableNextColumn();
+						ImGui::Text(reqSucc ? "true" : "false");
+
+						ImGui::TableNextColumn();
+						if (reqSucc)
+						{
+							// Replace with icon?
+							ImGui::Text("false");
+						}
+						else
+						{
+							ImGui::Text("N/A");
+						}
+
+						ImGui::TableNextColumn();
+						if (!reqSucc || blockLoadGet)
+						{
+							ImGui::BeginDisabled(true);
+						}
+
+						if (ImGui::Button("Load & Show"))
+						{
+							// Load & Show
+							loadAndShowFileFuture_ = loadAndShowFunction_(request.result.nanoResult.resultFile);
+						}
+						if (!reqSucc || blockLoadGet)
+						{
+							ImGui::EndDisabled();
+						}
+						ImGui::PopID();
+					}
+					ImGui::EndTable();
 				}
-
-
-				for (const auto& request : project.requests)
-				{
-					const auto reqSucc = request.result.wasSuccess();
-
-					ImGui::TableNextRow();
-					ImGui::PushID(request.uuid.c_str());
-					ImGui::TableNextColumn();
-					ImGui::Text(request.uuid.c_str());
-
-					ImGui::TableNextColumn();
-					ImGui::Text(reqSucc ? "true" : "false");
-
-					ImGui::TableNextColumn();
-					if (reqSucc)
-					{
-						// Replace with icon?
-						ImGui::Text("false");
-					}
-					else
-					{
-						ImGui::Text("N/A");
-					}
-
-					ImGui::TableNextColumn();
-					if (!reqSucc || blockLoadGet)
-					{
-						ImGui::BeginDisabled(true);
-					}
-
-					if (ImGui::Button("Load & Show"))
-					{
-						// Load & Show
-						loadAndShowFileFuture_ = loadAndShowFunction_(request.result.nanoResult.resultFile);
-					}
-					if (!reqSucc || blockLoadGet)
-					{
-						ImGui::EndDisabled();
-					}
-					ImGui::PopID();
-				}
-				ImGui::EndTable();
+				ImGui::EndUnderDevelopmentScope();
 			}
 		}
 	}
+	parameterSummaryView_->draw();
 }
 
 auto ProjectExplorerView::projectAvailable() const -> bool
