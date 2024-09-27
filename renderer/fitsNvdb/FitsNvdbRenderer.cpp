@@ -172,9 +172,10 @@ auto b3d::renderer::FitsNvdbRenderer::onRender() -> void
 
 				owlGeomSetRaw(context_.geometry, "fitsBox", &fitsBox, 0);
 				owlGeomSetRaw(context_.geometry, "nvdbBox", &runtimeVolumeData->volume.volume.indexBox, 0);
-
+				owlBuildSBT(context_.owlContext);
 				owlGroupBuildAccel(context_.geometryGroup);
 				owlGroupBuildAccel(context_.worldGeometryGroup);
+				owlBuildSBT(context_.owlContext);
 			}
 			if (fitsBox != owl::box3f{ { 0, 0, 0 }, { 0, 0, 0 } })
 			{
