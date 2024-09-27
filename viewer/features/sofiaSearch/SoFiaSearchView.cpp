@@ -24,18 +24,24 @@ namespace
 		}	
 	}
 
+	auto ResetButtonOnSameLine(float buttonSizeX) -> bool
+	{
+		ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - buttonSizeX);
+		return ImGui::Button(ICON_LC_UNDO_2);
+	}
+
 	template <typename T>
 	auto ResetButtonOnSameLine(float buttonSizeX, T* valuePointer, T defaultValue) -> bool
 	{
-		auto changed = false;
-		ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - buttonSizeX);
-		if (ImGui::Button(ICON_LC_UNDO_2))
+		if (ResetButtonOnSameLine(buttonSizeX))
 		{
-			changed = true;
 			*valuePointer = defaultValue;
+			return true;
 		}
-		return changed;
+		return false;
 	}
+
+	
 
 
 	auto DragIntInputWidget(const char* label, int* value, int v_speed, int v_min, int v_max, int defaultValue,
@@ -147,12 +153,17 @@ auto SoFiaSearchView::onDraw() -> void
 		ImGui::BeginDisabled(true);
 	}
 
-	ImGui::Checkbox("Show Subregion Tool", &model_.showRoiGizmo);
-	ImGui::SameLine();
-	if (ImGui::Button("Reset Selection"))
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.1, 0.5, 0.1, 1.0 });
+	if (ImGui::Button("Submit Search"))
 	{
+		startSearchFunction_();
+		resetParams();
+		resetSelection();
 		resetSelection();
 	}
+	ImGui::PopStyleColor();
+
+	
 
 	if (disableInteraction)
 	{
@@ -213,6 +224,13 @@ auto SoFiaSearchView::onDraw() -> void
 
 	if (ImGui::CollapsingHeader("Input", ImGuiTreeNodeFlags_DefaultOpen))
 	{
+
+		ImGui::Checkbox("Show Subregion Tool", &model_.showRoiGizmo);
+		ImGui::SameLine();
+		if(ResetButtonOnSameLine(btnDefaultSize))
+		{
+			resetSelection();
+		}
 
 		ImGui::PushID("InputSettings");
 		ImGui::Text("Region");
@@ -836,13 +854,7 @@ auto SoFiaSearchView::onDraw() -> void
 	}
 	*/
 
-	if (ImGui::Button("Search"))
-	{
-		startSearchFunction_();
-		resetParams();
-		resetSelection();
-		resetSelection();
-	}
+	
 	if (disableInteraction)
 	{
 		ImGui::EndDisabled();
