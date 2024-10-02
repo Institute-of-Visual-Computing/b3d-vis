@@ -1,0 +1,4 @@
+add_subdirectory(syncPrimitiveSample)
+add_subdirectory(cudaSurfaceObjectWriteTest)
+add_subdirectory(simpleTriangles)
+add_subdirectory(textureFillerSyncSample)

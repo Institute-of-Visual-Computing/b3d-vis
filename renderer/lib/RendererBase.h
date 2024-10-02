@@ -1,5 +1,5 @@
 #pragma once
-
+#define IMGUI_DEFINE_MATH_OPERATORS
 #include <memory>
 #include <owl/common.h>
 
@@ -7,72 +7,53 @@
 #include <string>
 #include <vector>
 #include "DebugDrawListBase.h"
+#include "GizmoHelperBase.h"
 
-#include "cuda_runtime.h"
+#include "RenderData.h"
+#include "RenderFeature.h"
+
+#include "CudaGpuTimers.h"
 
 namespace b3d::renderer
 {
-	struct Camera
-	{
-		owl::vec3f origin;
-		owl::vec3f at;
-		owl::vec3f up;
-		float cosFoV;
-		float FoV;//in radians
-	};
-
-	struct Extent
-	{
-		uint32_t width;
-		uint32_t height;
-		uint32_t depth;
-	};
-	struct ExternalRenderTarget
-	{
-		cudaGraphicsResource_t target;
-		Extent extent;
-	};
-
-	enum class RenderMode : int
-	{
-		mono = 0,
-		stereo
-	};
-
-	struct View
-	{
-		std::array<Camera, 2> cameras;
-		RenderMode mode;
-		ExternalRenderTarget colorRt;
-		ExternalRenderTarget minMaxRt;
-	};
-
-
-	struct RendererInitializationInfo
-	{
-		cudaExternalSemaphore_t waitSemaphore;
-		cudaExternalSemaphore_t signalSemaphore;
-		cudaUUID_t deviceUuid;
-	};
-
 	struct DebugInitializationInfo
 	{
 		std::shared_ptr<DebugDrawListBase> debugDrawList{};
+		std::shared_ptr<GizmoHelperBase> gizmoHelper{};
 	};
+
+	//TODO: add enable profiling flag
+	using GpuTimers = profiler::CudaGpuTimers<10, 4>;
 
 	class RendererBase
 	{
 	public:
 		virtual ~RendererBase() = default;
 
-		auto initialize(const RendererInitializationInfo& initializationInfo, const DebugInitializationInfo& debugInitializationInfo) -> void;
+		auto initialize(RenderingDataBuffer* initializationInfo, const DebugInitializationInfo& debugInitializationInfo)
+			-> void;
 		auto deinitialize() -> void;
 		auto gui() -> void;
-		auto render(const View& view) -> void;
+		auto render() -> void;
+
+		[[nodiscard]] auto getGpuTimers() const -> const GpuTimers& 
+		{
+			return gpuTimers_;
+		}
+
+		[[nodiscard]] auto getGpuTimers() -> GpuTimers& 
+		{
+			return gpuTimers_;
+		}
 
 		[[nodiscard]] auto debugDraw() const -> DebugDrawListBase&
 		{
 			return *debugInfo_.debugDrawList;
+		}
+
+		[[nodiscard]] auto gizmoDraw() const -> GizmoHelperBase&
+		{
+			return *debugInfo_.gizmoHelper;
 		}
 
 	protected:
@@ -80,10 +61,43 @@ namespace b3d::renderer
 		virtual auto onDeinitialize() -> void{};
 
 		virtual auto onGui() -> void{};
-		virtual auto onRender(const View& view) -> void = 0;
+		virtual auto onRender() -> void = 0;
 
-		RendererInitializationInfo initializationInfo_{};
+		RenderingDataBuffer* renderData_{};
+
 		DebugInitializationInfo debugInfo_{};
+
+		GpuTimers gpuTimers_{};
+
+		std::vector<std::unique_ptr<RenderFeature>> renderFeatures_{};
+
+		template <typename Feature, class... Args>
+		auto addFeature(Args&&... args)
+			-> std::enable_if_t<std::is_base_of_v<RenderFeature, Feature>, Feature*>
+		{
+			renderFeatures_.push_back(std::make_unique<Feature>(std::forward<Args>(args)...));
+			return static_cast<Feature*>(renderFeatures_.back().get());
+		}
+
+		template <typename Feature, class... Args>
+		auto addFeatureWithDependency(const std::vector<RenderFeature*> before, Args&&... args)
+			-> std::enable_if_t<std::is_base_of_v<RenderFeature, Feature>, Feature*>
+		{
+			auto bestInsertionPosition = renderFeatures_.end();
+
+			for (const auto dependency : before)
+			{
+				const auto position = std::find_if(renderFeatures_.begin(), renderFeatures_.end(),
+											  [&](const std::unique_ptr<RenderFeature>& feature)
+											  { return feature.get() == dependency; });
+				bestInsertionPosition = position < bestInsertionPosition ? position : bestInsertionPosition;
+			}
+
+			auto insertPosition = renderFeatures_.insert(bestInsertionPosition, std::make_unique<Feature>(std::forward<Args>(args)...));
+
+			//renderFeatures_.push_back(std::make_unique<Feature>(std::forward<Args>(args)...));
+			return static_cast<Feature*>((*insertPosition).get());
+		}
 	};
 
 	auto addRenderer(std::shared_ptr<RendererBase> renderer, const std::string& name) -> void;
@@ -105,9 +119,9 @@ namespace b3d::renderer
 	inline auto getRendererIndex(const std::string& name) -> int
 	{
 		auto index = -1;
-		for(auto i = 0; i < registry.size(); i++ )
+		for (auto i = 0; i < registry.size(); i++)
 		{
-			if(registry[i].name == name)
+			if (registry[i].name == name)
 			{
 				index = i;
 				break;

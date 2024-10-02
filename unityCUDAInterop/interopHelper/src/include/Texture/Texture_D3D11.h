@@ -13,7 +13,8 @@ namespace b3d::unity_cuda_interop
 
 		~TextureD3D11() override;
 
-		auto registerCUDA() -> void override;
+		auto registerCUDA(unsigned registerFlags = cudaGraphicsRegisterFlagsNone,
+						  unsigned mapFlags = cudaGraphicsMapFlagsNone) -> void override;
 
 
 	private:

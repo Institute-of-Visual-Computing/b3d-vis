@@ -7,7 +7,11 @@ using namespace b3d::unity_cuda_interop;
 
 TextureD3D11::TextureD3D11(void* unityNativeTexturePointer) : Texture(unityNativeTexturePointer)
 {
-	assert(unityNativeTexturePointer != nullptr);
+	if (unityNativeTexturePointer ==  nullptr)
+	{
+		isValid_ = false;
+		return;
+	}
 
 	d3d11GraphicsResource_ = static_cast<ID3D11Texture2D*>(unityNativeTexturePointer);
 
@@ -56,9 +60,20 @@ TextureD3D11::~TextureD3D11()
 	d3d11GraphicsResource_ = nullptr;
 }
 
-auto TextureD3D11::registerCUDA() -> void
+auto TextureD3D11::registerCUDA(unsigned registerFlags,
+								unsigned mapFlags) -> void
 {
 	assert(d3d11GraphicsResource_ != nullptr);
 	// TODO: Error handling
-	cudaGraphicsD3D11RegisterResource(&cudaGraphicsResource_, d3d11GraphicsResource_, cudaGraphicsRegisterFlagsNone);
+	auto cudaErr = cudaGraphicsD3D11RegisterResource(&cudaGraphicsResource_, d3d11GraphicsResource_, registerFlags);
+	if (cudaErr != cudaSuccess)
+	{
+		this->isValid_ = false;
+	}
+	
+	cudaErr = cudaGraphicsResourceSetMapFlags(cudaGraphicsResource_, mapFlags);
+	if (cudaErr != cudaSuccess)
+	{
+		this->isValid_ = false;
+	}
 }

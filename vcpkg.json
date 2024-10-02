@@ -8,9 +8,16 @@
     "args",
     "glfw3",
     "tinyxml2",
-    "cfitsio",
+    {
+      "name": "cfitsio",
+      "default-features": false,
+      "features": [
+        "pthreads"
+      ]
+    },
     "glew",
     "glm",
+    "nlohmann-json",
     {
       "name": "openvdb",
       "default-features": false,
@@ -24,7 +31,8 @@
       "default-features": false,
       "features": [
         "opengl3-binding",
-        "glfw-binding"
+        "glfw-binding",
+        "docking-experimental"
       ]
     },
     "tbb",
@@ -35,9 +43,18 @@
         "extensions"
       ]
     },
-    "vulkan",
-    "vulkan-headers",
-    "stb"
+    "stb",
+    "boost-program-options",
+    {
+      "name": "tracy",
+      "features": [
+        "gui-tools"
+      ]
+    },
+    "cpp-httplib",
+    "boost-process",
+    "stduuid",
+    "plog"
   ],
-  "builtin-baseline": "83972272512ce4ede5fc3b2ba98f6468b179f192"
+  "builtin-baseline": "f0c8848cde589649bca3ab3649668540403786ce"
 }

@@ -39,3 +39,6 @@ out/**
 CMakeUserPresets.json
 Folder.DotSettings
 Folder.DotSettings.user
+
+unityCUDAInterop/UnityPlayground/log.txt
+unityCUDAInterop/UnityPlayground/.vscode/**

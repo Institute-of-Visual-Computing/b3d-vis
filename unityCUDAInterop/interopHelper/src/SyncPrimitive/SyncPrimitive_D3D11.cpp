@@ -77,6 +77,7 @@ auto SyncPrimitiveD3D11::importToCUDA() -> void
 		cudaExternalSemaphoreHandleDesc externalSemaphoreHandleDesc{};
 		externalSemaphoreHandleDesc.type = cudaExternalSemaphoreHandleTypeD3D11Fence;
 		externalSemaphoreHandleDesc.handle.win32.handle = d3d11SharedFenceHandle_;
+		externalSemaphoreHandleDesc.flags = 0;
 		const auto cudaResult = cudaImportExternalSemaphore(&cudaSemaphore_, &externalSemaphoreHandleDesc);
 
 		if (cudaResult != cudaSuccess)

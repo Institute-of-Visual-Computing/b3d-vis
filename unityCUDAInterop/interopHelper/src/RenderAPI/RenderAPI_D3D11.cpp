@@ -17,6 +17,7 @@ RenderAPI_D3D11::RenderAPI_D3D11(const UnityGfxRenderer unityGfxRenderer, IUnity
 								 PluginLogger* logger)
 	: RenderAPI(logger)
 {
+	unityInterfaces_ = unityInterfaces;
 	unityGraphics_ = unityInterfaces->Get<IUnityGraphicsD3D11>();
 	unityGfxRendererType_ = unityGfxRenderer;
 
@@ -38,8 +39,8 @@ RenderAPI_D3D11::~RenderAPI_D3D11()
 
 auto RenderAPI_D3D11::initialize() -> void
 {
-	if (device_ == nullptr)
-	{
+	//if (device_ == nullptr)
+	//{
 		device_ = unityGraphics_->GetDevice();
 
 		if (device_ == nullptr)
@@ -48,11 +49,11 @@ auto RenderAPI_D3D11::initialize() -> void
 			return;
 		}
 		logger_->log("RenderAPI_D3D11 initialized");
-	}
-	else
-	{
+		//}
+		// else
+		//{
 		logger_->log("RenderAPI_D3D11 was already initialized");
-	}
+		//}
 	getCudaDevice();
 }
 
@@ -74,6 +75,7 @@ auto RenderAPI_D3D11::createRenderingContext() -> std::unique_ptr<RenderingConte
 auto RenderAPI_D3D11::getCudaDevice() -> void
 {
 	IDXGIDevice* dxgiDevice{ nullptr };
+
 	auto result = device_->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&dxgiDevice));
 	if (result != S_OK)
 	{

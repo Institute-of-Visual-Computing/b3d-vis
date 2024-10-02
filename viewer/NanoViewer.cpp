@@ -1,122 +1,107 @@
-#include "glad/glad.h"
-
 #include "NanoViewer.h"
 
 #include "passes/DebugDrawPass.h"
-#include "passes/FullscreenTexturePass.h"
-#include "passes/InfinitGridPass.h"
 
+#include "InteropUtils.h"
+
+#include <GLFW/glfw3.h>
+
+
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
 #include <Logging.h>
 
 #include <format>
+#include <print>
 #include <string>
 
-#include "GLUtils.h"
-#include "glm/ext/matrix_clip_space.hpp"
-#include "glm/ext/matrix_transform.hpp"
 
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
-#include "owl/helper/cuda.h"
+#include <stb_image.h>
+#include <tracy/Tracy.hpp>
+
+#include <ImGuizmo.h>
+
+#include <IconsFontAwesome6Brands.h>
+#include <IconsLucide.h>
+
+#include <boost/process.hpp>
+
+#include "GizmoOperationFlags.h"
+
+#include <imspinner.h>
+
+#include "features/serverConnect/ServerConnectSettingsView.h"
+#include "framework/ModalViewBase.h"
+
 using namespace owl;
-using namespace owl::viewer;
 
 namespace
 {
-	auto reshape(GLFWwindow* window, const int width, const int height) -> void
-	{
-		auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
-		assert(gw);
-		gw->resize(vec2i(width, height));
-	}
+	constexpr std::array colors = { legit::Colors::turqoise,  legit::Colors::greenSea,	  legit::Colors::emerald,
+									legit::Colors::nephritis, legit::Colors::peterRiver,  legit::Colors::belizeHole,
+									legit::Colors::amethyst,  legit::Colors::wisteria,	  legit::Colors::sunFlower,
+									legit::Colors::orange,	  legit::Colors::carrot,	  legit::Colors::pumpkin,
+									legit::Colors::alizarin,  legit::Colors::pomegranate, legit::Colors::clouds,
+									legit::Colors::silver };
 
-	auto keyboardKey(GLFWwindow* window, const unsigned int key) -> void
+
+	
+
+
+	[[nodiscard]] auto requestRequiredDpiScales() -> std::vector<float>
 	{
-		auto& io = ImGui::GetIO();
-		if (!io.WantCaptureKeyboard)
+		auto requiredDpiScales = std::vector<float>{};
+		auto monitorCount = 0;
+		const auto monitors = glfwGetMonitors(&monitorCount);
+		if (monitorCount == 0)
 		{
-			auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
-			assert(gw);
-			gw->key(key, gw->getMousePos());
+			throw std::runtime_error{ "No monitor is connected to the system!" };
 		}
-	}
-
-	auto keyboardSpecialKey(GLFWwindow* window, const int key, [[maybe_unused]] int scancode, const int action,
-							const int mods) -> void
-	{
-		const auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
-		assert(gw);
-		if (action == GLFW_PRESS)
+		requiredDpiScales.reserve(monitorCount);
+		for (auto i = 0; i < monitorCount; i++)
 		{
-			gw->special(key, mods, gw->getMousePos());
+			const auto monitor = monitors[i];
+			auto scaleX = 0.0f;
+			auto scaleY = 0.0f;
+			glfwGetMonitorContentScale(monitor, &scaleX, &scaleY);
+			requiredDpiScales.push_back(scaleX);
 		}
+		return requiredDpiScales;
 	}
 
-	auto mouseMotion(GLFWwindow* window, const double x, const double y) -> void
+
+	auto windowContentScaleCallback([[maybe_unused]] GLFWwindow* window, const float scaleX,
+									[[maybe_unused]] float scaleY)
 	{
-		const auto& io = ImGui::GetIO();
-		if (!io.WantCaptureMouse)
-		{
-			const auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
-			assert(gw);
-			gw->mouseMotion(vec2i(static_cast<int>(x), static_cast<int>(y)));
-		}
+		auto& applicationContext  = static_cast<NanoViewer*>(glfwGetWindowUserPointer(window))->getApplicationContext();
+		const auto dpiScales = requestRequiredDpiScales();
+		applicationContext.getFontCollection().rebuildFont(dpiScales);
+		const auto defaultDpiScale = applicationContext.getFontCollection().getDefaultFontDpiScale();
+		ImGui::GetStyle().ScaleAllSizes(defaultDpiScale);
 	}
 
-	auto mouseButton(GLFWwindow* window, const int button, const int action, const int mods) -> void
+	auto onGlfwErrorCallback(int error, const char* description)
 	{
-		const auto& io = ImGui::GetIO();
-		if (!io.WantCaptureMouse)
-		{
-			const auto gw = static_cast<OWLViewer*>(glfwGetWindowUserPointer(window));
-			assert(gw);
-			gw->mouseButton(button, action, mods);
-		}
+		b3d::renderer::log(std::format("Error: {}\n", description), b3d::renderer::LogLevel::error);
 	}
 
-	auto computeViewProjectionMatrixFromCamera(const Camera& camera, const int width, const int height)
-	{
 
-		const auto aspect = width / static_cast<float>(height);
-
-		const auto projectionMatrix = glm::perspective(glm::radians(camera.getFovyInDegrees()), aspect, 0.01f, 100.0f);
-		const auto viewMatrix =
-			glm::lookAt(glm::vec3{ camera.position.x, camera.position.y, camera.position.z },
-						glm::normalize(glm::vec3{ camera.getAt().x, camera.getAt().y, camera.getAt().z }),
-						glm::normalize(glm::vec3{ camera.getUp().x, camera.getUp().y, camera.getUp().z }));
-		const auto viewProjection = projectionMatrix * viewMatrix;
-		return viewProjection;
-	}
-
-	ImFont* defaultFont;
-
-
-	auto initializeGui(GLFWwindow* window) -> void
+	auto initializeGui(GLFWwindow* window, ApplicationContext* applicationContext) -> void
 	{
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
+		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+		ImGuizmo::AllowAxisFlip(false);
 		auto& io = ImGui::GetIO();
-		(void)io;
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad; // Enable Gamepad Controls
 
 		ImGui::StyleColorsDark();
 
-		const auto monitor = glfwGetPrimaryMonitor();
+		const auto dpiScales = requestRequiredDpiScales();
+		applicationContext->getFontCollection().rebuildFont(dpiScales);
 
-		float scaleX;
-		float scaleY;
-		glfwGetMonitorContentScale(monitor, &scaleX, &scaleY);
-
-		const auto dpiScale = scaleX;
-		constexpr auto baseFontSize = 18.0f;
-
-		ImFontConfig config;
-
-		config.OversampleH = 1;
-		config.OversampleV = 1;
-		config.SizePixels = dpiScale * baseFontSize;
-		defaultFont = io.Fonts->AddFontDefault(&config);
 
 		ImGui_ImplGlfw_InitForOpenGL(window, true);
 		ImGui_ImplOpenGL3_Init();
@@ -129,28 +114,12 @@ namespace
 		ImGui::DestroyContext();
 	}
 
-	std::unique_ptr<FullscreenTexturePass> fsPass;
-	std::unique_ptr<InfinitGridPass> igPass;
-	std::unique_ptr<DebugDrawPass> ddPass;
-
-	std::unique_ptr<DebugDrawList> ddList;
-
-	struct ViewerSettings
-	{
-		float lineWidth{ 4.0 };
-		std::array<float, 3> gridColor{ 0.95f, 0.9f, 0.92f };
-		bool enableDebugDraw{ true };
-		bool enableGridFloor{ true };
-	};
-
-	ViewerSettings viewerSettings{};
 
 } // namespace
 
 auto NanoViewer::gui() -> void
 {
-	static auto show_demo_window = true;
-	ImGui::ShowDemoWindow(&show_demo_window);
+	/*ImGui::ShowDemoWindow(&showImGuiDemo);*/
 
 	currentRenderer_->gui();
 	static auto showViewerSettings = true;
@@ -176,88 +145,81 @@ auto NanoViewer::gui() -> void
 		ImGui::EndCombo();
 	}
 
-	static auto selectedCameraControlIndex = 0;
-	const static auto controls = std::array{ "POI", "Fly" };
 
-	if (ImGui::BeginCombo("Camera Control", controls[selectedCameraControlIndex]))
-	{
-		for (auto i = 0; i < controls.size(); i++)
-		{
-			const auto isSelected = i == selectedCameraControlIndex;
-			if (ImGui::Selectable(controls[i], isSelected))
-			{
-				selectedCameraControlIndex = i;
-				if (i == 0)
-				{
-					enableInspectMode();
-				}
-				if (i == 1)
-				{
-					enableFlyMode();
-				}
-			}
-			if (isSelected)
-			{
-				ImGui::SetItemDefaultFocus();
-			}
-		}
-		ImGui::EndCombo();
-	}
+	ImGui::Separator();
 
-	ImGui::Checkbox("Enable Grid Floor", &viewerSettings.enableGridFloor);
+	ImGui::Separator();
 
-	if (viewerSettings.enableGridFloor)
+
+	ImGui::Checkbox("Enable Grid Floor", &viewerSettings_.enableGridFloor);
+
+	if (viewerSettings_.enableGridFloor)
 	{
 		ImGui::SeparatorText("Grid Settings");
-		ImGui::ColorEdit3("Color", viewerSettings.gridColor.data());
+		ImGui::ColorEdit3("Color", viewerSettings_.gridColor.data());
+		ImGui::Separator();
 	}
 
-	ImGui::Checkbox("Enable Debug Draw", &viewerSettings.enableDebugDraw);
+	ImGui::Checkbox("Enable Debug Draw", &viewerSettings_.enableDebugDraw);
 
-	if (viewerSettings.enableDebugDraw)
+	if (viewerSettings_.enableDebugDraw)
 	{
 		ImGui::SeparatorText("Debug Draw Settings");
-		ImGui::SliderFloat("Line Width", &viewerSettings.lineWidth, 1.0f, 10.0f);
+		ImGui::SliderFloat("Line Width", &viewerSettings_.lineWidth, 1.0f, 10.0f);
+		ImGui::Separator();
 	}
+
+	ImGui::SeparatorText("NVML Settings");
+
+
+	static auto enablePersistenceMode{ false };
+	static auto enabledPersistenceMode{ false };
+
+	uint32_t clock;
+	{
+		const auto error = nvmlDeviceGetClockInfo(nvmlDevice_, NVML_CLOCK_SM, &clock);
+		assert(error == NVML_SUCCESS);
+	}
+
+	ImGui::BeginDisabled(!isAdmin_);
+	ImGui::Checkbox(std::format("Max GPU SM Clock [current: {} MHz]", clock).c_str(), &enablePersistenceMode);
+	ImGui::EndDisabled();
+	if (enablePersistenceMode != enabledPersistenceMode)
+	{
+		if (enablePersistenceMode)
+		{
+			const auto error =
+				nvmlDeviceSetGpuLockedClocks(nvmlDevice_, static_cast<unsigned int>(NVML_CLOCK_LIMIT_ID_TDP),
+											 static_cast<unsigned int>(NVML_CLOCK_LIMIT_ID_TDP));
+
+			enabledPersistenceMode = true;
+
+			assert(error == NVML_SUCCESS);
+		}
+
+		else
+		{
+			const auto error = nvmlDeviceResetGpuLockedClocks(nvmlDevice_);
+
+			enabledPersistenceMode = false;
+			enablePersistenceMode = false;
+			assert(error == NVML_SUCCESS);
+		}
+	}
+
+
+	if (!isAdmin_)
+	{
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4{ 0.9f, 0.1f, 0.1f, 1.0f });
+		ImGui::TextWrapped("This Application should run in admin mode to apply the effect of this option!");
+		ImGui::PopStyleColor();
+		ImGui::AlignTextToFramePadding();
+	}
+	// const auto rr = nvmlDeviceSetPersistenceMode(nvmlDevice, enablePersistenceMode?NVML_FEATURE_ENABLED:
+	// NVML_FEATURE_DISABLED);
 
 
 	ImGui::End();
-}
-
-auto NanoViewer::render() -> void
-{
-	constexpr auto layout = static_cast<GLuint>(GL_LAYOUT_GENERAL_EXT);
-
-	const auto cam = b3d::renderer::Camera{ .origin = camera.getFrom(),
-											.at = camera.getAt(),
-											.up = camera.getUp(),
-											.cosFoV = camera.getCosFovy(),
-											.FoV = glm::radians(camera.fovyInDegrees) };
-
-	const auto view = b3d::renderer::View{
-		.cameras = { cam, cam },
-		.mode = b3d::renderer::RenderMode::mono,
-		.colorRt = { cuDisplayTexture, { static_cast<uint32_t>(fbSize.x), static_cast<uint32_t>(fbSize.y), 1 } },
-		.minMaxRt = { cuDisplayTexture, { static_cast<uint32_t>(fbSize.x), static_cast<uint32_t>(fbSize.y), 1 } },
-	};
-
-	GL_CALL(glSignalSemaphoreEXT(synchronizationResources_.glSignalSemaphore, 0, nullptr, 0, nullptr, &layout));
-
-	currentRenderer_->render(view);
-
-	// NOTE: this function call return error, when the semaphore wasn't used before (or it could be in the wrong initial
-	// state)
-	GL_CALL(glWaitSemaphoreEXT(synchronizationResources_.glWaitSemaphore, 0, nullptr, 0, nullptr, nullptr));
-}
-auto NanoViewer::resize(const owl::vec2i& newSize) -> void
-{
-	OWLViewer::resize(newSize);
-	cameraChanged();
-}
-
-auto NanoViewer::cameraChanged() -> void
-{
-	OWLViewer::cameraChanged();
 }
 
 auto NanoViewer::onFrameBegin() -> void
@@ -269,192 +231,91 @@ auto NanoViewer::onFrameBegin() -> void
 }
 
 NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, const int initWindowHeight,
-					   bool enableVsync, const int rendererIndex)
-	: owl::viewer::OWLViewer(title, owl::vec2i(initWindowWidth, initWindowHeight), true, enableVsync), resources_{},
-	  synchronizationResources_{}
+					   const bool enableVsync, const int rendererIndex)
 {
+	glfwSetErrorCallback(onGlfwErrorCallback);
+
+	glfwInit();
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+	glfwWindowHint(GLFW_VISIBLE, true);
+
+	const auto mainWindowHandle = glfwCreateWindow(initWindowWidth, initWindowHeight, title.c_str(), nullptr, nullptr);
+	if (!mainWindowHandle)
+	{
+		glfwTerminate();
+		exit(EXIT_FAILURE);
+	}
+
+
+	glfwSetWindowUserPointer(mainWindowHandle, this);
+	glfwMakeContextCurrent(mainWindowHandle);
+	glfwSwapInterval((enableVsync) ? 1 : 0);
+
+
+	/*glfwWindowHint(GLFW_DECORATED, false);
+	const auto splashScreenWindowHandle = glfwCreateWindow(initWindowWidth, initWindowHeight, title.c_str(), nullptr,
+	nullptr); if (!splashScreenWindowHandle)
+	{
+		glfwTerminate();
+		exit(EXIT_FAILURE);
+	}
+
+	glfwSetWindowUserPointer(splashScreenWindowHandle, this);
+	glfwMakeContextCurrent(splashScreenWindowHandle);
+	glfwSwapInterval((enableVsync) ? 1 : 0);*/
+
+
+	debugDrawList_ = std::make_shared<DebugDrawList>();
+	gizmoHelper_ = std::make_shared<GizmoHelper>();
+
 	gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
 	gladLoadGL();
 
-	static vk::DynamicLoader dl;
-	auto vkGetInstanceProcAddr = dl.getProcAddress<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
+#if 0
+	GLint numExtensions;
+	glGetIntegerv(GL_NUM_EXTENSIONS, &numExtensions);
+	std::cout << "- Extensions" << std::endl;
+	for (GLint i = 0; i < numExtensions; i++)
+	{
+		std::cout << glGetStringi(GL_EXTENSIONS, i) << std::endl;
+	}
+#endif
+	applicationContext_ = std::make_unique<ApplicationContext>();
+	applicationContext_->mainWindowHandle_ = mainWindowHandle;
+	//	applicationContext->splashScreenWindowHandle_ = splashScreenWindowHandle;
 
-	VULKAN_HPP_DEFAULT_DISPATCHER.init(vkGetInstanceProcAddr);
+	applicationContext_->setExternalDrawLists(debugDrawList_, gizmoHelper_);
 
-	constexpr auto instanceExtensions = std::array{ VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME };
+	applicationContext_->setExternalDrawLists(debugDrawList_, gizmoHelper_);
 
-	constexpr auto appInfo = vk::ApplicationInfo{ .pApplicationName = "GL_CUDA_interop",
-												  .applicationVersion = 1,
-												  .pEngineName = "GL_CUDA_interop",
-												  .engineVersion = 1,
-												  .apiVersion = VK_VERSION_1_3 };
+	nvmlInit();
 
 	{
-		// ReSharper disable once CppVariableCanBeMadeConstexpr
-		const auto instanceCreateInfo = vk::InstanceCreateInfo{ .pApplicationInfo = &appInfo,
-																.enabledExtensionCount = instanceExtensions.size(),
-																.ppEnabledExtensionNames = instanceExtensions.data() };
-		const auto result = vk::createInstance(instanceCreateInfo);
-		assert(result.result == vk::Result::eSuccess);
-		vulkanContext_.instance = result.value;
+		const auto error =
+			nvmlDeviceGetHandleByIndex(renderingData_.data.rendererInitializationInfo.deviceIndex, &nvmlDevice_);
+		assert(error == NVML_SUCCESS);
 	}
 
-	VULKAN_HPP_DEFAULT_DISPATCHER.init(vulkanContext_.instance);
-
 	{
-		const auto result = vulkanContext_.instance.enumeratePhysicalDevices();
-		assert(result.result == vk::Result::eSuccess);
-
-		const auto& devices = result.value;
-
-		auto cudaDeviceCount = 0;
-		cudaGetDeviceCount(&cudaDeviceCount);
-		assert(cudaDeviceCount != 0);
-		auto cudaProperties = std::vector<cudaDeviceProp>{};
-		cudaProperties.resize(cudaDeviceCount);
-
-		for (auto i = 0; i < cudaDeviceCount; i++)
+		const auto error = nvmlDeviceResetGpuLockedClocks(nvmlDevice_);
+		if (error == NVML_ERROR_NO_PERMISSION)
 		{
-			cudaGetDeviceProperties(&cudaProperties[i], i);
+			isAdmin_ = false;
 		}
-
-		auto found = false;
-		auto uuid = cudaUUID_t{};
-		auto index = 0;
-		// search for first matching device with cuda
-		for (auto i = 0; i < devices.size(); i++)
+		if (error == NVML_SUCCESS)
 		{
-			const auto& device = devices[i];
-			const auto properties =
-				device.getProperties2<vk::PhysicalDeviceProperties2, vk::PhysicalDeviceIDProperties>();
-
-			const auto& idProperties = properties.get<vk::PhysicalDeviceIDProperties>();
-
-			for (auto j = 0; j < cudaProperties.size(); j++)
-			{
-				const auto isEqual = std::equal(idProperties.deviceUUID.begin(), idProperties.deviceUUID.end(),
-												cudaProperties[j].uuid.bytes);
-				if (isEqual)
-				{
-					found = true;
-					index = i;
-					uuid = cudaProperties[j].uuid;
-					break;
-				}
-			}
-
-			if (found)
-			{
-				break;
-			}
+			isAdmin_ = true;
 		}
-
-		vulkanContext_.physicalDevice = devices[index];
-		rendererInfo_.deviceUuid = uuid;
-
-		debugDrawList_ = std::make_unique<DebugDrawList>();
-	}
-	{
-
-		constexpr auto deviceExtensions =
-			std::array{ VK_KHR_EXTERNAL_SEMAPHORE_EXTENSION_NAME, VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME };
-
-		// vulkan device requires at lest one queue
-		// ReSharper disable once CppVariableCanBeMadeConstexpr
-		const auto priority = 1.0f;
-		const auto queueCreateInfo = vk::DeviceQueueCreateInfo{ .queueCount = 1, .pQueuePriorities = &priority };
-		const auto deviceCreateInfo = vk::DeviceCreateInfo{ .queueCreateInfoCount = 1,
-															.pQueueCreateInfos = &queueCreateInfo,
-															.enabledExtensionCount = deviceExtensions.size(),
-															.ppEnabledExtensionNames = deviceExtensions.data() };
-		const auto result = vulkanContext_.physicalDevice.createDevice(deviceCreateInfo);
-		assert(result.result == vk::Result::eSuccess);
-		vulkanContext_.device = result.value;
-		VULKAN_HPP_DEFAULT_DISPATCHER.init(vulkanContext_.device);
+		assert(error == NVML_SUCCESS || error == NVML_ERROR_NO_PERMISSION);
 	}
 
-	const auto semaphoreCreateInfo = vk::StructureChain{
-		vk::SemaphoreCreateInfo{},
-		vk::ExportSemaphoreCreateInfo{ .handleTypes = vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueWin32 }
-	};
 
-	{
-		const auto result = vulkanContext_.device.createSemaphore(semaphoreCreateInfo.get());
-		assert(result.result == vk::Result::eSuccess);
-		synchronizationResources_.vkSignalSemaphore = result.value;
-	}
+	gladLoadGLLoader(reinterpret_cast<GLADloadproc>(glfwGetProcAddress));
+	gladLoadGL();
 
-	{
-		const auto result = vulkanContext_.device.createSemaphore(semaphoreCreateInfo.get());
-		assert(result.result == vk::Result::eSuccess);
-		synchronizationResources_.vkWaitSemaphore = result.value;
-	}
-
-	{
-		const auto handleInfo =
-			vk::SemaphoreGetWin32HandleInfoKHR{ .semaphore = synchronizationResources_.vkSignalSemaphore,
-												.handleType = vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueWin32 };
-		const auto result = vulkanContext_.device.getSemaphoreWin32HandleKHR(handleInfo);
-		assert(result.result == vk::Result::eSuccess);
-		synchronizationResources_.signalSemaphoreHandle = result.value;
-	}
-
-	{
-		const auto handleInfo =
-			vk::SemaphoreGetWin32HandleInfoKHR{ .semaphore = synchronizationResources_.vkWaitSemaphore,
-												.handleType = vk::ExternalSemaphoreHandleTypeFlagBits::eOpaqueWin32 };
-		const auto result = vulkanContext_.device.getSemaphoreWin32HandleKHR(handleInfo);
-		assert(result.result == vk::Result::eSuccess);
-		synchronizationResources_.waitSemaphoreHandle = result.value;
-	}
-	// TODO: add cuda error checks
-	GL_CALL(glGenSemaphoresEXT(1, &synchronizationResources_.glSignalSemaphore));
-
-	GL_CALL(glGenSemaphoresEXT(1, &synchronizationResources_.glWaitSemaphore));
-	GL_CALL(glImportSemaphoreWin32HandleEXT(synchronizationResources_.glSignalSemaphore,
-											GL_HANDLE_TYPE_OPAQUE_WIN32_EXT,
-											synchronizationResources_.signalSemaphoreHandle));
-	GL_CALL(glImportSemaphoreWin32HandleEXT(synchronizationResources_.glWaitSemaphore, GL_HANDLE_TYPE_OPAQUE_WIN32_EXT,
-											synchronizationResources_.waitSemaphoreHandle));
-
-	auto externalSemaphoreHandleDesc = cudaExternalSemaphoreHandleDesc{};
-	externalSemaphoreHandleDesc.type = cudaExternalSemaphoreHandleTypeOpaqueWin32;
-	externalSemaphoreHandleDesc.flags = 0;
-	{
-		externalSemaphoreHandleDesc.handle.win32.handle = synchronizationResources_.waitSemaphoreHandle;
-		const auto error = cudaImportExternalSemaphore(&rendererInfo_.waitSemaphore, &externalSemaphoreHandleDesc);
-		assert(error == cudaError::cudaSuccess);
-	}
-	{
-		externalSemaphoreHandleDesc.handle.win32.handle = synchronizationResources_.signalSemaphoreHandle;
-		const auto result = cudaImportExternalSemaphore(&rendererInfo_.signalSemaphore, &externalSemaphoreHandleDesc);
-		assert(result == cudaError::cudaSuccess);
-	}
-
-	/*glGenTextures(1, &resources_.colorTexture);
-	glBindTexture(GL_TEXTURE_2D_ARRAY, resources_.colorTexture);
-	glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_RGBA8, 64, 64, 2);
-
-	glGenTextures(1, &resources_.minMaxTexture);
-	glBindTexture(GL_TEXTURE_2D_ARRAY, resources_.minMaxTexture);
-	glTexStorage3D(GL_TEXTURE_2D_ARRAY, 1, GL_RG32F, 64, 64, 2);*/
-
-
-	/*{
-		const auto error = cudaGraphicsGLRegisterImage(&rendererInfo_.colorRt, resources_.colorTexture,
-													   mode_ == b3d::renderer::RenderMode::mono ? GL_TEXTURE_2D :
-	GL_TEXTURE_2D_ARRAY, cudaGraphicsRegisterFlagsWriteDiscard); assert(error == cudaError::cudaSuccess);
-	}
-	{
-		const auto error = cudaGraphicsGLRegisterImage(&rendererInfo_.minMaxRt, resources_.minMaxTexture,
-													   mode_ == b3d::renderer::RenderMode::mono ? GL_TEXTURE_2D :
-	GL_TEXTURE_2D_ARRAY, cudaGraphicsRegisterFlagsWriteDiscard); assert(error == cudaError::cudaSuccess);
-	}*/
-
-	// rendererInfo_.mode = mode_;
 
 	// NOTE: rendererInfo will be fed into renderer initialization
-
 	selectRenderer(rendererIndex);
 	newSelectedRendererIndex_ = selectedRendererIndex_;
 
@@ -466,92 +327,404 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 
 auto NanoViewer::showAndRunWithGui() -> void
 {
-	showAndRunWithGui([]() { return true; });
+	showAndRunWithGui([&]() { return isRunning_; });
+}
+
+auto NanoViewer::draw() -> void
+{
+	ZoneScoped;
+
+	// TODO: if windows minimized or not visible -> skip rendering
+	onFrameBegin();
+	glClear(GL_COLOR_BUFFER_BIT);
+
+
+	ImGui_ImplOpenGL3_NewFrame();
+	ImGui_ImplGlfw_NewFrame();
+
+	ImGui::NewFrame();
+
+	applicationContext_->serverClient_.updateServerStatusState(ImGui::GetIO().DeltaTime);
+	ImGui::PushFont(applicationContext_->getFontCollection().getDefaultFont());
+	// TODO: Investigate if this combination is always intercepted by OS
+	if (ImGui::IsKeyDown(ImGuiMod_Alt) and ImGui::IsKeyPressed(ImGuiKey_F4, false))
+	{
+		isRunning_ = false;
+	}
+
+	static auto connectView = ServerConnectSettingsView{ *applicationContext_, "Server Connect",
+														 [](ModalViewBase*) { std::println("submit!!!"); } };
+
+	ImGui::BeginMainMenuBar();
+	if (ImGui::BeginMenu("Program"))
+	{
+		if (ImGui::MenuItem(ICON_LC_UNPLUG " Data Service..", nullptr, nullptr))
+		{
+		}
+		if (ImGui::MenuItem("Server Connection...", nullptr, nullptr))
+		{
+			connectView.open();
+			connectView.reset();
+		}
+
+		ImGui::EndMenu();
+	}
+
+
+	if (ImGui::BeginMenu("Tools"))
+	{
+		if (ImGui::MenuItem(ICON_LC_BAR_CHART_3 " Histogram", nullptr, nullptr))
+		{
+		}
+
+		ImGui::EndMenu();
+	}
+	ImGui::EndMainMenuBar();
+
+	mainMenu_->draw();
+
+	applicationContext_->getMainDockspace()->begin();
+
+	connectView.draw();
+
+	for (const auto component : applicationContext_->updatableComponents_)
+	{
+		component->update();
+	}
+
+	/*for (auto component : applicationContext->drawableComponents_)
+	{
+		component->draw();
+	}*/
+
+	for (const auto component : applicationContext_->rendererExtensions_)
+	{
+		component->updateRenderingData(renderingData_);
+	}
+	volumeView_->draw();
+
+	//// TODO: IT IS DEPRECATED AND IT WILL BE REMOVED!!!
+	// currentRenderer_->gui();
+
+	applicationContext_->getMainDockspace()->end();
+
+	if (showImGuiDemo_)
+	{
+		ImGui::ShowDemoWindow(&showImGuiDemo_);
+	}
+
+	const auto currentFrameTime = 1.0f / ImGui::GetIO().Framerate;
+	const auto maxFrameTimeTarget = currentFrameTime > (1.0f / 60.0f) ? 1.0f / 30.0f : 1.0f / 60.0f;
+#if 0
+
+	
+	if (showProfiler)
+	{
+		
+
+		profilersWindow_.gpuGraph().maxFrameTime = maxFrameTimeTarget;
+
+		if (!profilersWindow_.isProfiling())
+		{
+			auto profilingData = std::vector<legit::ProfilerTask>{};
+			double lastEndTime = 0.0f;
+			auto colorIndex = 0;
+			{
+				const auto& gpuTimers = currentRenderer_->getGpuTimers();
+				const auto& currentTimings = gpuTimers.getAllCurrent();
+
+				for (const auto& [name, start, stop] : currentTimings)
+				{
+					auto profilerTask = legit::ProfilerTask{};
+					profilerTask.name = name;
+					profilerTask.startTime = start / 1000.0f;
+					profilerTask.endTime = stop / 1000.0f;
+					profilerTask.color = colors[colorIndex % colors.size()];
+					profilingData.push_back(profilerTask);
+					colorIndex += 2;
+
+					lastEndTime = glm::max(lastEndTime, profilerTask.endTime);
+				}
+			}
+
+			{
+				const auto& gpuTimers = applicationContext->getGlGpuTimers();
+				const auto& currentTimings = gpuTimers.getAllCurrent();
+
+				for (const auto& [name, start, stop] : currentTimings)
+				{
+					auto profilerTask = legit::ProfilerTask{};
+					profilerTask.name = name;
+					profilerTask.startTime = lastEndTime + start / 1000.0f;
+					profilerTask.endTime = lastEndTime + stop / 1000.0f;
+					profilerTask.color = colors[colorIndex % colors.size()];
+					profilingData.push_back(profilerTask);
+					colorIndex += 2;
+				}
+			}
+
+			profilersWindow_.gpuGraph().LoadFrameData(profilingData.data(), profilingData.size());
+		}
+
+		profilersWindow_.render();
+	}
+#endif
+	applicationContext_->profiler_->collectGpuTimers(currentRenderer_->getGpuTimers().getAllCurrent());
+	applicationContext_->profiler_->collectGpuTimers(applicationContext_->getGlGpuTimers().getAllCurrent());
+
+	volumeView_->enableFrameGraph(showProfiler_);
+
+	auto& tasks = applicationContext_->profiler_->gpuProfilerTasks();
+	applicationContext_->gpuGraph_.maxFrameTime = maxFrameTimeTarget;
+	applicationContext_->gpuGraph_.LoadFrameData(tasks.data(), tasks.size());
+
+	static float maxFrameTime = 0;
+	maxFrameTime = maxFrameTime * 0.998 + 0.002 * ImGui::GetIO().DeltaTime;
+
+	constexpr auto frameWidth = 3;
+	constexpr auto frameSpacing = 1;
+	constexpr auto useColoredLegendText = true;
+	applicationContext_->gpuGraph_.frameWidth = frameWidth;
+	applicationContext_->gpuGraph_.frameSpacing = frameSpacing;
+	applicationContext_->gpuGraph_.maxFrameTime = maxFrameTime * 3.0f;
+	applicationContext_->gpuGraph_.useColoredLegendText = useColoredLegendText;
+
+
+	ImGui::PopFont();
+	ImGui::EndFrame();
+
+	ImGui::Render();
+
+	gizmoHelper_->clear();
+
+	const auto& record = applicationContext_->getGlGpuTimers().record("ImGui Pass");
+	record.start();
+	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+	record.stop();
+
+	if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+	{
+		const auto backupCurrentContext = glfwGetCurrentContext();
+		ImGui::UpdatePlatformWindows();
+		ImGui::RenderPlatformWindowsDefault();
+		glfwMakeContextCurrent(backupCurrentContext);
+	}
+
+	glfwSwapBuffers(applicationContext_->mainWindowHandle_);
+	glfwPollEvents();
+	applicationContext_->getGlGpuTimers().nextFrame();
+	applicationContext_->profiler_->nextFrame();
+
+	FrameMark;
 }
 
 auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> void
 {
 	gladLoadGL();
 
-	ddList = std::make_unique<DebugDrawList>();
-	fsPass = std::make_unique<FullscreenTexturePass>();
-	igPass = std::make_unique<InfinitGridPass>();
-	ddPass = std::make_unique<DebugDrawPass>(debugDrawList_.get());
-
 	int width, height;
-	glfwGetFramebufferSize(handle, &width, &height);
-	resize(vec2i(width, height));
+	glfwGetFramebufferSize(applicationContext_->mainWindowHandle_, &width, &height);
 
-	glfwSetFramebufferSizeCallback(handle, reshape);
-	glfwSetMouseButtonCallback(handle, ::mouseButton);
-	glfwSetKeyCallback(handle, keyboardSpecialKey);
-	glfwSetCharCallback(handle, keyboardKey);
-	glfwSetCursorPosCallback(handle, ::mouseMotion);
 
-	initializeGui(handle);
-	glfwMakeContextCurrent(handle);
+	glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
+	glfwSetFramebufferSizeCallback(applicationContext_->mainWindowHandle_,
+								   [](GLFWwindow* window, int, int)
+								   {
+									   auto* viewer = static_cast<NanoViewer*>(glfwGetWindowUserPointer(window));
 
-	while (!glfwWindowShouldClose(handle) && keepgoing())
+									   viewer->draw();
+								   });
+
+	glfwSetWindowContentScaleCallback(applicationContext_->mainWindowHandle_, windowContentScaleCallback);
+
+	initializeGui(applicationContext_->mainWindowHandle_, applicationContext_.get());
+
+	volumeView_ = std::make_unique<VolumeView>(*applicationContext_, applicationContext_->getMainDockspace());
+	volumeView_->setRenderVolume(currentRenderer_.get(), &renderingData_);
+
+	transferMapping_ = std::make_unique<TransferMapping>(*applicationContext_);
+	// TODO: we need a system for graphics resource initialization/deinitialization
+	transferMapping_->initializeResources();
+	transferMapping_->updateRenderingData(renderingData_);
+
+	soFiaSearch_ = std::make_unique<SoFiaSearch>(*applicationContext_);
+	soFiaSearch_->initializeResources();
+	projectExplorer_ = std::make_unique<ProjectExplorer>(*applicationContext_);
+
+	mainMenu_ = std::make_unique<MenuBar>(*applicationContext_);
+
+	applicationContext_->addMenuBarTray(
+		[&]()
+		{
+			auto icon = ICON_LC_SERVER;
+			if (applicationContext_->serverClient_.getLastServerStatusState() ==
+				b3d::tools::project::ServerStatusState::ok)
+			{
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.1, 0.5, 0.1, 1.0 });
+			}
+			else if (applicationContext_->serverClient_.getLastServerStatusState() ==
+					 b3d::tools::project::ServerStatusState::testing)
+			{
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 1, 0.65, 0.0, 1.0 });
+			}
+			else
+			{
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.5, 0.1, 0.1, 1.0 });
+				icon = ICON_LC_SERVER_OFF;
+			}
+
+			if (ImGui::Button(icon))
+			{
+				// TODO: Open Server Connection Dialog?
+			}
+			// TODO: Hover to show Status Tooltip.
+
+			ImGui::PopStyleColor();
+
+			const auto sampleRequest = std::vector<std::string>{
+				"Ready: SoFiA search [10, 30, 50] [20, 40, 100]",
+				"Pending: SoFiA search [110, 130, 150] [120, 140, 1100]",
+				"Pending: SoFiA search [210, 230, 250] [220, 240, 2100]",
+			};
+
+			enum class RequestStatus
+			{
+				pending,
+				ready
+			};
+
+			struct Request
+			{
+				int progress{};
+				std::string label;
+				RequestStatus status{ RequestStatus::pending };
+			};
+
+			static auto actualRequests = std::vector<Request>{};
+
+			auto hasPendingRequests = false;
+			// update fake requests
+			for (auto& request : actualRequests)
+			{
+				request.progress++;
+				if (request.progress >= 1000)
+				{
+					request.status = RequestStatus::ready;
+				}
+				else
+				{
+					hasPendingRequests = true;
+				}
+			}
+
+
+			ImGui::SameLine();
+			ImGui::SetNextItemAllowOverlap();
+			const auto pos = ImGui::GetCursorPos();
+			const auto spinnerRadius = ImGui::GetFontSize() * 0.25f;
+			const auto itemWidth = ImGui::GetStyle().FramePadding.x * 2 + spinnerRadius * 4;
+			if (ImGui::Button("##requestQueue", ImVec2(itemWidth, 32)))
+			{
+				const auto requestIndex = rand() % sampleRequest.size();
+				actualRequests.push_back(Request{ .label = sampleRequest[requestIndex] });
+			}
+			if (ImGui::IsItemHovered())
+			{
+				if (ImGui::BeginTooltip())
+				{
+					ImGui::SetNextItemOpen(true);
+					if (ImGui::TreeNode("Server Requests"))
+					{
+
+						for (const auto& [progress, label, status] : actualRequests)
+						{
+							ImGui::BulletText(
+								std::format("{}: {}", status == RequestStatus::pending ? "Pending" : "Ready", label)
+									.c_str());
+						}
+						ImGui::TreePop();
+					}
+					ImGui::EndTooltip();
+				}
+			}
+
+			if (hasPendingRequests)
+			{
+				ImGui::SetCursorPos(pos + ImGui::GetStyle().FramePadding * 2);
+				ImSpinner::SpinnerRotateSegments("abs", spinnerRadius, 2.0f);
+			}
+			else
+			{
+				const auto offset = (itemWidth - ImGui::CalcTextSize(ICON_LC_CIRCLE_CHECK).x) * 0.5f;
+				ImGui::SetCursorPos(pos + ImVec2(offset, 0));
+				ImGui::Text(ICON_LC_CIRCLE_CHECK);
+			}
+		});
+
+
+	applicationContext_->addMenuToggleAction(
+		showProfiler_, [](bool) {}, "Help", ICON_LC_CIRCLE_GAUGE " Renderer Profiler", std::nullopt, "Develop Tools");
+	applicationContext_->addMenuToggleAction(
+		showDebugOptions_, [](bool) {}, "Help", ICON_LC_BUG " Debug Options", std::nullopt, "Develop Tools");
+	applicationContext_->addMenuToggleAction(
+		showImGuiDemo_, [](bool) {}, "Help", "ImGui Demo", std::nullopt, "Develop Tools");
+
+
+	applicationContext_->addMenuAction(
+		[]()
+		{
+			const auto url = "https://github.com/Institut-of-Visual-Computing/b3d-vis";
+			auto cmd = "";
+#ifdef __APPLE__
+#ifdef TARGET_OS_MAC
+			cmd = "open";
+#endif
+#elif __linux__
+			cmd = "xdg-open";
+#elif _WIN32
+			cmd = "start";
+#else
+
+#endif
+			std::system(std::format("{} {}", cmd, url).c_str());
+		},
+		"Help", ICON_FA_GITHUB " Source Code");
+
+
+	applicationContext_->addMenuToggleAction(
+		showAboutWindow_, [](bool) {}, "Help", "About");
+
+	applicationContext_->addMenuAction([&]() { isRunning_ = false; }, "Program", "Quit", "Alt+F4", std::nullopt, 100);
+	applicationContext_->addMenuAction([&]() { applicationContext_->settings_.restoreDefaultLayoutSettings(); },
+									  "Program", "Restore Layout", "", std::nullopt, 10);
+
+
+	glfwMakeContextCurrent(applicationContext_->mainWindowHandle_);
+	// glfwSetWindowSize(applicationContext->mainWindowHandle_, 1000, 600);
+
+
+	while (!glfwWindowShouldClose(applicationContext_->mainWindowHandle_) && keepgoing())
 	{
-		onFrameBegin();
-		glClear(GL_COLOR_BUFFER_BIT);
-		static double lastCameraUpdate = -1.f;
-		if (camera.lastModified != lastCameraUpdate)
 		{
-			cameraChanged();
-			lastCameraUpdate = camera.lastModified;
+			draw();
 		}
-
-		ImGui_ImplOpenGL3_NewFrame();
-		ImGui_ImplGlfw_NewFrame();
-		ImGui::NewFrame();
-		ImGui::PushFont(defaultFont);
-		gui();
-		ImGui::PopFont();
-		ImGui::EndFrame();
-
-		render();
-
-		fsPass->setViewport(fbSize.x, fbSize.y);
-		fsPass->setSourceTexture(fbTexture);
-		fsPass->execute();
-
-		const auto viewProjectionMatrix = computeViewProjectionMatrixFromCamera(camera, fbSize.x, fbSize.y);
-
-		if (viewerSettings.enableGridFloor)
-		{
-			igPass->setViewProjectionMatrix(viewProjectionMatrix);
-			igPass->setViewport(fbSize.x, fbSize.y);
-			igPass->setGridColor(
-				glm::vec3{ viewerSettings.gridColor[0], viewerSettings.gridColor[1], viewerSettings.gridColor[2] });
-			igPass->execute();
-		}
-
-		if (viewerSettings.enableDebugDraw)
-		{
-			ddPass->setViewProjectionMatrix(viewProjectionMatrix);
-			ddPass->setViewport(fbSize.x, fbSize.y);
-			ddPass->setLineWidth(viewerSettings.lineWidth);
-			ddPass->execute();
-		}
-
-		ImGui::Render();
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-		glfwSwapBuffers(handle);
-		glfwPollEvents();
 	}
 
 	deinitializeGui();
-	glfwDestroyWindow(handle);
+	currentRenderer_->deinitialize();
+	glfwDestroyWindow(applicationContext_->mainWindowHandle_);
 	glfwTerminate();
 }
 NanoViewer::~NanoViewer()
 {
-	vulkanContext_.device.destroySemaphore(synchronizationResources_.vkSignalSemaphore);
-	vulkanContext_.device.destroySemaphore(synchronizationResources_.vkWaitSemaphore);
-	vulkanContext_.device.destroy();
+	if (isAdmin_)
+	{
+		const auto error = nvmlDeviceResetGpuLockedClocks(nvmlDevice_);
+		assert(error == NVML_SUCCESS);
+	}
+	nvmlShutdown();
 }
+
 auto NanoViewer::selectRenderer(const std::uint32_t index) -> void
 {
 	assert(index < b3d::renderer::registry.size());
@@ -564,11 +737,10 @@ auto NanoViewer::selectRenderer(const std::uint32_t index) -> void
 		currentRenderer_->deinitialize();
 	}
 
-
 	selectedRendererIndex_ = index;
 	currentRenderer_ = b3d::renderer::registry[selectedRendererIndex_].rendererInstance;
 
-	const auto debugInfo = b3d::renderer::DebugInitializationInfo{ debugDrawList_ };
+	const auto debugInfo = b3d::renderer::DebugInitializationInfo{ debugDrawList_, gizmoHelper_ };
 
-	currentRenderer_->initialize(rendererInfo_, debugInfo);
+	currentRenderer_->initialize(&renderingData_.buffer, debugInfo);
 }

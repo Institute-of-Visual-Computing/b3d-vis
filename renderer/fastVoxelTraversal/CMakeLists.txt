@@ -1,12 +1,37 @@
-set(MODULE_NAME "B3DRendererFastVoxelTraversal")
-set(SRC FastVoxelTraversalRenderer.cpp)
 
-add_library(${MODULE_NAME} ${SRC})
-target_compile_features(${MODULE_NAME} PUBLIC cxx_std_20)
-target_include_directories(${MODULE_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+embed_ptx(
+  OUTPUT_TARGET
+    "FastVoxelTraversal-ptx"
+  PTX_LINK_LIBRARIES
+    owl::owl
+  SOURCES
+    FastVoxelTraversalDeviceCode.cu
+)
 
-target_link_libraries(${MODULE_NAME} PRIVATE B3D::Renderer::Library)
-add_library(B3D::Renderer::FastVoxelTraversal ALIAS ${MODULE_NAME})
+set_property(TARGET FastVoxelTraversal-ptx PROPERTY FOLDER "Renderer/PTX Targets")
+set_property(TARGET FastVoxelTraversal-ptx_ptx PROPERTY FOLDER "Renderer/PTX Targets")
 
+find_package(tinyxml2 CONFIG REQUIRED)
+find_package(unofficial-cfitsio CONFIG REQUIRED)
 
-set_property(TARGET ${MODULE_NAME} PROPERTY FOLDER "Renderer")
+find_package(Stb REQUIRED)
+find_package(imgui CONFIG REQUIRED)
+
+add_b3d_renderer(
+	NAME
+		FastVoxelTraversal
+	SOURCES
+		FastVoxelTraversalRenderer.cpp SourceVolumeLoader.cpp
+	HEADERS
+		FastVoxelTraversalSharedStructs.h
+	LIBRARIES
+		"FastVoxelTraversal-ptx"
+		imgui::imgui
+        tinyxml2::tinyxml2
+        cfitsio
+)
+
+target_include_directories(FastVoxelTraversal
+	PRIVATE
+		${Stb_INCLUDE_DIR}
+)

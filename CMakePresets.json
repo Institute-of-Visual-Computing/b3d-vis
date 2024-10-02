@@ -7,6 +7,13 @@
 	},
 	"configurePresets": [
 		{
+			"hidden": true,
+			"name": "enableTracyProfiling",
+			"cacheVariables": {
+				"ENABLE_NANO_PROFILE": true
+			}
+		},
+		{
 			"name": "vcpkg",
 			"toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
 			"cacheVariables": {
@@ -60,6 +67,17 @@
 			"hidden": true
 		},
 		{
+			"name": "sanitizers",
+			"environment": {
+				"CFLAGS": "/fsanitize=fuzzer",
+				"CXXFLAGS": "/fsanitize=fuzzer"
+			},
+			"cacheVariables": {
+				"ENABLE_NANO_SANITIZERS": true
+			},
+			"hidden": true
+		},
+		{
 			"name": "base",
 			"description": "Target Windows with the Visual Studio development environment.",
 			"hidden": true,
@@ -86,6 +104,18 @@
 			"description": "",
 			"displayName": "x64 Release",
 			"inherits": [ "base", "x64", "msvc", "release", "vcpkg", "libPaths" ]
+		},
+		{
+			"name": "x64-release-profiling",
+			"description": "",
+			"displayName": "x64 Release",
+			"inherits": [ "base", "x64", "msvc", "release", "vcpkg", "libPaths", "enableTracyProfiling" ]
+		},
+		{
+			"name": "x64-debug-profiling",
+			"description": "",
+			"displayName": "x64 Debug",
+			"inherits": [ "base", "x64", "msvc", "debug", "vcpkg", "libPaths", "enableTracyProfiling" ]
 		}
 	],
 	"buildPresets": [
@@ -100,6 +130,18 @@
 			"displayName": "Release",
 			"description": "Release configuration.",
 			"configurePreset": "x64-release"
+		},
+		{
+			"name": "Release Profiling",
+			"displayName": "Release Profiling",
+			"description": "Release configuration with enabled Tracy profiling.",
+			"configurePreset": "x64-release-profiling"
+		},
+		{
+			"name": "Debug Profiling",
+			"displayName": "Debug Profiling",
+			"description": "Debug configuration with enabled Tracy profiling.",
+			"configurePreset": "x64-debug-profiling"
 		}
 	]
 }

@@ -1,3 +1,0 @@
-add_subdirectory(actionConcrete)
-#add_subdirectory(actionTest)
-add_subdirectory(actionSyncPrimitiveSample)

@@ -1,8 +1,9 @@
 #pragma once
 
+#include <glad/glad.h>
 #include <glm/glm.hpp>
-#include "../Pass.h"
-#include "glad/glad.h"
+
+#include "Pass.h"
 
 class InfinitGridPass final : public Pass
 {
