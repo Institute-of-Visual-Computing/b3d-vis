@@ -49,6 +49,6 @@ add_subdirectory(renderer)
 add_subdirectory(viewer)
 add_subdirectory(tools)
 
-if(INCLUDE_UNITY_CUDA_INTEROP)
+#if(INCLUDE_UNITY_CUDA_INTEROP)
 	add_subdirectory(unityCUDAInterop)
-endif()
+#endif()
