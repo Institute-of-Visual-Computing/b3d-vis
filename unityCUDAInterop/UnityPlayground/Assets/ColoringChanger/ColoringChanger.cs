@@ -1,5 +1,7 @@
+using MixedReality.Toolkit.UX;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.XR.CoreUtils;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.UI;
@@ -20,7 +22,11 @@ public class ColoringChanger : MonoBehaviour
     public float colorMapsTeyxturePixelHeight = 410;
     public float colorMapPixelHeight = 5;
 
-    RenderTexture transferRenderTex;
+	public GameObject buttonPrefab;
+	public Transform buttonsList;
+	public Material buttonsMaterial;
+
+	RenderTexture transferRenderTex;
 	Texture2D transferReadTexture;
     int colorMapCount;
 
@@ -75,7 +81,22 @@ public class ColoringChanger : MonoBehaviour
         colorMapUvHeight = (1.0f / colorMapsTeyxturePixelHeight) * colorMapPixelHeight;
         colorMapCount = (int)(colorMapsTeyxturePixelHeight / colorMapPixelHeight);
 
-        transferFunctionComputeShader.SetTexture(transferFunctionComputeShader.FindKernel("CSMain"), "Result", transferRenderTex, 0);
+		for (int i = 0; i < colorMapCount; i++)
+		{
+			var buttonGO = Instantiate(buttonPrefab, buttonsList);
+			var button = buttonGO.GetComponent<PressableButton>();
+			var index = i;
+			button.OnClicked.AddListener(() => { selectedColorMap = index; });
+			var backplate = buttonGO.GetNamedChild("Backplate");
+			var img = backplate.GetComponent<RawImage>();
+			img.material = new Material(buttonsMaterial);
+			img.color = Color.white;
+			img.material.mainTexture = transferFunctiontexture;
+			img.material.SetVector("_colorMapParams", new Vector4(colorMapPixelHeight, i, 1f / colorMapsTeyxturePixelHeight));
+		}
+
+
+		transferFunctionComputeShader.SetTexture(transferFunctionComputeShader.FindKernel("CSMain"), "Result", transferRenderTex, 0);
         transferFunctionComputeShader.SetVector("startPos", new Vector2(0, 0));
         transferFunctionComputeShader.SetVector("endPos", new Vector2(0, 0));
         transferFunctionComputeShader.SetInt("textureWidth", transferFunctiontexture.width);

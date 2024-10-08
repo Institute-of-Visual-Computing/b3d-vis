@@ -9,7 +9,7 @@ EditorBuildSettings:
     path: Assets/UnityCudaInterop/Actions/ActionNanoRenderer/ActionNanoRendererMRTK.unity
     guid: 7cea6ab7616b6314192ebb7802be1635
   m_configObjects:
-    com.unity.xr.arfoundation.simulation_settings: {fileID: 11400000, guid: cefb17ca5377e8f4c987458e72b1d6e6, type: 2}
+    com.unity.xr.arfoundation.simulation_settings: {fileID: 11400000, guid: aa9feb4a3f02861498c47338c6b73c68, type: 2}
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 774e9a004b53d32479935b40bdb27cec, type: 2}
-    com.unity.xr.openxr.settings4: {fileID: 11400000, guid: b318b44b2c28a884ab3e4b6704851349, type: 2}
-    xr.sdk.mock-hmd.settings: {fileID: 11400000, guid: 47d0d073828e5cf42bd61cdf7ba8b53f, type: 2}
+    com.unity.xr.openxr.settings4: {fileID: 11400000, guid: 23d5e77d3d67eea4182e09707a27879a, type: 2}
+    xr.sdk.mock-hmd.settings: {fileID: 11400000, guid: 078cf55191b4b6947b0a33398dd5d813, type: 2}
