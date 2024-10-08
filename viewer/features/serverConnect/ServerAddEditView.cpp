@@ -8,7 +8,7 @@ ServerAddEditView::ServerAddEditView(ApplicationContext& applicationContext, con
 									 std::function<void(ModalViewBase*)> onOpenCallback,
 									 std::function<void(ModalViewBase*)> onSubmitCallback)
 	: ModalViewBase(applicationContext, name, ModalType::okCancel,
-					ImVec2(40 * ImGui::GetFontSize(), 10 * ImGui::GetFontSize()))
+					ImVec2(20 * ImGui::GetFontSize(), 10 * ImGui::GetFontSize()))
 {
 	setOnOpen(onOpenCallback);
 	setOnSubmit(onSubmitCallback);

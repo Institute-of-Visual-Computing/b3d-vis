@@ -27,11 +27,11 @@ auto ModalViewBase::draw() -> void
 		ImGui::OpenPopup(id_.c_str(), ImGuiPopupFlags_AnyPopup);
 		isOpenRequested_ = false;
 	}
-	ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+	const auto center = ImGui::GetMainViewport()->GetCenter();
 	ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-	ImGui::SetNextWindowSizeConstraints(minSize_, ImVec2{ INFINITY, -1.0 });
+	ImGui::SetNextWindowSizeConstraints(minSize_, ImVec2{ -1.0, -1.0 });
 	// ImGui::OpenPopup(id_.c_str());
-	if (ImGui::BeginPopupModal(id_.c_str(), NULL, ImGuiWindowFlags_AlwaysAutoResize))
+	if (ImGui::BeginPopupModal(id_.c_str(), nullptr, ImGuiWindowFlags_NoResize))
 	{
 
 		onDraw();
