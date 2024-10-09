@@ -82,7 +82,8 @@ auto DebugDrawPass::execute() const -> void
 	glGenVertexArrays(1, &vertexArrayObject);
 
 	const auto lastIsEnabledDepthTest = glIsEnabled(GL_DEPTH_TEST);
-
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glViewport(0, 0, width_, height_);
 	glUseProgram(program_);
 	glUniformMatrix4fv(viewProjectionUniformLocation_, 1, GL_FALSE, glm::value_ptr(viewProjection_));
