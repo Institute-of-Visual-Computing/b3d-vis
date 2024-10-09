@@ -12,7 +12,7 @@ namespace b3d::tools::project
 {
 		struct Project
 		{
-			std::string b3dViewerProjectVersion;
+			std::string b3dViewerProjectVersion {"1.0"};
 			std::string projectName;
 			std::string projectUUID;
 			std::string fitsOriginUUID;

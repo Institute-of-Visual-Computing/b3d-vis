@@ -31,7 +31,7 @@ namespace
 	}
 }
 
-auto isFitsFile(const std::filesystem::path& fitsFilePath) -> bool
+auto b3d::tools::fits::isFitsFile(const std::filesystem::path& fitsFilePath) -> bool
 {
 	fitsfile* fitsFilePtr{ nullptr };
 	auto fitsError = int{};
