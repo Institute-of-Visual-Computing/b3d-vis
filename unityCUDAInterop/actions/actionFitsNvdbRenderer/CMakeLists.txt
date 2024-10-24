@@ -10,6 +10,8 @@ target_link_libraries(${MODULE_NAME}
 		B3D::Renderer::Library
 		# Replace the next line with the renderer you would like to bring to Unity
 		B3D::Renderer::FitsNvdb
+		B3D::Header::Shared::NvdbRendering
+		B3D::Tools::RuntimeDataset
 )
 
 set_target_properties(${MODULE_NAME} PROPERTIES CXX_STANDARD 20)

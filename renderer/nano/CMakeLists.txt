@@ -66,11 +66,9 @@ add_b3d_renderer(
 		Nano
 	SOURCES
 		NanoRenderer.cpp
-		RuntimeDataSet.cpp
 		../nanoOutOfCore/Old_OpenFileDialog.cpp
 	HEADERS
 		NanoRenderer.h
-		RuntimeDataSet.h
 		../nanoOutOfCore/Old_OpenFileDialog.h
 	LIBRARIES
 		cudaCode
@@ -81,4 +79,7 @@ add_b3d_renderer(
 		NanoCutterParser
 		B3D::Tools::ColorMap
 		Tracy::TracyClient
+		B3D::Header::Shared::NvdbRendering
+		B3D::Tools::RuntimeDataset
+
 )

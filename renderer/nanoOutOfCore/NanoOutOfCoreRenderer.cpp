@@ -26,12 +26,15 @@
 
 #include "Common.h"
 
+#include "SharedRenderingStructs.h"
+
 extern "C" char NanoOutOfCoreRenderer_ptx[];
 extern "C" uint8_t NanoOutOfCoreRenderer_optixir[];
 extern "C" uint32_t NanoOutOfCoreRenderer_optixir_length;
 
 
 using namespace b3d::renderer;
+using namespace b3d::tools::renderer::nvdb;
 using namespace b3d::renderer::nano;
 using namespace owl::common;
 using namespace b3d::profiler;
@@ -80,18 +83,18 @@ namespace
 
 	struct NanoVdbVolumeDeleter
 	{
-		auto operator()(const b3d::renderer::NanoVdbVolume* volume) const noexcept -> void
+		auto operator()(const b3d::tools::renderer::nvdb::NanoVdbVolume* volume) const noexcept -> void
 		{
 			OWL_CUDA_CHECK(cudaFree(reinterpret_cast<void*>(volume->grid)));
 			delete volume;
 		}
 	};
 
-	using unique_volume_ptr = std::unique_ptr<b3d::renderer::NanoVdbVolume, NanoVdbVolumeDeleter>;
+	using unique_volume_ptr = std::unique_ptr<b3d::tools::renderer::nvdb::NanoVdbVolume, NanoVdbVolumeDeleter>;
 
 	unique_volume_ptr nanoVdbVolume;
 
-	auto createVolume() -> b3d::renderer::NanoVdbVolume
+	auto createVolume() -> b3d::tools::renderer::nvdb::NanoVdbVolume
 	{
 		//const auto testFile = std::filesystem::path{ "D:/datacubes/n4565_cut/funny.nvdb" };
 		//  const auto testFile =
@@ -102,7 +105,7 @@ namespace
 
 		assert(std::filesystem::exists(testFile));
 		// owlInstanceGroupSetTransform
-		auto volume = b3d::renderer::NanoVdbVolume{};
+		auto volume = b3d::tools::renderer::nvdb::NanoVdbVolume{};
 		// auto gridVolume = nanovdb::createFogVolumeTorus();
 		const auto gridVolume = nanovdb::io::readGrid(testFile.string());
 
@@ -245,7 +248,7 @@ auto NanoRenderer::prepareGeometry() -> void
 
 	auto geometry = owlGeomCreate(context, geometryType);
 
-	nanoVdbVolume = unique_volume_ptr(new b3d::renderer::NanoVdbVolume());
+	nanoVdbVolume = unique_volume_ptr(new b3d::tools::renderer::nvdb::NanoVdbVolume());
 	*nanoVdbVolume.get() = createVolume();
 
 	const auto geometryGroup = owlUserGeomGroupCreate(context, 1, &geometry);

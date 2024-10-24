@@ -6,7 +6,7 @@
 
 #include <optix_types.h>
 #include <surface_types.h>
-
+#include "SharedRenderingStructs.h"
 
 namespace b3d
 {
@@ -36,14 +36,6 @@ namespace b3d
 				owl::vec3f color;
 			};
 
-			struct NanoVdbVolume
-			{
-				owl::box3f indexBox;
-				owl::box3f worldAabb;
-				owl::AffineSpace3f transform;
-				CUdeviceptr grid = 0;
-			};
-
 			struct Volume
 			{
 				void* grid;
@@ -51,7 +43,7 @@ namespace b3d
 
 			struct GeometryData
 			{
-				NanoVdbVolume volume;
+				tools::renderer::nvdb::NanoVdbVolume volume;
 			};
 
 			struct RayGenerationData

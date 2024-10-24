@@ -5,6 +5,7 @@
 #include <unordered_map>
 
 #include "Common.h"
+#include "SharedRenderingStructs.h"
 
 namespace b3d::renderer
 {
@@ -21,7 +22,7 @@ namespace b3d::renderer
 		ColorMapInfos colorMapInfos;
 		ExternalTexture transferFunctionTexture;
 		FoveatedRenderingControl foveatedRenderingControl;
-		RuntimeVolumeData runtimeVolumeData;
+		tools::renderer::nvdb::RuntimeVolumeData runtimeVolumeData;
 	};
 
 	using Schema = std::unordered_map<std::string_view, size_t>;

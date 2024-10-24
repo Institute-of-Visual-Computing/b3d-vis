@@ -3,7 +3,6 @@
 #include "owl/owl_host.h"
 
 #include "SharedStructs.h"
-#include "../../tools/fits/shared/FitsCommon.h"
 #include "boost/asio/execution/context.hpp"
 
 #include "features/RenderTargetFeature.h"
@@ -134,7 +133,7 @@ auto b3d::renderer::FitsNvdbRenderer::onInitialize() -> void
 			OWLVarDecl{ "sampleRemapping", OWL_FLOAT2, OWL_OFFSETOF(LaunchParams, sampleRemapping) },
 			OWLVarDecl{ "sampleIntegrationMethod", OWL_USER_TYPE(SampleIntegrationMethod),
 						OWL_OFFSETOF(LaunchParams, sampleIntegrationMethod) },
-			OWLVarDecl{ "volume", OWL_USER_TYPE(FitsNanoVdbVolume), OWL_OFFSETOF(LaunchParams, volume) }
+			OWLVarDecl{ "volume", OWL_USER_TYPE(tools::renderer::nvdb::FitsNanoVdbVolume), OWL_OFFSETOF(LaunchParams, volume) }
 		};
 
 		context_.launchParams =
@@ -159,7 +158,7 @@ auto b3d::renderer::FitsNvdbRenderer::onRender() -> void
 	// Becauase OWLBuildSBTFlags does not have NONE, we cant use the enum...
 	bool buildSBT = false;
 
-	const auto runtimeVolumeData = renderData_->get<RuntimeVolumeData>("runtimeVolumeData");
+	const auto runtimeVolumeData = renderData_->get<tools::renderer::nvdb::RuntimeVolumeData>("runtimeVolumeData");
 
 	// New Volume Available
 	{
@@ -184,7 +183,7 @@ auto b3d::renderer::FitsNvdbRenderer::onRender() -> void
 					AffineSpace3f::scale(1.0f / max(max(dims.x, dims.y), dims.z));
 			}
 
-			const auto vol = FitsNanoVdbVolume{ runtimeVolumeData->volume.volume.grid };
+			const auto vol = tools::renderer::nvdb::FitsNanoVdbVolume{ runtimeVolumeData->volume.volume.grid };
 			owlParamsSetRaw(context_.launchParams, "volume", &vol);
 			runtimeVolumeData->newVolumeAvailable = false;
 			hasVolume_ = true;

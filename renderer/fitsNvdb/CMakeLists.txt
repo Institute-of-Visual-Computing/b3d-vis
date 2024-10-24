@@ -57,4 +57,5 @@ add_b3d_renderer(
 		fitsNvdb-optixir
 		fitsNvdb-ptx
 		Tracy::TracyClient
+		B3D::Header::Shared::NvdbRendering
 )

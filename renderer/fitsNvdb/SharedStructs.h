@@ -3,6 +3,8 @@
 
 #include "Common.h"
 
+#include "SharedRenderingStructs.h"
+
 namespace b3d::renderer::fitsNvdb
 {
 	struct FitsNvdbGeometry
@@ -57,6 +59,6 @@ namespace b3d::renderer::fitsNvdb
 		owl::vec2f sampleRemapping;
 		SampleIntegrationMethod sampleIntegrationMethod;
 
-		FitsNanoVdbVolume volume;
+		tools::renderer::nvdb::FitsNanoVdbVolume volume;
 	};
 };

@@ -11,3 +11,4 @@ add_subdirectory(projectServer)
 add_subdirectory(projectServerClient)
 
 add_subdirectory(nanoCutterParser)
+add_subdirectory(runtimeDataset)

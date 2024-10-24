@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "framework/RendererExtensionBase.h"
-#include "RuntimeDataSet.h"
+#include "RuntimeDataset.h"
 
 namespace b3d::tools::project
 {

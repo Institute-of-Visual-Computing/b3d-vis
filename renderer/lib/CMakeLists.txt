@@ -43,6 +43,7 @@ target_link_libraries(${MODULE_NAME}
 	owl::owl
 	imgui::imgui
 	legit_task
+	B3D::Header::Shared::NvdbRendering
   PRIVATE
 	httplib::httplib
 )

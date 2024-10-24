@@ -102,7 +102,8 @@ auto ProjectExplorerController::update() -> void
 		{
 			const auto hasData =
 				(renderingData_->buffer.get<b3d::renderer::VolumeTransform>("volumeTransform") != nullptr) and
-				(renderingData_->buffer.get<b3d::renderer::RuntimeVolumeData>("runtimeVolumeData") != nullptr);
+				(renderingData_->buffer.get<b3d::tools::renderer::nvdb::RuntimeVolumeData>("runtimeVolumeData") !=
+				 nullptr);
 			if (hasData)
 			{
 
@@ -110,7 +111,7 @@ auto ProjectExplorerController::update() -> void
 				const auto volumeTransform =
 					renderingData_->buffer.get<b3d::renderer::VolumeTransform>("volumeTransform");
 				const auto runtimeVolumeData =
-					renderingData_->buffer.get<b3d::renderer::RuntimeVolumeData>("runtimeVolumeData");
+					renderingData_->buffer.get<b3d::tools::renderer::nvdb::RuntimeVolumeData>("runtimeVolumeData");
 				const auto trs = volumeTransform->worldMatTRS * runtimeVolumeData->volume.renormalizeScale;
 
 				projectExplorerView_->setVolumeTransform(trs);

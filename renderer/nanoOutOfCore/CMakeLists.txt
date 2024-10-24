@@ -52,4 +52,5 @@ add_b3d_renderer(
 		OpenVDB::nanovdb
 		imgui::imgui
 		NanoCutterParser
+		B3D::Header::Shared::NvdbRendering
 )

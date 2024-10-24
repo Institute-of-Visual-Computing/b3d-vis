@@ -118,6 +118,7 @@ target_link_libraries(${viewerTargetName}
 	B3D::Tools::ServerClient
 	B3D::Tools::ServerFileProvider
 	B3D::Tools::Project
+	B3D::Tools::RuntimeDataset
 	OpenGL::GL
 	glad::glad
 	imguizmo_modefied

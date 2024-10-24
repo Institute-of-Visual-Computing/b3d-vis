@@ -10,7 +10,7 @@
 #include "FontCollection.h"
 
 #include "ApplicationSettings.h"
-#include "RuntimeDataSet.h"
+#include "RuntimeDataset.h"
 #include "ServerClient.h"
 #include "framework/Dockspace.h"
 
@@ -18,6 +18,7 @@
 #include "GLGpuTimers.h"
 #include "ImGuiProfilerRenderer.h"
 #include "Profiler.h"
+#include "SharedRenderingStructs.h"
 
 struct GLFWwindow;
 class DebugDrawList;
@@ -124,7 +125,7 @@ public:
 	std::unique_ptr<b3d::profiler::Profiler> profiler_{};
 	ImGuiUtils::ProfilerGraph gpuGraph_{300};
 
-	b3d::renderer::nano::RuntimeDataSet runtimeDataSet_{};
+	b3d::tools::renderer::nvdb::RuntimeDataset runtimeDataset_{};
 	std::optional<b3d::tools::project::Project> selectedProject_{};
 
 	b3d::tools::project::ServerClient serverClient_{};

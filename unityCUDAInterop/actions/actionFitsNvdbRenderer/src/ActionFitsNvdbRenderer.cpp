@@ -5,12 +5,11 @@
 #include "PluginLogger.h"
 #include "RenderAPI.h"
 #include "RendererBase.h"
-#include "RenderingContext.h"
-#include "SharedStructs.h"
+
 #include "Texture.h"
 
 #include "FitsNvdbRenderer.h"
-
+#
 
 // This line is crucial and must stay. Should be one of the last include. But in any case after the include of Action.
 #include <cuda_d3d11_interop.h>
@@ -18,6 +17,10 @@
 
 #include "IUnityGraphicsD3D11.h"
 #include "create_action.h"
+
+#include "RuntimeDataset.h"
+#include "SharedRenderingStructs.h"
+
 
 using namespace b3d::renderer;
 using namespace b3d::unity_cuda_interop;
@@ -29,6 +32,16 @@ enum class NanoRenderEventTypes : int
 	renderEvent,
 	customActionRenderEventTypeCount
 };
+
+namespace
+{
+	struct CurrentVolumeInfos
+	{
+		std::string uuid;
+		std::string path;
+		bool volumeLoading = false;
+	};
+} // namespace
 
 class ActionFitsNvdbRenderer final : public Action
 {
@@ -49,7 +62,10 @@ protected:
 	std::unique_ptr<Texture> colorMapsTexture_;
 	std::unique_ptr<Texture> transferFunctionTexture_;
 
+	std::unique_ptr<b3d::tools::renderer::nvdb::RuntimeDataset> runtimeDataset_;
 
+	cudaStream_t copyStream_{ 0 };
+	CurrentVolumeInfos currentVolumeInfos_{};
 	std::atomic_flag resourceCreated = ATOMIC_FLAG_INIT;
 
 	bool isReady_{ false };
@@ -59,6 +75,7 @@ protected:
 ActionFitsNvdbRenderer::ActionFitsNvdbRenderer()
 {
 	renderer_ = std::make_unique<FitsNvdbRenderer>();
+	runtimeDataset_ = std::make_unique<b3d::tools::renderer::nvdb::RuntimeDataset>();
 }
 
 auto ActionFitsNvdbRenderer::initialize(void* data) -> void
@@ -132,9 +149,13 @@ auto ActionFitsNvdbRenderer::initialize(void* data) -> void
 						static_cast<uint32_t>(transferFunctionTexture_->getDepth()) }
 		};
 	}
+
+	cudaStreamCreate(&copyStream_);
+
 	renderer_->initialize(
 		&renderingDataWrapper_.buffer,
 		DebugInitializationInfo{ std::make_shared<NullDebugDrawList>(), std::make_shared<NullGizmoHelper>() });
+
 	cudaDeviceSynchronize();
 	isInitialized_ = true;
 	logger_->log("Nano action initialized");
@@ -142,10 +163,14 @@ auto ActionFitsNvdbRenderer::initialize(void* data) -> void
 
 auto ActionFitsNvdbRenderer::teardown() -> void
 {
+
 	isReady_ = false;
 	isInitialized_ = false;
 	renderer_->deinitialize();
 	cudaDeviceSynchronize();
+
+	cudaStreamSynchronize(copyStream_);
+	cudaStreamDestroy(copyStream_);
 	renderer_.reset();
 
 	transferFunctionTexture_.reset();
@@ -156,7 +181,7 @@ auto ActionFitsNvdbRenderer::teardown() -> void
 
 auto ActionFitsNvdbRenderer::customRenderEvent(int eventId, void* data) -> void
 {
-	logger_->log("Nano custom render event");
+	// logger_->log("Nano custom render event");
 	if (isInitialized_ && isReady_ && colorTexture_->isValid() &&
 		eventId == static_cast<int>(NanoRenderEventTypes::renderEvent))
 	{
@@ -245,16 +270,43 @@ auto ActionFitsNvdbRenderer::customRenderEvent(int eventId, void* data) -> void
 
 		renderingDataWrapper_.data.volumeTransform.worldMatTRS.l *= owl::LinearSpace3f::scale(volumeTransform->scale);
 
+
 		const auto& nanovdbLoadingData = rdb.get<UnityNanoVdbLoading>("nanovdbData");
 
 		if (nanovdbLoadingData->newVolumeAvailable)
 		{
-			const auto pathToNanoVdb = std::filesystem::path{ nanovdbLoadingData->f1 };
-			//renderer_->addNanoVdb(pathToNanoVdb);
+			if (nanovdbLoadingData->nanoVdbUUID == nullptr || nanovdbLoadingData->nanoVdbFilePath == nullptr)
+			{
+				logger_->log("UUID or path is null. Can't load volume.");
+				return;
+			}
+			auto uuidWString = std::wstring{ nanovdbLoadingData->nanoVdbUUID };
+			auto pathWString = std::wstring{ nanovdbLoadingData->nanoVdbFilePath };
+
+			auto uuid = std::string{ uuidWString.begin(), uuidWString.end() };
+			auto path = std::string{ pathWString.begin(), pathWString.end() };
+			currentVolumeInfos_ = { uuid, path, true };
+
+			// TODO: Possible to call method if copy not done yet? Check CUDA docs
+			runtimeDataset_->addNanoVdb(std::filesystem::path{ path }, copyStream_, uuid);
 		}
 
-		// renderer_->selectDataSet(nanovdbLoadingData->selectedDataset);
+		if (currentVolumeInfos_.volumeLoading)
+		{
+			auto volume = runtimeDataset_->getRuntimeVolume(currentVolumeInfos_.uuid);
+			if (volume.has_value() && volume.value().state == b3d::tools::renderer::nvdb::RuntimeVolumeState::ready)
+			{
+				renderingDataWrapper_.data.runtimeVolumeData.newVolumeAvailable = true;
 
+
+				renderingDataWrapper_.data.runtimeVolumeData.volume = volume.value();
+
+				// TODO: Change to fits box
+				renderingDataWrapper_.data.runtimeVolumeData.originalIndexBox = volume.value().volume.indexBox;
+
+				currentVolumeInfos_.volumeLoading = false;
+			}
+		}
 
 		currFenceValue += 1;
 

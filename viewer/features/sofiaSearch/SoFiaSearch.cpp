@@ -45,7 +45,7 @@ auto SoFiaSearch::updateRenderingData(b3d::renderer::RenderingDataWrapper& rende
 
 
 	if (applicationContext_->selectedProject_.has_value() &&
-		runtimeVolumeData.volume.state == b3d::renderer::RuntimeVolumeState::ready)
+		runtimeVolumeData.volume.state == b3d::tools::renderer::nvdb::RuntimeVolumeState::ready)
 	{
 
 		model.interactionEnabled = true;

@@ -39,6 +39,7 @@ extern "C" uint32_t NanoRenderer_optixir_length;
 
 
 using namespace b3d::renderer;
+using namespace b3d::tools::renderer::nvdb;
 using namespace b3d::renderer::nano;
 using namespace owl::common;
 
@@ -184,7 +185,9 @@ auto NanoRenderer::prepareGeometry() -> void
 															 OWL_MATRIX_FORMAT_OWL, OPTIX_BUILD_FLAG_ALLOW_UPDATE);
 
 	// TODO: need better solution, see also bounds kernel in NanoRenderer.cu
-	auto dataset = runtimeDataSet_.getSelectedData();
+
+	auto dataset = runtimeDataset_.getSelectedData();
+
 	owlGeomSetRaw(geometry, "volume", &dataset.volume);
 
 	owlGeomTypeSetBoundsProg(geometryType, module, "volumeBounds");
