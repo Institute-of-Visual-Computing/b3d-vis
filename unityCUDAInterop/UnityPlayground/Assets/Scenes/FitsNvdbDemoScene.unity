@@ -1555,6 +1555,14 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: -15.999994
       objectReference: {fileID: 0}
+    - target: {fileID: 1540313348671703286, guid: d5fa44bf7951e884b911bdea56a00b0f, type: 3}
+      propertyPath: m_Size.x
+      value: 290
+      objectReference: {fileID: 0}
+    - target: {fileID: 1540313348671703286, guid: d5fa44bf7951e884b911bdea56a00b0f, type: 3}
+      propertyPath: m_Size.y
+      value: 290
+      objectReference: {fileID: 0}
     - target: {fileID: 1735567970328497938, guid: d5fa44bf7951e884b911bdea56a00b0f, type: 3}
       propertyPath: m_AnchorMax.y
       value: 1
@@ -1811,8 +1819,7 @@ PrefabInstance:
       propertyPath: m_AnchorMax.y
       value: 1
       objectReference: {fileID: 0}
-    m_RemovedComponents:
-    - {fileID: 133902213856527692, guid: d5fa44bf7951e884b911bdea56a00b0f, type: 3}
+    m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
@@ -4306,7 +4313,7 @@ Transform:
   m_GameObject: {fileID: 2005364746}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 2.85}
+  m_LocalPosition: {x: 0, y: 1.6, z: 2.07}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

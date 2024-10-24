@@ -84,6 +84,7 @@ namespace B3D
 					else
 					{
 						FillNativeRenderingData();
+
 						Marshal.StructureToPtr(unityRenderingData, unityRenderingDataPtr, true);
 					}
 				}
