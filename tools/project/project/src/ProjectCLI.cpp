@@ -139,10 +139,10 @@ void CreateCommandFunction(args::Subparser& parser)
 		maskPath = project.projectPathAbsolute / maskPath.filename();
 	}
 	LOG_INFO << "Creating FileCatalog";
-	b3d::tools::project::catalog::FileCatalog catalog{ project.projectPathAbsolute, project.projectPathAbsolute };
-	project.fitsOriginUUID =
-		catalog.addFilePathRelativeToRoot(project.projectPathAbsolute / project.fitsOriginFileName);
+	b3d::tools::project::catalog::FileCatalog catalog =
+		b3d::tools::project::catalog::FileCatalog::createOrLoadCatalogInDirectory(project.projectPathAbsolute);
 	
+	project.fitsOriginUUID = catalog.addFilePathAbsolute(project.projectPathAbsolute / project.fitsOriginFileName);
 	
 	LOG_INFO << "Creating Request";
 
@@ -173,7 +173,7 @@ void CreateCommandFunction(args::Subparser& parser)
 	request.result.sofiaResult.message = "Success";
 	request.result.sofiaResult.finishedAt = b3d::common::helper::getSecondsSinceEpochUtc();
 	request.result.sofiaResult.fileAvailable = true;
-	request.result.sofiaResult.resultFile = catalog.addFilePathRelativeToRoot(project.projectPathAbsolute / sourcePath.filename());
+	request.result.sofiaResult.resultFile = catalog.addFilePathAbsolute(project.projectPathAbsolute / sourcePath.filename());
 
 	if(std::filesystem::create_directories(project.projectPathAbsolute / "requests" / request.uuid / "nano", ec) && ec)
 	{
@@ -192,18 +192,11 @@ void CreateCommandFunction(args::Subparser& parser)
 		return;
 	}
 
-	request.result.nanoResult.resultFile = catalog.addFilePathRelativeToRoot(project.projectPathAbsolute / "requests" / request.uuid / "nano" / "out.nvdb");
+	request.result.nanoResult.resultFile = catalog.addFilePathAbsolute(project.projectPathAbsolute / "requests" / request.uuid / "nano" / "out.nvdb");
 
 	project.requests.push_back(request);
 
-	LOG_INFO << "Write jsons";
-	{
-		const auto catalogFilePath = catalog.getRootPath() / "catalog.json";
-		std::ofstream ofs(catalogFilePath, std::ofstream::trunc);
-		nlohmann::json j = catalog;
-		ofs << std::setw(4) << j << std::endl;
-		ofs.close();
-	}
+	catalog.writeCatalog();
 
 	{
 		const auto projectFilePath = project.projectPathAbsolute / "project.json";
