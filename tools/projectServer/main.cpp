@@ -65,10 +65,13 @@ auto processCurrentRequest() -> void
 	// Save request and modify paths to UUIDs
 
 	auto req = currentRequest->get();
-
+	auto &projectCatalog = projectProvider->getCatalog(req.projectUUID);
 	if (req.userRequest.result.sofiaResult.wasSuccess())
 	{
-		req.userRequest.result.sofiaResult.resultFile = projectProvider->getCatalog().addFilePathAbsolute(
+		
+		req.userRequest.result.sofiaResult.resultFile =
+			projectCatalog
+				.addFilePathAbsolute(
 			req.userRequest.result.sofiaResult.resultFile);
 	}
 
@@ -77,17 +80,17 @@ auto processCurrentRequest() -> void
 		if(req.userRequest.result.sofiaResult.returnCode == 8)
 		{
 			req.userRequest.result.sofiaResult.resultFile =
-				projectProvider->getCatalog().addFilePathAbsolute(req.userRequest.result.sofiaResult.resultFile);
+				projectCatalog.addFilePathAbsolute(req.userRequest.result.sofiaResult.resultFile);
 		}
 
 		req.userRequest.result.nanoResult.resultFile =
-			projectProvider->getCatalog().addFilePathAbsolute(req.userRequest.result.nanoResult.resultFile);
+			projectCatalog.addFilePathAbsolute(req.userRequest.result.nanoResult.resultFile);
 	}
 
 	LOG_INFO << "Saving current request";
 	projectProvider->getProject(req.projectUUID).requests.emplace_back(req.userRequest);
 	projectProvider->saveProject(req.projectUUID);
-	projectProvider->saveRootCatalog();
+	projectCatalog.writeCatalog();
 	
 	currentRequest.reset();
 }
@@ -139,13 +142,6 @@ auto getStatus(const httplib::Request& req, httplib::Response& res) -> void
 	nlohmann::json retJ;
 	retJ["status"] = "OK";
 	res.set_content(retJ.dump(), "application/json");
-}
-
-auto getCatalog(const httplib::Request& req, httplib::Response& res) -> void
-{
-	LOG_INFO << req.path << " from " << req.remote_addr;
-	LOG_INFO << "Sending Catalog";
-	res.set_content(nlohmann::json(projectProvider->getCatalog()).dump(), "application/json");
 }
 
 auto getProjects(const httplib::Request& req, httplib::Response& res) -> void
@@ -250,7 +246,7 @@ auto postStartSearch(const httplib::Request& req, httplib::Response& res, const 
 	}
 
 	auto& project = projectProvider->getProject(projectUuid);
-	auto& catalog = projectProvider->getCatalog();
+	auto& catalog = projectProvider->getCatalog(project.projectUUID);
 
 
 	// First successful request is original mask.
@@ -582,7 +578,15 @@ auto getFile(const httplib::Request& req, httplib::Response& res) -> void
 		return;
 	}
 
-	const auto pathToFile = projectProvider->getCatalog().getFilePathAbsolute(req.path_params.at("fileUUID"));
+	auto pathToFile = std::filesystem::path{ };
+	for (auto &catalog : projectProvider->getAllCatalogs())
+	{
+		if (catalog.second.contains(req.path_params.at("fileUUID")))
+		{
+			pathToFile = catalog.second.getFilePathAbsolute(req.path_params.at("fileUUID"));
+			break;
+		}
+	}
 	if (pathToFile.empty())
 	{
 		LOG_INFO << "File with UUID " << req.path_params.at("fileUUID") << " not found.";
@@ -740,7 +744,7 @@ auto main(const int argc, char** argv) -> int
 		});
 
 	svr.Get("/status", &getStatus);
-	svr.Get("/catalog", &getCatalog);
+	// svr.Get("/catalog", &getCatalog);
 	svr.Get("/projects", &getProjects);
 	svr.Get("/project/:uuid", &getProjectFromUuid);
 	svr.Post("/startSearch", &postStartSearch);
