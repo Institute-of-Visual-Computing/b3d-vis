@@ -8,7 +8,9 @@ b3d::tools::project::ServerFileProvider::ServerFileProvider(std::filesystem::pat
 															ServerClient& serverClient)
 	: serverClient_{ serverClient }
 {
-	fileCatalog_ = std::make_unique <catalog::FileCatalog>(catalog::FileCatalog::createOrLoadCatalogFromPathes(dataRootPath, "serverCache"));
+	fileCatalog_ = std::make_unique <catalog::FileCatalog>(catalog::FileCatalog::createOrLoadCatalogInDirectory(dataRootPath, "serverCache.json"));
+	fileCatalog_->setRootPath(dataRootPath);
+	fileCatalog_->setFileName("serverCache.json");
 }
 
 b3d::tools::project::ServerFileProvider::~ServerFileProvider() = default;
@@ -69,7 +71,7 @@ auto b3d::tools::project::ServerFileProvider::loadFileAndAddToCatalog(const std:
 auto b3d::tools::project::ServerFileProvider::loadFileFromServer(
 	const std::string& fileUUID) const -> std::optional<std::filesystem::path>
 {
-	auto downloadFuture = serverClient_.downloadFileAsync(fileUUID, fileCatalog_->getDataPathAbsolute());
+	auto downloadFuture = serverClient_.downloadFileAsync(fileUUID, fileCatalog_->getRootPath());
 	downloadFuture.wait();
 	const auto downloadPath = downloadFuture.get();
 	if (!downloadPath.empty())
