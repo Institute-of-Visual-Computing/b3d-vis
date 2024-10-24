@@ -314,7 +314,7 @@ auto ActionFitsNvdbRenderer::customRenderEvent(int eventId, void* data) -> void
 	}
 	else if (eventId == static_cast<int>(NanoRenderEventTypes::initializeEvent))
 	{
-		logger_->log("Nano init event");
+		logger_->log("Nanonvdb init event");
 		initialize(data);
 	}
 	else if (eventId == static_cast<int>(NanoRenderEventTypes::setTexturesEvent))

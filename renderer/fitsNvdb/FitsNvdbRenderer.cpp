@@ -286,6 +286,14 @@ auto b3d::renderer::FitsNvdbRenderer::onRender() -> void
 	}
 
 	owlAsyncLaunch2D(context_.rayGen, framebufferSize.x, framebufferSize.y, context_.launchParams);
+
+	if (view->mode == RenderMode::stereo && renderTargetFeatureParams.colorRT.extent.depth > 1)
+	{
+		owlParamsSetRaw(context_.launchParams, "cameraData", &rayCameraData[1]);
+		owlParamsSetRaw(context_.launchParams, "surfacePointer",
+						&renderTargetFeatureParams.colorRT.surfaces[1].surface);
+		owlAsyncLaunch2D(context_.rayGen, framebufferSize.x, framebufferSize.y, context_.launchParams);	
+	}
 }
 
 auto b3d::renderer::FitsNvdbRenderer::onDeinitialize() -> void
