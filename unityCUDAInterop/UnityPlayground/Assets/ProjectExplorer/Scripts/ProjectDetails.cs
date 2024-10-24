@@ -23,10 +23,12 @@ public class ProjectDetails : MonoBehaviour
 				fileName.text = "";
 				dimensions.text = "";
 				axisType.text = "";
+				gameObject.SetActive(false);
 				return;
 			}
 
-			//title.text = _project.projectName;
+			gameObject.SetActive(true);
+			title.text = _project.projectName;
 			fileName.text = _project.fitsOriginFileName;
 			dimensions.text = string.Join(" X ", _project.fitsOriginProperties.axisDimensions);
 			axisType.text = string.Join(" / ", _project.fitsOriginProperties.axisTypes);
@@ -41,16 +43,4 @@ public class ProjectDetails : MonoBehaviour
 	{
 
 	}
-
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
 }

@@ -6,6 +6,11 @@ using UnityEngine.Profiling;
 using UnityEngine.Rendering;
 
 using System.Collections;
+using System.Runtime.InteropServices;
+using Unity.XR.CoreUtils.Datums;
+using System;
+using UnityEditor;
+using System.Threading.Tasks;
 
 
 public class UnityActionFitsNvdbRenderer : AbstractUnityRenderAction
@@ -33,6 +38,14 @@ public class UnityActionFitsNvdbRenderer : AbstractUnityRenderAction
 	Texture2D testColorTex;
 
 	public ColoringChanger coloringChanger;
+
+	public ServerFileCache serverFileCache;
+
+	IntPtr fitsNvdbDataPointer;
+	bool newDataAvailable = false;
+	string currentVolumePath = "";
+	string currentVolumeUUID = "";
+	byte[] fitsNvdbData;
 
 	#region AbstractUnityAction Overrides
 
@@ -63,20 +76,31 @@ public class UnityActionFitsNvdbRenderer : AbstractUnityRenderAction
 		// Fill struct with custom data and copy struct to unmanaged code.
 		unityRenderingData.coloringInfo.coloringMode = coloringChanger.useColormap ? UnityColoringMode.Colormap : UnityColoringMode.Single;
 		unityRenderingData.coloringInfo.singleColor = coloringChanger.colorToUse;
-		unityRenderingData.coloringInfo.selectedColorMap = coloringChanger.SelectedColorMapFloat;
+		unityRenderingData.coloringInfo.selectedColorMap = 1-coloringChanger.SelectedColorMapFloat;
 		unityRenderingData.coloringInfo.backgroundColors = new Vector4[2] { Vector4.zero, Vector4.zero };
 
 		unityRenderingData.volumeTransform.position = volumeCube.transform.position;
 		unityRenderingData.volumeTransform.scale = volumeCube.transform.localScale;
 		unityRenderingData.volumeTransform.rotation = volumeCube.transform.rotation;
 
-		unityRenderingData.unityNanoVdbLoading = new();
-		unityRenderingData.unityNanoVdbLoading.selectedDataset = 0;
-		unityRenderingData.unityNanoVdbLoading.newVolumeAvailable = false;
+
+		unityRenderingData.nanovdbData = new();
+		if(newDataAvailable)
+		{
+			unityRenderingData.nanovdbData.newVolumeAvailable = true;
+			unityRenderingData.nanovdbData.nanoVdbFilePath = currentVolumePath;
+			unityRenderingData.nanovdbData.nanoVdbUUID = currentVolumeUUID;
+
+
+			newDataAvailable = false;
+		}
+		else
+		{
+			unityRenderingData.nanovdbData.newVolumeAvailable = false;
+		}
 	}
 
 	#endregion AbstractUnityAction Overrides
-
 
 	/// TODO: Current approach is to override and call parent methods like shown below. Not nice. Change to smth other
 	#region Unity Methods
@@ -156,8 +180,37 @@ public class UnityActionFitsNvdbRenderer : AbstractUnityRenderAction
 
 	protected override void OnDestroy()
 	{
+		if(fitsNvdbDataPointer != IntPtr.Zero)
+		{ 
+			Marshal.FreeHGlobal(fitsNvdbDataPointer);
+			fitsNvdbDataPointer = IntPtr.Zero;
+		}
+
 		base.OnDestroy();
 	}
 
 	#endregion Unity Methods
+
+	IEnumerator LoadVolume(string uuid)
+	{
+		var fileTaskTuple = serverFileCache.downloadFile(uuid);
+		yield return new WaitUntil(() => fileTaskTuple.IsCompleted);
+
+		if(fileTaskTuple.IsCompletedSuccessfully)
+		{
+			currentVolumeUUID = fileTaskTuple.Result.Item1;	
+			currentVolumePath = fileTaskTuple.Result.Item2;
+			newDataAvailable = true;
+		}
+	}
+	public void showVolume(string uuid)
+	{
+		if(!serverFileCache)
+		{
+			Debug.Log("No serrver file cache available");
+			return;
+		}
+		StartCoroutine(LoadVolume(uuid));
+	}
 }
+

@@ -1,9 +1,13 @@
 using B3D;
+using System;
 using System.Collections;
+using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
+using UnityEngine.SocialPlatforms.Impl;
 
-[ExecuteInEditMode]
 public class ServerClient : MonoBehaviour
 {
 	// In Editor only
@@ -15,8 +19,12 @@ public class ServerClient : MonoBehaviour
 	public delegate void ProjectsUpdatedEventHandler(Projects projects);
 	public event ProjectsUpdatedEventHandler ProjectsUpdatedEvent;
 
+	public delegate void FileDownloadedEventHandler(string uuid, string path);
+	public event FileDownloadedEventHandler FileDownloadedEvent;
+
 
 	private bool getProjectsIsRunning = false;
+	private bool downloadIsRunning = false;
 
 	void setConnectionSettings(string newClientAddress, int newClientPort)
 	{
@@ -47,6 +55,44 @@ public class ServerClient : MonoBehaviour
 			ProjectsUpdatedEvent?.Invoke(projs);
 		}
 		getProjectsIsRunning = false;
+	}
+
+	IEnumerator GetFile(TaskCompletionSource<Tuple<string, string>>  promise, string destinationDirectory,  string fileUID)
+	{
+		if (downloadIsRunning)
+		{
+			yield break;
+		}
+		downloadIsRunning = true;
+		var uwr = UnityWebRequest.Get("http://" + clientAddress + ":" + clientPort + "/file/" + fileUID);
+		string path = Path.Combine(destinationDirectory, fileUID);
+		uwr.downloadHandler = new DownloadHandlerFile(path);
+		yield return uwr.SendWebRequest();
+		if (uwr.result != UnityWebRequest.Result.Success)
+		{
+			Debug.LogError(uwr.error);
+			promise.TrySetResult(Tuple.Create(fileUID,""));
+		}
+		else
+		{
+			Debug.Log("File successfully downloaded and saved to " + path);
+			FileDownloadedEvent?.Invoke(fileUID, path);
+			promise.TrySetResult(Tuple.Create(fileUID, path));
+		}
+		downloadIsRunning = false;
+	}
+
+	public Task<Tuple<string, string>> downloadFile(string destinationDirectory, string fileUID)
+	{
+		var promise = new TaskCompletionSource<Tuple<string, string>>();
+		if (!downloadIsRunning)
+		{
+			StartCoroutine(GetFile(promise, destinationDirectory, fileUID));
+		} else
+		{
+			promise.SetCanceled();
+		}
+		return promise.Task;
 	}
 
 	public void getProjects()

@@ -1,10 +1,22 @@
 using MixedReality.Toolkit.UX;
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using Unity.XR.CoreUtils;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.UI;
+
+
+public struct ColormapInfos
+{
+	public string colorMapFilePath;
+	public int width;
+	public int height;
+	public int pixelsPerMap;
+	public int colorMapCount;
+	public List<string> colorMapNames;
+}
 
 public class ColoringChanger : MonoBehaviour
 {
@@ -17,10 +29,9 @@ public class ColoringChanger : MonoBehaviour
     public Image uiImage;
 
     public Texture colormapsTexture;
-    public Texture transferFunctiontexture;
+	public TextAsset colormapsText;
 
-    public float colorMapsTeyxturePixelHeight = 410;
-    public float colorMapPixelHeight = 5;
+    public Texture transferFunctiontexture;
 
 	public GameObject buttonPrefab;
 	public Transform buttonsList;
@@ -78,21 +89,29 @@ public class ColoringChanger : MonoBehaviour
             uiImage.material.SetTexture("_TransferFunctionTexture", transferRenderTex);
         }
 
-        colorMapUvHeight = (1.0f / colorMapsTeyxturePixelHeight) * colorMapPixelHeight;
-        colorMapCount = (int)(colorMapsTeyxturePixelHeight / colorMapPixelHeight);
+		ColormapInfos infos = JsonUtility.FromJson<ColormapInfos>(colormapsText.text);
 
+		colorMapUvHeight = (1.0f / infos.height) * infos.pixelsPerMap;
+		colorMapCount = infos.colorMapCount;
+
+		var prefabButton = buttonPrefab.GetComponent<PressableButton>();
+		var backplateImage = buttonPrefab.GetNamedChild("Backplate").GetComponent<RawImage>();
+		var frontplateText = buttonPrefab.GetNamedChild("Frontplate").GetNamedChild("Text").GetComponent<TextMeshProUGUI>();
 		for (int i = 0; i < colorMapCount; i++)
 		{
+
+			var index = i;
+
+			backplateImage.material = new Material(buttonsMaterial);
+			backplateImage.color = Color.white;
+			backplateImage.material.mainTexture = transferFunctiontexture;
+			backplateImage.material.SetVector("_colorMapParams", new Vector4(infos.pixelsPerMap, colorMapCount - 1 - i, 1f / infos.height));
+
+			frontplateText.text = infos.colorMapNames[i];
+
 			var buttonGO = Instantiate(buttonPrefab, buttonsList);
 			var button = buttonGO.GetComponent<PressableButton>();
-			var index = i;
 			button.OnClicked.AddListener(() => { selectedColorMap = index; });
-			var backplate = buttonGO.GetNamedChild("Backplate");
-			var img = backplate.GetComponent<RawImage>();
-			img.material = new Material(buttonsMaterial);
-			img.color = Color.white;
-			img.material.mainTexture = transferFunctiontexture;
-			img.material.SetVector("_colorMapParams", new Vector4(colorMapPixelHeight, i, 1f / colorMapsTeyxturePixelHeight));
 		}
 
 
@@ -114,12 +133,12 @@ public class ColoringChanger : MonoBehaviour
     {
         Vector2 localPos;
 
-        selectedColorMap = Mathf.Min(selectedColorMap, colorMapCount);
+        selectedColorMap = Mathf.Min(selectedColorMap, colorMapCount - 1);
         if (uiImage)
         {
             uiImage.material.SetFloat("_UseColorMap", useColormap ? 1 : 0);
             uiImage.material.SetColor("_SingleColor", colorToUse);
-            uiImage.material.SetFloat("_ColorMapsTextureSelectionOffset", SelectedColorMapFloat);
+            uiImage.material.SetFloat("_ColorMapsTextureSelectionOffset", 1 - SelectedColorMapFloat);
             uiImage.material.SetFloat("_ColorMapsTextureHeight", colorMapUvHeight);
         }
 
@@ -131,7 +150,7 @@ public class ColoringChanger : MonoBehaviour
                 oldPos = localPos;
                 wasValidBefore = true;
             }
-            Debug.Log($"old: {oldPos}, new: {localPos}");
+            // Debug.Log($"old: {oldPos}, new: {localPos}");
             transferFunctionComputeShader.SetVector("startPos", oldPos);
             transferFunctionComputeShader.SetVector("endPos", localPos);
             oldPos = localPos;

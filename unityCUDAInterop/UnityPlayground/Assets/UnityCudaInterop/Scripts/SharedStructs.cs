@@ -185,18 +185,31 @@ namespace B3D
 				public UnityTexture colorMapsTexture;
 				public UnityColoringInfo coloringInfo;
 				public UnityTexture transferFunctionTexture;
-				public UnityNanoVdbLoading unityNanoVdbLoading;
+				public UnityNanoVdbLoading nanovdbData;
 			}
 
 			// defined in Action.h - struct UnityNanoVdbLoading
-			[StructLayout(LayoutKind.Sequential)]
+			[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode) ]
 			public struct UnityNanoVdbLoading
 			{
 				public bool newVolumeAvailable;
 				public int selectedDataset;
 
-				[MarshalAs(UnmanagedType.LPStr)]
+				[MarshalAs(UnmanagedType.LPWStr)]
+				public string nanoVdbUUID;
+
+				[MarshalAs(UnmanagedType.LPWStr)]
 				public string nanoVdbFilePath;
+			}
+
+			// defined in Action.h - struct UnityFitsNvdbData
+			[StructLayout(LayoutKind.Sequential)]
+			public struct UnityFitsNvdbData
+			{
+				public bool newDataAvailable;
+				public int dataSizeBytes;
+
+				public IntPtr dataPointer;
 			}
 		}
     }

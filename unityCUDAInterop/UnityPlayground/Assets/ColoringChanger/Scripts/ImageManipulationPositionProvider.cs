@@ -15,11 +15,7 @@ public class ImageManipulationPositionProvider : MonoBehaviour
 
     private void Update()
     {
-        Vector2 la;
-        if(GetPosition(out la))
-        {
-            Debug.Log(la);
-        }
+        
     }
 
     public bool GetPosition(out Vector2 currentPosition)
