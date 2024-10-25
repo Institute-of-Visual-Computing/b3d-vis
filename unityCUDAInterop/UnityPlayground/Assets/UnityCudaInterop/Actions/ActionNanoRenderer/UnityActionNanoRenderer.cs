@@ -92,7 +92,7 @@ public class UnityActionNanoRenderer : AbstractUnityRenderAction
 
 		base.Start();
 				
-		unityRenderingData.transferFunctionTexture = new(coloringChanger.TransferRenderTex.GetNativeTexturePtr(), new((uint)coloringChanger.TransferRenderTex.width, (uint)coloringChanger.TransferRenderTex.height, 1));
+		unityRenderingData.transferFunctionTexture = new(coloringChanger.TransferFunctionReadTexture.GetNativeTexturePtr(), new((uint)coloringChanger.TransferFunctionReadTexture.width, (uint)coloringChanger.TransferFunctionReadTexture.height, 1));
 
 		unityRenderingData.colorMapsTexture = new(coloringChanger.colormapsTexture.GetNativeTexturePtr(), new((uint)coloringChanger.colormapsTexture.width, (uint)coloringChanger.colormapsTexture.height, 1));
 		//unityRenderingData.colorMapsTexture = new(testColorTex.GetNativeTexturePtr(), new((uint)testColorTex.width, (uint)testColorTex.height, 1));

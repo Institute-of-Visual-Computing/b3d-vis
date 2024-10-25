@@ -84,8 +84,10 @@ namespace B3D
 					else
 					{
 						FillNativeRenderingData();
-
-						Marshal.StructureToPtr(unityRenderingData, unityRenderingDataPtr, true);
+						if(unityRenderingDataPtr != IntPtr.Zero)
+						{
+							Marshal.StructureToPtr(unityRenderingData, unityRenderingDataPtr, true);
+						}
 					}
 				}
 			}
@@ -134,15 +136,18 @@ namespace B3D
 			{
 				yield return new WaitForEndOfFrame();
 
-				Marshal.StructureToPtr(unityRenderingData, unityRenderingDataPtr, true);
-
-				CommandBuffer immediate = new();
-				immediate.IssuePluginEventAndData(NativeAction.RenderEventAndDataFuncPointer, NativeAction.MapEventId(RenderEventTypes.ACTION_INITIALIZE), unityRenderingDataPtr);
-				Graphics.ExecuteCommandBuffer(immediate);
-				yield return new WaitForEndOfFrame();
-				yield return new WaitForEndOfFrame();
-				AddRenderingCommandBuffersToCamera();
-				readyForUpdate_ = true;
+				if (unityRenderingDataPtr != IntPtr.Zero)
+				{
+					Marshal.StructureToPtr(unityRenderingData, unityRenderingDataPtr, true);
+				
+					CommandBuffer immediate = new();
+					immediate.IssuePluginEventAndData(NativeAction.RenderEventAndDataFuncPointer, NativeAction.MapEventId(RenderEventTypes.ACTION_INITIALIZE), unityRenderingDataPtr);
+					Graphics.ExecuteCommandBuffer(immediate);
+					yield return new WaitForEndOfFrame();
+					yield return new WaitForEndOfFrame();
+					AddRenderingCommandBuffersToCamera();
+					readyForUpdate_ = true;
+				}
 			}
 
 			protected virtual IEnumerator WaitEndOfFrameAfterImmediateCommandBufferExec()
@@ -190,9 +195,10 @@ namespace B3D
 
 					readyForUpdate_ = false;
 					RemoveRenderingCommandBuffersFromCamera();
-
-					Marshal.StructureToPtr(unityRenderingData, unityRenderingDataPtr, true);
-
+					if (unityRenderingDataPtr != IntPtr.Zero)
+					{
+						Marshal.StructureToPtr(unityRenderingData, unityRenderingDataPtr, true);
+					}
 					CommandBuffer cbImmediate = new();
 					cbImmediate.IssuePluginEventAndData(NativeAction.RenderEventAndDataFuncPointer, NativeAction.MapEventId(RenderEventTypes.ACTION_SET_TEXTURES), unityRenderingDataPtr);
 					Graphics.ExecuteCommandBuffer(cbImmediate);

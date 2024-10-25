@@ -194,22 +194,23 @@ namespace B3D
 			{
 				public bool newVolumeAvailable;
 				public int selectedDataset;
+				public int uuidStringLength;
+				public int pathStringLength;
 
+				[MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+				public string nanoVdbUUID;
+
+				[MarshalAs(UnmanagedType.ByValTStr, SizeConst = 2048)]
+				public string nanoVdbFilePath;
+
+
+				/*
 				[MarshalAs(UnmanagedType.LPWStr)]
 				public string nanoVdbUUID;
 
 				[MarshalAs(UnmanagedType.LPWStr)]
 				public string nanoVdbFilePath;
-			}
-
-			// defined in Action.h - struct UnityFitsNvdbData
-			[StructLayout(LayoutKind.Sequential)]
-			public struct UnityFitsNvdbData
-			{
-				public bool newDataAvailable;
-				public int dataSizeBytes;
-
-				public IntPtr dataPointer;
+				*/
 			}
 		}
     }

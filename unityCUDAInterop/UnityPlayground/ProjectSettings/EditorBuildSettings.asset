@@ -6,8 +6,8 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/UnityCudaInterop/Actions/ActionNanoRenderer/ActionNanoRendererMRTK.unity
-    guid: 7cea6ab7616b6314192ebb7802be1635
+    path: Assets/Scenes/FitsNvdbDemoScene.unity
+    guid: c3e250dfbf5e76c449ef27e69350858c
   m_configObjects:
     com.unity.xr.arfoundation.simulation_settings: {fileID: 11400000, guid: aa9feb4a3f02861498c47338c6b73c68, type: 2}
     com.unity.xr.management.loader_settings: {fileID: 11400000, guid: 774e9a004b53d32479935b40bdb27cec, type: 2}

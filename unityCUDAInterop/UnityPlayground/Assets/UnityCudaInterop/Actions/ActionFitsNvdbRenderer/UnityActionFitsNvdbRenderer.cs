@@ -12,7 +12,6 @@ using System;
 using UnityEditor;
 using System.Threading.Tasks;
 
-
 public class UnityActionFitsNvdbRenderer : AbstractUnityRenderAction
 {
 	#region Native structs for this action
@@ -38,7 +37,6 @@ public class UnityActionFitsNvdbRenderer : AbstractUnityRenderAction
 	Texture2D testColorTex;
 
 	public ColoringChanger coloringChanger;
-
 	public ServerFileCache serverFileCache;
 
 	IntPtr fitsNvdbDataPointer;
@@ -89,14 +87,19 @@ public class UnityActionFitsNvdbRenderer : AbstractUnityRenderAction
 		{
 			unityRenderingData.nanovdbData.newVolumeAvailable = true;
 			unityRenderingData.nanovdbData.nanoVdbFilePath = currentVolumePath;
+			unityRenderingData.nanovdbData.pathStringLength = currentVolumePath.Length;
 			unityRenderingData.nanovdbData.nanoVdbUUID = currentVolumeUUID;
-
+			unityRenderingData.nanovdbData.uuidStringLength = currentVolumeUUID.Length;
 
 			newDataAvailable = false;
 		}
 		else
 		{
 			unityRenderingData.nanovdbData.newVolumeAvailable = false;
+			unityRenderingData.nanovdbData.nanoVdbFilePath = "Empty";
+			unityRenderingData.nanovdbData.pathStringLength = 5;
+			unityRenderingData.nanovdbData.nanoVdbUUID = "Empty";
+			unityRenderingData.nanovdbData.uuidStringLength = 5;
 		}
 	}
 
@@ -113,7 +116,7 @@ public class UnityActionFitsNvdbRenderer : AbstractUnityRenderAction
 
 		base.Start();
 
-		unityRenderingData.transferFunctionTexture = new(coloringChanger.TransferRenderTex.GetNativeTexturePtr(), new((uint)coloringChanger.TransferRenderTex.width, (uint)coloringChanger.TransferRenderTex.height, 1));
+		unityRenderingData.transferFunctionTexture = new(coloringChanger.TransferFunctionReadTexture.GetNativeTexturePtr(), new((uint)coloringChanger.TransferFunctionReadTexture.width, (uint)coloringChanger.TransferFunctionReadTexture.height, 1));
 
 		unityRenderingData.colorMapsTexture = new(coloringChanger.colormapsTexture.GetNativeTexturePtr(), new((uint)coloringChanger.colormapsTexture.width, (uint)coloringChanger.colormapsTexture.height, 1));
 		//unityRenderingData.colorMapsTexture = new(testColorTex.GetNativeTexturePtr(), new((uint)testColorTex.width, (uint)testColorTex.height, 1));
