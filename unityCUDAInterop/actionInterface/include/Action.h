@@ -42,17 +42,12 @@ namespace b3d::unity_cuda_interop
 	{
 		bool newVolumeAvailable{ false };
 		int selectedDataset{ 0 };
-		wchar_t* nanoVdbUUID;
-		wchar_t* nanoVdbFilePath;
-	};
+		int uuidStringLength{ 0 };
+		int pathStringLength{ 0 };
 
-	struct UnityFitsNvdbData
-	{
-		bool newDataAvailable{ false };
-		int dataSizeBytes{ 0 };
-		void* dataPointer{ nullptr };
+		wchar_t nanoVdbUUID[256];
+		wchar_t nanoVdbFilePath[2048];
 	};
-
 
 	struct UnityRenderingData
 	{
@@ -76,31 +71,6 @@ namespace b3d::unity_cuda_interop
 			
 										  },
 		sizeof(UnityRenderingData)
-	};
-
-	struct UnityFitsNvdbRenderingData
-	{
-		UnityRenderTargets renderTargets;
-		UnityView view;
-		UnityVolumeTransform volumeTransform;
-		UnityTexture colorMapsTexture;
-		UnityColoringInfo coloringInfo;
-		UnityTexture transferFunctionTexture;
-		UnityFitsNvdbData fitsNvdbData;
-	};
-
-	static const renderer::SchemaData unityFitsNvdbDataSchema{
-		{
-			SCHEMA_ENTRY("renderTargets", renderTargets, UnityFitsNvdbRenderingData),
-			SCHEMA_ENTRY("view", view, UnityFitsNvdbRenderingData),
-			SCHEMA_ENTRY("volumeTransform", volumeTransform, UnityFitsNvdbRenderingData),
-			SCHEMA_ENTRY("colorMapsTexture", colorMapsTexture, UnityFitsNvdbRenderingData),
-			SCHEMA_ENTRY("coloringInfo", coloringInfo, UnityFitsNvdbRenderingData),
-			SCHEMA_ENTRY("transferFunctionTexture", transferFunctionTexture, UnityFitsNvdbRenderingData),
-			SCHEMA_ENTRY("fitsNvdbData", fitsNvdbData, UnityFitsNvdbRenderingData),
-
-		},
-		sizeof(UnityFitsNvdbRenderingData)
 	};
 
 	class PluginLogger;

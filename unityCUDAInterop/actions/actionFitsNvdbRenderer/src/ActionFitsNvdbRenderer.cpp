@@ -270,27 +270,31 @@ auto ActionFitsNvdbRenderer::customRenderEvent(int eventId, void* data) -> void
 
 		renderingDataWrapper_.data.volumeTransform.worldMatTRS.l *= owl::LinearSpace3f::scale(volumeTransform->scale);
 
-
 		const auto& nanovdbLoadingData = rdb.get<UnityNanoVdbLoading>("nanovdbData");
 
 		if (nanovdbLoadingData->newVolumeAvailable)
 		{
+			
 			if (nanovdbLoadingData->nanoVdbUUID == nullptr || nanovdbLoadingData->nanoVdbFilePath == nullptr)
 			{
 				logger_->log("UUID or path is null. Can't load volume.");
 				return;
 			}
-			auto uuidWString = std::wstring{ nanovdbLoadingData->nanoVdbUUID };
-			auto pathWString = std::wstring{ nanovdbLoadingData->nanoVdbFilePath };
+
+			auto uuidWString = std::wstring{ nanovdbLoadingData->nanoVdbUUID, static_cast<size_t>(nanovdbLoadingData->uuidStringLength) };
+			auto pathWString = std::wstring{ nanovdbLoadingData->nanoVdbFilePath, static_cast<size_t>(nanovdbLoadingData->pathStringLength) };
 
 			auto uuid = std::string{ uuidWString.begin(), uuidWString.end() };
 			auto path = std::string{ pathWString.begin(), pathWString.end() };
+			
 			currentVolumeInfos_ = { uuid, path, true };
+			
+			//currentVolumeInfos_ = { "301db4c9-6fef-5398-8a78-946ba1f37739", "E:\\data\\b3d_root\\projects\\8b53c8b1-9a47-4614-b8bb-16573b8064ca\\requests\\b888028b-5c3a-4a35-8c3a-33d04d04fa74\\nano\\out.nvdb", true };
 
 			// TODO: Possible to call method if copy not done yet? Check CUDA docs
-			runtimeDataset_->addNanoVdb(std::filesystem::path{ path }, copyStream_, uuid);
+			runtimeDataset_->addNanoVdb(std::filesystem::path{ currentVolumeInfos_.path }, copyStream_,
+										currentVolumeInfos_.uuid);
 		}
-
 		if (currentVolumeInfos_.volumeLoading)
 		{
 			auto volume = runtimeDataset_->getRuntimeVolume(currentVolumeInfos_.uuid);
