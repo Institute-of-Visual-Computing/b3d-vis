@@ -7,6 +7,7 @@ using UnityEngine.Events;
 using MixedReality.Toolkit;
 using Unity.XR.CoreUtils;
 using TMPro;
+using Unity.VisualScripting;
 
 public class ProjectsView : MonoBehaviour
 {
@@ -56,23 +57,41 @@ public class ProjectsView : MonoBehaviour
 				Destroy(child.gameObject);
 			}
 		}
+		int selectedBtn = 0;
+		var dummy = new GameObject("dummybtn");
+		var dummyInteractable = dummy.AddComponent<StatefulInteractable>();
+		newToggles.Add(dummyInteractable);
+		dummy.transform.SetParent(transform);
 
 		TextMeshProUGUI tmPro = projectButtonPrefab.GetNamedChild("Frontplate").GetNamedChild("AnimatedContent").GetNamedChild("Text").GetComponent<TextMeshProUGUI>();
+		int idx = 1;
 		foreach (Project project in projects_.projects)
 		{
+			if (projectDetails.project != null && projectDetails.project.projectUUID == project.projectUUID)
+			{
+				selectedBtn = idx;
+			}
+			idx++;
 			tmPro.text = project.projectName;
 			GameObject projectButton = Instantiate(projectButtonPrefab, transform);
 			newToggles.Add(projectButton.GetComponent<PressableButton>());
 		}
+
+
 		toggleCollection.Toggles = newToggles;
-		toggleCollection.Toggles[0].ForceSetToggled(true);
-		toggleCollection.SetSelection(0, true);
+		toggleCollection.Toggles[selectedBtn].ForceSetToggled(true);
+		toggleCollection.SetSelection(selectedBtn, true);
+
 	}
 
 	private void projectIndexSelected(int index)
 	{
-		projectDetails.project = projects_.projects[index];
-		projectController.SelectedProject = projects_.projects[index];
+		if(index < 1)
+		{
+			return;
+		}
+		projectDetails.project = projects_.projects[index-1];
+		projectController.SelectedProject = projects_.projects[index-1];
 	}
 
 	// Start is called before the first frame update
