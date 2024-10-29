@@ -56,12 +56,17 @@ public class ProjectController : MonoBehaviour
 	{
 		if(fileRequestTask != null && fileRequestTask.Status == TaskStatus.RanToCompletion && fileRequestTask.IsCompletedSuccessfully)
 		{
+			
 			var (uuid, filePath) = fileRequestTask.Result;
+			if (selectedProject_.requests[0].result.nanoResult.resultFile != uuid)
+			{
+				return;
+			}
 			fileRequestTask = null;
 			Debug.Log($"File with uuid: {uuid} downloaded to {filePath}");
 			if(nvdbRendererAction != null)
 			{
-				nvdbRendererAction.showVolume(uuid);
+				nvdbRendererAction.showVolume(selectedProject_, uuid);
 			}
 		}
 	}

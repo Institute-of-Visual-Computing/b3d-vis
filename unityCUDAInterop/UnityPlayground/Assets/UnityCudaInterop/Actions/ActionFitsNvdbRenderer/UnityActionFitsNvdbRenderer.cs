@@ -43,6 +43,7 @@ public class UnityActionFitsNvdbRenderer : AbstractUnityRenderAction
 	bool newDataAvailable = false;
 	string currentVolumePath = "";
 	string currentVolumeUUID = "";
+	B3D.Project currentProject = null;
 	byte[] fitsNvdbData;
 
 	#region AbstractUnityAction Overrides
@@ -86,20 +87,28 @@ public class UnityActionFitsNvdbRenderer : AbstractUnityRenderAction
 		if(newDataAvailable)
 		{
 			unityRenderingData.nanovdbData.newVolumeAvailable = true;
+			unityRenderingData.nanovdbData.fitsDimensions = new Vector3(
+				currentProject.fitsOriginProperties.axisDimensions[0],
+				currentProject.fitsOriginProperties.axisDimensions[1],
+				currentProject.fitsOriginProperties.axisDimensions[2]
+				);
 			unityRenderingData.nanovdbData.nanoVdbFilePath = currentVolumePath;
 			unityRenderingData.nanovdbData.pathStringLength = currentVolumePath.Length;
 			unityRenderingData.nanovdbData.nanoVdbUUID = currentVolumeUUID;
 			unityRenderingData.nanovdbData.uuidStringLength = currentVolumeUUID.Length;
+
 
 			newDataAvailable = false;
 		}
 		else
 		{
 			unityRenderingData.nanovdbData.newVolumeAvailable = false;
+			unityRenderingData.nanovdbData.fitsDimensions = Vector3.one;
 			unityRenderingData.nanovdbData.nanoVdbFilePath = "Empty";
 			unityRenderingData.nanovdbData.pathStringLength = 5;
 			unityRenderingData.nanovdbData.nanoVdbUUID = "Empty";
 			unityRenderingData.nanovdbData.uuidStringLength = 5;
+			
 		}
 	}
 
@@ -194,26 +203,27 @@ public class UnityActionFitsNvdbRenderer : AbstractUnityRenderAction
 
 	#endregion Unity Methods
 
-	IEnumerator LoadVolume(string uuid)
+	IEnumerator LoadVolume(B3D.Project project, string fileUuid)
 	{
-		var fileTaskTuple = serverFileCache.downloadFile(uuid);
+		var fileTaskTuple = serverFileCache.downloadFile(fileUuid);
 		yield return new WaitUntil(() => fileTaskTuple.IsCompleted);
 
 		if(fileTaskTuple.IsCompletedSuccessfully)
 		{
 			currentVolumeUUID = fileTaskTuple.Result.Item1;	
 			currentVolumePath = fileTaskTuple.Result.Item2;
+			currentProject = project;
 			newDataAvailable = true;
 		}
 	}
-	public void showVolume(string uuid)
+	public void showVolume(B3D.Project project, string fileUuid)
 	{
 		if(!serverFileCache)
 		{
-			Debug.Log("No serrver file cache available");
+			Debug.Log("No server file cache available");
 			return;
 		}
-		StartCoroutine(LoadVolume(uuid));
+		StartCoroutine(LoadVolume(project, fileUuid));
 	}
 }
 

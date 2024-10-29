@@ -194,6 +194,7 @@ namespace B3D
 			{
 				public bool newVolumeAvailable;
 				public int selectedDataset;
+				public Vector3 fitsDimensions;
 				public int uuidStringLength;
 				public int pathStringLength;
 

@@ -42,6 +42,7 @@ namespace b3d::unity_cuda_interop
 	{
 		bool newVolumeAvailable{ false };
 		int selectedDataset{ 0 };
+		owl::vec3f fitsDimensions{ 0, 0, 0 };
 		int uuidStringLength{ 0 };
 		int pathStringLength{ 0 };
 

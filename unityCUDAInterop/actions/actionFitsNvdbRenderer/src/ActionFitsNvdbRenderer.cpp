@@ -39,6 +39,7 @@ namespace
 	{
 		std::string uuid;
 		std::string path;
+		owl::vec3f fitsDimensions{ 0, 0, 0 };
 		bool volumeLoading = false;
 	};
 } // namespace
@@ -274,7 +275,6 @@ auto ActionFitsNvdbRenderer::customRenderEvent(int eventId, void* data) -> void
 
 		if (nanovdbLoadingData->newVolumeAvailable)
 		{
-			
 			if (nanovdbLoadingData->nanoVdbUUID == nullptr || nanovdbLoadingData->nanoVdbFilePath == nullptr)
 			{
 				logger_->log("UUID or path is null. Can't load volume.");
@@ -287,7 +287,7 @@ auto ActionFitsNvdbRenderer::customRenderEvent(int eventId, void* data) -> void
 			auto uuid = std::string{ uuidWString.begin(), uuidWString.end() };
 			auto path = std::string{ pathWString.begin(), pathWString.end() };
 			
-			currentVolumeInfos_ = { uuid, path, true };
+			currentVolumeInfos_ = { uuid, path, nanovdbLoadingData->fitsDimensions, true };
 			
 			//currentVolumeInfos_ = { "301db4c9-6fef-5398-8a78-946ba1f37739", "E:\\data\\b3d_root\\projects\\8b53c8b1-9a47-4614-b8bb-16573b8064ca\\requests\\b888028b-5c3a-4a35-8c3a-33d04d04fa74\\nano\\out.nvdb", true };
 
@@ -306,7 +306,10 @@ auto ActionFitsNvdbRenderer::customRenderEvent(int eventId, void* data) -> void
 				renderingDataWrapper_.data.runtimeVolumeData.volume = volume.value();
 
 				// TODO: Change to fits box
-				renderingDataWrapper_.data.runtimeVolumeData.originalIndexBox = volume.value().volume.indexBox;
+				renderingDataWrapper_.data.runtimeVolumeData.originalIndexBox =
+					owl::box3f{ { 0, 0, 0 },
+								{ currentVolumeInfos_.fitsDimensions.x, currentVolumeInfos_.fitsDimensions.y,
+								  currentVolumeInfos_.fitsDimensions.z } };
 
 				currentVolumeInfos_.volumeLoading = false;
 			}
