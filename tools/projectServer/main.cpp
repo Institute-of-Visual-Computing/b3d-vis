@@ -147,7 +147,7 @@ auto getStatus(const httplib::Request& req, httplib::Response& res) -> void
 auto getProjects(const httplib::Request& req, httplib::Response& res) -> void
 {
 	LOG_INFO << req.path << " from " << req.remote_addr;
-
+	processCurrentRequest();
 	std::vector<b3d::tools::project::Project> projects;
 	for (const auto& project : projectProvider->getProjects() | std::views::values | std::views::all)
 	{
