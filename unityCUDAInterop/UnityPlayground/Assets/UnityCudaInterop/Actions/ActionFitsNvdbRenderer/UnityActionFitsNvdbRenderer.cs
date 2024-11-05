@@ -37,6 +37,8 @@ public class UnityActionFitsNvdbRenderer : AbstractUnityRenderAction
 	Texture2D testColorTex;
 
 	public ColoringChanger coloringChanger;
+
+	public Texture colormapsTexture;
 	public ServerFileCache serverFileCache;
 
 	IntPtr fitsNvdbDataPointer;
@@ -97,6 +99,8 @@ public class UnityActionFitsNvdbRenderer : AbstractUnityRenderAction
 			unityRenderingData.nanovdbData.nanoVdbUUID = currentVolumeUUID;
 			unityRenderingData.nanovdbData.uuidStringLength = currentVolumeUUID.Length;
 
+			objectRenderer.enabled = true;
+			objectRenderer.transform.Find("Coordinates").gameObject.SetActive(true);
 
 			newDataAvailable = false;
 		}
@@ -127,7 +131,7 @@ public class UnityActionFitsNvdbRenderer : AbstractUnityRenderAction
 
 		unityRenderingData.transferFunctionTexture = new(coloringChanger.TransferFunctionReadTexture.GetNativeTexturePtr(), new((uint)coloringChanger.TransferFunctionReadTexture.width, (uint)coloringChanger.TransferFunctionReadTexture.height, 1));
 
-		unityRenderingData.colorMapsTexture = new(coloringChanger.colormapsTexture.GetNativeTexturePtr(), new((uint)coloringChanger.colormapsTexture.width, (uint)coloringChanger.colormapsTexture.height, 1));
+		unityRenderingData.colorMapsTexture = new(colormapsTexture.GetNativeTexturePtr(), new((uint)colormapsTexture.width, (uint)colormapsTexture.height, 1));
 		//unityRenderingData.colorMapsTexture = new(testColorTex.GetNativeTexturePtr(), new((uint)testColorTex.width, (uint)testColorTex.height, 1));
 
 		unityRenderingData.coloringInfo.coloringMode = coloringChanger.useColormap ? UnityColoringMode.Colormap : UnityColoringMode.Single;
@@ -147,9 +151,6 @@ public class UnityActionFitsNvdbRenderer : AbstractUnityRenderAction
 		}
 		testColorTex.SetPixels(colors);
 		testColorTex.Apply();
-
-
-
 
 		StartCoroutine(StartAfter());
 		/*

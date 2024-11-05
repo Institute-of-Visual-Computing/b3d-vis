@@ -43,7 +43,7 @@ public class ActionTextureProvider
 		{
 			renderTextureDescriptor_ = monoDefaultRenderTextureDescriptor;
 		}
-
+		
 		oldExternalTexture_ = externalTargetTexture_;
 		Texture2DArray t2dArr = new Texture2DArray(
 				renderTextureDescriptor_.width,
