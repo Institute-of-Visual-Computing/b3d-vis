@@ -23,6 +23,164 @@ namespace
 {
 }
 
+void AddRequestFromFitsAndMaskAsNanoCommandFunction(args::Subparser& parser)
+{
+	// mask
+	// fits
+	// project directory (assuming project.json and catalog.json are available)
+
+	// validate mask & fits
+	// get project
+	// get catalog
+
+	// build request
+	// create directories
+
+	// create nvdb
+
+	// write catalog
+	// write project
+	args::Positional<std::filesystem::path> projectArgument(parser, "PROJECT_DIRECTORY", "Path to projects directory",
+														   args::Options::Required);
+	args::Positional<std::filesystem::path> sourceArgument(parser, "SOURCE_FILE", "Path to source file (.fits)",
+														   args::Options::Required);
+	args::Positional<std::filesystem::path> maskArgument(parser, "MASK_FILE", "Path to mask file (.fits)",
+														 args::Options::Required);
+
+	parser.Parse();
+
+	if (sourceArgument.Get().empty() || !std::filesystem::is_regular_file(sourceArgument.Get()))
+	{
+		LOG_ERROR << "Source is not a file.";
+		LOG_INFO << parser;
+		return;
+	}
+
+	auto sourcePath = sourceArgument.Get();
+
+	if (!b3d::tools::fits::isFitsFile(sourcePath))
+	{
+		LOG_ERROR << "Source is not a FITS file.";
+		LOG_INFO << parser;
+		return;
+	}
+
+	if (maskArgument.Get().empty() || !std::filesystem::is_regular_file(maskArgument.Get()))
+	{
+		LOG_ERROR << "Mask is not a file.";
+		LOG_INFO << parser;
+		return;
+	}
+
+	auto maskPath = maskArgument.Get();
+
+	if (!b3d::tools::fits::isFitsFile(maskPath))
+	{
+		LOG_ERROR << "Mask is not a FITS file.";
+		LOG_INFO << parser;
+		return;
+	}
+
+	if (projectArgument.Get().empty() || !is_directory(projectArgument.Get()))
+	{
+		LOG_ERROR << "Projects directory is not a valid directory.";
+		LOG_INFO << parser;
+		return;
+	}
+	
+	auto projectDirectoryPath = projectArgument.Get();
+
+	const auto projectsFilePath = projectDirectoryPath / "project.json";
+	auto project = b3d::tools::project::Project{};
+	try
+	{
+		std::ifstream f(projectsFilePath);
+		const auto data = nlohmann::json::parse(f);
+		project = data.get<b3d::tools::project::Project>();
+		project.projectPathAbsolute = projectDirectoryPath;
+		f.close();
+	}
+	catch(const std::exception &e)
+	{
+		LOG_ERROR << "Failed to read project.json.";
+		LOG_ERROR << e.what();
+		LOG_INFO << parser;
+		return;
+	}
+
+	b3d::tools::project::catalog::FileCatalog catalog =
+		b3d::tools::project::catalog::FileCatalog::createOrLoadCatalogInDirectory(project.projectPathAbsolute);
+
+	std::random_device rd;
+	auto seed_data = std::array<int, std::mt19937::state_size>{};
+	std::generate(std::begin(seed_data), std::end(seed_data), std::ref(rd));
+	std::seed_seq seq(std::begin(seed_data), std::end(seed_data));
+	std::mt19937 generator(seq);
+	uuids::uuid_random_generator gen{ generator };
+
+	auto request = b3d::tools::project::Request{ .uuid = uuids::to_string(gen()),
+												 .subRegion = { project.fitsOriginProperties.axisDimensions[0],
+																project.fitsOriginProperties.axisDimensions[1],
+																project.fitsOriginProperties.axisDimensions[2] },
+												 .sofiaParameters = {},
+												 .result = {},
+												 .createdAt = b3d::common::helper::getSecondsSinceEpochUtc() };
+
+	std::error_code ec;
+
+	if (std::filesystem::create_directories(project.projectPathAbsolute / "requests" / request.uuid, ec) && ec)
+	{
+		LOG_ERROR << "Failed to create request directory at " << project.projectPathAbsolute / "requests" / request.uuid
+				  << ".";
+		return;
+	}
+
+	request.result.returnCode = 0;
+	request.result.message = "Success";
+	request.result.finished = true;
+	request.result.finishedAt = b3d::common::helper::getSecondsSinceEpochUtc();
+
+	request.result.sofiaResult.finished = true;
+	request.result.sofiaResult.returnCode = 0;
+	request.result.sofiaResult.message = "Success";
+	request.result.sofiaResult.finishedAt = b3d::common::helper::getSecondsSinceEpochUtc();
+	request.result.sofiaResult.fileAvailable = true;
+	request.result.sofiaResult.resultFile =
+		catalog.addFilePathAbsolute(project.projectPathAbsolute / sourcePath.filename());
+
+	if (std::filesystem::create_directories(project.projectPathAbsolute / "requests" / request.uuid / "nano", ec) && ec)
+	{
+		LOG_ERROR << "Failed to create directory for nano result at "
+				  << project.projectPathAbsolute / "requests" / request.uuid / "nano"
+				  << ".";
+		return;
+	}
+
+	request.result.nanoResult = b3d::tools::nano::convertFitsWithMaskToNano(
+		sourcePath, maskPath, project.projectPathAbsolute / "requests" / request.uuid / "nano" / "out.nvdb");
+	if (!request.result.nanoResult.wasSuccess())
+	{
+		LOG_ERROR << "Failed to create NVDB.";
+		return;
+	}
+
+	request.result.nanoResult.resultFile =
+		catalog.addFilePathAbsolute(project.projectPathAbsolute / "requests" / request.uuid / "nano" / "out.nvdb");
+
+	project.requests.push_back(request);
+
+	catalog.writeCatalog();
+
+	{
+		const auto projectFilePath = project.projectPathAbsolute / "project.json";
+		std::ofstream ofs(projectFilePath, std::ofstream::trunc);
+		nlohmann::json j = project;
+		ofs << std::setw(4) << j << std::endl;
+		ofs.close();
+	}
+}
+
+
 void CreateCommandFunction(args::Subparser& parser)
 {
 	/* Create
@@ -218,6 +376,7 @@ auto main(const int argc, char** argv) -> int
 
 	args::Group commands(parser, "commands");
 	args::Command create(commands, "create", "Create a project.", &CreateCommandFunction);
+	args::Command add(commands, "add", "Add nvdb generated by fits and mask to an existing project.", &AddRequestFromFitsAndMaskAsNanoCommandFunction);
 
 	// args::CompletionFlag completion(parser, { "complete" });
 	try

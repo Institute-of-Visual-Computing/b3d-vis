@@ -18,6 +18,9 @@ public class ProjectController : MonoBehaviour
 	public ServerClient serverClient;
 
 	private Project selectedProject_;
+	private Request selectedRequest_;
+
+	public RequestsView requestView;
 
 	Task<Tuple<string, string>> fileRequestTask;
 
@@ -28,13 +31,38 @@ public class ProjectController : MonoBehaviour
 		get { return selectedProject_; }
 		set
 		{
-			selectedProject_ = value;
-			if(fileRequestTask == null || fileRequestTask.Status != TaskStatus.Running)
+			bool projectChanged = selectedProject_ != null && value != null && selectedProject_.projectUUID != value.projectUUID;
+			if(value != null)
 			{
-				fileRequestTask = serverFileCache.downloadFile(selectedProject_.requests[0].result.nanoResult.resultFile);
+				nvdbRendererAction.objectRenderer.enabled = true;
+				nvdbRendererAction.objectRenderer.transform.Find("Coordinates").gameObject.SetActive(true);
+			}
+			selectedProject_ = value;
+			if (requestView)
+			{
+				requestView.SelectedProject = value;
+				
+			}
+			
+		}
+	}
+
+	public Request SelectedRequest
+	{
+		get => selectedRequest_;
+		set
+		{
+			selectedRequest_ = value;
+			if(selectedRequest_ != null)
+			{
+				if(fileRequestTask == null || fileRequestTask.Status == TaskStatus.RanToCompletion || fileRequestTask.Status == TaskStatus.Canceled)
+				{
+					fileRequestTask = serverFileCache.downloadFile(selectedRequest_.result.nanoResult.resultFile);
+				}
 			}
 		}
 	}
+
 
 	void Start()
 	{
@@ -50,6 +78,17 @@ public class ProjectController : MonoBehaviour
 	{
 		projectsView.Projects = newProjects;
 		Projects = newProjects;
+		if(selectedProject_ != null)
+		{
+			foreach (var project in newProjects.projects)
+			{
+				if(selectedProject_.projectUUID == project.projectUUID)
+				{
+					SelectedProject = project;
+					break;
+				}
+			}
+		}
 	}
 
 	private void Update()
@@ -58,7 +97,7 @@ public class ProjectController : MonoBehaviour
 		{
 			
 			var (uuid, filePath) = fileRequestTask.Result;
-			if (selectedProject_.requests[0].result.nanoResult.resultFile != uuid)
+			if (selectedRequest_.result.nanoResult.resultFile != uuid)
 			{
 				return;
 			}

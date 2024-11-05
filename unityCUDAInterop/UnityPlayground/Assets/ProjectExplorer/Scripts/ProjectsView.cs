@@ -77,7 +77,6 @@ public class ProjectsView : MonoBehaviour
 			newToggles.Add(projectButton.GetComponent<PressableButton>());
 		}
 
-
 		toggleCollection.Toggles = newToggles;
 		toggleCollection.Toggles[selectedBtn].ForceSetToggled(true);
 		toggleCollection.SetSelection(selectedBtn, true);
