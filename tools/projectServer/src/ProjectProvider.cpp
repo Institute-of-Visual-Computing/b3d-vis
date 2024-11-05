@@ -80,8 +80,22 @@ auto b3d::tools::projectServer::ProjectProvider::findProjects() -> void
 		if (foundProject)
 		{
 			auto catalog = project::catalog::FileCatalog::createOrLoadCatalogInDirectory(dirEntry.path().parent_path());
+
 			knownFileCatalogs_.insert(std::make_pair(projectUUID, catalog));
 		}
+	}
+}
+
+auto b3d::tools::projectServer::ProjectProvider::clearMissingRequests() -> void
+{
+	for (auto& project : knownProjects_)
+	{
+		auto& requests = project.second.requests;
+		std::erase_if(requests,
+		              [&](const project::Request& request) {
+			              return !std::filesystem::exists(project.second.projectPathAbsolute /
+				              "requests" / request.uuid);
+		              });
 	}
 }
 

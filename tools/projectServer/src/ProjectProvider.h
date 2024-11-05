@@ -13,6 +13,7 @@ namespace b3d::tools::projectServer
 		ProjectProvider(const std::filesystem::path& rootPath) : rootPath_(rootPath)
 		{
 			findProjects();
+			clearMissingRequests();
 			flagInvalidFilesInProjects();
 		}
 
@@ -57,6 +58,8 @@ namespace b3d::tools::projectServer
 
 	private:
 		auto findProjects() -> void;
+
+		auto clearMissingRequests() -> void;
 
 		// auto generateCatalog() -> void;
 
