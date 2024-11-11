@@ -33,6 +33,7 @@ public class ColoringChangerInteractable : MRTKBaseInteractable
 				// Have we seen this interactor before? If not, last position = current position.
 				if (!lastPositions.TryGetValue(interactor, out Vector2 lastPosition))
 				{
+					clampedUvTouchPosition.x = Mathf.Max(float.Epsilon, clampedUvTouchPosition.x);
 					lastPosition = clampedUvTouchPosition;
 				}
 

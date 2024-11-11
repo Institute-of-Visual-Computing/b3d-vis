@@ -1,4 +1,5 @@
 using MixedReality.Toolkit.UX;
+using System;
 using System.Collections.Generic;
 using TMPro;
 using Unity.XR.CoreUtils;
@@ -75,15 +76,54 @@ public class ColoringChanger : MonoBehaviour, ITransferFunctionReadTextureProvid
     {
 		coloringChangerInteractable.StartEndPositionEvent += (start, end) =>
 		{
+			
 			if (drawComputeShader != null)
 			{
+				// Start
 				drawComputeShader.SetVector("startPos", start);
 				drawComputeShader.SetVector("endPos", end);
+			}
+			else
+			{
+				if ((start.x < 0.0f || start.x > 1.0f) && (end.x < 0.0f || end.x > 1.0f))
+				{
+					return;
+				}
+
+				float m = (end.y - start.y) / (end.x - start.x);
+				float c = end.y - m * end.x;
+
+				int startPix = Math.Min(transferTextureWidth - 1, Math.Max(0, (int)(Mathf.Min(start.x, end.x) * transferTextureWidth)));
+				int endPix = Math.Min(transferTextureWidth - 1, Math.Max(0, (int)(Mathf.Max(start.x, end.x) * transferTextureWidth)));
+
+				int size = Math.Abs(startPix - endPix) + 1;
+
+				Color[] colors = new Color[size * transferTextureHeight];
+				float widthFract = 1.0f / transferTextureWidth;
+				float maxVal = float.NegativeInfinity;
+				for (int i = 0; i < size; i++)
+				{
+					colors[i].r = Mathf.Max(0.0f, Mathf.Min(1.0f, ((startPix + i) * widthFract) * m + c));
+					maxVal = Mathf.Max(maxVal, colors[i].r);
+				}
+				if (startPix == 0)
+				{
+					colors[0].r = 0;
+				}
+
+				for (int i = 1; i < transferTextureHeight; i++)
+				{
+					Array.Copy(colors, i * size, colors, startPix, size);
+				}
+
+				transferReadTexture.SetPixels(startPix, 0, size, transferTextureHeight, colors);
+				transferReadTexture.Apply();
+				Graphics.CopyTexture(transferReadTexture, transferRenderTex);
 			}
 		};
 
 		transferTextureWidth = initialTransferFunctionTexture != null ? initialTransferFunctionTexture.width : 512;
-		transferTextureHeight = initialTransferFunctionTexture != null ? initialTransferFunctionTexture.height : 5;
+		transferTextureHeight = initialTransferFunctionTexture != null ? initialTransferFunctionTexture.height : 1;
 		transferRenderTex = new(transferTextureWidth, transferTextureHeight, 1, RenderTextureFormat.RFloat)
 		{
 			enableRandomWrite = true,
@@ -101,6 +141,7 @@ public class ColoringChanger : MonoBehaviour, ITransferFunctionReadTextureProvid
 			name = "TransferfunctionReadTexture"
 		};
 		transferReadTexture.Apply();
+
 
 		if (drawPanelMeshRenderer == null)
 		{

@@ -633,7 +633,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 7.4483914}
+  m_AnchoredPosition: {x: 0, y: 0.000017507002}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &5848932475833296399
@@ -3257,10 +3257,10 @@ MonoBehaviour:
   buttonsMaterial: {fileID: 2100000, guid: 8686f99cc0b1f1543a7e8adbf21a9620, type: 2}
   selectedColorMap: 0
   coloringChangerInteractable: {fileID: 6010155648223374109}
-  initialTransferFunctionTexture: {fileID: 2800000, guid: 5c72c29a2a7401548b744143b67571b6, type: 3}
+  initialTransferFunctionTexture: {fileID: 2800000, guid: 7ed09b058626cde43b6b9579b84020d0, type: 3}
   drawPanelMeshRenderer: {fileID: 1480830307278184906}
   drawPanelMaterial: {fileID: 2100000, guid: c6d3813968830084fb2f629aad874b1c, type: 2}
-  drawComputeShader: {fileID: 7200000, guid: 152613358f323a047952ec426d36bdcd, type: 3}
+  drawComputeShader: {fileID: 0}
 --- !u!1 &7576732321735098688
 GameObject:
   m_ObjectHideFlags: 0
@@ -3558,7 +3558,7 @@ MonoBehaviour:
   m_HandleRect: {fileID: 8940668612604611976}
   m_Direction: 2
   m_Value: 0
-  m_Size: 0.954588
+  m_Size: 1
   m_NumberOfSteps: 0
   m_OnValueChanged:
     m_PersistentCalls:
