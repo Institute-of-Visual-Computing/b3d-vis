@@ -2,9 +2,9 @@
 #ifndef IMGUI_DEFINE_MATH_OPERATORS
 #define IMGUI_DEFINE_MATH_OPERATORS
 #endif
-#include "Camera.h"
-
 #include "Animation.h"
+#include "Camera.h"
+#include "CameraControllers.h"
 #include "GizmoOperationFlags.h"
 #include "framework/DockableWindowViewBase.h"
 #include "passes/DebugDrawPass.h"
@@ -47,12 +47,12 @@ public:
 	{
 		viewerSettings_.enableFrameGraph = enable;
 	}
-	auto setRenderVolume(b3d::renderer::RendererBase* renderer, b3d::renderer::RenderingDataWrapper* renderingData)
-		-> void;
+	auto setRenderVolume(b3d::renderer::RendererBase* renderer,
+						 b3d::renderer::RenderingDataWrapper* renderingData) -> void;
 
 private:
-	auto drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec2& position, const glm::vec2& size) const
-		-> void;
+	auto drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec2& position,
+					const glm::vec2& size) const -> void;
 	auto initializeGraphicsResources() -> void;
 	auto deinitializeGraphicsResources() -> void;
 
@@ -60,11 +60,35 @@ private:
 
 	auto demoMode(const bool enable) -> void;
 
+	enum class CameraControllerType
+	{
+		orbit = 0,
+		fps
+	};
+
+	auto getCameraController(const CameraControllerType& type) -> CameraController*
+	{
+		switch (type)
+		{
+		case CameraControllerType::orbit:
+			return &orbitController_;
+		case CameraControllerType::fps:
+			return &fpsController_;
+		default:
+			return nullptr;
+		}
+	}
+
 	b3d::renderer::RendererBase* renderer_{};
 	b3d::renderer::RenderingDataWrapper* renderingData_{};
 
 	Camera camera_{};
 	Camera cameraLastFrame_{};
+
+	FirstPersonCameraController fpsController_{};
+	OrbitCameraController orbitController_{};
+
+	CameraControllerType cameraControllerType_{ CameraControllerType::orbit };
 
 	animation::PropertyAnimator animator_;
 	bool demoModeEnabled_{ false };
