@@ -483,3 +483,4 @@ FodyWeavers.xsd
 # End of https://www.toptal.com/developers/gitignore/api/unity,visualstudio,visualstudiocode,cmake
 
 !/Assets/**/*.meta
+!/[Pp]ackages/manifest.json
