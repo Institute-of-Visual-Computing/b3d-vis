@@ -12,19 +12,13 @@ public class NetworkVariableHolder : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
-        NetworkManager.Singleton.OnClientDisconnectCallback += (clientId) =>
+        NetworkManager.Singleton.OnClientConnectedCallback += (clientId) =>
         {
-            
-        };
-
-        if (IsOwnedByServer)
-        {
-            Debug.Log($"Serveeer: {OwnerClientId}");
-
-        }
-        else
-        {
-            Debug.Log("Client");
-        }
+			if (IsOwnedByServer) {
+				GetComponent<NetworkObject>().ChangeOwnership(clientId);
+				volumeUUID.Value = new FixedString64Bytes("1234567");
+			}
+			Debug.Log(volumeUUID.Value);
+		};
     }
 }
