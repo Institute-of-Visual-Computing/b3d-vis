@@ -228,7 +228,7 @@ namespace B3D
 					foreach (var nodeUsage in SharedMembers.eyeCameraMapping)
 					{
                         // cameraWorldPosition + (nodeUsage.cameraEye == StereoscopicEye.Left ? -1.0f : 1.0f) * 0.5f * targetCamera_.stereoSeparation * targetCamera_.transform.right;
-                        var eyePos = cameraWorldPosition;//; + (nodeUsage.cameraEye == StereoscopicEye.Left ? -0.5f : 0.5f) * targetCamera.stereoSeparation * targetCamera.transform.right;
+                        var eyePos = cameraWorldPosition + (nodeUsage.cameraEye == StereoscopicEye.Left ? -0.5f : 0.5f) * targetCamera.stereoSeparation * targetCamera.transform.right;
 
 						var projMatrix = targetCamera.GetStereoProjectionMatrix(nodeUsage.cameraEye);
 
