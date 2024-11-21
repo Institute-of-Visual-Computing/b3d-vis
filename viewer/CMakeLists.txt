@@ -34,6 +34,8 @@ target_sources(${viewerTargetName} PRIVATE
 	GizmoHelper.cpp
 	Camera.h
 	CameraManipulator.h
+	CameraControllers.h
+	CameraControllers.cpp
 	InteropUtils.h
 	views/VolumeView.h
 	views/VolumeView.cpp
