@@ -1,0 +1,395 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using UnityEngine;
+using UnityEngine.Rendering;
+using static UnityEngine.Camera;
+using UnityEngine.XR;
+using B3D.UnityCudaInterop.NativeStructs;
+using UnityEngine.Rendering.Universal;
+
+namespace B3D
+{
+	namespace UnityCudaInterop
+	{
+		public abstract class AbstractUnityRenderAction : MonoBehaviour
+		{
+			#region Members
+
+			public GameObject debugPositionObject;
+			public GameObject debugPositionObject1;
+
+			/// <summary>
+			/// Camera which renders cuda content.
+			/// </summary>
+			public Camera targetCamera;
+
+			/// <summary>
+			/// GameObject with MeshRenderer and default cube mesh, where the rendered content is projected on.
+			/// </summary>
+			public GameObject volumeCube;
+
+			/// <summary>
+			/// Renderer attached to <see cref="volumeCube"/>
+			/// </summary>
+			public Renderer objectRenderer;
+
+			/// <summary>
+			/// Material for projection.
+			/// </summary>
+			public Material objectMaterial;
+
+			/// <summary>
+			/// Instance of <see cref="objectMaterial"/> which is applied to <see cref="objectRenderer"/>
+			/// </summary>
+			protected Material volumeObjectMaterial;
+
+			/// <summary>
+			/// Returns textures. TODO: Replace with Unity object and follow a component based solution.
+			/// </summary>
+			protected ActionTextureProvider textureProvider_;
+
+			protected UnityRenderingData unityRenderingData;
+
+			/// <summary>
+			/// Pointer to unmanaged memory for custom data. Gets destroyed automatically.
+			/// </summary>
+			protected System.IntPtr unityRenderingDataPtr;
+			
+			protected CommandBuffer commandBuffer;
+
+			protected List<Tuple<CameraEvent, CommandBuffer>> renderingCommandBuffers_;
+
+			protected bool readyForUpdate_ = false;
+
+            protected B3DRenderPass renderPass;
+
+            #endregion Members
+
+            #region Unity Methods
+
+            protected virtual void Start()
+			{
+				InitAllObjects();
+
+				SetTextures(init: true);
+				FillNativeRenderingData();
+
+				StartCoroutine(InitPluginAtEndOfFrame());
+			}
+
+			protected virtual void Update()
+			{
+				if(readyForUpdate_)
+				{ 
+					if (textureProvider_.renderTextureDescriptorChanged())
+					{
+						SetTextures();
+					}
+					else
+					{
+						FillNativeRenderingData();
+						if(unityRenderingDataPtr != IntPtr.Zero)
+						{
+							Marshal.StructureToPtr(unityRenderingData, unityRenderingDataPtr, true);
+						}
+					}
+				}
+			}
+
+			protected virtual void OnDestroy()
+			{
+				readyForUpdate_ = false;
+				RemoveRenderingCommandBuffersFromCamera();
+
+				NativeAction.TeardownAction();
+				NativeAction.DestroyAction();
+
+				Marshal.FreeHGlobal(unityRenderingDataPtr);
+			}
+
+			#endregion Unity Methods
+
+			#region Abstract
+
+			/// <summary>
+			/// Provides a way to pass the concrete RenderingAction from the inherited class to its parent. Derived classes from AbstractUnityRenderAction must return their concrete RenderingAction!
+			/// </summary>
+			protected abstract AbstractRenderingAction NativeAction
+			{
+				get;
+			}
+
+			/// <summary>
+			/// Creates the action object in the derived class.
+			/// </summary>
+			protected abstract void InitAction();
+
+			/// <summary>
+			/// Create commandbuffers for rendering purposes in this method. Pass them to <see cref="renderingCommandBuffers_"/>
+			/// </summary>
+			protected abstract void InitRenderingCommandBuffers();
+
+			/// <summary>
+			/// Fill the struct with custom data for rendering with data. Gets called every frame after <see cref="fillNativeRenderingDataWrapper"/> gets called.
+			/// </summary>
+			protected abstract void FillAdditionalNativeRenderingData();
+
+			#endregion Abstract
+
+			protected virtual IEnumerator InitPluginAtEndOfFrame()
+			{
+				yield return new WaitForEndOfFrame();
+
+				if (unityRenderingDataPtr != IntPtr.Zero)
+				{
+					Marshal.StructureToPtr(unityRenderingData, unityRenderingDataPtr, true);
+				
+					CommandBuffer immediate = new();
+					immediate.IssuePluginEventAndData(NativeAction.RenderEventAndDataFuncPointer, NativeAction.MapEventId(RenderEventTypes.ACTION_INITIALIZE), unityRenderingDataPtr);
+					Graphics.ExecuteCommandBuffer(immediate);
+					yield return new WaitForEndOfFrame();
+					yield return new WaitForEndOfFrame();
+					AddRenderingCommandBuffersToCamera();
+                    readyForUpdate_ = true;
+				}
+			}
+
+			protected virtual IEnumerator WaitEndOfFrameAfterImmediateCommandBufferExec()
+			{
+				yield return new WaitForEndOfFrame();
+				// yield return new WaitForSeconds(1);
+				AddRenderingCommandBuffersToCamera();
+				readyForUpdate_ = true;
+			}
+
+			protected virtual void InitAllObjects()
+			{
+				volumeObjectMaterial = new(objectMaterial);
+				objectRenderer.material = volumeObjectMaterial;
+
+				renderingCommandBuffers_ = new();
+				textureProvider_ = new();
+
+				unityRenderingData = new();
+				unityRenderingData.view = UnityView.CREATE();
+				unityRenderingDataPtr = Marshal.AllocHGlobal(Marshal.SizeOf<UnityRenderingData>());
+
+				InitAction();
+				
+				InitRenderingCommandBuffers();
+			}
+
+			protected virtual void SetTextures(bool init = false)
+			{
+				textureProvider_.createExternalTargetTexture();
+
+				// quadFullscreenMaterial.SetTexture("_MainTex", action.TextureProvider.ExternalTargetTexture);
+				volumeObjectMaterial.SetTexture("_MainTex", textureProvider_.ExternalTargetTexture);
+
+
+				unityRenderingData.renderTargets.minMaxRt.Extent.Depth = 0;
+				unityRenderingData.renderTargets.minMaxRt.TexturePointer = IntPtr.Zero;
+
+
+				unityRenderingData.renderTargets.colorRt.TexturePointer = textureProvider_.ExternalTargetTexture.GetNativeTexturePtr();
+				unityRenderingData.renderTargets.colorRt.Extent = textureProvider_.ExternalTargetTextureExtent;
+
+				// Execute only if we're updating the texture. 
+				if(!init) {
+
+					readyForUpdate_ = false;
+					RemoveRenderingCommandBuffersFromCamera();
+					if (unityRenderingDataPtr != IntPtr.Zero)
+					{
+						Marshal.StructureToPtr(unityRenderingData, unityRenderingDataPtr, true);
+					}
+					CommandBuffer cbImmediate = new();
+					cbImmediate.IssuePluginEventAndData(NativeAction.RenderEventAndDataFuncPointer, NativeAction.MapEventId(RenderEventTypes.ACTION_SET_TEXTURES), unityRenderingDataPtr);
+					Graphics.ExecuteCommandBuffer(cbImmediate);
+					StartCoroutine(WaitEndOfFrameAfterImmediateCommandBufferExec());
+				}
+			}
+
+			protected virtual void fillNativeRenderingDataWrapper()
+			{
+				if (XRSettings.isDeviceActive)
+				{
+					unityRenderingData.view.mode = UnityRenderMode.stereo;
+
+					Vector3 cameraWorldPosition = targetCamera.transform.position;
+
+					XRDisplaySubsystem.XRRenderParameter[] renderParameter = new XRDisplaySubsystem.XRRenderParameter[2];
+
+
+
+
+					foreach (var nodeUsage in SharedMembers.eyeCameraMapping)
+					{
+                        // cameraWorldPosition + (nodeUsage.cameraEye == StereoscopicEye.Left ? -1.0f : 1.0f) * 0.5f * targetCamera_.stereoSeparation * targetCamera_.transform.right;
+                        var eyePos = cameraWorldPosition;//; + (nodeUsage.cameraEye == StereoscopicEye.Left ? -0.5f : 0.5f) * targetCamera.stereoSeparation * targetCamera.transform.right;
+
+						var projMatrix = targetCamera.GetStereoProjectionMatrix(nodeUsage.cameraEye);
+
+
+                        SetNativeRenderingCameraData(eyePos, Vector3.Normalize(targetCamera.transform.forward + eyePos), targetCamera.transform.up, targetCamera.fieldOfView, nodeUsage.eyeIndex);
+
+						var upperLeft = targetCamera.ViewportToWorldPoint(new Vector3(0, 1, 1), (MonoOrStereoscopicEye)nodeUsage.cameraEye);
+
+						var upperRight = targetCamera.ViewportToWorldPoint(new Vector3(1, 1, 1), (MonoOrStereoscopicEye)nodeUsage.cameraEye);
+
+						var lowerLeft = targetCamera.ViewportToWorldPoint(new Vector3(0, 0, 1), (MonoOrStereoscopicEye)nodeUsage.cameraEye);
+
+						var inverseY = -(lowerLeft - eyePos).y;
+
+						var newUpperCameraSpace = (upperLeft - eyePos);
+						newUpperCameraSpace.y = inverseY;
+						//upperLeft = newUpperCameraSpace + eyePos;
+
+                        var newRightCameraSpace = (upperRight - eyePos);
+                        newRightCameraSpace.y = inverseY;
+                        //upperRight = newRightCameraSpace + eyePos;
+
+
+                        var onePxDirectionU = (upperRight - upperLeft); // / action.TextureProvider.ExternalTargetTextureExtent.Width;
+						var onePxDirectionV = (upperLeft - lowerLeft); //  / action.TextureProvider.ExternalTargetTextureExtent.Height;
+						var camLowerLeft = (lowerLeft - eyePos);
+						Color dbgColor = Color.red;
+						if(nodeUsage.eyeIndex == 1)
+						{
+							dbgColor = Color.green;
+						}
+
+                        Debug.DrawLine(eyePos, lowerLeft, dbgColor);
+                        Debug.DrawLine(eyePos, upperLeft, dbgColor);
+
+                        Debug.DrawLine(eyePos, upperRight, dbgColor);
+                        Debug.DrawLine(eyePos, upperRight - (upperLeft - lowerLeft), dbgColor);
+
+
+                        if (nodeUsage.eyeIndex == 0)
+						{
+                            if (debugPositionObject != null)
+                            {
+                                debugPositionObject.transform.position = lowerLeft;
+                            }
+
+                            if (debugPositionObject1 != null)
+                            {
+                                debugPositionObject1.transform.position = upperRight;
+                            }
+                            Debug.Log($"eyePos: {eyePos}");
+                            Debug.Log($"camLowerLeft: {camLowerLeft}");
+                            Debug.Log($"onePxDirectionU: {onePxDirectionU}");
+                            Debug.Log($"onePxDirectionV: {onePxDirectionV}");
+                            Debug.Log($"textureProvider_.ExternalTargetTextureExtent.Width: {textureProvider_.ExternalTargetTextureExtent.Width}");
+                            Debug.Log($"textureProvider_.ExternalTargetTextureExtent.Height: {textureProvider_.ExternalTargetTextureExtent.Height}");
+                        }
+
+                            unityRenderingData.view.UnityCameras[nodeUsage.eyeIndex].dir00 = camLowerLeft;
+						unityRenderingData.view.UnityCameras[nodeUsage.eyeIndex].dirDu = onePxDirectionU;
+						unityRenderingData.view.UnityCameras[nodeUsage.eyeIndex].dirDv = onePxDirectionV;
+						unityRenderingData.view.UnityCameras[nodeUsage.eyeIndex].directionsAvailable = true;
+					}
+
+                }
+				else
+				{
+					unityRenderingData.view.mode = UnityRenderMode.mono;
+					SetNativeRenderingCameraData(targetCamera.transform.position, targetCamera.transform.forward, targetCamera.transform.up, targetCamera.fieldOfView, 0);
+                    
+                        Debug.Log(targetCamera.transform.position);
+                    Vector3 cameraWorldPosition = targetCamera.transform.position;
+					var eyePos = cameraWorldPosition;
+
+					var upperLeft = targetCamera.ScreenToWorldPoint(new Vector3(0, textureProvider_.ExternalTargetTextureExtent.Height - 1, 1));
+					var upperRight = targetCamera.ScreenToWorldPoint(new Vector3(textureProvider_.ExternalTargetTextureExtent.Width - 1, textureProvider_.ExternalTargetTextureExtent.Height - 1, 1));
+					var lowerLeft = targetCamera.ScreenToWorldPoint(new Vector3(0, 0, 1));
+
+					var onePxDirectionU = (upperRight - upperLeft); // / action.TextureProvider.ExternalTargetTextureExtent.Width;
+					var onePxDirectionV = (upperLeft - lowerLeft); //  / action.TextureProvider.ExternalTargetTextureExtent.Height;
+					var camLowerLeft = (lowerLeft - eyePos);
+
+                    Color dbgColor = Color.red;
+
+                    Debug.DrawLine(eyePos, lowerLeft, dbgColor);
+                    Debug.DrawLine(eyePos, upperLeft, dbgColor);
+
+                    Debug.DrawLine(eyePos, upperRight, dbgColor);
+                    Debug.DrawLine(eyePos, upperRight - (upperLeft - lowerLeft), dbgColor);
+
+                    unityRenderingData.view.UnityCameras[0].dir00 = camLowerLeft;
+					unityRenderingData.view.UnityCameras[0].dirDu = onePxDirectionU;
+					unityRenderingData.view.UnityCameras[0].dirDv = onePxDirectionV;
+					unityRenderingData.view.UnityCameras[0].directionsAvailable = true;
+				}
+			}
+
+			protected virtual void SetNativeRenderingCameraData(Vector3 origin, Vector3 at, Vector3 up, float fovYDegree, int eyeIndex)
+			{
+				UnityCamera nativeCameraData = new()
+				{
+					Origin = origin,
+					At = at,
+					Up = up,
+					CosFovY = Mathf.Cos(Mathf.Deg2Rad * fovYDegree),
+					FovY = Mathf.Deg2Rad * fovYDegree,
+					directionsAvailable = true
+				};
+				unityRenderingData.view.UnityCameras[eyeIndex] = nativeCameraData;
+			}
+
+			protected virtual void FillNativeRenderingData()
+			{
+				fillNativeRenderingDataWrapper();
+				FillAdditionalNativeRenderingData();
+			}
+
+			void OnBeginCameraRendering(ScriptableRenderContext context, Camera camera)
+            {
+                if (camera == targetCamera)
+                {
+					if (renderPass != null)
+					{ 
+						camera.GetUniversalAdditionalCameraData().scriptableRenderer.EnqueuePass(renderPass);
+					}
+                    /*
+					foreach (var (evt, cb) in renderingCommandBuffers_)
+                    {
+                        context.ExecuteCommandBuffer(cb);
+                    }
+					*/
+                }
+            }
+
+            #region helpers
+            protected virtual void AddRenderingCommandBuffersToCamera()
+			{
+
+				RenderPipelineManager.beginCameraRendering += OnBeginCameraRendering;
+				return;
+                foreach (var (evt, cb) in renderingCommandBuffers_)
+				{
+					targetCamera.AddCommandBuffer(evt, cb);
+				}
+			}
+
+			protected virtual void RemoveRenderingCommandBuffersFromCamera()
+			{
+                RenderPipelineManager.beginCameraRendering -= OnBeginCameraRendering;
+                return;
+                if (targetCamera)
+				{
+					foreach (var (evt, cb) in renderingCommandBuffers_)
+					{
+						targetCamera.RemoveCommandBuffer(evt, cb);
+					}
+				}
+			}
+
+			#endregion helpers
+
+		}
+	}
+}

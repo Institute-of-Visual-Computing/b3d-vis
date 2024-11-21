@@ -1,0 +1,28 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+uint textureWidth;
+
+RWTexture2D<float> Result;
+
+float2 startPos;
+float2 endPos;
+
+[numthreads(8,8,1)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    if ((startPos.x < 0 && endPos.x < 0) || (startPos.x >= 1.0f && endPos.x >= 1.0f))
+    {
+	    return;
+    }
+    
+    const float xPos = ((float) id.x) / ((float) textureWidth);
+    if (min(startPos.x, endPos.x) <= xPos && xPos <= max(startPos.x, endPos.x))
+    {
+        const float m = (endPos.y - startPos.y) / (endPos.x - startPos.x);
+        const float c = endPos.y - m * endPos.x;
+        Result[id.xy] = max(0.0f, min(1.0f, xPos * m + c));
+    }
+}
