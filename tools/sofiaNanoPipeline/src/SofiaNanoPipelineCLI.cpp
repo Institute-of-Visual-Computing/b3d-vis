@@ -104,9 +104,53 @@ void CreateNvdbFromDataAndMaskCommandFunction(args::Subparser& parser)
 			return;
 		}
 	}
-
 	b3d::tools::nano::convertFitsWithMaskToNano(sourcePath, maskPath, destinationPath);
+}
 
+void CreateNvdbFromDataCommandFunction(args::Subparser& parser)
+{
+	// Setup help for argument parser
+	args::HelpFlag help(parser, "help", "Display this help menu", { 'h', "help" });
+
+
+	args::Positional<std::filesystem::path> sourceArgument(parser, "SOURCE_FILE", "Path to source file (.fits)",
+														   args::Options::Required);
+
+	args::Positional<std::filesystem::path> destinationPathArgument(parser, "DESTINATION_PATH",
+																	"Filename to the nvdb created.", "");
+
+	parser.Parse();
+
+	if (sourceArgument.Get().empty() || !std::filesystem::is_regular_file(sourceArgument.Get()))
+	{
+		LOG_ERROR << "Source is not a file.";
+		LOG_INFO << parser;
+		return;
+	}
+
+	auto sourcePath = sourceArgument.Get();
+
+	if (!b3d::tools::fits::isFitsFile(sourcePath))
+	{
+		LOG_ERROR << "Source is not a FITS file.";
+		LOG_INFO << parser;
+		return;
+	}
+
+	std::filesystem::path destinationPath = destinationPathArgument.Get();
+	if (destinationPath.empty())
+	{
+		// Use default
+		destinationPath = sourcePath.parent_path();
+	}
+
+	if (is_directory(destinationPath))
+	{
+		destinationPath = destinationPath / (sourcePath.stem().string() + ".nvdb");
+	}
+
+	const auto sourceDims = b3d::tools::fits::getFitsProperties(sourcePath).axisDimensions;
+	b3d::tools::nano::convertFitsToNano(sourcePath, destinationPath);
 }
 
 auto main(const int argc, char** argv) -> int
@@ -119,7 +163,9 @@ auto main(const int argc, char** argv) -> int
 
 	args::Group commands(parser, "commands");
 
-	args::Command create(commands, "fits-mask-to-nvdb", "Create a project.", &CreateNvdbFromDataAndMaskCommandFunction);
+	args::Command createWithMask(commands, "fits-mask-to-nvdb", "Create a nvdb with mask.", &CreateNvdbFromDataAndMaskCommandFunction);
+	args::Command createWithoutMask(commands, "fits-to-nvdb", "Create a nvdb without mask.",
+									&CreateNvdbFromDataCommandFunction);
 
 	// args::CompletionFlag completion(parser, { "complete" });
 	try

@@ -77,6 +77,39 @@ auto b3d::tools::nano::convertFitsWithMaskToNano(const std::filesystem::path& fi
 	return result;
 }
 
+
+auto b3d::tools::nano::convertFitsToNano(const std::filesystem::path& fitsDataFilePath,
+										 const std::filesystem::path& destinationNanoVdbFilePath) -> NanoResult
+{
+	NanoResult result;
+
+	const auto data = b3d::tools::fits::extractFloats(fitsDataFilePath, Box3I::maxBox());
+
+	const auto gridHandle = generateNanoVdb(data.box.size() + Vec3I{ 1, 1, 1 }, -100.0f, 0.0f, data.data);
+
+	extractOffsetSizeToNanoResult(gridHandle, result);
+
+	try
+	{
+		nanovdb::io::writeGrid(destinationNanoVdbFilePath.generic_string(), gridHandle,
+							   nanovdb::io::Codec::NONE); // TODO: enable nanovdb::io::Codec::BLOSC
+	}
+	catch (...)
+	{
+		result.finishedAt = b3d::common::helper::getSecondsSinceEpochUtc();
+		result.message = "Failed to write NanoVDB.";
+		return result;
+	}
+
+	result.finishedAt = b3d::common::helper::getSecondsSinceEpochUtc();
+	result.finished = true;
+	result.resultFile = destinationNanoVdbFilePath.generic_string();
+	result.message = "Finished.";
+	result.returnCode = 0;
+
+	return result;
+}
+
 auto b3d::tools::nano::createNanoVdbWithExistingAndSubregion(
 	const std::filesystem::path& sourceNanoVdbFilePath, const std::filesystem::path& originalFitsDataFilePath,
 	const std::filesystem::path& originalFitsMaskFilePath, const std::filesystem::path& subRegionFitsMaskFilePath,

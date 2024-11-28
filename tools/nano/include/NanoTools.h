@@ -32,12 +32,19 @@ namespace b3d::tools::nano
 	/// \param fitsDataFilePath Path to the FITS file.
 	/// \param fitsMaskFilePath Path to the FITS mask file. Same dimensions as file at fitsDataFilePath.
 	/// \param destinationNanoVdbFilePath Path where the NanoVDB file should be saved.
-	/// \return true if the conversion was successful, false otherwise.
+	/// \return NanoResult for the volume data in the nvdb
 	///	TODO: Move to own library.
 	auto convertFitsWithMaskToNano(const std::filesystem::path& fitsDataFilePath,
 	                               const std::filesystem::path& fitsMaskFilePath,
 								   const std::filesystem::path& destinationNanoVdbFilePath)
 		-> NanoResult;
+
+	/// \brief Convert a FITS file to a NanoVDB file without a mask file.
+	///	\param fitsDataFilePath Path to the FITS file.
+	/// \param destinationNanoVdbFilePath Path where the NanoVDB file should be saved.
+	/// \return NanoResult for the volume data in the nvdb
+	auto convertFitsToNano(const std::filesystem::path& fitsDataFilePath,
+						   const std::filesystem::path& destinationNanoVdbFilePath) -> NanoResult;
 
 	/// \brief Creates a new NanoVDB based on an existing NanoVDB. The content in the subregion will be altered based on the merged masks
 	/// \param sourceNanoVdbFilePath Path to the source NanoVDB file.
