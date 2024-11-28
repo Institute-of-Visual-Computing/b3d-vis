@@ -6,6 +6,7 @@ using MixedReality.Toolkit.UX;
 using MixedReality.Toolkit;
 using TMPro;
 using Unity.XR.CoreUtils;
+using System;
 
 public class RequestsView : MonoBehaviour
 {
@@ -127,6 +128,13 @@ public class RequestsView : MonoBehaviour
 			projectController.SelectedRequest = selectedRequest_;
 		}
 	}
+
+	public void selectRequestExtern(string requestUUID)
+	{
+		var requestIndex = selectedProject_.requests.FindIndex(request => request.uuid == requestUUID);
+		toggleCollection.SetSelection(requestIndex + 1, true);
+	}
+
 
 	void Start()
 	{

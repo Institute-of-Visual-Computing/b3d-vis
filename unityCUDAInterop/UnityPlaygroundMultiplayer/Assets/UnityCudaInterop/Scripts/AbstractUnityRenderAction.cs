@@ -255,18 +255,7 @@ namespace B3D
                         var onePxDirectionU = (upperRight - upperLeft); // / action.TextureProvider.ExternalTargetTextureExtent.Width;
 						var onePxDirectionV = (upperLeft - lowerLeft); //  / action.TextureProvider.ExternalTargetTextureExtent.Height;
 						var camLowerLeft = (lowerLeft - eyePos);
-						Color dbgColor = Color.red;
-						if(nodeUsage.eyeIndex == 1)
-						{
-							dbgColor = Color.green;
-						}
-
-                        Debug.DrawLine(eyePos, lowerLeft, dbgColor);
-                        Debug.DrawLine(eyePos, upperLeft, dbgColor);
-
-                        Debug.DrawLine(eyePos, upperRight, dbgColor);
-                        Debug.DrawLine(eyePos, upperRight - (upperLeft - lowerLeft), dbgColor);
-
+						
 
                         if (nodeUsage.eyeIndex == 0)
 						{
@@ -279,12 +268,6 @@ namespace B3D
                             {
                                 debugPositionObject1.transform.position = upperRight;
                             }
-                            Debug.Log($"eyePos: {eyePos}");
-                            Debug.Log($"camLowerLeft: {camLowerLeft}");
-                            Debug.Log($"onePxDirectionU: {onePxDirectionU}");
-                            Debug.Log($"onePxDirectionV: {onePxDirectionV}");
-                            Debug.Log($"textureProvider_.ExternalTargetTextureExtent.Width: {textureProvider_.ExternalTargetTextureExtent.Width}");
-                            Debug.Log($"textureProvider_.ExternalTargetTextureExtent.Height: {textureProvider_.ExternalTargetTextureExtent.Height}");
                         }
 
                             unityRenderingData.view.UnityCameras[nodeUsage.eyeIndex].dir00 = camLowerLeft;
@@ -299,7 +282,6 @@ namespace B3D
 					unityRenderingData.view.mode = UnityRenderMode.mono;
 					SetNativeRenderingCameraData(targetCamera.transform.position, targetCamera.transform.forward, targetCamera.transform.up, targetCamera.fieldOfView, 0);
                     
-                        Debug.Log(targetCamera.transform.position);
                     Vector3 cameraWorldPosition = targetCamera.transform.position;
 					var eyePos = cameraWorldPosition;
 
@@ -311,13 +293,6 @@ namespace B3D
 					var onePxDirectionV = (upperLeft - lowerLeft); //  / action.TextureProvider.ExternalTargetTextureExtent.Height;
 					var camLowerLeft = (lowerLeft - eyePos);
 
-                    Color dbgColor = Color.red;
-
-                    Debug.DrawLine(eyePos, lowerLeft, dbgColor);
-                    Debug.DrawLine(eyePos, upperLeft, dbgColor);
-
-                    Debug.DrawLine(eyePos, upperRight, dbgColor);
-                    Debug.DrawLine(eyePos, upperRight - (upperLeft - lowerLeft), dbgColor);
 
                     unityRenderingData.view.UnityCameras[0].dir00 = camLowerLeft;
 					unityRenderingData.view.UnityCameras[0].dirDu = onePxDirectionU;

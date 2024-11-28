@@ -7,6 +7,7 @@ using Unity.XR.CoreUtils.Bindings.Variables;
 using UnityEngine;
 using Unity.Services.Lobbies;
 using UnityEditor;
+using System.Collections.ObjectModel;
 
 namespace XRMultiplayer
 {
@@ -160,10 +161,15 @@ namespace XRMultiplayer
         /// </summary>
         readonly List<ulong> m_CurrentPlayerIDs = new();
 
-        /// <summary>
-        /// Flagged whenever the application is in the process of shutting down.
-        /// </summary>
-        bool m_IsShuttingDown = false;
+		public ReadOnlyCollection<ulong> CurrentPlayerIDs
+		{
+			get => m_CurrentPlayerIDs.AsReadOnly();
+		}
+
+		/// <summary>
+		/// Flagged whenever the application is in the process of shutting down.
+		/// </summary>
+		bool m_IsShuttingDown = false;
 
         const string k_DebugPrepend = "<color=#FAC00C>[Network Game Manager]</color> ";
 

@@ -2,10 +2,12 @@ using MixedReality.Toolkit.UX;
 using System;
 using System.Collections.Generic;
 using TMPro;
+using Unity.Netcode;
 using Unity.XR.CoreUtils;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.UI;
+using XRMultiplayer;
 
 public struct ColormapInfos
 {
@@ -17,10 +19,10 @@ public struct ColormapInfos
 	public List<string> colorMapNames;
 }
 
-public class ColoringChanger : MonoBehaviour, ITransferFunctionReadTextureProvider
+public class ColoringChanger : NetworkBehaviour, ITransferFunctionReadTextureProvider
 {
 	public bool useColormap = false;
-    public Color colorToUse = new(0, 1, 0);
+    public UnityEngine.Color colorToUse = new(0, 1, 0);
 
     public Texture colormapsTexture;
 	public TextAsset colormapsText;
@@ -31,16 +33,23 @@ public class ColoringChanger : MonoBehaviour, ITransferFunctionReadTextureProvid
 
     int colorMapCount;
 
-	[Min(0)]
-    public int selectedColorMap = 0;
+	
+    private int selectedColorMap = 0;
+
+	public int SelectedColorMap
+	{
+		get => selectedColorMap;
+		set
+		{
+			if(IsOwner)
+			{
+				selectedColorMap = Mathf.Min(value, colorMapCount - 1);
+				networkedSelectedColorMapIndex.Value = selectedColorMap;
+			}
+		}
+	}
 
     float colorMapUvHeight;
-
-
-
-
-
-
 
 	public ColoringChangerInteractable coloringChangerInteractable;
 
@@ -55,7 +64,9 @@ public class ColoringChanger : MonoBehaviour, ITransferFunctionReadTextureProvid
 	public Texture2D TransferFunctionReadTexture
 	{
 		get {
-			if(transferReadTexture == null) { 
+			if(transferReadTexture == null) {
+				transferTextureWidth = initialTransferFunctionTexture != null ? initialTransferFunctionTexture.width : 512;
+				transferTextureHeight = initialTransferFunctionTexture != null ? initialTransferFunctionTexture.height : 1;
 				transferReadTexture = new(transferTextureWidth, transferTextureHeight, TextureFormat.RFloat, false, true, false)
 				{
 					name = "TransferfunctionReadTexture"
@@ -75,14 +86,51 @@ public class ColoringChanger : MonoBehaviour, ITransferFunctionReadTextureProvid
 	int drawComputeShaderMainKernel;
 	CommandBuffer drawComputeShaderCommandBuffer;
 
+	public NetworkList<float> networkedTransferFunc;
+	public NetworkVariable<int> networkedSelectedColorMapIndex = new(0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
 
 	public float SelectedColorMapFloat
 	{
-		get { return colorMapUvHeight * selectedColorMap + colorMapUvHeight/2.0f; }
+		get { return colorMapUvHeight * SelectedColorMap + colorMapUvHeight/2.0f; }
+	}
+
+	public override void OnNetworkSpawn()
+	{
+		if(XRINetworkGameManager.Instance.CurrentPlayerIDs.Count <= 1 && IsServer)
+		{
+			var trt = TransferFunctionReadTexture;
+			for (int i = 0; i < networkedTransferFunc.Count; i++)
+			{
+				networkedTransferFunc[i] = trt.GetPixel(i, 0).r;
+			}
+			return;
+		}
+
+		if(networkedSelectedColorMapIndex.Value != SelectedColorMap)
+		{
+			selectedColorMap = networkedSelectedColorMapIndex.Value;
+		}
+
+		for (int i = 0; i < networkedTransferFunc.Count; i++)
+		{
+			TransferFunctionReadTexture.SetPixel(i, 0, new Color(networkedTransferFunc[i], 0, 0));
+		}
+		TransferFunctionReadTexture.Apply();
+		Graphics.CopyTexture(TransferFunctionReadTexture, transferRenderTex);
 	}
 
 	private void Start()
     {
+		networkedSelectedColorMapIndex.OnValueChanged += (oldValue, newValue) =>
+		{
+			selectedColorMap = newValue;
+			buttonsList.GetChild(selectedColorMap).GetComponent<PressableButton>().ForceSetToggled(true);
+		};
+
+
+		networkedTransferFunc = new(TransferFunctionReadTexture.GetPixelData<float>(0), NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+		networkedTransferFunc.OnListChanged += TransferFunc_OnListChanged;
+
 		coloringChangerInteractable.StartEndPositionEvent += (start, end) =>
 		{
 			
@@ -114,17 +162,21 @@ public class ColoringChanger : MonoBehaviour, ITransferFunctionReadTextureProvid
 				{
 					colors[i].r = Mathf.Max(0.0f, Mathf.Min(1.0f, ((startPix + i) * widthFract) * m + c));
 					maxVal = Mathf.Max(maxVal, colors[i].r);
+					
 				}
 				if (startPix == 0)
 				{
 					colors[0].r = 0;
 				}
 
-				for (int i = 1; i < transferTextureHeight; i++)
+				if(IsOwner)
 				{
-					Array.Copy(colors, i * size, colors, startPix, size);
+					for (int i = 0; i < size; i++)
+					{
+						networkedTransferFunc[startPix + i] = colors[i].r;
+					}
 				}
-
+				
 				transferReadTexture.SetPixels(startPix, 0, size, transferTextureHeight, colors);
 				transferReadTexture.Apply();
 				Graphics.CopyTexture(transferReadTexture, transferRenderTex);
@@ -220,14 +272,39 @@ public class ColoringChanger : MonoBehaviour, ITransferFunctionReadTextureProvid
 
 			var buttonGO = Instantiate(buttonPrefab, buttonsList);
 			var button = buttonGO.GetComponent<PressableButton>();
-			button.OnClicked.AddListener(() => { selectedColorMap = index; });
+			button.OnClicked.AddListener(() => {
+				SelectedColorMap = index;
+			});
 		}
 	}
 
-    // Update is called once per frame
-    void Update()
+	private void TransferFunc_OnListChanged(Unity.Netcode.NetworkListEvent<float> changeEvent)
+	{
+		bool transferReadTexIsDirty = false;
+		switch (changeEvent.Type)
+		{
+			case NetworkListEvent<float>.EventType.Value:
+				transferReadTexture.SetPixel(changeEvent.Index, 0, new UnityEngine.Color(changeEvent.Value, 0, 0));
+				transferReadTexIsDirty = true;
+				break;
+			case NetworkListEvent<float>.EventType.Clear:
+				Graphics.Blit(initialTransferFunctionTexture, transferRenderTex);
+				Graphics.CopyTexture(transferReadTexture, transferRenderTex);
+				break;
+			default:
+				Debug.LogWarning($"Networklist event not supported: {changeEvent.Type}");
+				break;
+		}
+		if(transferReadTexIsDirty)
+		{ 
+			transferReadTexture.Apply();
+			Graphics.CopyTexture(transferReadTexture, transferRenderTex);
+		}
+	}
+
+	// Update is called once per frame
+	void Update()
     {
-        selectedColorMap = Mathf.Min(selectedColorMap, colorMapCount - 1);
         if (drawPanelMeshRenderer != null)
         {
 			drawPanelMeshRenderer.material.SetFloat("_UseColorMap", useColormap ? 1 : 0);

@@ -7,6 +7,7 @@ using UnityEngine.Events;
 using MixedReality.Toolkit;
 using Unity.XR.CoreUtils;
 using TMPro;
+using System;
 
 public class ProjectsView : MonoBehaviour
 {
@@ -79,7 +80,19 @@ public class ProjectsView : MonoBehaviour
 		toggleCollection.Toggles = newToggles;
 		toggleCollection.Toggles[selectedBtn].ForceSetToggled(true);
 		toggleCollection.SetSelection(selectedBtn, true);
+	}
 
+	public void selectProjectForView(string uuid)
+	{
+		var projectIndex = projects_.projects.FindIndex(project => project.projectUUID == uuid);
+		toggleCollection.OnToggleSelected.RemoveListener(projectIndexSelected);
+
+		toggleCollection.SetSelection(projectIndex + 1, false);
+		if (projectIndex > 0)
+		{
+			projectDetails.project = projects_.projects[projectIndex - 1];
+		}
+		toggleCollection.OnToggleSelected.AddListener(projectIndexSelected);
 	}
 
 	private void projectIndexSelected(int index)
@@ -88,9 +101,12 @@ public class ProjectsView : MonoBehaviour
 		{
 			return;
 		}
-		projectDetails.project = projects_.projects[index-1];
-		projectController.SelectedProject = projects_.projects[index-1];
+
+		projectDetails.project = projects_.projects[index-1];	
+		projectController.SelectedProject = projects_.projects[index - 1];
 	}
+
+	
 
 	// Start is called before the first frame update
 	void Start()

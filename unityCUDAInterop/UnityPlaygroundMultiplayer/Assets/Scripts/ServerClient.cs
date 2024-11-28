@@ -1,4 +1,5 @@
 using B3D;
+using ParrelSync;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -65,7 +66,14 @@ public class ServerClient : MonoBehaviour
 		}
 		downloadIsRunning = true;
 		var uwr = UnityWebRequest.Get("http://" + clientAddress + ":" + clientPort + "/file/" + fileUID);
+
 		string path = Path.Combine(destinationDirectory, fileUID);
+		#if UNITY_EDITOR
+		if (ClonesManager.IsClone())
+		{
+			path = Path.Combine(destinationDirectory, ClonesManager.GetCurrentProject().name, fileUID);
+		}
+		#endif
 		uwr.downloadHandler = new DownloadHandlerFile(path);
 		yield return uwr.SendWebRequest();
 		if (uwr.result != UnityWebRequest.Result.Success)
