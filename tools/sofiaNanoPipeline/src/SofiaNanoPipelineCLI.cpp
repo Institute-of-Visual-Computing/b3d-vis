@@ -88,7 +88,7 @@ void CreateNvdbFromDataAndMaskCommandFunction(args::Subparser& parser)
 	const auto maskDims = b3d::tools::fits::getFitsProperties(maskPath).axisDimensions;
 	if (sourceDims.size() != maskDims.size())
 	{
-		LOG_ERROR << std::format("Spatial dimensions ({}) of source and mask file ({}) do not match.",
+		LOG_ERROR << std::format("Dimension count ({}) of source and mask file ({}) do not match.",
 								 sourceDims.size(),
 								 maskDims.size());
 		LOG_INFO << parser;

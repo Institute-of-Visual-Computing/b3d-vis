@@ -18,6 +18,7 @@
 #include "TimeStamp.h"
 #include "Result.h"
 #include "NanoTools.h"
+#include "SofiaNanoPipeline.h"
 
 namespace
 {
@@ -41,45 +42,46 @@ void AddRequestFromFitsAndMaskAsNanoCommandFunction(args::Subparser& parser)
 	// write catalog
 	// write project
 	args::Positional<std::filesystem::path> projectArgument(parser, "PROJECT_DIRECTORY", "Path to projects directory",
-														   args::Options::Required);
-	args::Positional<std::filesystem::path> sourceArgument(parser, "SOURCE_FILE", "Path to source file (.fits)",
-														   args::Options::Required);
-	args::Positional<std::filesystem::path> maskArgument(parser, "MASK_FILE", "Path to mask file (.fits)",
-														 args::Options::Required);
+															args::Options::Required);
 
+
+	args::Positional<std::filesystem::path> maskArgument(parser, "MASK_FILE", "Path to mask file (.fits)");
+
+	args::ValueFlagList<uint32_t> maskOffsetArgument(parser, "MASK_OFFSET", "Offset of mask in source file. x, y, z",
+													 { "mo", "mask_offset" });
 	parser.Parse();
 
-	if (sourceArgument.Get().empty() || !std::filesystem::is_regular_file(sourceArgument.Get()))
-	{
-		LOG_ERROR << "Source is not a file.";
-		LOG_INFO << parser;
-		return;
-	}
 
-	auto sourcePath = sourceArgument.Get();
-
-	if (!b3d::tools::fits::isFitsFile(sourcePath))
-	{
-		LOG_ERROR << "Source is not a FITS file.";
-		LOG_INFO << parser;
-		return;
-	}
-
+	bool maskAvailable = true;
 	if (maskArgument.Get().empty() || !std::filesystem::is_regular_file(maskArgument.Get()))
 	{
-		LOG_ERROR << "Mask is not a file.";
-		LOG_INFO << parser;
-		return;
+		LOG_ERROR << "Mask is not available or not a file. Mask is no longer considered.";
+		maskAvailable = false;
 	}
 
-	auto maskPath = maskArgument.Get();
-
-	if (!b3d::tools::fits::isFitsFile(maskPath))
+	auto maskPath = std::filesystem::path("");
+	if (maskAvailable)
 	{
-		LOG_ERROR << "Mask is not a FITS file.";
-		LOG_INFO << parser;
-		return;
+		maskPath = maskArgument.Get();
+		if (!b3d::tools::fits::isFitsFile(maskPath))
+		{
+			LOG_ERROR << "Mask is not a FITS file. Mask is no longer considered.";
+			maskAvailable = false;
+		}
 	}
+
+	uint32_t maskOffset[] = { 0, 0, 0 };
+	if (maskOffsetArgument.Get().size() != 3)
+	{
+		LOG_ERROR << "Mask offset is not valid. Mask offset is 0, 0, 0";
+	}
+	else
+	{
+		maskOffset[0] = maskOffsetArgument.Get()[0];
+		maskOffset[1] = maskOffsetArgument.Get()[1];
+		maskOffset[2] = maskOffsetArgument.Get()[2];
+	}
+
 
 	if (projectArgument.Get().empty() || !is_directory(projectArgument.Get()))
 	{
@@ -90,6 +92,8 @@ void AddRequestFromFitsAndMaskAsNanoCommandFunction(args::Subparser& parser)
 	
 	auto projectDirectoryPath = projectArgument.Get();
 
+
+	LOG_INFO << "Read Project and Catalog.";
 	const auto projectsFilePath = projectDirectoryPath / "project.json";
 	auto project = b3d::tools::project::Project{};
 	try
@@ -110,7 +114,6 @@ void AddRequestFromFitsAndMaskAsNanoCommandFunction(args::Subparser& parser)
 
 	b3d::tools::project::catalog::FileCatalog catalog =
 		b3d::tools::project::catalog::FileCatalog::createOrLoadCatalogInDirectory(project.projectPathAbsolute);
-
 	std::random_device rd;
 	auto seed_data = std::array<int, std::mt19937::state_size>{};
 	std::generate(std::begin(seed_data), std::end(seed_data), std::ref(rd));
@@ -118,6 +121,15 @@ void AddRequestFromFitsAndMaskAsNanoCommandFunction(args::Subparser& parser)
 	std::mt19937 generator(seq);
 	uuids::uuid_random_generator gen{ generator };
 
+	const auto sourcePath = catalog.getFilePathAbsolute(project.fitsOriginUUID);
+
+	if (sourcePath.empty() || !std::filesystem::is_regular_file(sourcePath))
+	{
+		LOG_ERROR << "Source file " << sourcePath << " is not available.";
+		LOG_INFO << parser;
+		return;
+	}
+	LOG_INFO << "Build request";
 	auto request = b3d::tools::project::Request{ .uuid = uuids::to_string(gen()),
 												 .subRegion = { project.fitsOriginProperties.axisDimensions[0],
 																project.fitsOriginProperties.axisDimensions[1],
@@ -144,9 +156,42 @@ void AddRequestFromFitsAndMaskAsNanoCommandFunction(args::Subparser& parser)
 	request.result.sofiaResult.returnCode = 0;
 	request.result.sofiaResult.message = "Success";
 	request.result.sofiaResult.finishedAt = b3d::common::helper::getSecondsSinceEpochUtc();
-	request.result.sofiaResult.fileAvailable = true;
-	request.result.sofiaResult.resultFile =
-		catalog.addFilePathAbsolute(project.projectPathAbsolute / sourcePath.filename());
+
+
+	if (maskAvailable)
+	{
+		LOG_INFO << "Copy mask";
+		if (std::filesystem::create_directories(project.projectPathAbsolute / "requests" / request.uuid / "sofia", ec) && ec)
+		{
+			LOG_ERROR << "Failed to create directory for mask at "
+					  << project.projectPathAbsolute / "requests" / request.uuid / "sofia"
+					  << ". Don't copy mask.";
+		}
+		else
+		{
+			if (!std::filesystem::copy_file(
+					maskPath, project.projectPathAbsolute / "requests" / request.uuid / "sofia" / maskPath.filename(),
+					ec))
+			{
+				LOG_ERROR << "Failed to copy mask file to project directory.";
+			}
+			else
+			{
+				request.result.sofiaResult.resultFile = catalog.addFilePathAbsolute(
+					project.projectPathAbsolute / "requests" / request.uuid / "sofia" /
+											maskPath.filename());
+			}
+		}
+	}
+	else
+	{
+		LOG_INFO << "Bounds are full volume because no mask available.";
+		auto bounds = b3d::tools::fits::extractBounds(sourcePath);
+		bounds.upper = bounds.upper + b3d::common::Vec3<int>{ 1, 1, 1 };
+		request.subRegion = bounds;
+		request.result.sofiaResult.fileAvailable = false;
+		request.result.sofiaResult.resultFile = "";
+	}
 
 	if (std::filesystem::create_directories(project.projectPathAbsolute / "requests" / request.uuid / "nano", ec) && ec)
 	{
@@ -156,8 +201,61 @@ void AddRequestFromFitsAndMaskAsNanoCommandFunction(args::Subparser& parser)
 		return;
 	}
 
-	request.result.nanoResult = b3d::tools::nano::convertFitsWithMaskToNano(
-		sourcePath, maskPath, project.projectPathAbsolute / "requests" / request.uuid / "nano" / "out.nvdb");
+	if (maskAvailable)
+	{
+		// Check dimensions of mask and source files.
+		// if they match -> whole volume
+		// if they not match -> subregion pipeline.
+
+		const auto sourceDims = b3d::tools::fits::getFitsProperties(sourcePath).axisDimensions;
+		const auto maskDims = b3d::tools::fits::getFitsProperties(maskPath).axisDimensions;
+		if (sourceDims.size() != maskDims.size())
+		{
+			LOG_ERROR << std::format("Dimension count ({}) of source and mask file ({}) do not match.",
+									 sourceDims.size(), maskDims.size());
+			LOG_INFO << parser;
+			return;
+		}
+
+		bool dimensionsMatching = true;
+		for (int i = 0; i < sourceDims.size(); i++)
+		{
+			if (sourceDims[i] != maskDims[i])
+			{
+				LOG_ERROR << "Spatial dimensions of source and mask file do not match.";
+				LOG_ERROR << "Assume mask is smaller and offset is valid";
+				dimensionsMatching = false;
+			}
+		}
+
+		if (dimensionsMatching)
+		{
+			LOG_INFO << "Convert full volume to nvdb with mask.";
+			request.result.nanoResult = b3d::tools::nano::convertFitsWithMaskToNano(
+				sourcePath, maskPath, project.projectPathAbsolute / "requests" / request.uuid / "nano" / "out.nvdb");
+		}
+		else
+		{
+			LOG_INFO << "Convert volume to nvdb with provided subregion.";
+			// Use existing nvdb file to merge with new masked data.
+			const auto nvdbPath = catalog.getFilePathAbsolute(project.requests[0].result.nanoResult.resultFile);
+			const auto initialMaskDataPath =
+				catalog.getFilePathAbsolute(project.requests[0].result.sofiaResult.resultFile);
+
+			const auto outPath = project.projectPathAbsolute / "requests" / request.uuid / "nano" / "out.nvdb";
+			request.result.nanoResult = b3d::tools::nano::createNanoVdbWithExistingAndSubregion(
+				nvdbPath, sourcePath, initialMaskDataPath, maskPath,
+				{ static_cast<int>(maskOffset[0]), static_cast<int>(maskOffset[1]), static_cast<int> (maskOffset[2]) },
+				outPath);
+		}
+	}
+	else
+	{
+		LOG_INFO << "Convert full volume to nvdb without mask.";
+		request.result.nanoResult = b3d::tools::nano::convertFitsToNano(
+			sourcePath, project.projectPathAbsolute / "requests" / request.uuid / "nano" / "out.nvdb");
+	}
+
 	if (!request.result.nanoResult.wasSuccess())
 	{
 		LOG_ERROR << "Failed to create NVDB.";
@@ -169,6 +267,7 @@ void AddRequestFromFitsAndMaskAsNanoCommandFunction(args::Subparser& parser)
 
 	project.requests.push_back(request);
 
+	LOG_INFO << "Save catalog and project files";
 	catalog.writeCatalog();
 
 	{
@@ -178,8 +277,8 @@ void AddRequestFromFitsAndMaskAsNanoCommandFunction(args::Subparser& parser)
 		ofs << std::setw(4) << j << std::endl;
 		ofs.close();
 	}
+	LOG_INFO << "Added Request " << request.uuid;
 }
-
 
 void CreateCommandFunction(args::Subparser& parser)
 {
@@ -211,9 +310,6 @@ void CreateCommandFunction(args::Subparser& parser)
 	args::ValueFlag<std::filesystem::path> destinationDirectoryArgument(
 		parser, "DESTINATION_DIRECTORY", "Where to put the project. Using current working directory if not provided.",
 		{ 'd', "destination" }, destinationDirectoryPath);
-	args::Flag dontCopySourceFilesFlag(parser, "DONT_COPY_SOURCES",
-									   "Don't copy source and mask files to the project directory.",
-									   { "dc", "dont_copy" });
 
 	args::Positional<std::filesystem::path> sourceArgument(parser, "SOURCE_FILE", "Path to source file (.fits)",
 														   args::Options::Required);
@@ -281,21 +377,22 @@ void CreateCommandFunction(args::Subparser& parser)
 		return;
 	}
 
-	if (!dontCopySourceFilesFlag)
+	LOG_INFO << "Copy source file";
+	if (!std::filesystem::copy_file(sourcePath, project.projectPathAbsolute / project.fitsOriginFileName, ec))
 	{
-		if (!std::filesystem::copy_file(sourcePath, project.projectPathAbsolute / project.fitsOriginFileName, ec))
-		{
-			LOG_ERROR << "Failed to copy source file to project directory.";
-			return;
-		}
-		sourcePath = project.projectPathAbsolute / project.fitsOriginFileName;
-		if (!std::filesystem::copy_file(maskPath, project.projectPathAbsolute / maskPath.filename(), ec))
-		{
-			LOG_ERROR << "Failed to copy mask file to project directory.";
-			return;
-		}
-		maskPath = project.projectPathAbsolute / maskPath.filename();
+		LOG_ERROR << "Failed to copy source file to project directory.";
+		return;
 	}
+	sourcePath = project.projectPathAbsolute / project.fitsOriginFileName;
+
+	LOG_INFO << "Copy mask file";
+	if (!std::filesystem::copy_file(maskPath, project.projectPathAbsolute / maskPath.filename(), ec))
+	{
+		LOG_ERROR << "Failed to copy mask file to project directory.";
+		return;
+	}
+	maskPath = project.projectPathAbsolute / maskPath.filename();
+	
 	LOG_INFO << "Creating FileCatalog";
 	b3d::tools::project::catalog::FileCatalog catalog =
 		b3d::tools::project::catalog::FileCatalog::createOrLoadCatalogInDirectory(project.projectPathAbsolute);
@@ -320,7 +417,7 @@ void CreateCommandFunction(args::Subparser& parser)
 				  << ".";
 		return;
 	}
-
+	
 	request.result.returnCode = 0;
 	request.result.message = "Success";
 	request.result.finished = true;
@@ -331,7 +428,7 @@ void CreateCommandFunction(args::Subparser& parser)
 	request.result.sofiaResult.message = "Success";
 	request.result.sofiaResult.finishedAt = b3d::common::helper::getSecondsSinceEpochUtc();
 	request.result.sofiaResult.fileAvailable = true;
-	request.result.sofiaResult.resultFile = catalog.addFilePathAbsolute(project.projectPathAbsolute / sourcePath.filename());
+	request.result.sofiaResult.resultFile = catalog.addFilePathAbsolute(maskPath);
 
 	if(std::filesystem::create_directories(project.projectPathAbsolute / "requests" / request.uuid / "nano", ec) && ec)
 	{
@@ -354,6 +451,7 @@ void CreateCommandFunction(args::Subparser& parser)
 
 	project.requests.push_back(request);
 
+	LOG_INFO << "Save catalog and project files";
 	catalog.writeCatalog();
 
 	{
@@ -363,6 +461,9 @@ void CreateCommandFunction(args::Subparser& parser)
 		ofs << std::setw(4) << j << std::endl;
 		ofs.close();
 	}
+
+	LOG_INFO << "Project " << project.projectName << " (" << project.projectUUID << ") created.";
+	LOG_INFO << "Project path: " << project.projectPathAbsolute;
 
 }
 
