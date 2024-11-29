@@ -41,14 +41,6 @@ public class LobbyJoiner : MonoBehaviour
 			XRINetworkGameManager.Instance.CreateNewLobby("B3D");
 		}
 	}
-
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
-
 	void OnConnected(bool connected)
 	{
 		if (connected)
