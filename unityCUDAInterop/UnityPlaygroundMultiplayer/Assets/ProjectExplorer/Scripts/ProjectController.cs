@@ -163,9 +163,10 @@ public class ProjectController : NetworkBehaviour
 
 
 
-	private void OnDestroy()
+	override public void OnDestroy()
 	{
 		serverClient.ProjectsUpdatedEvent -= ProjectsUpdatedEventHandler;
+		base.OnDestroy();
 	}
 
 	protected void ProjectsUpdatedEventHandler(Projects newProjects)

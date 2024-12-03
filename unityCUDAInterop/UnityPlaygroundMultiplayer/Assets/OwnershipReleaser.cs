@@ -1,12 +1,14 @@
 using Unity.Netcode;
 using UnityEditor;
+using UnityEditor.PackageManager;
 using UnityEngine;
 using XRMultiplayer;
 
 public class OwnershipReleaser : NetworkBehaviour
 {
 	bool allowOtherOwner = false;
-	public NetworkBaseInteractable networkBaseInteractable;
+
+	public NetworkObject[] objectsToChangeOwnership;
 
 	public void forceServerOwnership()
 	{
@@ -16,6 +18,10 @@ public class OwnershipReleaser : NetworkBehaviour
 		}
 		allowOtherOwner = false;
 		GetComponent<NetworkObject>().RemoveOwnership();
+		foreach (var item in objectsToChangeOwnership)
+		{
+			item.RemoveOwnership();
+		}
 		// TODO: Force get ownership for this object
 	}
 
@@ -34,6 +40,10 @@ public class OwnershipReleaser : NetworkBehaviour
 			if(OwnerClientId != clientId)
 			{
 				nwobj.ChangeOwnership(clientId);
+			}
+			foreach (var item in objectsToChangeOwnership)
+			{
+				item.ChangeOwnership(clientId);
 			}
 		}
 	}

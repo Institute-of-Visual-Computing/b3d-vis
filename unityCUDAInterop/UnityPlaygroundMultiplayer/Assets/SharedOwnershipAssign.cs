@@ -1,5 +1,6 @@
 using Unity.Netcode;
 using UnityEngine;
+using XRMultiplayer;
 
 public class SharedOwnershipAssign : NetworkBehaviour
 {
@@ -7,7 +8,8 @@ public class SharedOwnershipAssign : NetworkBehaviour
 
 	public override void OnGainedOwnership()
 	{
-		if(ownershipReleaser)
+		
+		if (ownershipReleaser)
 		{
 			if (OwnerClientId == NetworkManager.LocalClientId)
 			{
