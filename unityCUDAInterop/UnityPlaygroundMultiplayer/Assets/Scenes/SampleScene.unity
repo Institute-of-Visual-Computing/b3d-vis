@@ -1097,7 +1097,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   getProjectsRequest: 0
-  clientAddress: 10.20.105.69
+  clientAddress: 192.168.50.10
   clientPort: 5051
 --- !u!114 &408005934
 MonoBehaviour:
@@ -16059,7 +16059,7 @@ PrefabInstance:
     - target: {fileID: 3132824234458510404, guid: d5fa44bf7951e884b911bdea56a00b0f,
         type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 0.0009834048
+      value: 0.00012384618
       objectReference: {fileID: 0}
     - target: {fileID: 3541871378529197379, guid: d5fa44bf7951e884b911bdea56a00b0f,
         type: 3}
@@ -20539,7 +20539,9 @@ PrefabInstance:
       propertyPath: m_Name
       value: Level
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 3658146102262246635, guid: f300f7b935a7847bb9f64ba531db6d4d, type: 3}
+    - {fileID: 1903905655471207475, guid: f300f7b935a7847bb9f64ba531db6d4d, type: 3}
     m_RemovedGameObjects:
     - {fileID: 4387990992314641522, guid: f300f7b935a7847bb9f64ba531db6d4d, type: 3}
     - {fileID: 5180624672832108548, guid: f300f7b935a7847bb9f64ba531db6d4d, type: 3}
