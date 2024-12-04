@@ -120,7 +120,7 @@ public class ProjectController : NetworkBehaviour
 			return;
 		}
 		var requestUUIDString = requestUUID.Value.ToString();
-		if(requestUUIDString == selectedRequest_.uuid)
+		if(selectedRequest_ == null || requestUUIDString == selectedRequest_.uuid)
 		{
 			return;
 		}
