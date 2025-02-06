@@ -280,6 +280,8 @@ auto VolumeView::onDraw() -> void
 		{
 			static constexpr auto types = std::array{ "orbit", "fly" };
 			auto cameraType = static_cast<int>(cameraControllerType_);
+			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12.0f);
+			ImGui::PushStyleVar(ImGuiStyleVar_GrabRounding, 12.0f);
 			ImGui::SetNextItemWidth(40 * scale);
 			ImGui::SliderInt(/*ICON_LC_EYE*/ "##cameraType", &cameraType, 0, types.size() - 1, types[cameraType]);
 			if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
@@ -287,6 +289,7 @@ auto VolumeView::onDraw() -> void
 				cameraControllerType_ =
 					static_cast<CameraControllerType>((static_cast<int>(cameraControllerType_) + 1) % 2);
 			}
+			ImGui::PopStyleVar(2);
 		}
 #if 0
 		ImGui::SetCursorPosY(500.0f);
