@@ -7,9 +7,10 @@
 #include "NanoVDB.h"
 #include "owl/common/math/AffineSpace.h"
 #include "owl/helper/cuda.h"
-#include "util/GridStats.h"
-#include "util/IO.h"
-#include "util/Primitives.h"
+
+#include <nanovdb/tools/GridStats.h>
+#include <nanovdb/io/IO.h>
+#include <nanovdb/tools/CreatePrimitives.h>
 
 #include "SharedRenderingStructs.h"
 
@@ -119,7 +120,7 @@ b3d::tools::renderer::nvdb::RuntimeDataset::RuntimeDataset()
 	// TODO: use cudaMemGetInfo(), add LRU eviction strategy, pass data pool size via parameter
 
 	// addNanoVdb(createVolume(nanovdb::createFogVolumeTorus()));
-	auto gridHandle = nanovdb::createFogVolumeSphere();
+	auto gridHandle = nanovdb::tools::createFogVolumeSphere();
 	const auto volume = createVolume(gridHandle, 0);
 	const auto volumeSize = volume.indexBox.size();
 	const auto longestAxis = std::max({ volumeSize.x, volumeSize.y, volumeSize.z });

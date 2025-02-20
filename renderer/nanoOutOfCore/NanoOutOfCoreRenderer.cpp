@@ -3,8 +3,8 @@
 #include <owl/helper/cuda.h>
 #include "cuda_runtime.h"
 
-#include <nanovdb/util/CudaDeviceBuffer.h>
-#include <nanovdb/util/Primitives.h>
+#include <nanovdb/tools/CreateNanoGrid.h>
+#include <nanovdb/tools/CreatePrimitives.h>
 
 #include <nanovdb/util/IO.h>
 

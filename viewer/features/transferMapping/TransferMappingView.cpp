@@ -59,7 +59,7 @@ auto TransferMappingView::onDraw() -> void
 			if (ImGui::BeginCombo("##coloringModeSelector", "", ImGuiComboFlags_CustomPreview))
 			{
 				const auto mapItemSize = ImVec2{ ImGui::GetContentRegionAvail().x, 20 };
-				ImGui::Image(colorMapTextureHandle_, mapItemSize,
+				ImGui::Image((ImTextureID)colorMapTextureHandle_, mapItemSize,
 							 ImVec2(0, (selectedColoringMap_ + 0.5) / static_cast<float>(totalItems)),
 							 ImVec2(1, (selectedColoringMap_ + 0.5) / static_cast<float>(totalItems)));
 
@@ -73,7 +73,7 @@ auto TransferMappingView::onDraw() -> void
 						selectedColoringMap_ = n;
 					}
 					ImGui::SameLine(1);
-					ImGui::Image(colorMapTextureHandle_, mapItemSize,
+					ImGui::Image((ImTextureID)colorMapTextureHandle_, mapItemSize,
 								 ImVec2(0, (n + 0.5) / static_cast<float>(totalItems)),
 								 ImVec2(1, (n + 0.5) / static_cast<float>(totalItems)));
 
@@ -88,7 +88,7 @@ auto TransferMappingView::onDraw() -> void
 			if (ImGui::BeginComboPreview())
 			{
 				const auto mapItemSize = ImVec2{ ImGui::GetContentRegionAvail().x, 20 };
-				ImGui::Image(colorMapTextureHandle_, mapItemSize,
+				ImGui::Image((ImTextureID)colorMapTextureHandle_, mapItemSize,
 							 ImVec2(0, selectedColoringMap_ / static_cast<float>(totalItems)),
 							 ImVec2(1, (selectedColoringMap_ + 1) / static_cast<float>(totalItems)));
 				ImGui::EndComboPreview();

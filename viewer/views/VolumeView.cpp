@@ -170,7 +170,7 @@ auto VolumeView::onDraw() -> void
 
 	ImGui::SetCursorScreenPos(p);
 	ImGui::SetNextItemAllowOverlap();
-	ImGui::Image(reinterpret_cast<ImTextureID>(graphicsResources_.framebufferTexture), viewportSize_, { 0.0f, 1.0f },
+	ImGui::Image((ImTextureID)graphicsResources_.framebufferTexture, viewportSize_, { 0.0f, 1.0f },
 				 { 1.0f, 0.0f });
 
 	if (viewerSettings_.enableDebugDraw)

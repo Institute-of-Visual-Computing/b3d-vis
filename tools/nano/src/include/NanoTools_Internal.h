@@ -1,6 +1,6 @@
 #pragma once
 
-#include <nanovdb/util/GridHandle.h>
+#include <nanovdb/GridHandle.h>
 
 #include "NanoResult.h"
 

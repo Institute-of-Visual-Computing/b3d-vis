@@ -3,10 +3,9 @@
 #include <owl/helper/cuda.h>
 #include "cuda_runtime.h"
 
-#include <nanovdb/util/CudaDeviceBuffer.h>
-#include <nanovdb/util/Primitives.h>
-
-#include <nanovdb/util/IO.h>
+#include <nanovdb/cuda/DeviceBuffer.h>
+#include <nanovdb/tools/CreatePrimitives.h>
+#include <nanovdb/io/IO.h>
 
 #include <filesystem>
 

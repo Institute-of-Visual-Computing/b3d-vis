@@ -2,7 +2,7 @@
 
 #include <functional>
 
-#include <nanovdb/util/GridHandle.h>
+#include <nanovdb/GridHandle.h>
 
 #include "Vec.h"
 

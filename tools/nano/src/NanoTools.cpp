@@ -1,5 +1,5 @@
-#include <nanovdb/util/CreateNanoGrid.h>
-#include <util/IO.h>
+#include <nanovdb/tools/CreateNanoGrid.h>
+#include <nanovdb/io/IO.h>
 
 #include "FitsTools.h"
 #include "TimeStamp.h"
@@ -22,10 +22,10 @@ auto b3d::tools::nano::generateNanoVdb(const Vec3I boxSize, const float maskedVa
 
 	const auto box =
 		nanovdb::CoordBBox(nanovdb::Coord(0, 0, 0), nanovdb::Coord(boxSize.x - 1, boxSize.y - 1, boxSize.z - 1));
-	nanovdb::build::Grid<float> grid(emptySpaceValue, "_nameless_", nanovdb::GridClass::FogVolume);
+	nanovdb::tools::build::Grid<float> grid(emptySpaceValue, "_nameless_", nanovdb::GridClass::FogVolume);
 	grid(func, box);
 
-	return nanovdb::createNanoGrid(grid);
+	return nanovdb::tools::createNanoGrid(grid);
 }
 
 auto b3d::tools::nano::generateNanoVdb(
@@ -36,10 +36,10 @@ auto b3d::tools::nano::generateNanoVdb(
 
 	const auto box =
 		nanovdb::CoordBBox(nanovdb::Coord(0, 0, 0), nanovdb::Coord(boxSize.x - 1, boxSize.y - 1, boxSize.z - 1));
-	nanovdb::build::Grid<float> grid(emptySpaceValue, "_nameless_", nanovdb::GridClass::FogVolume);
+	nanovdb::tools::build::Grid<float> grid(emptySpaceValue, "_nameless_", nanovdb::GridClass::FogVolume);
 	grid(func, box);
 
-	return nanovdb::createNanoGrid(grid);
+	return nanovdb::tools::createNanoGrid(grid);
 }
 
 // TODO: Move to own library.

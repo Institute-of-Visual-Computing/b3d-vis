@@ -2,15 +2,18 @@
 #include <optix_device.h>
 #include <owl/owl.h>
 
-#include <nanovdb/util/HDDA.h>
-#include <nanovdb/util/Ray.h>
+#include <nanovdb/math/Ray.h>
+#include <nanovdb/NanoVDB.h>
+#include <nanovdb/math/HDDA.h>
+
+
 #include "SharedStructs.h"
-#include "nanovdb/NanoVDB.h"
 #include "owl/common/math/vec.h"
 
 #include "owl/owl_device.h"
 
 #include <array>
+#include "../nano/OptixHelper.cuh"
 
 using namespace b3d::renderer::nano;
 using namespace owl;
@@ -24,7 +27,7 @@ struct PerRayData
 	bool isBackground{ false };
 };
 
-inline __device__ void confine(const nanovdb::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& sample)
+inline __device__ void confine(const nanovdb::math::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& sample)
 {
 	// NanoVDB's voxels and tiles are formed from half-open intervals, i.e.
 	// voxel[0, 0, 0] spans the set [0, 1) x [0, 1) x [0, 1). To find a point's voxel,
@@ -56,7 +59,7 @@ inline __device__ void confine(const nanovdb::BBox<nanovdb::Coord>& bbox, nanovd
 		sample[2] = iMax[2] - fmaxf(1.0f, fabsf(sample[2])) * eps;
 }
 
-inline __hostdev__ void confine(const nanovdb::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& start, nanovdb::Vec3f& end)
+inline __hostdev__ void confine(const nanovdb::math::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& start, nanovdb::Vec3f& end)
 {
 	confine(bbox, start);
 	confine(bbox, end);
@@ -116,7 +119,7 @@ OPTIX_MISS_PROGRAM(miss)()
 OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 {
 	const auto& geometry = owl::getProgramData<GeometryData>();
-	const auto* grid = reinterpret_cast<nanovdb::FloatGrid*>(geometry.volume.grid);
+	const nanovdb::FloatGrid* grid = reinterpret_cast<nanovdb::FloatGrid*>(geometry.volume.grid);
 
 	float transform[12];
 	optixGetWorldToObjectTransformMatrix(transform);
@@ -149,11 +152,8 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 	const auto endWorld = rayWorld(t1);
 	const auto a = nanovdb::Vec3f(startWorld[0], startWorld[1], startWorld[2]);
 	const auto b = nanovdb::Vec3f(endWorld[0], endWorld[1], endWorld[2]);
-	auto start = nanovdb::matMult(&indexToWorldTransform[0], a) + translate;
-	auto end = nanovdb::matMult(&indexToWorldTransform[0], b) + translate;
-
-
-
+	auto start = nanovdb::math::matMult(&indexToWorldTransform[0], a) + translate;
+	auto end = nanovdb::math::matMult(&indexToWorldTransform[0], b) + translate;
 
 
 	const auto bbox = grid->indexBBox();
@@ -162,9 +162,9 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 	const auto direction = end - start;
 	const auto length = direction.length();
 	const auto ray = nanovdb::Ray<float>(start, direction / length, 0.0f, length);
-	auto ijk = nanovdb::RoundDown<nanovdb::Coord>(ray.start());
+	auto ijk = nanovdb::math::RoundDown<nanovdb::Coord>(ray.start());
 
-	auto hdda = nanovdb::HDDA<nanovdb::Ray<float>>(ray, accessor.getDim(ijk, ray));
+	auto hdda = nanovdb::math::HDDA<nanovdb::math::Ray<float>>(ray, accessor.getDim(ijk, ray));
 
 	const auto opacity = 10.0f; // 0.01f;//1.0.f;
 	auto transmittance = 1.0f;
@@ -190,7 +190,7 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 OPTIX_INTERSECT_PROGRAM(nano_intersection)()
 {
 	const auto& geometry = owl::getProgramData<GeometryData>();
-	const auto* grid = reinterpret_cast<const nanovdb::FloatGrid*>(geometry.volume.grid);
+	const nanovdb::FloatGrid* grid = reinterpret_cast<const nanovdb::FloatGrid*>(geometry.volume.grid);
 
 	const auto rayOrigin = optixGetObjectRayOrigin();
 	const auto rayDirection = optixGetObjectRayDirection();
