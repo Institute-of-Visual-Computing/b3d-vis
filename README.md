@@ -31,12 +31,31 @@ Make sure `Optix7`, `TBB`, `CUDA` are installed on your system and the following
 # Build instruction
 
 ## Prerequisites
+Also make sure CMake Version 3.26 is installed.
+The project uses CMake presets, so depending on the system an correct preset must be chosen.
+
+For installing the [vcpkg](https://github.com/microsoft/vcpkg) packet manager, clone the repository and navigate to vcpkg folder:
+```
+git clone https://github.com/microsoft/vcpkg.git
+cd vcpkg
+```
+Than execute `.\bootstrap-vcpkg.bat` on Windows or `.\bootstrap-vcpkg.sh` on Linux.
 
 ## Build server application
 
+```
+cmake --preset "x64-release"
+```
+
 ## Build desktop viewer
 
+Make sure that CUDA and OptiX libraries are installed on your system correctly.
+For building the following variables must be set OPTIC_PATH and CUDA_PATH
+
+
+
 ### Windows
+
 
 ### Linux
 
