@@ -2,11 +2,11 @@
 
 #include "owl/owl_host.h"
 
+#include <boost/asio/execution/context.hpp>
 #include "SharedStructs.h"
-#include "boost/asio/execution/context.hpp"
 
-#include "features/RenderTargetFeature.h"
 #include "features/ColorMapFeature.h"
+#include "features/RenderTargetFeature.h"
 #include "features/TransferFunctionFeature.h"
 
 extern "C" char FitsNvdbRenderer_ptx[];
@@ -17,6 +17,7 @@ extern "C" uint32_t FitsNvdbRenderer_optixir_length;
 using namespace b3d::renderer;
 using namespace b3d::renderer::fitsNvdb;
 using namespace owl::common;
+using namespace b3d::profiler;
 
 namespace
 {
@@ -48,7 +49,7 @@ namespace
 
 		return { origin, lowerLeft, horizontal, vertical };
 	}
-}
+} // namespace
 
 b3d::renderer::FitsNvdbRenderer::FitsNvdbRenderer()
 {
@@ -82,8 +83,7 @@ auto b3d::renderer::FitsNvdbRenderer::onInitialize() -> void
 	// Geometry & Scene
 	// Define custom geometry type and set bounds program for that type
 	{
-		[[maybe_unused]] const auto volumeGeometryVars =
-			std::array{
+		[[maybe_unused]] const auto volumeGeometryVars = std::array{
 			OWLVarDecl{ "fitsBox", OWL_USER_TYPE(owl::box3f), OWL_OFFSETOF(FitsNvdbGeometry, fitsBox) },
 			OWLVarDecl{ "nvdbBox", OWL_USER_TYPE(owl::box3f), OWL_OFFSETOF(FitsNvdbGeometry, nvdbBox) },
 		};
@@ -94,7 +94,7 @@ auto b3d::renderer::FitsNvdbRenderer::onInitialize() -> void
 		owlGeomTypeSetIntersectProg(geometryType, 0, irModule, "intersect");
 		owlGeomTypeSetClosestHit(geometryType, 0, irModule, "closestHit");
 		owlGeomTypeSetBoundsProg(geometryType, module, "bounds");
-		
+
 		// Create geometry
 		owlBuildPrograms(owlContext);
 		context_.geometry = owlGeomCreate(owlContext, geometryType);
@@ -133,7 +133,8 @@ auto b3d::renderer::FitsNvdbRenderer::onInitialize() -> void
 			OWLVarDecl{ "sampleRemapping", OWL_FLOAT2, OWL_OFFSETOF(LaunchParams, sampleRemapping) },
 			OWLVarDecl{ "sampleIntegrationMethod", OWL_USER_TYPE(SampleIntegrationMethod),
 						OWL_OFFSETOF(LaunchParams, sampleIntegrationMethod) },
-			OWLVarDecl{ "volume", OWL_USER_TYPE(tools::renderer::nvdb::FitsNanoVdbVolume), OWL_OFFSETOF(LaunchParams, volume) }
+			OWLVarDecl{ "volume", OWL_USER_TYPE(tools::renderer::nvdb::FitsNanoVdbVolume),
+						OWL_OFFSETOF(LaunchParams, volume) }
 		};
 
 		context_.launchParams =
@@ -142,7 +143,7 @@ auto b3d::renderer::FitsNvdbRenderer::onInitialize() -> void
 
 	owlBuildPrograms(owlContext);
 	owlBuildPipeline(owlContext);
-	
+
 
 	owlGeomSetRaw(context_.geometry, "fitsBox", &fitsBox, 0);
 	owlGeomSetRaw(context_.geometry, "nvdbBox", &fitsBox, 0);
@@ -155,6 +156,8 @@ auto b3d::renderer::FitsNvdbRenderer::onInitialize() -> void
 
 auto b3d::renderer::FitsNvdbRenderer::onRender() -> void
 {
+	gpuTimers_.nextFrame();
+
 	// Becauase OWLBuildSBTFlags does not have NONE, we cant use the enum...
 	bool buildSBT = false;
 
@@ -205,14 +208,14 @@ auto b3d::renderer::FitsNvdbRenderer::onRender() -> void
 
 		owlInstanceGroupSetTransform(context_.worldGeometryGroup, 0, reinterpret_cast<const float*>(&groupTransform));
 		owlGroupRefitAccel(context_.worldGeometryGroup);
-	
+
 		debugDraw().drawBox(trs_.p / 2, 0, fitsBox.size(), owl::vec4f(0.1f, 0.82f, 0.15f, 1.0f), trs_.l);
 		debugInfo_.gizmoHelper->drawGizmo(volumeTransform->worldMatTRS);
 	}
 
 	auto renderTargetFeatureParams = renderTargetFeature_->getParamsData();
 	const auto framebufferSize = owl::vec2i{ static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.width),
-										static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.height) };
+											 static_cast<int32_t>(renderTargetFeatureParams.colorRT.extent.height) };
 
 	const auto view = renderData_->get<View>("view");
 
@@ -282,9 +285,14 @@ auto b3d::renderer::FitsNvdbRenderer::onRender() -> void
 
 	if (buildSBT)
 	{
-		owlBuildSBT(context_.owlContext);	
+		owlBuildSBT(context_.owlContext);
 	}
 
+	constexpr auto deviceId = 0;
+	const auto stream = owlParamsGetCudaStream(context_.launchParams, deviceId);
+	const auto record = gpuTimers_.record("basic owl rt", stream);
+
+	record.start();
 	owlAsyncLaunch2D(context_.rayGen, framebufferSize.x, framebufferSize.y, context_.launchParams);
 
 	if (view->mode == RenderMode::stereo && renderTargetFeatureParams.colorRT.extent.depth > 1)
@@ -292,8 +300,9 @@ auto b3d::renderer::FitsNvdbRenderer::onRender() -> void
 		owlParamsSetRaw(context_.launchParams, "cameraData", &rayCameraData[1]);
 		owlParamsSetRaw(context_.launchParams, "surfacePointer",
 						&renderTargetFeatureParams.colorRT.surfaces[1].surface);
-		owlAsyncLaunch2D(context_.rayGen, framebufferSize.x, framebufferSize.y, context_.launchParams);	
+		owlAsyncLaunch2D(context_.rayGen, framebufferSize.x, framebufferSize.y, context_.launchParams);
 	}
+	record.stop();
 }
 
 auto b3d::renderer::FitsNvdbRenderer::onDeinitialize() -> void
