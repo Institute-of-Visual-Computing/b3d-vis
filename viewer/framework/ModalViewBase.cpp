@@ -29,11 +29,10 @@ auto ModalViewBase::draw() -> void
 	}
 	const auto center = ImGui::GetMainViewport()->GetCenter();
 	ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-	ImGui::SetNextWindowSizeConstraints(minSize_, ImVec2{ -1.0, -1.0 });
+	ImGui::SetNextWindowSizeConstraints(ImVec2{ -1.0, -1.0 }, ImVec2{ -1.0, -1.0 });
 	// ImGui::OpenPopup(id_.c_str());
-	if (ImGui::BeginPopupModal(id_.c_str(), nullptr, ImGuiWindowFlags_NoResize))
+	if (ImGui::BeginPopupModal(id_.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-
 		onDraw();
 
 		switch (modalType_)
