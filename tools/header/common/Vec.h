@@ -76,7 +76,7 @@ namespace b3d::common
 	/// \return Index of the 3D array when flattened.
 	[[nodiscard]] inline auto flattenIndex(const Vec3I& axisSize, const Vec3I& coordinate) -> uint64_t
 	{
-		return flattenIndex(axisSize, coordinate.x, coordinate.y, coordinate.z);
+		return flattenIndex(axisSize, coordinate.x, coordinate.y, axisSize.z - coordinate.z - 1);
 	}
 
 #ifdef B3D_USE_NLOHMANN_JSON
