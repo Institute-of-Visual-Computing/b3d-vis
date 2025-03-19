@@ -352,13 +352,24 @@ auto ProjectExplorerView::onDraw() -> void
 															   static_cast<float>(request.subRegion.upper.y),
 															   static_cast<float>(request.subRegion.upper.z) } };
 
+						
+						const auto originalBoxSize = owl::vec3f{
+							static_cast<float>(-(project.fitsOriginProperties.axisDimensions[0] - 1)),
+							static_cast<float>(-(project.fitsOriginProperties.axisDimensions[1] - 1)),
+							static_cast<float>(project.fitsOriginProperties.axisDimensions[2] - 1),
+						};
+
+						auto boxTranslate = box.size() / 2.0f;
+						boxTranslate.z *= -1.0f;
+						boxTranslate += owl::vec3f{ box.lower.x, box.lower.y, -box.lower.z };
+						
+
 						constexpr auto blinkFrequency = 10.0f;
 						const auto blinkIntensity =
 							0.5f + 0.5f * glm::sin(ImGui::GetCurrentContext()->HoveredIdTimer * blinkFrequency);
-
-
 						applicationContext_->getDrawList()->drawBox(
-							volumeTransform_.p / 2, volumeTransform_.p, box.size(),
+							volumeTransform_.p / 2, originalBoxSize / 2.0f + boxTranslate,
+							box.size(),	
 							{ 1.0, 0.0, 0.0,
 							  1.0f -
 								  blinkIntensity * blinkIntensity * blinkIntensity * blinkIntensity * blinkIntensity },
