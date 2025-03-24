@@ -11,7 +11,4 @@ if(BUILD_SERVER)
 endif()
 add_subdirectory(projectServerClient)
 
-add_subdirectory(nanoCutterParser)
 add_subdirectory(runtimeDataset)
-
-add_subdirectory(fitsCutterNanoVdbConverter)

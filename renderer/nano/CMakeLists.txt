@@ -74,7 +74,7 @@ add_b3d_renderer(
 		nano-optixir
 		OpenVDB::nanovdb
 		imgui::imgui
-		B3D::Tools::NanoCutterParser
+		#B3D::Tools::NanoCutterParser
 		B3D::Tools::ColorMap
 		Tracy::TracyClient
 		B3D::Header::Shared::NvdbRendering
