@@ -108,7 +108,7 @@ target_link_libraries(${viewerTargetName}
 	glfw
 	glm::glm
 	imgui::imgui
-	B3D::Renderer::Library
+	B3D::Renderer::Framework
 	B3D::Renderer::Null
 	B3D::Renderer::CudaSurfaceObjectWriteTest
 	B3D::Renderer::SimpleTriangles

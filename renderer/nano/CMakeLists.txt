@@ -3,7 +3,7 @@ embed_ptx(
 		nano-ptx
 	PTX_LINK_LIBRARIES
 		owl::owl
-		B3D::Renderer::Library
+		B3D::Renderer::Framework
 	SOURCES
 		NanoRenderer.cu
 		SampleAccumulators.h
@@ -20,7 +20,7 @@ embed_optixir(
 		nano-optixir
 	OPTIXIR_LINK_LIBRARIES
 		owl::owl	
-		B3D::Renderer::Library
+		B3D::Renderer::Framework
 	SOURCES
 		NanoRenderer.cu
 		SampleAccumulators.h
@@ -36,8 +36,6 @@ set_source_files_properties(
 	NanoRenderer.cu
 	PROPERTIES CUDA_SOURCE_PROPERTY_FORMAT OBJ
  )
-
- 
 
 find_package(OpenVDB CONFIG REQUIRED COMPONENTS nanovdb)
 find_package(imgui CONFIG REQUIRED)
@@ -55,7 +53,7 @@ set_property(TARGET cudaCode PROPERTY FOLDER "Renderer/Nano")
 
 target_link_libraries(cudaCode
 	PRIVATE
-		B3D::Renderer::Library
+		B3D::Renderer::Framework
 )
 set_property(TARGET cudaCode PROPERTY CUDA_STANDARD 17)
 
@@ -76,7 +74,7 @@ add_b3d_renderer(
 		nano-optixir
 		OpenVDB::nanovdb
 		imgui::imgui
-		NanoCutterParser
+		B3D::Tools::NanoCutterParser
 		B3D::Tools::ColorMap
 		Tracy::TracyClient
 		B3D::Header::Shared::NvdbRendering

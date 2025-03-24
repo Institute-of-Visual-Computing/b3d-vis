@@ -1,4 +1,4 @@
-set(MODULE_NAME "B3DRendererLibrary")
+set(MODULE_NAME "B3DRendererFramework")
 
 set(SRC
 	Logging.cpp
@@ -47,6 +47,6 @@ target_link_libraries(${MODULE_NAME}
   PRIVATE
 	httplib::httplib
 )
-add_library(B3D::Renderer::Library ALIAS ${MODULE_NAME})
+add_library(B3D::Renderer::Framework ALIAS ${MODULE_NAME})
 
 set_property(TARGET ${MODULE_NAME} PROPERTY FOLDER "Renderer")

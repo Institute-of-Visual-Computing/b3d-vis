@@ -3,10 +3,10 @@ find_package(Stb REQUIRED)
 
 embed_ptx(
   OUTPUT_TARGET
-    "SimpleTriangles-ptx"
+    SimpleTriangles-ptx
   PTX_LINK_LIBRARIES
     owl::owl
-	B3D::Renderer::Library
+	B3D::Renderer::Framework
   SOURCES
     SimpleTrianglesDeviceCode.cu
 )
@@ -25,7 +25,7 @@ add_b3d_renderer(
 		deviceCode.h
 	LIBRARIES
 		B3D::Tools::ColorMap
-		"SimpleTriangles-ptx"
+		SimpleTriangles-ptx
 		imgui::imgui
 )
 

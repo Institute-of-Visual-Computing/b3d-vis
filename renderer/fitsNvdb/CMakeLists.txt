@@ -5,7 +5,7 @@ embed_optixir(
 		fitsNvdb-optixir
 	OPTIXIR_LINK_LIBRARIES
 		owl::owl	
-		B3D::Renderer::Library
+		B3D::Renderer::Framework
 	SOURCES
 		FitsNvdbRenderer.cu
 		SampleAccumulators.h
@@ -21,7 +21,7 @@ embed_ptx(
 		fitsNvdb-ptx
 	PTX_LINK_LIBRARIES
 		owl::owl
-		B3D::Renderer::Library
+		B3D::Renderer::Framework
 	SOURCES
 		FitsNvdbRenderer.cu
 		SampleAccumulators.h

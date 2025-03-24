@@ -43,7 +43,7 @@ function(add_b3d_renderer)
 
 	target_link_libraries(${MODULE_NAME}
 		PRIVATE
-			B3D::Renderer::Library
+			B3D::Renderer::Framework
 			"${TARGET_LIBRARIES}"
 	)
 	set_target_properties(${MODULE_NAME}

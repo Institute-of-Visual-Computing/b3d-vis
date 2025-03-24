@@ -13,3 +13,5 @@ endif()
 
 
 set_property(TARGET NanoCutterParser PROPERTY FOLDER "Tools")
+
+add_library(B3D::Tools::NanoCutterParser ALIAS NanoCutterParser)
