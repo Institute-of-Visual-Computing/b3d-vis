@@ -13,8 +13,8 @@ The following diagram visualize the software architectural overview:
 ![alt text](./doc/b3d_vis_architecture.png "Project Architectual Components")
 
 ## Work in progress showcase
-This showcase demo tease the source search workflow on a desktop viewer application.
-<video src="./doc/b3d_vis_desktop_viewer_demo_09_2024.mp4" width="100%" controls></video>
+This showcase demo video tease the source search workflow on a desktop viewer application.
+[![Viewer Showcase Video](https://img.youtube.com/vi/FwjPuBjKzdI/0.jpg)](https://www.youtube.com/watch?v=FwjPuBjKzdI "Viewer Showcase Video")
 
 # Quick start
 
