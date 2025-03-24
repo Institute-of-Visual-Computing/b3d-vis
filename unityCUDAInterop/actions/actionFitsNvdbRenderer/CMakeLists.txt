@@ -1,6 +1,6 @@
 set(MODULE_NAME "ActionFitsNvdbRenderer")
 add_library(${MODULE_NAME} SHARED
-	"src/ActionFitsNvdbRenderer.cpp"
+	src/ActionFitsNvdbRenderer.cpp
 )
 
 target_link_libraries(${MODULE_NAME}

@@ -12,9 +12,9 @@ target_sources(${MODULE_NAME}
 
 target_include_directories(${MODULE_NAME}
 	PUBLIC
-		"include"
+		include
 	PRIVATE
-		"src"
+		src
 )
 
 target_link_libraries(${MODULE_NAME}

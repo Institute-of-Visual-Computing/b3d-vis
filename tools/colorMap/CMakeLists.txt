@@ -1,12 +1,12 @@
 find_package(nlohmann_json CONFIG REQUIRED)
 
 add_library(ColorMap
-	"src/ColorMap.cpp"
+	src/ColorMap.cpp
 )
 
 target_include_directories(ColorMap
 	PUBLIC
-		"include"
+		include
 )
 
 target_link_libraries(ColorMap PRIVATE nlohmann_json::nlohmann_json)
