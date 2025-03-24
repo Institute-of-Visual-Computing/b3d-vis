@@ -1,4 +1,3 @@
-
 find_package(Tracy CONFIG REQUIRED)
 
 embed_optixir(
@@ -17,8 +16,6 @@ embed_optixir(
 set_property(TARGET fitsNvdb-optixir PROPERTY FOLDER "Renderer/PTX Targets")
 set_property(TARGET fitsNvdb-optixir_optixir PROPERTY FOLDER "Renderer/PTX Targets")
 
-
-
 embed_ptx(
 	OUTPUT_TARGET
 		fitsNvdb-ptx
@@ -36,14 +33,10 @@ embed_ptx(
 set_property(TARGET fitsNvdb-ptx PROPERTY FOLDER "Renderer/PTX Targets")
 set_property(TARGET fitsNvdb-ptx_ptx PROPERTY FOLDER "Renderer/PTX Targets")
 
-
-
-
 set_source_files_properties(
 	FitsNvdbRenderer.cu
 	PROPERTIES CUDA_SOURCE_PROPERTY_FORMAT OBJ
  )
-
 
 add_b3d_renderer(
 	NAME

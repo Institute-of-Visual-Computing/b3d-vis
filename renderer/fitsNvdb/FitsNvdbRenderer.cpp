@@ -1,8 +1,7 @@
 #include "FitsNvdbRenderer.h"
 
-#include "owl/owl_host.h"
+#include <owl/owl_host.h>
 
-#include <boost/asio/execution/context.hpp>
 #include "SharedStructs.h"
 
 #include "features/ColorMapFeature.h"
@@ -158,8 +157,8 @@ auto b3d::renderer::FitsNvdbRenderer::onRender() -> void
 {
 	gpuTimers_.nextFrame();
 
-	// Becauase OWLBuildSBTFlags does not have NONE, we cant use the enum...
-	bool buildSBT = false;
+	// Because OWLBuildSBTFlags does not have NONE, we cant use the enum...
+	auto buildSBT = false;
 
 	const auto runtimeVolumeData = renderData_->get<tools::renderer::nvdb::RuntimeVolumeData>("runtimeVolumeData");
 
@@ -203,11 +202,16 @@ auto b3d::renderer::FitsNvdbRenderer::onRender() -> void
 	{
 		const auto volumeTranslate = owl::AffineSpace3f::translate(volumeTranslateVec);
 
-		trs_ = volumeTransform->worldMatTRS * runtimeVolumeData->volume.renormalizeScale;
-		const auto groupTransform = trs_ * volumeTranslate;
+		const auto newTransform = volumeTransform->worldMatTRS * runtimeVolumeData->volume.renormalizeScale;
+		if (trs_ != newTransform)
+		{
+			trs_ = newTransform;
+			const auto groupTransform = trs_ * volumeTranslate;
 
-		owlInstanceGroupSetTransform(context_.worldGeometryGroup, 0, reinterpret_cast<const float*>(&groupTransform));
-		owlGroupRefitAccel(context_.worldGeometryGroup);
+			owlInstanceGroupSetTransform(context_.worldGeometryGroup, 0,
+										 reinterpret_cast<const float*>(&groupTransform));
+			owlGroupRefitAccel(context_.worldGeometryGroup);
+		}
 
 		debugDraw().drawBox(trs_.p / 2, 0, fitsBox.size(), owl::vec4f(0.1f, 0.82f, 0.15f, 1.0f), trs_.l);
 		debugInfo_.gizmoHelper->drawGizmo(volumeTransform->worldMatTRS);
@@ -245,7 +249,6 @@ auto b3d::renderer::FitsNvdbRenderer::onRender() -> void
 		}
 	}
 
-
 	if (currentFramebufferSize != framebufferSize)
 	{
 		currentFramebufferSize = framebufferSize;
@@ -253,7 +256,7 @@ auto b3d::renderer::FitsNvdbRenderer::onRender() -> void
 		buildSBT = true;
 	}
 
-	// Transferfunction
+	// Transfer function
 	{
 		auto transferFunctionParams = transferFunctionFeature_->getParamsData();
 		owlParamsSetRaw(context_.launchParams, "transferFunctionTexture",
@@ -273,15 +276,13 @@ auto b3d::renderer::FitsNvdbRenderer::onRender() -> void
 	}
 
 
-
-	// std::array<float, 2> sampleRemapping{ 0.0f, 0.1f }
+	//TODO: Controll this value over the dataset's maximum and minimum velues
 	owlParamsSet2f(context_.launchParams, "sampleRemapping", owl2f{ 0.0f, 0.1f });
 	const auto sampleIntegrationMethod = SampleIntegrationMethod::maximumIntensityProjection;
 	owlParamsSetRaw(context_.launchParams, "sampleIntegrationMethod", &sampleIntegrationMethod);
 
 	owlParamsSetRaw(context_.launchParams, "cameraData", &rayCameraData[0]);
 	owlParamsSetRaw(context_.launchParams, "surfacePointer", &renderTargetFeatureParams.colorRT.surfaces[0].surface);
-
 
 	if (buildSBT)
 	{

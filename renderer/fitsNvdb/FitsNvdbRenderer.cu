@@ -5,19 +5,17 @@
 #include <owl/owl.h>
 
 #include "SharedStructs.h"
-
-
 #include "Common.h"
 
-#include "owl/owl_device.h"
+#include <owl/owl_device.h>
+#include "OptixHelper.cuh"
+#include "FitsNvdbRenderer.h"
 
 #include <device_launch_parameters.h>
 
 #include <nanovdb/NanoVDB.h>
 #include <nanovdb/math/Ray.h>
 #include <nanovdb/math/HDDA.h>
-
-
 #include "SampleAccumulators.h"
 
 using namespace owl;
@@ -177,7 +175,7 @@ OPTIX_CLOSEST_HIT_PROGRAM(closestHit)()
 {
 
 	// const auto t1 = getPRD<float>();
-	const auto* grid = reinterpret_cast<nanovdb::FloatGrid*>(optixLaunchParams.volume.grid);
+	const nanovdb::FloatGrid* grid = reinterpret_cast<nanovdb::FloatGrid*>(optixLaunchParams.volume.grid);
 	const auto& accessor = grid->getAccessor();
 
 	auto transform = cuda::std::array<float, 12>{};
@@ -222,7 +220,6 @@ OPTIX_CLOSEST_HIT_PROGRAM(closestHit)()
 			value / (optixLaunchParams.sampleRemapping.y - optixLaunchParams.sampleRemapping.x);
 	};
 
-	const auto steps = 10.0f * prd.stepsScale;
 	const auto integrate = [&](auto sampleAccumulator)
 	{
 		sampleAccumulator.preAccumulate();
@@ -267,7 +264,7 @@ OPTIX_CLOSEST_HIT_PROGRAM(closestHit)()
 		}
 		break;
 	}
-	// result = { 1, 0, 0, 1 };
+	
 	prd.color = vec3f{ result.x, result.y, result.z };
 	prd.alpha = result.w;
 }
