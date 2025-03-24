@@ -66,10 +66,10 @@ add_b3d_renderer(
 		Nano
 	SOURCES
 		NanoRenderer.cpp
-		../nanoOutOfCore/Old_OpenFileDialog.cpp
+		Old_OpenFileDialog.cpp
 	HEADERS
 		NanoRenderer.h
-		../nanoOutOfCore/Old_OpenFileDialog.h
+		Old_OpenFileDialog.h
 	LIBRARIES
 		cudaCode
 		nano-ptx

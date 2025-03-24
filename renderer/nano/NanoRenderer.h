@@ -14,7 +14,7 @@
 #include "features/RenderSyncFeature.h"
 #include "features/RenderTargetFeature.h"
 #include "features/TransferFunctionFeature.h"
-#include "..//nanoOutOfCore/Old_OpenFileDialog.h"
+#include "Old_OpenFileDialog.h"
 #include "features/SoFiASubregionFeature.h"
 
 
