@@ -7,14 +7,9 @@ set(UNITY_ASSET_SUBDIRECTORY_INTEROP_ACTIONS "UnityCudaInterop/Actions")
 
 add_subdirectory(pluginInterface)
 add_subdirectory(actionInterface)
-
 add_subdirectory(logger)
-# add_subdirectory(runtime)
 add_subdirectory(pluginAPI)
-
 add_subdirectory(actions)
-
-
 add_subdirectory(interopHelper)
 
 

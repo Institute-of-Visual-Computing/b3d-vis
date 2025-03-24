@@ -1,13 +1,13 @@
 #include "FitsHelper.h"
 
-#include <nanovdb/util/CreateNanoGrid.h>
-#include <nanovdb/util/GridBuilder.h>
-#include <nanovdb/util/IO.h>
+
+#include <nanovdb/tools/CreateNanoGrid.h>
+#include <nanovdb/tools/GridBuilder.h>
 
 auto generateNanoVdb(const Vec3I boxSize, const float maskedValues, const float emptySpaceValue,
 					 const std::vector<float>& data) -> nanovdb::GridHandle<>
 {
-	auto func = [&](const nanovdb::Coord& ijk)
+	auto func = [&](const nanovdb::Coord& ijk) -> float
 	{
 		const auto i = ijk.x();
 		const auto j = ijk.y();
@@ -15,15 +15,15 @@ auto generateNanoVdb(const Vec3I boxSize, const float maskedValues, const float 
 		const auto index = static_cast<unsigned long long>(boxSize.x) * static_cast<unsigned long long>(boxSize.y) * k +
 			static_cast<unsigned long long>(boxSize.x) * j + i;
 		const auto v = data[index];
-		return v == maskedValues ? emptySpaceValue : v;
+		return v == maskedValues or isnan(v) ? emptySpaceValue : v;
 	};
 
 	const auto box =
 		nanovdb::CoordBBox(nanovdb::Coord(0, 0, 0), nanovdb::Coord(boxSize.x - 1, boxSize.y - 1, boxSize.z - 1));
-	nanovdb::build::Grid<float> grid(emptySpaceValue, "_nameless_", nanovdb::GridClass::FogVolume);
+	nanovdb::tools::build::Grid<float> grid(emptySpaceValue, "_nameless_", nanovdb::GridClass::FogVolume);
 	grid(func, box);
 
-	return nanovdb::createNanoGrid(grid);
+	return nanovdb::tools::createNanoGrid(grid);
 }
 
 auto generateNanoVdb(const Vec3I boxSize, const float emptySpaceValue,
@@ -38,8 +38,8 @@ auto generateNanoVdb(const Vec3I boxSize, const float emptySpaceValue,
 	};
 	const auto box =
 		nanovdb::CoordBBox(nanovdb::Coord(0, 0, 0), nanovdb::Coord(boxSize.x - 1, boxSize.y - 1, boxSize.z - 1));
-	nanovdb::build::Grid<float> grid(emptySpaceValue, "_nameless_", nanovdb::GridClass::FogVolume);
+	nanovdb::tools::build::Grid<float> grid(emptySpaceValue, "_nameless_", nanovdb::GridClass::FogVolume);
 	grid(func, box);
 
-	return nanovdb::createNanoGrid(grid);
+	return nanovdb::tools::createNanoGrid(grid);
 }

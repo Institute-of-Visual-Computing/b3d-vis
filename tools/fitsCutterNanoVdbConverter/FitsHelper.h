@@ -4,9 +4,9 @@
 #include <map>
 
 #include "Common.h"
-#include <nanovdb/util/CreateNanoGrid.h>
+#include <nanovdb/tools/CreateNanoGrid.h>
 
-#include "cfitsio/fitsio.h"
+#include <cfitsio/fitsio.h>
 
 struct MinMaxBounds
 {

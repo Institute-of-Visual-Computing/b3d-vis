@@ -2,12 +2,11 @@ find_package(imgui CONFIG REQUIRED)
 find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(glad CONFIG REQUIRED)
-#find_package(imguizmo CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(OpenVDB CONFIG REQUIRED COMPONENTS nanovdb)
 
-set(viewerTargetName viewer)
+set(viewerTargetName NanoViewer)
 add_executable(${viewerTargetName})
 
 IF (WIN32)
@@ -125,7 +124,6 @@ target_link_libraries(${viewerTargetName}
 	glad::glad
 	imguizmo_modefied
 	iconFontCppHeaders
-	#imguizmo::imguizmo
 	B3D::Tools::ColorMap
 	${CUDA_nvml_LIBRARY}
 	imcurve_modefied
@@ -138,10 +136,7 @@ target_link_libraries(${viewerTargetName}
 
 target_compile_definitions(${viewerTargetName} PUBLIC B3D_USE_NLOHMANN_JSON)
 
-option(ENABLE_NANO_PROFILE "Enables Tracy profiling" OFF)
-option(ENABLE_NANO_SANITIZERS "Enables address sanitizers" OFF)
-
-if(ENABLE_NANO_PROFILE)
+if(ENABLE_NANO_VIEWER_PROFILE)
 	find_package(Tracy CONFIG REQUIRED)
 	target_link_libraries(${viewerTargetName} PRIVATE Tracy::TracyClient)
 	target_compile_definitions(${viewerTargetName} PUBLIC -DNANO_PROFILE -DTRACY_ENABLE)
@@ -150,14 +145,11 @@ if(ENABLE_NANO_PROFILE)
 	)
 endif()
 
-if(ENABLE_NANO_SANITIZERS)
-	#target_compile_options(viewer PRIVATE -fsanitize=fuzzer)
-	#target_link_options(viewer PRIVATE -fsanitize=fuzzer)
-	target_compile_options(viewer PRIVATE -fsanitize=address)
-	target_link_options(viewer PRIVATE -fsanitize=address)
+if(ENABLE_NANO_VIEWER_SANITIZERS)
+	target_compile_options(${viewerTargetName}  PRIVATE -fsanitize=address)
+	target_link_options(${viewerTargetName}  PRIVATE -fsanitize=address)
 	add_definitions(-D_DISABLE_VECTOR_ANNOTATION)
 	add_definitions(-D_DISABLE_STRING_ANNOTATION)
-	#target_compile_definitions(viewer PRIVATE -D_CRTDBG_MAP_ALLOC)
 endif()
 
 target_include_directories(${viewerTargetName}
@@ -177,4 +169,4 @@ endif()
 add_custom_target(copy_viewer_resources ALL COMMAND ${commands})
 set_property(TARGET copy_viewer_resources PROPERTY FOLDER "Utility")
 
-add_dependencies(viewer copy_viewer_resources)
+add_dependencies(${viewerTargetName}  copy_viewer_resources)

@@ -3,8 +3,8 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <RendererBase.h>
 
-#include "nanovdb/util/CreateNanoGrid.h"
-#include "owl/owl_host.h"
+#include <nanovdb/tools/CreateNanoGrid.h>
+#include <owl/owl_host.h>
 
 #include <CudaGpuTimers.h>
 
