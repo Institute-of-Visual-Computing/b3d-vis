@@ -601,9 +601,10 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 			};
 
 			static auto actualRequests = std::vector<Request>{};
-
-			auto hasPendingRequests = false;
+			
+			auto hasPendingRequests = applicationContext_->serverClient_.getLastServerStatusState().busyState == b3d::tools::project::ServerBusyState::processing;
 			// update fake requests
+			/*
 			for (auto& request : actualRequests)
 			{
 				request.progress++;
@@ -616,26 +617,43 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 					hasPendingRequests = true;
 				}
 			}
-
-
+			*/
+			
 			ImGui::SameLine();
 			ImGui::SetNextItemAllowOverlap();
 			const auto pos = ImGui::GetCursorPos();
 			const auto spinnerRadius = ImGui::GetFontSize() * 0.25f;
 			const auto itemWidth = ImGui::GetStyle().FramePadding.x * 2 + spinnerRadius * 4;
+			
 			if (ImGui::Button("##requestQueue", ImVec2(itemWidth, 32)))
 			{
+				/*
 				const auto requestIndex = rand() % sampleRequest.size();
 				actualRequests.push_back(Request{ .label = sampleRequest[requestIndex] });
+				*/
 			}
 			if (ImGui::IsItemHovered())
 			{
 				if (ImGui::BeginTooltip())
 				{
 					ImGui::SetNextItemOpen(true);
+					if(hasPendingRequests)
+					{
+						if (ImGui::TreeNode("Request ongoing"))
+						{
+						}
+					}
+					else
+					{
+						if (ImGui::TreeNode("No pending requests"))
+						{
+						}
+					}
+					ImGui::TreePop();
+
+					/*
 					if (ImGui::TreeNode("Server Requests"))
 					{
-
 						for (const auto& [progress, label, status] : actualRequests)
 						{
 							ImGui::BulletText(
@@ -644,10 +662,11 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 						}
 						ImGui::TreePop();
 					}
+					*/
 					ImGui::EndTooltip();
 				}
 			}
-
+			
 			if (hasPendingRequests)
 			{
 				ImGui::SetCursorPos(pos + ImGui::GetStyle().FramePadding * 2);
