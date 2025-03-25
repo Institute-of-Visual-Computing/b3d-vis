@@ -10,12 +10,25 @@
 
 namespace b3d::tools::project
 {
-	enum class ServerStatusState
+	enum class ServerHealthState
 	{
 		ok,
 		unreachable,
 		unknown,
 		testing
+	};
+
+	enum class ServerBusyState
+	{
+		idle,
+		processing,
+		unknown
+	};
+
+	struct ServerState
+	{
+		ServerHealthState health{ServerHealthState::unknown};
+		ServerBusyState busyState{ServerBusyState::unknown};
 	};
 
 	/// This struct is used to store the connection information for the server
@@ -48,10 +61,10 @@ namespace b3d::tools::project
 		auto getConnectionInfo() const -> const ServerConnectionDescription&;
 
 		/// \brief Last known server status
-		auto getLastServerStatusState() -> ServerStatusState;
+		auto getLastServerStatusState() -> ServerState;
 
 		/// \brief Ask the client to request the server status.
-		auto getServerStatusStateAsync() const -> std::future<ServerStatusState>;
+		auto getServerStatusStateAsync() const -> std::future<ServerState>;
 
 		/// \brief Use the game loop to update the server status state in a heartbeat fashion
 		/// \param deltaTimeSeconds Time in seconds since the last call
@@ -65,6 +78,8 @@ namespace b3d::tools::project
 
 		auto downloadFileAsync(const std::string &fileUUID, const std::filesystem::path &targetDirectoryPath) const
 			-> std::future<std::filesystem::path>;
+
+		auto isServerBusy() const -> std::future<bool>;
 
 		/// \brief Start a search on the server
 		/// \param projectUUID 
@@ -80,7 +95,8 @@ namespace b3d::tools::project
 		static constexpr auto heartbeatIntervalSeconds = 5.0f;
 
 	private:
-		static auto getServerStatusState(ServerConnectionDescription connectionDescription) -> ServerStatusState;
+		static auto getServerStatusState(ServerConnectionDescription connectionDescription) -> ServerState;
+		static auto getIsServerBusy(ServerConnectionDescription connectionDescription) -> bool;
 		static auto getProjects(ServerConnectionDescription connectionDescription) -> std::optional<std::vector<Project>>;
 		static auto downloadFile(ServerConnectionDescription connectionDescription, std::string fileUUID,
 								 std::filesystem::path targetDirectoryPath) -> std::filesystem::path;
@@ -96,11 +112,12 @@ namespace b3d::tools::project
 			.name = "localhost"
 		};
 
-		ServerStatusState lastServerStatusState_{ ServerStatusState::unknown };
+		ServerState lastServerState_{ ServerHealthState::unknown, ServerBusyState::unknown };
 
 		bool lastHeartbeatDone_ = true ;
 		float secondsSinceLastHeartbeat_ = heartbeatIntervalSeconds;
 
-		std::future<ServerStatusState> heartbeatFuture_;
+		std::future<ServerState> heartbeatFuture_;
+
 	};
 }

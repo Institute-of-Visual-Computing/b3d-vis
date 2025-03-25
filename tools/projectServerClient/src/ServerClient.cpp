@@ -21,7 +21,7 @@ ServerClient::ServerClient(ServerConnectionDescription serverConnectionDescripti
 auto ServerClient::setNewConnectionInfo(ServerConnectionDescription serverConnectionDescription) -> void
 {
 	serverConnectionDescription_ = std::move(serverConnectionDescription);
-	lastServerStatusState_ = ServerStatusState::unknown;
+	lastServerState_.health = ServerHealthState::unknown;
 	lastHeartbeatDone_ = true;
 	updateServerStatusState(100.0f);
 }
@@ -31,27 +31,38 @@ auto ServerClient::getConnectionInfo() const -> const ServerConnectionDescriptio
 	return serverConnectionDescription_;
 }
 
-auto ServerClient::getLastServerStatusState() -> ServerStatusState
+auto ServerClient::getLastServerStatusState() -> ServerState
 {
+	/*
 	if (heartbeatFuture_.valid())
 	{
 		if (heartbeatFuture_.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
 		{
-			lastServerStatusState_ = heartbeatFuture_.get();
+			lastServerState_ = heartbeatFuture_.get();
 			lastHeartbeatDone_ = true;
 			secondsSinceLastHeartbeat_ = 0.0f;
 		}
 	}
-	return lastServerStatusState_;
+	*/
+	return lastServerState_;
 }
 
-auto ServerClient::getServerStatusStateAsync() const -> std::future<ServerStatusState>
+auto ServerClient::getServerStatusStateAsync() const -> std::future<ServerState>
 {
 	return std::async(std::launch::async, [this]() { return getServerStatusState(serverConnectionDescription_); });
 }
 
 auto ServerClient::updateServerStatusState(float deltaTimeSeconds) -> void
 {
+	if (heartbeatFuture_.valid())
+	{
+		if (heartbeatFuture_.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+		{
+			lastServerState_ = heartbeatFuture_.get();
+			lastHeartbeatDone_ = true;
+			secondsSinceLastHeartbeat_ = 0.0f;
+		}
+	}
 	// Start heartbeat heartBeatIntervalSeconds_ Seconds after last heartbeat returned.
 	if (lastHeartbeatDone_)
 	{
@@ -61,8 +72,7 @@ auto ServerClient::updateServerStatusState(float deltaTimeSeconds) -> void
 	if (secondsSinceLastHeartbeat_ >= ServerClient::heartbeatIntervalSeconds && lastHeartbeatDone_)
 	{
 		lastHeartbeatDone_ = false;
-		lastServerStatusState_ =
-			lastServerStatusState_ == ServerStatusState::ok ? ServerStatusState::ok : ServerStatusState::testing;
+		lastServerState_.health = lastServerState_.health == ServerHealthState::ok ? ServerHealthState::ok : ServerHealthState::testing;
 		heartbeatFuture_ = getServerStatusStateAsync();
 	}
 }
@@ -87,36 +97,74 @@ auto ServerClient::downloadFileAsync(const std::string& fileUUID, const std::fil
 	return std::async(std::launch::async,[this, fileUUID, targetDirectoryPath]() { return downloadFile(serverConnectionDescription_, fileUUID, targetDirectoryPath); });
 }
 
+auto ServerClient::isServerBusy() const -> std::future<bool>
+{
+	return std::async(std::launch::async, [this]()
+	{
+
+
+		return false;
+	}
+	);
+}
+
 auto ServerClient::startSearchAsync(const std::string& projectUUID, const sofia::SofiaParams& params,
-	bool force) -> std::future<std::string>
+                                    bool force) -> std::future<std::string>
 {
 	return std::async(std::launch::async,
 					  [this, projectUUID, params, force]()
-					  { return startSearch(serverConnectionDescription_, projectUUID, params, force); });
+					  {
+						  return startSearch(serverConnectionDescription_, projectUUID, params, force);
+					  });
 }
 
-auto ServerClient::getServerStatusState(const ServerConnectionDescription connectionDescription) -> ServerStatusState
+auto ServerClient::getServerStatusState(const ServerConnectionDescription connectionDescription) -> ServerState
 {
-	auto statusState = ServerStatusState::testing;
+	ServerState statusState;
 	httplib::Client client(connectionDescription.ipHost, std::stoi(connectionDescription.port));
 	auto res = client.Get("/status");
 	if (!res)
 	{
-		statusState = ServerStatusState::unreachable;
+		statusState.health = ServerHealthState::unreachable;
 	}
 	else if (res.error() != httplib::Error::Success)
 	{
-		statusState = ServerStatusState::unreachable;
+		statusState.health = ServerHealthState::unreachable;
 	}
 	else if (res->status == 200)
 	{
-		statusState = ServerStatusState::ok;
+		statusState.health = ServerHealthState::ok;
 	}
 	else
 	{
-		statusState = ServerStatusState::unknown;
+		statusState.health = ServerHealthState::unknown;
 	}
+
+	if (statusState.health == ServerHealthState::ok)
+	{
+		statusState.busyState =
+			getIsServerBusy(connectionDescription) ? ServerBusyState::processing : ServerBusyState::idle;
+	}
+
 	return statusState;
+}
+
+auto ServerClient::getIsServerBusy(ServerConnectionDescription connectionDescription) -> bool
+{
+	httplib::Client client(connectionDescription.ipHost, std::stoi(connectionDescription.port));
+	auto res = client.Get("/requestRunning");
+
+	if (res && res->status == 200)
+	{
+
+		const auto jsonObj = nlohmann::json::parse(res->body);
+		int requestCount = jsonObj["running_requests"];
+		if (requestCount > 0)
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 auto ServerClient::getProjects(const ServerConnectionDescription connectionDescription)
