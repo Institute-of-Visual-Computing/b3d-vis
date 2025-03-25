@@ -168,7 +168,7 @@ auto ProjectExplorerView::onDraw() -> void
 
 
 	const auto isConnectedToAnyServer =
-		applicationContext_->serverClient_.getLastServerStatusState() == b3d::tools::project::ServerStatusState::ok;
+		applicationContext_->serverClient_.getLastServerStatusState().health == b3d::tools::project::ServerHealthState::ok;
 	const auto serverNameText = std::format(
 		"Server: {}",
 		isConnectedToAnyServer ? applicationContext_->serverClient_.getConnectionInfo().name : "Disconnected!");
@@ -213,8 +213,8 @@ auto ProjectExplorerView::onDraw() -> void
 	}
 	if (refreshProjectsFuture_.valid() and
 		(isConnectedToAnyServer or
-		 applicationContext_->serverClient_.getLastServerStatusState() ==
-			 b3d::tools::project::ServerStatusState::testing))
+		 applicationContext_->serverClient_.getLastServerStatusState().health ==
+			 b3d::tools::project::ServerHealthState::testing))
 	{
 		if (refreshProjectsFuture_.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
 		{

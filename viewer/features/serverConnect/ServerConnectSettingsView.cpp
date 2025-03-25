@@ -200,25 +200,25 @@ auto ServerConnectSettingsView::onDraw() -> void
 	if (isServerSelected())
 	{
 		ImGui::SameLine();
-		switch (serverClient_.getLastServerStatusState())
+		switch (serverClient_.getLastServerStatusState().health)
 		{
 
-		case b3d::tools::project::ServerStatusState::ok:
+		case b3d::tools::project::ServerHealthState::ok:
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4{ 0.1f, 0.7f, 0.1f, 1.0f });
 			ImGui::Text(ICON_LC_CIRCLE_CHECK);
 			ImGui::PopStyleColor();
 			break;
-		case b3d::tools::project::ServerStatusState::unreachable:
+		case b3d::tools::project::ServerHealthState::unreachable:
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4{ 0.7f, 0.1f, 0.1f, 1.0f });
 			ImGui::Text(ICON_LC_SERVER_CRASH);
 			ImGui::PopStyleColor();
 			break;
-		case b3d::tools::project::ServerStatusState::unknown:
+		case b3d::tools::project::ServerHealthState::unknown:
 			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4{ 0.7f, 0.7f, 0.1f, 1.0f });
 			ImGui::Text(ICON_LC_TRIANGLE_ALERT);
 			ImGui::PopStyleColor();
 			break;
-		case b3d::tools::project::ServerStatusState::testing:
+		case b3d::tools::project::ServerHealthState::testing:
 			ImSpinner::SpinnerRotateSegments("server_test_spinner", 8, 2.0f);
 			break;
 		}

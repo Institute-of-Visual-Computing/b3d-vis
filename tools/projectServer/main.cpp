@@ -39,7 +39,6 @@ std::mutex currentRequestMutex;
 
 auto processCurrentRequest() -> void
 {
-
 	std::lock_guard lock(currentRequestMutex);
 	LOG_INFO << "Processing current request";
 
@@ -141,6 +140,24 @@ auto getStatus(const httplib::Request& req, httplib::Response& res) -> void
 
 	nlohmann::json retJ;
 	retJ["status"] = "OK";
+	res.set_content(retJ.dump(), "application/json");
+}
+
+auto getRequestRunning(const httplib::Request& req, httplib::Response& res) -> void
+{
+	LOG_INFO << req.path << " from " << req.remote_addr;
+	processCurrentRequest();
+
+	nlohmann::json retJ;
+
+	if (currentRequest == nullptr)
+	{
+		retJ["running_requests"] = 0;
+	}
+	else
+	{
+		retJ["running_requests"] = 1;
+	}
 	res.set_content(retJ.dump(), "application/json");
 }
 
@@ -744,6 +761,7 @@ auto main(const int argc, char** argv) -> int
 		});
 
 	svr.Get("/status", &getStatus);
+	svr.Get("/requestRunning", &getRequestRunning);
 	// svr.Get("/catalog", &getCatalog);
 	svr.Get("/projects", &getProjects);
 	svr.Get("/project/:uuid", &getProjectFromUuid);

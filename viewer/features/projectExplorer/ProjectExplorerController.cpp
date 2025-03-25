@@ -120,7 +120,7 @@ auto ProjectExplorerController::update() -> void
 	}
 
 	const auto isConnectedToAnyServer =
-		applicationContext_->serverClient_.getLastServerStatusState() == b3d::tools::project::ServerStatusState::ok;
+		applicationContext_->serverClient_.getLastServerStatusState().health == b3d::tools::project::ServerHealthState::ok;
 
 	if (not isConnectedToAnyServer)
 	{
