@@ -197,16 +197,15 @@ auto SoFiaSearchView::onDraw() -> void
 	model_.params.input.region.lower =
 		owl::vec3i{ static_cast<int>(model_.selectedLocalRegion.lower.x * dimensions[0]),
 					static_cast<int>(model_.selectedLocalRegion.lower.y * dimensions[1]),
-					static_cast<int>(model_.selectedLocalRegion.lower.z * dimensions[2]) };
+					static_cast<int>(dimensions[2] - model_.selectedLocalRegion.upper.z * dimensions[2]) };
 
 	model_.params.input.region.upper =
 		owl::vec3i{ static_cast<int>(model_.selectedLocalRegion.upper.x * dimensions[0]),
 					static_cast<int>(model_.selectedLocalRegion.upper.y * dimensions[1]),
-					static_cast<int>(model_.selectedLocalRegion.upper.z * dimensions[2]) };
+					static_cast<int>(dimensions[2]  - model_.selectedLocalRegion.lower.z * dimensions[2]) };
 
 	model_.params.input.region.lower = owl::clamp(model_.params.input.region.lower, model_.params.input.region.upper);
-	model_.params.input.region.upper =
-		owl::clamp(model_.params.input.region.upper, model_.params.input.region.lower, dimensions);
+	model_.params.input.region.upper = owl::clamp(model_.params.input.region.upper, model_.params.input.region.lower, dimensions);
 
 	/* Not used
 	if (ImGui::CollapsingHeader("Pipeline", ImGuiTreeNodeFlags_None))
