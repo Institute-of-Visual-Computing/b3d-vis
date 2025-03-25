@@ -18,14 +18,7 @@ This showcase demo video tease the source search workflow on a desktop viewer ap
 
 # Quick start
 
-Make sure `Optix7`, `TBB`, `CUDA` are installed on your system and the following paths are set:
-
-- OPTIX_PATH
-- TBB_PATH
-- VCPKG_ROOT
-
-`vcpkg`packet manager is required.
-
+Download executables from releases section and run it.
 
 
 # Build instruction
@@ -41,27 +34,66 @@ cd vcpkg
 ```
 Than execute `.\bootstrap-vcpkg.bat` on Windows or `.\bootstrap-vcpkg.sh` on Linux.
 
-## Build server application
+## Configure CMake
+Make sure that CUDA and OptiX libraries are installed on your system correctly.
+
+The SDK's can be downloaded from https://developer.nvidia.com/cuda-downloads and https://developer.nvidia.com/designworks/optix/download
+
+After the install make sure that the environment variables OPTIX_PATH and CUDA_PATH are set properly, alternatively this variables can be provided manually into a CMake configuration.
+
+Next we move to the project build steps.
 
 ```
-cmake --preset "x64-release"
+git clone https://github.com/Institute-of-Visual-Computing/b3d-vis.git --recursive
 ```
+or update modules manually with
+```
+git submodule init
+```
+```
+git submodule update --init --recursive
+```
+The project uses CMake presets, so we have following options to choose from:
+
+>- x64-debug
+>- x64-release
+>- x64-debug-profiling
+>- x64-release-profiling
+
+
+The profiling related presets enables Tracy profiler performance metrics collection. It is usually only used for development.
 
 ## Build desktop viewer
 
-Make sure that CUDA and OptiX libraries are installed on your system correctly.
-For building the following variables must be set OPTIC_PATH and CUDA_PATH
+```
+cd b3d-vis
+cmake --build --preset x64-release
+```
 
-
+than switch to default build folder and run the viewer with following arguments:
 
 ### Windows
-
+```
+cd out/build/x64-release/viewer
+./NanoViewer.exe --renderer FitsNvdbRenderer
+```
 
 ### Linux
+```
+cd out/build/x64-release/viewer
+NanoViewer --renderer FitsNvdbRenderer
+```
+
+## Build server application
+
+```
+cd b3d-vis
+cmake --build --preset x64-release
+```
 
 ## Build Unity Extension
+The unity extension requires additional option BUILD_UNITY_EXTENSION and optionally for the install target you can proide a install path targeting your unity project. See Unity example project https://github.com/Institute-of-Visual-Computing/b3d-vis-collaborative-demo
 
-## Build Unity VR Application
-
-# License
-For this project, the license, as found in the new repository, applies.
+```
+cmake --build --preset x64-release -D BUILD_UNITY_EXTENSION=ON -D UNITY_PROJECT_ROOT_DIR=<path_to_unity_project>
+```
