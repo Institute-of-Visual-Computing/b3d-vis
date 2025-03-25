@@ -22,8 +22,7 @@
       "name": "openvdb",
       "default-features": false,
       "features": [
-        "nanovdb",
-        "tools"
+        "nanovdb"
       ]
     },
     {
@@ -56,5 +55,5 @@
     "stduuid",
     "plog"
   ],
-  "builtin-baseline": "f0c8848cde589649bca3ab3649668540403786ce"
+  "builtin-baseline": "9df46ca3f4ec3bd05984e5668218630c52ea302a"
 }

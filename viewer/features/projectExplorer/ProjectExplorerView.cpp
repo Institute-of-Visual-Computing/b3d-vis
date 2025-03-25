@@ -266,6 +266,17 @@ auto ProjectExplorerView::onDraw() -> void
 					applicationContext_->selectedProject_->requests[0].result.nanoResult.resultFile);
 			}
 			const auto& project = model_.projects->at(selectedProjectItemIndex_);
+
+			if (project.requests.size() != loadAndShowFileFuturePerRequest.size())
+			{
+				static std::vector<RequestLoad> tmp{};
+				tmp.resize(project.requests.size());
+				for (auto i = 0; i < loadAndShowFileFuturePerRequest.size(); i++)
+				{
+					tmp[i] = loadAndShowFileFuturePerRequest[i];
+				}
+				loadAndShowFileFuturePerRequest = tmp;
+			}
 			ImGui::Separator();
 			ImGui::Text(std::format("Selected Dataset: {}", project.projectName).c_str());
 			ImGui::Separator();

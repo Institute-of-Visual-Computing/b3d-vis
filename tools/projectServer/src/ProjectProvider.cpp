@@ -9,18 +9,17 @@
 
 #include "ProjectProvider.h"
 
-auto b3d::tools::projectServer::ProjectProvider::saveRootCatalog() -> bool
+auto b3d::tools::projectServer::ProjectProvider::getCatalog(
+	const std::string& projectUUID) -> project::catalog::FileCatalog&
 {
-	const auto catalogFilePath = rootPath_ / "catalog.json";
-
-	std::ofstream ofs(catalogFilePath, std::ofstream::trunc);
-
-	nlohmann::json j = catalog_;
-	ofs << std::setw(4) << j << std::endl;
-	ofs.close();
-	return true;
+	if (!knownFileCatalogs_.contains(projectUUID))
+	{
+		auto projectFileCatalog = project::catalog::FileCatalog::createOrLoadCatalogInDirectory(
+			knownProjects_[projectUUID].projectPathAbsolute);
+		knownFileCatalogs_.insert(std::make_pair(projectUUID, projectFileCatalog));
+	}
+	return knownFileCatalogs_[projectUUID];
 }
-
 
 auto b3d::tools::projectServer::ProjectProvider::saveProject(const std::string& projectUUID) -> bool
 {
@@ -43,6 +42,8 @@ auto b3d::tools::projectServer::ProjectProvider::findProjects() -> void
 {
 	for (const auto& dirEntry : std::filesystem::recursive_directory_iterator(getProjectsPathAbsolute()))
 	{
+		bool foundProject = false;
+		std::string projectUUID;
 		if (dirEntry.is_regular_file() && dirEntry.path().filename() == "project.json")
 		{
 			try
@@ -52,15 +53,15 @@ auto b3d::tools::projectServer::ProjectProvider::findProjects() -> void
 				f.close();
 				auto project = data.get<project::Project>();
 
-				auto fitsRootPath = catalog_.getFilePathAbsolute(project.fitsOriginUUID);
-				project.fitsOriginProperties = b3d::tools::fits::getFitsProperties(fitsRootPath);
-
 				// Read Props for fits
 				// project.fitsOriginProperties.unit
-								
+
 				project.projectPathAbsolute = dirEntry.path().parent_path();
+				projectUUID = project.projectUUID;
 				knownProjects_.insert(std::make_pair(project.projectUUID, project));
 				saveProject(project.projectUUID);
+				foundProject = true;
+
 			}
 			catch (nlohmann::json::type_error& e)
 			{
@@ -76,79 +77,38 @@ auto b3d::tools::projectServer::ProjectProvider::findProjects() -> void
 				std::cout << e.what();
 			}
 		}
+		if (foundProject)
+		{
+			auto catalog = project::catalog::FileCatalog::createOrLoadCatalogInDirectory(dirEntry.path().parent_path());
+
+			knownFileCatalogs_.insert(std::make_pair(projectUUID, catalog));
+		}
 	}
 }
 
-auto b3d::tools::projectServer::ProjectProvider::generateCatalog() -> void
+auto b3d::tools::projectServer::ProjectProvider::clearMissingRequests() -> void
 {
-	project::catalog::FileCatalog c;
-	c.setRootPath(rootPath_);
-
-	const auto dataPath = getDataPathAbsolute();
-	const auto catalogFilePath = rootPath_ / "catalog.json";
-
-	if (!exists(dataPath))
+	for (auto& project : knownProjects_)
 	{
-		std::filesystem::create_directories(dataPath);
+		auto& requests = project.second.requests;
+		std::erase_if(requests,
+		              [&](const project::Request& request) {
+			              return !std::filesystem::exists(project.second.projectPathAbsolute /
+				              "requests" / request.uuid);
+		              });
 	}
-	if (exists(catalogFilePath))
-	{
-		try
-		{
-			std::ifstream f(catalogFilePath);
-
-			const auto data = nlohmann::json::parse(f);
-			c = data.get<project::catalog::FileCatalog>();
-		}
-		catch (nlohmann::json::type_error& e)
-		{
-			// std::cout << e.what();
-			// [json.exception.type_error.304] cannot use at() with object
-		}
-		catch (nlohmann::json::parse_error& e)
-		{
-			// std::cout << e.what();
-		}
-		catch (nlohmann::json::exception& e)
-		{
-			// std::cout << e.what();
-		}
-	}
-
-	c.setRootPath(rootPath_);
-	c.removeInvalidMappings();
-	c.relativeMappings();
-
-	for (const auto& dirEntry : std::filesystem::recursive_directory_iterator(getDataPathAbsolute()))
-	{
-		if (dirEntry.is_regular_file() &&
-			(dirEntry.path().extension() == ".fits" || dirEntry.path().extension() == ".nvdb"))
-		{
-			c.addFilePathAbsolute(dirEntry.path());
-		}
-	}
-
-	for (const auto& dirEntry : std::filesystem::recursive_directory_iterator(getProjectsPathAbsolute()))
-	{
-		if (dirEntry.is_regular_file() &&
-			(dirEntry.path().extension() == ".fits" || dirEntry.path().extension() == ".nvdb"))
-		{
-			c.addFilePathAbsolute(dirEntry.path());
-		}
-	}
-
-	catalog_ = c;
-	saveRootCatalog();
 }
 
 auto b3d::tools::projectServer::ProjectProvider::flagInvalidFilesInProjects() -> void
 {
 	for (auto& project : knownProjects_) {
+
+		auto&& projectCatalog = getCatalog(project.first);
 		for (auto& request : project.second.requests)
 		{
 			if (request.result.sofiaResult.wasSuccess() || request.result.sofiaResult.resultFile.empty())
 			{
-				const auto filePath = catalog_.getFilePathAbsolute(request.result.sofiaResult.resultFile);
+				const auto filePath = projectCatalog.getFilePathAbsolute(request.result.sofiaResult.resultFile);
 				if (filePath.empty())
 				{
 					request.result.sofiaResult.fileAvailable = false;
@@ -161,7 +121,7 @@ auto b3d::tools::projectServer::ProjectProvider::flagInvalidFilesInProjects() ->
 
 			if (request.result.nanoResult.wasSuccess() || request.result.nanoResult.resultFile.empty())
 			{
-				const auto filePath = catalog_.getFilePathAbsolute(request.result.nanoResult.resultFile);
+				const auto filePath = projectCatalog.getFilePathAbsolute(request.result.nanoResult.resultFile);
 				if (filePath.empty())
 				{
 					request.result.nanoResult.fileAvailable = false;

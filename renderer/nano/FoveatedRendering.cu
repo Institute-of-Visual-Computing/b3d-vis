@@ -102,17 +102,17 @@ auto FoveatedRenderingFeature::gui() -> void
 	mouseScreenSpace.x = mousePosition.x / static_cast<float>(displaySize.x) * 2.0f - 1.0f;
 	mouseScreenSpace.y = (1.0 - mousePosition.y / static_cast<float>(displaySize.y)) * 2.0f - 1.0f;
 
-	if (ImGui::GetIO().KeysDown[ImGuiKey_LeftArrow])
+	if (ImGui::IsKeyDown(ImGuiKey_LeftArrow))
 	{
 		controlData_->leftEyeGazeScreenSpace = mouseScreenSpace;
 	}
 
-	if (ImGui::GetIO().KeysDown[ImGuiKey_RightArrow])
+	if (ImGui::IsKeyDown(ImGuiKey_RightArrow))
 	{
 		controlData_->rightEyeGazeScreenSpace = mouseScreenSpace;
 	}
 
-	if (ImGui::GetIO().KeysDown[ImGuiKey_Space])
+	if (ImGui::IsKeyDown(ImGuiKey_Space))
 	{
 		controlData_->leftEyeGazeScreenSpace = mouseScreenSpace;
 		controlData_->rightEyeGazeScreenSpace = mouseScreenSpace;

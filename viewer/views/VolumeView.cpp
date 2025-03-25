@@ -33,8 +33,8 @@
 
 namespace
 {
-	auto computeViewProjectionMatrixFromCamera(const Camera& camera, const int width, const int height)
-		-> VolumeView::CameraMatrices
+	auto computeViewProjectionMatrixFromCamera(const Camera& camera, const int width,
+											   const int height) -> VolumeView::CameraMatrices
 	{
 		const auto aspect = width / static_cast<float>(height);
 
@@ -59,6 +59,9 @@ VolumeView::VolumeView(ApplicationContext& appContext, Dockspace* dockspace)
 						   camera_.getFovYInDegrees());
 
 	cameraLastFrame_ = camera_;
+
+	orbitController_.setCamera(&camera_);
+	fpsController_.setCamera(&camera_);
 
 	flyAnimationSettings_.radius = 3.0f;
 	animator_.addPropertyAnimation(
@@ -161,138 +164,13 @@ auto VolumeView::onDraw() -> void
 	ImGui::InvisibleButton("##volumeViewport", viewportSize_,
 						   ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
 
-	const auto viewportIsFocused = ImGui::IsItemFocused();
-	static auto moveCameraFaster = false;
-	auto& io = ImGui::GetIO();
 
-
-	class CameraController
-	{
-	public:
-		virtual ~CameraController()
-		{
-		}
-
-	private:
-		Camera* camera_{};
-	};
-
-	class FirstPersonCameraController : public CameraController
-	{
-	private:
-	};
-
-	class OrbitCameraController : public CameraController
-	{
-	};
-
-	class AnimatedCameraController : public CameraController
-	{
-	public:
-		auto animatePosition(const glm::vec3& position) -> void
-		{
-			// camera_->position_ = position;
-		}
-		auto animateOrientation(const glm::quat& orientation) -> void
-		{
-		}
-		auto enableTwinning() -> void
-		{
-			isTwinningEnabled_ = true;
-		}
-		auto disableTwinning() -> void
-		{
-			isTwinningEnabled_ = false;
-		}
-
-	private:
-		bool isTwinningEnabled_{ false };
-		glm::vec3 desiredPosition_{};
-		glm::quat desiredOrientation_{};
-	};
-
-	constexpr auto fastSpeed = 25.0f;
-	auto cameraMoveAcceleration = glm::vec3{ 0 };
-	if (viewportIsFocused)
-	{
-
-		if (ImGui::IsKeyDown(ImGuiKey_LeftShift))
-		{
-			moveCameraFaster = true;
-		}
-
-		if (ImGui::IsKeyReleased(ImGuiKey_LeftShift))
-		{
-			moveCameraFaster = false;
-		}
-
-		if (ImGui::IsKeyDown(ImGuiKey_W))
-		{
-			cameraMoveAcceleration =
-				camera_.forward_ * camera_.movementSpeedScale_ * (moveCameraFaster ? fastSpeed : 1.0f);
-		}
-		if (ImGui::IsKeyDown(ImGuiKey_S))
-		{
-			cameraMoveAcceleration =
-				-camera_.forward_ * camera_.movementSpeedScale_ * (moveCameraFaster ? fastSpeed : 1.0f);
-		}
-		if (ImGui::IsKeyDown(ImGuiKey_A))
-		{
-			cameraMoveAcceleration = -glm::normalize(glm::cross(camera_.forward_, camera_.getUp())) *
-				camera_.movementSpeedScale_ * (moveCameraFaster ? fastSpeed : 1.0f);
-		}
-		if (ImGui::IsKeyDown(ImGuiKey_D))
-		{
-			cameraMoveAcceleration = glm::normalize(glm::cross(camera_.forward_, camera_.getUp())) *
-				camera_.movementSpeedScale_ * (moveCameraFaster ? fastSpeed : 1.0f);
-		}
-	}
-
-	auto delta = io.MouseDelta;
-	delta.x *= -1.0;
-
-
-	if (ImGui::IsItemActive())
-	{
-		if (!ImGuizmo::IsUsing())
-		{
-			if (ImGui::IsMouseDragging(ImGuiMouseButton_Right))
-			{
-				const auto right = glm::normalize(glm::cross(camera_.forward_, camera_.getUp()));
-				cameraMoveAcceleration += -glm::normalize(glm::cross(camera_.forward_, right)) *
-					camera_.movementSpeedScale_ * (moveCameraFaster ? fastSpeed : 1.0f) * delta.y;
-
-				cameraMoveAcceleration +=
-					right * camera_.movementSpeedScale_ * (moveCameraFaster ? fastSpeed : 1.0f) * delta.x;
-			}
-			if (ImGui::IsMouseDragging(ImGuiMouseButton_Left))
-			{
-				const auto up = camera_.getUp();
-				const auto right = glm::normalize(glm::cross(up, camera_.forward_));
-
-				const auto f = glm::normalize(camera_.forward_ + right * delta.y + up * delta.x);
-
-				auto rotationAxis = glm::normalize(glm::cross(f, camera_.forward_));
-
-				if (glm::length(rotationAxis) >= 0.001f)
-				{
-					constexpr auto sensitivity = 0.1f;
-					const auto rotation =
-						glm::rotate(glm::identity<glm::mat4>(),
-									glm::radians(glm::length(glm::vec2{ delta.x, delta.y }) * sensitivity), f);
-					camera_.forward_ = glm::normalize(glm::vec3(rotation * glm::vec4(camera_.forward_, 0.0f)));
-					camera_.right_ = glm::normalize(glm::cross(camera_.forward_, up));
-				}
-			}
-		}
-	}
-
-	camera_.position_ += cameraMoveAcceleration * io.DeltaTime;
-
+	// camera control
+	getCameraController(cameraControllerType_)->update();
 
 	ImGui::SetCursorScreenPos(p);
 	ImGui::SetNextItemAllowOverlap();
-	ImGui::Image(reinterpret_cast<ImTextureID>(graphicsResources_.framebufferTexture), viewportSize_, { 0.0f, 1.0f },
+	ImGui::Image((ImTextureID)graphicsResources_.framebufferTexture, viewportSize_, { 0.0f, 1.0f },
 				 { 1.0f, 0.0f });
 
 	if (viewerSettings_.enableDebugDraw)
@@ -309,6 +187,8 @@ auto VolumeView::onDraw() -> void
 		ImGui::SetNextItemAllowOverlap();
 
 		const auto scale = ImGui::GetWindowDpiScale();
+
+
 		auto buttonPosition = p + ImVec2(scale * 20, scale * 20);
 		ImGui::SetCursorScreenPos(buttonPosition);
 		const auto buttonPadding = scale * 4.0f;
@@ -391,6 +271,26 @@ auto VolumeView::onDraw() -> void
 		{
 			ImGui::PopStyleColor();
 		}
+
+		ImGui::SetNextItemAllowOverlap();
+		buttonPosition += ImVec2(0, buttonPadding + buttonSize);
+		ImGui::SetCursorScreenPos(buttonPosition);
+
+		// camera switch
+		{
+			static constexpr auto types = std::array{ "orbit", "fly" };
+			auto cameraType = static_cast<int>(cameraControllerType_);
+			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12.0f);
+			ImGui::PushStyleVar(ImGuiStyleVar_GrabRounding, 12.0f);
+			ImGui::SetNextItemWidth(40 * scale);
+			ImGui::SliderInt(/*ICON_LC_EYE*/ "##cameraType", &cameraType, 0, types.size() - 1, types[cameraType]);
+			if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
+			{
+				cameraControllerType_ =
+					static_cast<CameraControllerType>((static_cast<int>(cameraControllerType_) + 1) % 2);
+			}
+			ImGui::PopStyleVar(2);
+		}
 #if 0
 		ImGui::SetCursorPosY(500.0f);
 		ImGui::Text("test");
@@ -460,6 +360,7 @@ auto VolumeView::onDraw() -> void
 		flyAnimationSettings_.stiffness = d;
 	}*/
 #endif
+	auto& io = ImGui::GetIO();
 	animator_.animate(io.DeltaTime);
 }
 

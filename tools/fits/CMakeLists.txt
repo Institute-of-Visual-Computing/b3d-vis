@@ -7,7 +7,7 @@ add_library(${MODULE_NAME})
 
 target_sources(${MODULE_NAME}
 	PUBLIC
-		"include/FitsTools.h"
+		include/FitsTools.h
 	PRIVATE
 		src/FitsTools.cpp
 		src/include/FitsTools_Internal.h
@@ -15,9 +15,9 @@ target_sources(${MODULE_NAME}
 
 target_include_directories(${MODULE_NAME}
 	PUBLIC
-		"include"
+		include
 	PRIVATE
-		"src"
+		src
 )
 
 target_link_libraries(${MODULE_NAME}

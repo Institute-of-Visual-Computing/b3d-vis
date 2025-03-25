@@ -5,19 +5,17 @@
 #include <owl/owl.h>
 
 #include "SharedStructs.h"
-
-#include <nanovdb/util/Ray.h>
-
 #include "Common.h"
 
-#include "owl/owl_device.h"
+#include <owl/owl_device.h>
+#include "OptixHelper.cuh"
+#include "FitsNvdbRenderer.h"
 
 #include <device_launch_parameters.h>
 
-#include "nanovdb/NanoVDB.h"
-#include "nanovdb/util/HDDA.h"
-
-
+#include <nanovdb/NanoVDB.h>
+#include <nanovdb/math/Ray.h>
+#include <nanovdb/math/HDDA.h>
 #include "SampleAccumulators.h"
 
 using namespace owl;
@@ -35,7 +33,7 @@ struct PerRayData
 	float stepsScale{ 1.0 };
 };
 
-__device__ inline auto confine(const nanovdb::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& sample) -> void
+__device__ inline auto confine(const nanovdb::math::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& sample) -> void
 {
 
 	auto iMin = nanovdb::Vec3f(bbox.min());
@@ -68,7 +66,7 @@ __device__ inline auto confine(const nanovdb::BBox<nanovdb::Coord>& bbox, nanovd
 	}
 }
 
-__device__ inline auto confine(const nanovdb::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& start, nanovdb::Vec3f& end)
+__device__ inline auto confine(const nanovdb::math::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& start, nanovdb::Vec3f& end)
 	-> void
 {
 	confine(bbox, start);
@@ -145,7 +143,7 @@ OPTIX_MISS_PROGRAM(miss)()
 
 OPTIX_INTERSECT_PROGRAM(intersect)()
 {
-	const auto* grid = reinterpret_cast<nanovdb::FloatGrid*>(optixLaunchParams.volume.grid);
+	const nanovdb::FloatGrid* grid = reinterpret_cast<nanovdb::FloatGrid*>(optixLaunchParams.volume.grid);
 
 	const auto rayOrigin = optixGetObjectRayOrigin();
 	const auto rayDirection = optixGetObjectRayDirection();
@@ -177,7 +175,7 @@ OPTIX_CLOSEST_HIT_PROGRAM(closestHit)()
 {
 
 	// const auto t1 = getPRD<float>();
-	const auto* grid = reinterpret_cast<nanovdb::FloatGrid*>(optixLaunchParams.volume.grid);
+	const nanovdb::FloatGrid* grid = reinterpret_cast<nanovdb::FloatGrid*>(optixLaunchParams.volume.grid);
 	const auto& accessor = grid->getAccessor();
 
 	auto transform = cuda::std::array<float, 12>{};
@@ -200,8 +198,8 @@ OPTIX_CLOSEST_HIT_PROGRAM(closestHit)()
 
 	const auto a = nanovdb::Vec3f(startWorld[0], startWorld[1], startWorld[2]);
 	const auto b = nanovdb::Vec3f(endWorld[0], endWorld[1], endWorld[2]);
-	auto start = nanovdb::matMult(indexToWorldTransform.data(), a) + translate;
-	auto end = nanovdb::matMult(indexToWorldTransform.data(), b) + translate;
+	auto start = nanovdb::math::matMult(indexToWorldTransform.data(), a) + translate;
+	auto end = nanovdb::math::matMult(indexToWorldTransform.data(), b) + translate;
 
 	const auto& bbox = grid->indexBBox();
 	confine(bbox, start, end);
@@ -209,9 +207,9 @@ OPTIX_CLOSEST_HIT_PROGRAM(closestHit)()
 	const auto direction = end - start;
 	const auto length = direction.length();
 	const auto ray = nanovdb::Ray<float>(start, direction / length, 0.0f, length);
-	auto ijk = nanovdb::RoundDown<nanovdb::Coord>(ray.start());
+	auto ijk = nanovdb::math::RoundDown<nanovdb::Coord>(ray.start());
 
-	auto hdda = nanovdb::HDDA<nanovdb::Ray<float>>(ray, accessor.getDim(ijk, ray));
+	auto hdda = nanovdb::math::HDDA<nanovdb::math::Ray<float>>(ray, accessor.getDim(ijk, ray));
 
 	auto result = vec4f{};
 	auto& prd = owl::getPRD<PerRayData>();
@@ -222,7 +220,6 @@ OPTIX_CLOSEST_HIT_PROGRAM(closestHit)()
 			value / (optixLaunchParams.sampleRemapping.y - optixLaunchParams.sampleRemapping.x);
 	};
 
-	const auto steps = 10.0f * prd.stepsScale;
 	const auto integrate = [&](auto sampleAccumulator)
 	{
 		sampleAccumulator.preAccumulate();
@@ -267,7 +264,7 @@ OPTIX_CLOSEST_HIT_PROGRAM(closestHit)()
 		}
 		break;
 	}
-	// result = { 1, 0, 0, 1 };
+	
 	prd.color = vec3f{ result.x, result.y, result.z };
 	prd.alpha = result.w;
 }

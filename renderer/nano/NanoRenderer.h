@@ -1,19 +1,20 @@
 #pragma once
 #include <RendererBase.h>
 
-#include "nanovdb/util/CreateNanoGrid.h"
-#include "owl/owl_host.h"
+#include <nanovdb/tools/CreateNanoGrid.h>
+#include <owl/owl_host.h>
 
 #include <CudaGpuTimers.h>
-
-#include "RuntimeDataSet.h"
+#include "SharedRenderingStructs.h"
+#include "RuntimeDataset.h"
 #include <FoveatedRendering.h>
+
 #include "features/BackgroundColorFeature.h"
 #include "features/ColorMapFeature.h"
 #include "features/RenderSyncFeature.h"
 #include "features/RenderTargetFeature.h"
 #include "features/TransferFunctionFeature.h"
-#include "..//nanoOutOfCore/Old_OpenFileDialog.h"
+#include "Old_OpenFileDialog.h"
 #include "features/SoFiASubregionFeature.h"
 
 
@@ -46,12 +47,12 @@ namespace b3d::renderer
 
 		void addNanoVdb(std::filesystem::path pathToNanoVdb)
 		{
-			runtimeDataSet_.addNanoVdb(pathToNanoVdb);
+			runtimeDataset_.addNanoVdb(pathToNanoVdb);
 		}
 
 		void selectDataSet(int i )
 		{
-			runtimeDataSet_.select(i);
+			runtimeDataset_.select(i);
 			
 		}
 
@@ -77,7 +78,7 @@ namespace b3d::renderer
 		FoveatedRenderingFeature* foveatedFeature_;
 		SoFiASubregionFeature* soFiASubregionFeature_;
 
-		nano::RuntimeDataSet runtimeDataSet_{};
+		b3d::tools::renderer::nvdb::RuntimeDataset runtimeDataset_{};
 		nano::OpenFileDialog openFileDialog_{ nano::SelectMode::singleFile, { ".nvdb" } };//TODO: add multiselect mode
 	};
 } // namespace b3d::renderer

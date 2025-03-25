@@ -7,7 +7,7 @@
 #include <optix_types.h>
 #include <surface_types.h>
 #include <Common.h>
-
+#include <SharedRenderingStructs.h>
 
 namespace b3d
 {
@@ -46,7 +46,7 @@ namespace b3d
 				cudaTextureObject_t transferFunctionTexture;
 				owl::vec2f sampleRemapping;
 				SampleIntegrationMethod sampleIntegrationMethod;
-				NanoVdbVolume volume;
+				tools::renderer::nvdb::NanoVdbVolume volume;
 			};
 
 			struct Volume
@@ -56,7 +56,7 @@ namespace b3d
 
 			struct GeometryData
 			{
-				NanoVdbVolume volume;
+				tools::renderer::nvdb::NanoVdbVolume volume;
 			};
 
 			struct RayGenerationData

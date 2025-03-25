@@ -10,10 +10,10 @@ namespace b3d::tools::projectServer
 	class ProjectProvider
 	{
 	public:
-		ProjectProvider(const std::filesystem::path& rootPath) : rootPath_(rootPath), catalog_(rootPath)
+		ProjectProvider(const std::filesystem::path& rootPath) : rootPath_(rootPath)
 		{
-			generateCatalog();
 			findProjects();
+			clearMissingRequests();
 			flagInvalidFilesInProjects();
 		}
 
@@ -32,12 +32,13 @@ namespace b3d::tools::projectServer
 			return knownProjects_.contains(projectUUID);
 		}
 
-		auto getCatalog() -> project::catalog::FileCatalog&
+		auto getCatalog(const std::string& projectUUID) -> project::catalog::FileCatalog&;
+
+		auto getAllCatalogs() -> const std::map<std::string, b3d::tools::project::catalog::FileCatalog>&
 		{
-			return catalog_;
+			return knownFileCatalogs_;
 		}
 
-		auto saveRootCatalog() -> bool;
 		auto saveProject(const std::string& projectUUID) -> bool;
 
 		auto getRootPath() -> std::filesystem::path
@@ -55,31 +56,24 @@ namespace b3d::tools::projectServer
 			return rootPath_ / projectsPath_;
 		}
 
-		auto getDataPath() const -> std::filesystem::path
-		{
-			return dataPath_;
-		}
-
-		auto getDataPathAbsolute() const -> std::filesystem::path
-		{
-			return rootPath_ / dataPath_;
-		}
-
 	private:
 		auto findProjects() -> void;
 
-		auto generateCatalog() -> void;
+		auto clearMissingRequests() -> void;
+
+		// auto generateCatalog() -> void;
 
 		auto flagInvalidFilesInProjects() -> void;
 
 		// Absolute Path!
 		std::filesystem::path rootPath_ {"/" };
-		// relative to root path
-		std::filesystem::path dataPath_{ "data" };
+
 		// relative to root path
 		std::filesystem::path projectsPath_{ "projects" };
 
 		std::map<std::string, b3d::tools::project::Project> knownProjects_{};
-		project::catalog::FileCatalog catalog_;
+
+		std::map<std::string, b3d::tools::project::catalog::FileCatalog> knownFileCatalogs_{};
+
 	};
 } // b3d::tools::projectServer

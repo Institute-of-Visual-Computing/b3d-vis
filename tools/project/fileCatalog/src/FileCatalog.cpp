@@ -11,12 +11,9 @@
 
 static uuids::uuid_name_generator gNameGenerator{ uuids::uuid::from_string("123456789-abcdef-123456789-abcdef-12").value() };
 
-b3d::tools::project::catalog::FileCatalog::FileCatalog(const std::filesystem::path& rootPath) : rootPath_(rootPath)
-{
-}
-
 b3d::tools::project::catalog::FileCatalog::FileCatalog(const std::filesystem::path& rootPath,
-	const std::filesystem::path& dataPath) : rootPath_(rootPath), dataPath_(dataPath)
+													   const std::string& filename)
+	: rootPath_(rootPath), fileName_(filename)
 {
 }
 
@@ -121,37 +118,42 @@ auto b3d::tools::project::catalog::FileCatalog::removeInvalidMappings() -> void
 	}
 }
 
-auto b3d::tools::project::catalog::FileCatalog::setRootPath(const std::filesystem::path& rootPath) -> void
-{
-	rootPath_ = rootPath;
-}
-
 auto b3d::tools::project::catalog::FileCatalog::getRootPath() const -> const std::filesystem::path
 {
 	return rootPath_;
 }
 
-auto b3d::tools::project::catalog::FileCatalog::getDataPathAbsolute() const -> const std::filesystem::path
+auto b3d::tools::project::catalog::FileCatalog::setRootPath(const std::filesystem::path& rootPath) -> void
 {
-	return rootPath_ / dataPath_;
+	rootPath_ = rootPath;
 }
 
-b3d::tools::project::catalog::FileCatalog b3d::tools::project::catalog::FileCatalog::createOrLoadCatalogFromPathes(
-	const std::filesystem::path& absoluteRootPath, const std::filesystem::path& relativeDataPath)
+auto b3d::tools::project::catalog::FileCatalog::setFileName(const std::string& fileName) -> void
+{
+	fileName_ = fileName;
+}
+
+auto b3d::tools::project::catalog::FileCatalog::writeCatalog() const -> void
+{
+	const auto catalogFilePath = rootPath_ / DEFAULT_CATALOG_FILE_NAME;
+	std::ofstream fileStream{ catalogFilePath };
+	nlohmann::json j = *this;
+	fileStream << std::setw(4) << j << std::endl;
+	fileStream.close();
+}
+
+b3d::tools::project::catalog::FileCatalog b3d::tools::project::catalog::FileCatalog::createOrLoadCatalogInDirectory(
+	const std::filesystem::path& absoluteRootPath, const std::string& catalogFileName)
 {
 	if (!std::filesystem::exists(absoluteRootPath))
 	{
 		std::filesystem::create_directories(absoluteRootPath);
 	}
-	if (!std::filesystem::exists(absoluteRootPath / relativeDataPath))
-	{
-		std::filesystem::create_directories(absoluteRootPath / relativeDataPath);
-	}
 
 	// Check if catalog already exists in dataRootPath. Parse catalog if it exists otherwise create a new one.
-	const auto catalogFilePath = absoluteRootPath / "fileCatalog.json";
-	FileCatalog catalog{ absoluteRootPath, relativeDataPath };
-	if (std::filesystem::exists(catalogFilePath) && !std::filesystem::is_directory(catalogFilePath))
+	const auto catalogFilePath = absoluteRootPath / catalogFileName;
+	FileCatalog catalog{ absoluteRootPath, catalogFileName };
+	if (std::filesystem::exists(catalogFilePath))
 	{
 		try
 		{
@@ -159,6 +161,10 @@ b3d::tools::project::catalog::FileCatalog b3d::tools::project::catalog::FileCata
 
 			const auto data = nlohmann::json::parse(f);
 			auto c = data.get<project::catalog::FileCatalog>();
+
+			c.setRootPath(absoluteRootPath);
+			c.setFileName(catalogFileName);
+			
 			c.removeInvalidMappings();
 			catalog = c;
 		}
@@ -175,15 +181,8 @@ b3d::tools::project::catalog::FileCatalog b3d::tools::project::catalog::FileCata
 		{
 			// std::cout << e.what();
 		}
+	}
 
-		std::ifstream fileStream{ catalogFilePath };
-		nlohmann::json j;
-		fileStream >> j;
-		catalog = j.get<FileCatalog>();
-	}
-	else
-	{
-		catalog = FileCatalog{ absoluteRootPath, relativeDataPath };
-	}
+	catalog.writeCatalog();
 	return catalog;
 }

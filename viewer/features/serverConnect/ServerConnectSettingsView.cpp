@@ -27,20 +27,20 @@ namespace
 
 ServerConnectSettingsView::ServerConnectSettingsView(ApplicationContext& appContext, const std::string_view name,
 													 const std::function<void(ModalViewBase*)>& onSubmitCallback)
-	: ModalViewBase(appContext, name, ModalType::okCancel, ImVec2(40 * ImGui::GetFontSize(), 10 * ImGui::GetFontSize()))
+	: ModalViewBase(appContext, name, ModalType::okCancel,
+					ImVec2(400 * ImGui::GetFontSize(), 100 * ImGui::GetFontSize()))
 {
 	setOnSubmit(onSubmitCallback);
 	applicationContext_->settings_.load();
 	addServerView_ = std::make_unique<ServerAddEditView>(
-		appContext, "Add Server",
-		[](ModalViewBase* self)
+		appContext, "Add Server", [](ModalViewBase* self)
 		{ reinterpret_cast<ServerAddEditView*>(self)->setModel(b3d::tools::project::ServerConnectionDescription{}); },
 		[&](ModalViewBase* self)
 		{
 			const auto model = reinterpret_cast<ServerAddEditView*>(self)->model();
 			applicationContext_->settings_.configuredServerSettings_.push_back(model);
 			selectedItem_ = applicationContext_->settings_.configuredServerSettings_.size() - 1;
-			
+
 			serverClient_ = b3d::tools::project::ServerClient(model);
 			applicationContext_->settings_.save();
 		});
@@ -49,7 +49,7 @@ ServerConnectSettingsView::ServerConnectSettingsView(ApplicationContext& appCont
 		appContext, "Edit Server",
 		[&](ModalViewBase* self)
 		{
-			    reinterpret_cast<ServerAddEditView*>(self)->setModel(
+			reinterpret_cast<ServerAddEditView*>(self)->setModel(
 				applicationContext_->settings_.configuredServerSettings_[selectedItem_]);
 		},
 		[&](ModalViewBase* self)
@@ -65,9 +65,14 @@ auto ServerConnectSettingsView::onDraw() -> void
 {
 	const auto& style = ImGui::GetStyle();
 	const auto windowVisibleX2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
-	constexpr auto itemSize = ImVec2{ 200, 200 };
+	const auto scale = ImGui::GetWindowDpiScale();
+	const auto itemSize = ImVec2{ 100 * scale, 100 * scale };
 
-	ImGui::BeginChild("##servers", ImVec2{ 0, 300 }, ImGuiChildFlags_Border, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+	const auto margin = ImGui::GetStyle().WindowPadding;
+	const auto scrollbarWidth = ImGui::GetStyle().ScrollbarSize;
+	const auto itemSpacing = ImGui::GetStyle().ItemInnerSpacing.x;
+	ImGui::BeginChild("##servers", ImVec2{ 8 * itemSize.x + margin.x * 2 + 7 * itemSpacing, 200 * scale }, ImGuiChildFlags_Border,
+					  ImGuiWindowFlags_AlwaysVerticalScrollbar);
 	auto pos = ImGui::GetCursorPos();
 	const auto widgetStartPosition = ImGui::GetCursorPos();
 
@@ -218,7 +223,7 @@ auto ServerConnectSettingsView::onDraw() -> void
 			break;
 		}
 	}
-	
+
 
 	ImGui::EndGroup();
 	ImGui::EndDisabled();

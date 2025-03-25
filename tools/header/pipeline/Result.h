@@ -24,6 +24,7 @@ namespace b3d::common::pipeline
 
 	struct BaseFileResult : BaseResult
 	{
+
 		// either a UUID or a path
 		std::string resultFile{ "" };
 		bool fileAvailable{ true };

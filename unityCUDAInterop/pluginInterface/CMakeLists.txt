@@ -7,7 +7,7 @@ target_include_directories(${MODULE_NAME} INTERFACE "INCLUDE")
 
 target_sources(${MODULE_NAME}
 	INTERFACE
-		"src/unity_plugin.cpp"
+		src/unity_plugin.cpp
 )
 
 set_target_properties(${MODULE_NAME} PROPERTIES CXX_STANDARD 20)

@@ -42,7 +42,12 @@ namespace b3d::unity_cuda_interop
 	{
 		bool newVolumeAvailable{ false };
 		int selectedDataset{ 0 };
-		char* f1;
+		owl::vec3f fitsDimensions{ 0, 0, 0 };
+		int uuidStringLength{ 0 };
+		int pathStringLength{ 0 };
+
+		wchar_t nanoVdbUUID[256];
+		wchar_t nanoVdbFilePath[2048];
 	};
 
 	struct UnityRenderingData

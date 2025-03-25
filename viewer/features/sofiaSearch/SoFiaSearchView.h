@@ -36,10 +36,10 @@ public:
 
 		struct FlagParams
 		{
-			std::string flagAutoMode{ "false" }; // true, false, channels, pixels
-			std::array<int, 3> regionMin{ 0, 0, 0 };
-			std::array<int, 3> regionMax{ 1, 1, 1 };
+			std::string autoMode{ "false" }; // true, false, channels, pixels
+			std::vector<owl::box3i> region;
 			std::string catalog;
+			std::string cube;
 			int radius{ 5 };
 			float threshold{ 5.0f };
 			bool log{ false };
@@ -118,25 +118,13 @@ public:
 
 		struct ReliabilityParams
 		{
-			struct Parameters
-			{
-				bool peak{ false };
-				bool sum{ false };
-				bool mean{ false };
-				bool chan{ false };
-				bool pix{ false };
-				bool fill{ false };
-				bool std{ false };
-				bool skew{ false };
-				bool kurt{ false };
-			};
+			bool autoKernel{ false };
 			bool enable{ false };
-			Parameters parameters;
+			std::vector<std::string> parameters{ "peak", "sum", "mean" };
 			float threshold{ 0.9f };
 			float scaleKernel{ 0.4f };
 			float minSNR{ 3.0f };
 			int minPixels{ 0 };
-			bool autoKernel{ false };
 			int iterations{ 30 };
 			float tolerance{ 0.05f };
 			std::string catalog;
@@ -165,26 +153,31 @@ public:
 		{
 			std::string directory;
 			std::string filename;
+			int marginAperture;
+			int marginCubelets;
+			bool overwrite{ true };
+			float thresholdMom12{ 0.0f };
+
 			bool writeCatASCII{ true };
-			bool writeCatXML{ true };
 			bool writeCatSQL{ false };
-			bool writeNoise{ false };
+			bool writeCatXML{ true };
+			bool writeCubelets{ false };
 			bool writeFiltered{ false };
+			bool writeKarma{ false };
 			bool writeMask{ false };
 			bool writeMask2d{ false };
-			bool writeRawMask{ false };
 			bool writeMoments{ false };
-			bool writeCubelets{ false };
+			bool writeNoise{ false };
 			bool writePV{ false };
-			bool writeKarma{ false };
-			int marginCubelets{ 10 };
-			float thresholdMom12{ 0.0f };
-			bool overwrite{ true };
+			bool writeRawMask{ false };
 		};
 
 		PipelineParams pipeline;
 		InputParams input;
 		ContsubParams contsub;
+		FlagParams flag;
+		RippleFilterParams ripple;
+		ScaleNoiseParams scaleNoise;
 		ScfindParams scfind;
 		ThresholdParams threshold;
 		LinkerParams linker;
@@ -193,8 +186,10 @@ public:
 		ParameterParams parameter;
 		OutputParams output;
 
-		auto buildSoFiaParams() const -> b3d::tools::sofia::SofiaParams;
+		auto buildSoFiaParams() -> b3d::tools::sofia::SofiaParams;
 	};
+
+	
 
 	struct Model
 	{
@@ -222,3 +217,5 @@ private:
 	auto resetSelection() -> void;
 	auto resetParams() -> void;
 };
+
+

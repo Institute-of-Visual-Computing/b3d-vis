@@ -3,10 +3,9 @@
 #include <owl/helper/cuda.h>
 #include "cuda_runtime.h"
 
-#include <nanovdb/util/CudaDeviceBuffer.h>
-#include <nanovdb/util/Primitives.h>
-
-#include <nanovdb/util/IO.h>
+#include <nanovdb/cuda/DeviceBuffer.h>
+#include <nanovdb/tools/CreatePrimitives.h>
+#include <nanovdb/io/IO.h>
 
 #include <filesystem>
 
@@ -21,7 +20,6 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
-#include <NanoCutterParser.h>
 
 #include <OwlExtensions.h>
 
@@ -39,6 +37,7 @@ extern "C" uint32_t NanoRenderer_optixir_length;
 
 
 using namespace b3d::renderer;
+using namespace b3d::tools::renderer::nvdb;
 using namespace b3d::renderer::nano;
 using namespace owl::common;
 
@@ -184,7 +183,9 @@ auto NanoRenderer::prepareGeometry() -> void
 															 OWL_MATRIX_FORMAT_OWL, OPTIX_BUILD_FLAG_ALLOW_UPDATE);
 
 	// TODO: need better solution, see also bounds kernel in NanoRenderer.cu
-	auto dataset = runtimeDataSet_.getSelectedData();
+
+	auto dataset = runtimeDataset_.getSelectedData();
+
 	owlGeomSetRaw(geometry, "volume", &dataset.volume);
 
 	owlGeomTypeSetBoundsProg(geometryType, module, "volumeBounds");

@@ -7,7 +7,7 @@ target_include_directories(${MODULE_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
 target_link_libraries(${MODULE_NAME}
 	PRIVATE
-		B3D::Renderer::Library
+		B3D::Renderer::Framework
 )
 set_property(TARGET ${MODULE_NAME} PROPERTY CUDA_STANDARD 17)
 

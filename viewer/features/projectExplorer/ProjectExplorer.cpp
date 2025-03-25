@@ -78,7 +78,7 @@ auto ProjectExplorer::updateRenderingData(b3d::renderer::RenderingDataWrapper& r
 					if(optPath.has_value())
 					{
 						const auto path = optPath.value();
-						appContext_->runtimeDataSet_.addNanoVdb(path, stream_, requestedVolumeUUid);
+						appContext_->runtimeDataset_.addNanoVdb(path, stream_, requestedVolumeUUid);
 					}
 					else
 					{
@@ -94,15 +94,14 @@ auto ProjectExplorer::updateRenderingData(b3d::renderer::RenderingDataWrapper& r
 		}
 		else
 		{
-			const auto optState = appContext_->runtimeDataSet_.getVolumeState(requestedVolumeUUid);
-			if (optState.has_value() && optState.value() == b3d::renderer::RuntimeVolumeState::ready)
+			const auto runtimeVolume = appContext_->runtimeDataset_.getRuntimeVolume(requestedVolumeUUid);
+			if (runtimeVolume.has_value() && runtimeVolume.value().state == b3d::tools::renderer::nvdb::RuntimeVolumeState::ready)
 			{
 				// Get nvdbVolume
 				// Set sharedBuffer
-				appContext_->runtimeDataSet_.select(requestedVolumeUUid);
 
 				renderingData.data.runtimeVolumeData.newVolumeAvailable = true;
-				renderingData.data.runtimeVolumeData.volume = appContext_->runtimeDataSet_.getSelectedData();
+				renderingData.data.runtimeVolumeData.volume = runtimeVolume.value();
 
 
 				const auto it = std::ranges::find_if(projects_.begin(), projects_.end(),

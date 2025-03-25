@@ -5,8 +5,8 @@
 
 #include <cuda/std/array>
 
-#include <nanovdb/util/HDDA.h>
-#include <nanovdb/util/Ray.h>
+#include <nanovdb/math/HDDA.h>
+#include <nanovdb/math/Ray.h>
 #include "SharedStructs.h"
 #include "nanovdb/NanoVDB.h"
 #include "owl/common/math/vec.h"
@@ -32,7 +32,7 @@ struct PerRayData
 	float stepsScale{ 1.0 };
 };
 
-__device__ inline auto confine(const nanovdb::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& sample) -> void
+__device__ inline auto confine(const nanovdb::math::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& sample) -> void
 {
 
 	auto iMin = nanovdb::Vec3f(bbox.min());
@@ -65,7 +65,7 @@ __device__ inline auto confine(const nanovdb::BBox<nanovdb::Coord>& bbox, nanovd
 	}
 }
 
-__device__ inline auto confine(const nanovdb::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& start, nanovdb::Vec3f& end)
+__device__ inline auto confine(const nanovdb::math::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& start, nanovdb::Vec3f& end)
 	-> void
 {
 	confine(bbox, start);
@@ -226,7 +226,7 @@ OPTIX_MISS_PROGRAM(miss)()
 
 OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 {
-	const auto* grid = reinterpret_cast<nanovdb::FloatGrid*>(optixLaunchParams.volume.grid);
+	const nanovdb::FloatGrid* grid = reinterpret_cast<nanovdb::FloatGrid*>(optixLaunchParams.volume.grid);
 
 	auto transform = cuda::std::array<float, 12>{};
 
@@ -252,8 +252,8 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 	const auto endWorld = rayWorld(t1);
 	const auto a = nanovdb::Vec3f(startWorld[0], startWorld[1], startWorld[2]);
 	const auto b = nanovdb::Vec3f(endWorld[0], endWorld[1], endWorld[2]);
-	auto start = nanovdb::matMult(indexToWorldTransform.data(), a) + translate;
-	auto end = nanovdb::matMult(indexToWorldTransform.data(), b) + translate;
+	auto start = nanovdb::math::matMult(indexToWorldTransform.data(), a) + translate;
+	auto end = nanovdb::math::matMult(indexToWorldTransform.data(), b) + translate;
 
 	const auto& bbox = grid->indexBBox();
 	confine(bbox, start, end);
@@ -261,9 +261,9 @@ OPTIX_CLOSEST_HIT_PROGRAM(nano_closestHit)()
 	const auto direction = end - start;
 	const auto length = direction.length();
 	const auto ray = nanovdb::Ray<float>(start, direction / length, 0.0f, length);
-	auto ijk = nanovdb::RoundDown<nanovdb::Coord>(ray.start());
+	auto ijk = nanovdb::math::RoundDown<nanovdb::Coord>(ray.start());
 
-	auto hdda = nanovdb::HDDA<nanovdb::Ray<float>>(ray, accessor.getDim(ijk, ray));
+	auto hdda = nanovdb::math::HDDA<nanovdb::math::Ray<float>>(ray, accessor.getDim(ijk, ray));
 
 	auto result = vec4f{};
 	auto& prd = owl::getPRD<PerRayData>();

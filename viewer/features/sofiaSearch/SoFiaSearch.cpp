@@ -4,19 +4,23 @@
 #include "RenderData.h"
 #include "framework/ApplicationContext.h"
 
+#include "ParamsSerializer.h"
 #include "SoFiaSearchView.h"
 
 SoFiaSearch::SoFiaSearch(ApplicationContext& applicationContext)
 	: UpdatableComponentBase(applicationContext), RendererExtensionBase(applicationContext)
 {
-	sofiaSearchView_ = std::make_unique<SoFiaSearchView>(applicationContext, applicationContext.getMainDockspace(), [&]() {
-											  startSearch(sofiaSearchView_->getModel().params.buildSoFiaParams());
-	});
+	sofiaSearchView_ = std::make_unique<SoFiaSearchView>(applicationContext, applicationContext.getMainDockspace(),
+														 [&]()
+														 {
+															 b3d::tools::sofia::SofiaParams params;
+															 serialize(sofiaSearchView_->getModel().params, params);
+															 startSearch(params);
+														 });
 
 	applicationContext.addMenuToggleAction(
 		showSearchWindow_, [&](const bool isOn) { isOn ? sofiaSearchView_->open() : sofiaSearchView_->close(); },
-		"Tools",
-		"SoFiA");
+		"Tools", "SoFiA");
 
 	applicationContext.addUpdatableComponent(this);
 	applicationContext.addRendererExtensionComponent(this);
@@ -37,22 +41,23 @@ auto SoFiaSearch::updateRenderingData(b3d::renderer::RenderingDataWrapper& rende
 	const auto& volumeTransform = renderingData.data.volumeTransform;
 	const auto& runtimeVolumeData = renderingData.data.runtimeVolumeData;
 
-	auto &model = sofiaSearchView_->getModel();
+	auto& model = sofiaSearchView_->getModel();
 
 
-	if (applicationContext_->selectedProject_.has_value() && runtimeVolumeData.volume.state == b3d::renderer::RuntimeVolumeState::ready)
+	if (applicationContext_->selectedProject_.has_value() &&
+		runtimeVolumeData.volume.state == b3d::tools::renderer::nvdb::RuntimeVolumeState::ready)
 	{
 
 		model.interactionEnabled = true;
 
-		const auto trs = volumeTransform.worldMatTRS * runtimeVolumeData.volume.renormalizeScale * owl::AffineSpace3f::scale(runtimeVolumeData.originalIndexBox.size());
+		const auto trs = volumeTransform.worldMatTRS * runtimeVolumeData.volume.renormalizeScale *
+			owl::AffineSpace3f::scale(runtimeVolumeData.originalIndexBox.size());
 		model.worldTransform = trs;
 	}
 	else
 	{
 		model.interactionEnabled = false;
 	}
-
 }
 
 auto SoFiaSearch::startSearch(b3d::tools::sofia::SofiaParams params) -> void

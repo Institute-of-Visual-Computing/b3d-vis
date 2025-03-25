@@ -69,12 +69,6 @@ auto b3d::tools::sofia_nano_pipeline::runSearchAndUpdateNvdbSync(sofia::SofiaPro
 	// Disables Linker and all following steps.
 	pipelineParams.sofiaParams.setOrReplace("linker.enable", "false");
 
-	result.sofiaResult = processRunner.runSofiaSync(pipelineParams.sofiaParams, pipelineParams.sofiaWorkingDirectoy);
-	if (result.sofiaResult.returnCode != 8)
-	{
-		result.message = "SoFiA failed.";
-		return result;
-	}
 	const auto paramsOutputPathStr = pipelineParams.sofiaParams.getStringValue("output.directory").value_or("");
 
 	const auto outputDirectoryPath = paramsOutputPathStr.empty() ? pipelineParams.fitsInputFilePath.parent_path() :
@@ -84,6 +78,25 @@ auto b3d::tools::sofia_nano_pipeline::runSearchAndUpdateNvdbSync(sofia::SofiaPro
 
 	// Get Path to mask file. The mask cube will have the suffix _mask-raw.fits
 	const auto maskFilePath = outputDirectoryPath / (outputFilesNamePrefix + "_mask-raw.fits");
+
+	if (std::filesystem::exists(maskFilePath))
+	{
+		std::filesystem::remove(maskFilePath);
+	}
+
+	result.sofiaResult = processRunner.runSofiaSync(pipelineParams.sofiaParams, pipelineParams.sofiaWorkingDirectoy);
+	if (result.sofiaResult.returnCode != 8)
+	{
+		result.message = "SoFiA failed.";
+		result.sofiaResult.fileAvailable = false;
+		result.sofiaResult.finished = true;
+		if (!std::filesystem::exists(maskFilePath))
+		{
+			result.sofiaResult.message = "Could not find sources. No mask generated.";
+		}
+		return result;
+	}
+	
 
 	result.sofiaResult.resultFile = maskFilePath.generic_string();
 
