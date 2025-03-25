@@ -62,7 +62,11 @@ auto SoFiaSearch::updateRenderingData(b3d::renderer::RenderingDataWrapper& rende
 
 auto SoFiaSearch::startSearch(b3d::tools::sofia::SofiaParams params) -> void
 {
-	appContext_->serverClient_.startSearchAsync(appContext_->selectedProject_.value().projectUUID, params, false);
+	auto projUUID = appContext_->selectedProject_.value().projectUUID;
+	requestFuturesBuffer[currentBufferPos_] = appContext_->serverClient_.startSearchAsync(
+		projUUID, params, false);
+	currentBufferPos_++;
+	currentBufferPos_ %= futureBufferSize_;
 }
 
 auto SoFiaSearch::update() -> void

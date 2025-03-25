@@ -1,5 +1,6 @@
 #pragma once
 
+#include <future>
 #include <memory>
 
 #include "SofiaParams.h"
@@ -28,4 +29,8 @@ private:
 	auto startSearch(b3d::tools::sofia::SofiaParams params) -> void;
 
 	std::unique_ptr<SoFiaSearchView> sofiaSearchView_;
+
+	static constexpr size_t futureBufferSize_{ 20 };
+	size_t currentBufferPos_{ 0 };
+	std::array<std::future<std::string>, futureBufferSize_> requestFuturesBuffer;
 };
