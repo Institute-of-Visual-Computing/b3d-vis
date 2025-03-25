@@ -557,13 +557,13 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 		[&]()
 		{
 			auto icon = ICON_LC_SERVER;
-			if (applicationContext_->serverClient_.getLastServerStatusState() ==
-				b3d::tools::project::ServerStatusState::ok)
+			if (applicationContext_->serverClient_.getLastServerStatusState().health ==
+				b3d::tools::project::ServerHealthState::ok)
 			{
 				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.1, 0.5, 0.1, 1.0 });
 			}
-			else if (applicationContext_->serverClient_.getLastServerStatusState() ==
-					 b3d::tools::project::ServerStatusState::testing)
+			else if (applicationContext_->serverClient_.getLastServerStatusState().health  ==
+					 b3d::tools::project::ServerHealthState::testing)
 			{
 				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 1, 0.65, 0.0, 1.0 });
 			}
