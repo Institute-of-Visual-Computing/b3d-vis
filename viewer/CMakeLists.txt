@@ -92,6 +92,8 @@ target_sources(${viewerTargetName} PRIVATE
 	features/projectExplorer/ProjectExplorerController.h
 	features/projectExplorer/SofiaParameterSummaryView.h
 	features/projectExplorer/SofiaParameterSummaryView.cpp
+	features/projectExplorer/AddNewProjectView.h
+	features/projectExplorer/AddNewProjectView.cpp
 	features/fileDialog/OpenFileDialogView.h
 	features/fileDialog/OpenFileDialogView.cpp
 	features/sofiaSearch/SoFiaSearch.h

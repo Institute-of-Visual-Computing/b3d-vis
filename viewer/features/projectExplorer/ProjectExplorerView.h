@@ -2,8 +2,9 @@
 
 #include <future>
 
-#include "framework/DockableWindowViewBase.h"
 #include "features/projectExplorer/SofiaParameterSummaryView.h"
+#include "framework/DockableWindowViewBase.h"
+#include "AddNewProjectView.h"
 
 namespace b3d::tools::project
 {
@@ -34,10 +35,16 @@ private:
 	auto onDraw() -> void override;
 	auto projectAvailable() const -> bool;
 
+	auto drawSelectableItemGridPanel(
+		const char* panelId, int& selectedItemIndex, const int items,
+		const std::function<const char*(const int index)>& name, const char* icon, ImFont* iconFont,
+		const std::function<void(const int index)>& popup = [](const int) {}, const ImVec2 itemSize = { 100, 100 },
+		const ImVec2 panelSize = { 0, 300 }) -> bool;
+
 	int selectedProjectItemIndex_{ -1 };
 
 	Model model_{ nullptr };
-	 owl::AffineSpace3f volumeTransform_{};
+	owl::AffineSpace3f volumeTransform_{};
 	std::function<void()> showSelectionModal_;
 	std::function<void()> showNvdbSelectionModal_;
 
@@ -47,4 +54,5 @@ private:
 	std::shared_future<void> loadAndShowFileFuture_{};
 
 	std::unique_ptr<SofiaParameterSummaryView> parameterSummaryView_{};
+	std::unique_ptr<AddNewProjectView> addNewProjectView_;
 };

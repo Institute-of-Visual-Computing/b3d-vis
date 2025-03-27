@@ -1,7 +1,9 @@
+#include <chrono>
 #include <filesystem>
 #include <future>
 #include <httplib.h>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include <args.hxx>
@@ -72,7 +74,8 @@ auto ServerClient::updateServerStatusState(float deltaTimeSeconds) -> void
 	if (secondsSinceLastHeartbeat_ >= ServerClient::heartbeatIntervalSeconds && lastHeartbeatDone_)
 	{
 		lastHeartbeatDone_ = false;
-		lastServerState_.health = lastServerState_.health == ServerHealthState::ok ? ServerHealthState::ok : ServerHealthState::testing;
+		lastServerState_.health =
+			lastServerState_.health == ServerHealthState::ok ? ServerHealthState::ok : ServerHealthState::testing;
 		heartbeatFuture_ = getServerStatusStateAsync();
 	}
 }
@@ -91,31 +94,33 @@ auto ServerClient::getProjectsAsync() const -> std::future<std::optional<std::ve
 	return std::async(std::launch::async, [this]() { return getProjects(serverConnectionDescription_); });
 }
 
-auto ServerClient::downloadFileAsync(const std::string& fileUUID, const std::filesystem::path &targetDirectoryPath) const
+auto ServerClient::downloadFileAsync(const std::string& fileUUID,
+									 const std::filesystem::path& targetDirectoryPath) const
 	-> std::future<std::filesystem::path>
 {
-	return std::async(std::launch::async,[this, fileUUID, targetDirectoryPath]() { return downloadFile(serverConnectionDescription_, fileUUID, targetDirectoryPath); });
+	return std::async(std::launch::async, [this, fileUUID, targetDirectoryPath]()
+					  { return downloadFile(serverConnectionDescription_, fileUUID, targetDirectoryPath); });
+}
+
+auto b3d::tools::project::ServerClient::uploadFileAsync(const std::filesystem::path& sourceFile,
+														const std::string& projectName,
+														UploadFeedback& uploadFeedback) const
+	-> std::future<UploadResult>
+{
+	return std::async(std::launch::async, [this, sourceFile, &uploadFeedback, projectName]()
+					  { return uploadFile(sourceFile, projectName, uploadFeedback); });
 }
 
 auto ServerClient::isServerBusy() const -> std::future<bool>
 {
-	return std::async(std::launch::async, [this]()
-	{
-
-
-		return false;
-	}
-	);
+	return std::async(std::launch::async, [this]() { return false; });
 }
 
-auto ServerClient::startSearchAsync(const std::string& projectUUID, const sofia::SofiaParams& params,
-                                    bool force) -> std::future<std::string>
+auto ServerClient::startSearchAsync(const std::string& projectUUID, const sofia::SofiaParams& params, bool force)
+	-> std::future<std::string>
 {
-	return std::async(std::launch::async,
-					  [this, projectUUID, params, force]()
-					  {
-						  return startSearch(serverConnectionDescription_, projectUUID, params, force);
-					  });
+	return std::async(std::launch::async, [this, projectUUID, params, force]()
+					  { return startSearch(serverConnectionDescription_, projectUUID, params, force); });
 }
 
 auto ServerClient::getServerStatusState(const ServerConnectionDescription connectionDescription) -> ServerState
@@ -217,14 +222,26 @@ auto ServerClient::downloadFile(const ServerConnectionDescription connectionDesc
 	}
 
 	const auto extension = res->get_header_value("Content-Type").substr(12 /* application/ */);
-	const auto finalFilePath = targetDirectoryPath / (fileUUID + "." + extension); 
-	std::filesystem::rename(targetFilePath,finalFilePath);
+	const auto finalFilePath = targetDirectoryPath / (fileUUID + "." + extension);
+	std::filesystem::rename(targetFilePath, finalFilePath);
 	return finalFilePath;
 }
 
+auto b3d::tools::project::ServerClient::uploadFile(const std::filesystem::path& sourceFile,
+												   const std::string& projectName, UploadFeedback& uploadFeedback)
+	-> UploadResult
+{
+	for (auto i = 0; i < 10; i++)
+	{
+		using namespace std::chrono_literals;
+		std::this_thread::sleep_for(1s);
+		uploadFeedback.progress += 10;
+	}
+	return UploadResult{ .state = UploadState::ok, .projectName = projectName };
+}
+
 auto ServerClient::startSearch(ServerConnectionDescription connectionDescription, const std::string& projectUUID,
-							   const sofia::SofiaParams& params,
-	bool force) -> std::string
+							   const sofia::SofiaParams& params, bool force) -> std::string
 {
 	httplib::Client client(connectionDescription.ipHost, std::stoi(connectionDescription.port));
 	nlohmann::json requestJSON;
