@@ -5,6 +5,8 @@
 #include "features/projectExplorer/SofiaParameterSummaryView.h"
 #include "framework/DockableWindowViewBase.h"
 #include "AddNewProjectView.h"
+#include "EditProjectView.h"
+#include "DeleteProjectView.h"
 
 namespace b3d::tools::project
 {
@@ -55,4 +57,6 @@ private:
 
 	std::unique_ptr<SofiaParameterSummaryView> parameterSummaryView_{};
 	std::unique_ptr<AddNewProjectView> addNewProjectView_;
+	std::unique_ptr<EditProjectView> editProjectView_;
+	std::unique_ptr<DeleteProjectView> deleteProjectView_;
 };

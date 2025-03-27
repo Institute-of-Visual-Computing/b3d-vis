@@ -1,12 +1,16 @@
 #include "AddNewProjectView.h"
 #include "imgui_stdlib.h"
 
-auto fitsFileValid(const std::filesystem::path& file)-> bool
+
+namespace
 {
-	std::filesystem::exists(file);
-	//TODO: validate axis for example
-	return true;
-}
+	auto fitsFileValid(const std::filesystem::path& file) -> bool
+	{
+		std::filesystem::exists(file);
+		// TODO: validate axis for example
+		return true;
+	}
+} // namespace
 
 AddNewProjectView::AddNewProjectView(ApplicationContext& appContext, const std::string_view name,
 									 const std::function<void(ModalViewBase*)>& onSubmitCallback)
@@ -25,7 +29,7 @@ auto AddNewProjectView::onDraw() -> void
 
 	model_.sourcePath = path;
 
-	if(not model_.projectName.empty() and fitsFileValid(path))
+	if (not model_.projectName.empty() and fitsFileValid(path))
 	{
 		unblock();
 	}

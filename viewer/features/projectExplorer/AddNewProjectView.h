@@ -2,9 +2,7 @@
 
 #include "framework/ModalViewBase.h"
 
-#include <memory>
-
-#include "ServerClient.h"
+#include <filesystem>
 
 struct NewProjectModel
 {

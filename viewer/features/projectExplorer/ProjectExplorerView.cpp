@@ -15,6 +15,7 @@ namespace
 {
 	b3d::tools::project::UploadFeedback uploadFeedback;
 	std::future<b3d::tools::project::UploadResult> upload;
+	int hoveredProjectIndex = -1;
 } // namespace
 
 ProjectExplorerView::ProjectExplorerView(
@@ -35,6 +36,30 @@ ProjectExplorerView::ProjectExplorerView(
 												upload = applicationContext_->serverClient_.uploadFileAsync(
 													model.sourcePath, model.projectName, uploadFeedback);
 											});
+	editProjectView_ = std::make_unique<EditProjectView>(
+		appContext, "Edit Project",
+		[&](ModalViewBase* self)
+		{
+			auto view = reinterpret_cast<EditProjectView*>(self);
+			const auto& project = model_.projects->at(view->projectIndex());
+			view->setModel(EditProjectModel{ project.projectName });
+		},
+		[&](ModalViewBase* self)
+		{
+			auto view = reinterpret_cast<EditProjectView*>(self);
+			auto& project = model_.projects->at(view->projectIndex());
+			project.projectName = view->model().projectName;
+		});
+	deleteProjectView_ = std::make_unique<DeleteProjectView>(
+		appContext, "Delete Project",
+		[&](ModalViewBase* self)
+		{
+		},
+		[&](ModalViewBase* self)
+		{
+			auto view = reinterpret_cast<DeleteProjectView*>(self);
+			model_.projects->erase(model_.projects->begin() + view->projectIndex());
+		});
 }
 
 ProjectExplorerView::~ProjectExplorerView() = default;
@@ -148,7 +173,7 @@ auto ProjectExplorerView::drawSelectableItemGridPanel(const char* panelId, int& 
 			auto approximatedTextSize = textSize;
 			const auto dotsTextSize = ImGui::CalcTextSize("...");
 			ImGui::PushFont(iconFont);
-			ImGui::SetNextItemAllowOverlap();
+			// ImGui::SetNextItemAllowOverlap();
 			const auto iconSize = ImGui::CalcTextSize(icon);
 
 			const auto height = textSize.y + iconSize.y + ImGui::GetStyle().FramePadding.y;
@@ -198,9 +223,12 @@ auto ProjectExplorerView::drawSelectableItemGridPanel(const char* panelId, int& 
 				ImGui::PushFont(iconFont);
 				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.7f, 0.7f, 0.3f, 1.0f });
 				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.4f, 0.4f, 0.2f, 1.0f });
-				if(ImGui::Button(ICON_LC_PENCIL))
+				ImGui::PushID(n);
+				ImGui::SetNextItemAllowOverlap();
+				if (ImGui::Button(ICON_LC_PENCIL) || ImGui::IsItemClicked())
 				{
-					//TODO:
+					editProjectView_->setProjectIndex(n);
+					editProjectView_->open();
 				}
 				ImGui::PopStyleColor(2);
 				ImGui::PopFont();
@@ -209,10 +237,12 @@ auto ProjectExplorerView::drawSelectableItemGridPanel(const char* panelId, int& 
 				ImGui::PushFont(iconFont);
 				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.8f, 0.1f, 0.1f, 1.0f });
 				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.4f, 0.1f, 0.1f, 1.0f });
-				if(ImGui::Button(ICON_LC_TRASH_2))
+				if (ImGui::Button(ICON_LC_TRASH_2) || ImGui::IsItemClicked())
 				{
-					//TODO:
+					deleteProjectView_->setProjectIndex(n);
+					deleteProjectView_->open();
 				}
+				ImGui::PopID();
 				ImGui::PopFont();
 				ImGui::SetItemTooltip("Delete Project");
 				ImGui::PopStyleColor(2);
@@ -617,6 +647,8 @@ auto ProjectExplorerView::onDraw() -> void
 	}
 	parameterSummaryView_->draw();
 	addNewProjectView_->draw();
+	editProjectView_->draw();
+	deleteProjectView_->draw();
 }
 
 auto ProjectExplorerView::projectAvailable() const -> bool
