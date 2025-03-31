@@ -1,3 +1,4 @@
+#include "FitsTools.h"
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -29,7 +30,7 @@ namespace
 		return FitsReadParams{ static_cast<size_t>(searchBoxSize.x) * searchBoxSize.y * searchBoxSize.z, min, max,
 							   samplingInterval };
 	}
-}
+} // namespace
 
 auto b3d::tools::fits::isFitsFile(const std::filesystem::path& fitsFilePath) -> bool
 {
@@ -81,9 +82,7 @@ auto extractFloats(const UniqueFitsFile& fitsFile, const Box3I& searchBox) -> b3
 	{
 		auto error = int{};
 		fits_read_subset(fitsFile.get(), TFLOAT, fitsReadParams.min.data(), fitsReadParams.max.data(),
-						 fitsReadParams.samplingInterval.data(), &nan,
-						 extractedData.data.data(),
-						 nullptr, &error);
+						 fitsReadParams.samplingInterval.data(), &nan, extractedData.data.data(), nullptr, &error);
 		if (error != 0)
 		{
 			std::array<char, 30> txt;
@@ -136,7 +135,7 @@ auto b3d::tools::fits::extractBounds(const std::filesystem::path& fitsFilePath) 
 {
 	b3d::tools::fits::FitsProperties fitsProps;
 
-	auto fitsError = int{0};
+	auto fitsError = int{ 0 };
 
 	auto imgType = 0;
 	fits_get_img_param(fitsFile.get(), 3, &imgType, &fitsProps.axisCount, nullptr, &fitsError);
@@ -148,8 +147,7 @@ auto b3d::tools::fits::extractBounds(const std::filesystem::path& fitsFilePath) 
 	fitsProps.axisTypes.resize(fitsProps.axisCount);
 
 	fits_get_img_param(fitsFile.get(), fitsProps.axisCount, &imgType, &fitsProps.axisCount,
-					   fitsProps.axisDimensions.data(),
-					   &fitsError);
+					   fitsProps.axisDimensions.data(), &fitsError);
 
 	auto hduCount = 0;
 	fits_get_num_hdus(fitsFile.get(), &hduCount, &fitsError);
@@ -157,7 +155,7 @@ auto b3d::tools::fits::extractBounds(const std::filesystem::path& fitsFilePath) 
 
 	assert(hduCount > 0);
 
-	fits_movabs_hdu(fitsFile.get(),  1, nullptr, &fitsError);
+	fits_movabs_hdu(fitsFile.get(), 1, nullptr, &fitsError);
 	assert(fitsError == 0);
 
 	// Read ctype for each axis
@@ -188,8 +186,8 @@ auto b3d::tools::fits::extractFloats(const std::filesystem::path& fitsFilePath, 
 	return extractFloats(fitsFile, searchBox);
 }
 
-auto b3d::tools::fits::extractIntegers(const std::filesystem::path& fitsFilePath,
-	const Box3I& searchBox) -> ExtractedIntData
+auto b3d::tools::fits::extractIntegers(const std::filesystem::path& fitsFilePath, const Box3I& searchBox)
+	-> ExtractedIntData
 {
 	const auto fitsFile = openFitsFile(fitsFilePath, READONLY);
 	return extractIntegers(fitsFile, searchBox);
@@ -197,7 +195,7 @@ auto b3d::tools::fits::extractIntegers(const std::filesystem::path& fitsFilePath
 
 
 auto writeFitsFileInternal(const std::filesystem::path& fitsFilePath, const Vec3I boxSize, void* data, int imgType,
-				   int dataType)-> void
+						   int dataType) -> void
 {
 	auto fitsError = 0;
 	fitsfile* fitsFile{ nullptr };
@@ -214,14 +212,14 @@ auto writeFitsFileInternal(const std::filesystem::path& fitsFilePath, const Vec3
 
 
 auto b3d::tools::fits::writeFitsFile(const std::filesystem::path& fitsFilePath, const Vec3I boxSize,
-										  const std::vector<float>& data) -> void
+									 const std::vector<float>& data) -> void
 {
 	assert(boxSize.x * boxSize.y * boxSize.z == data.size());
 	writeFitsFileInternal(fitsFilePath, boxSize, (void*)data.data(), FLOAT_IMG, TFLOAT);
 }
 
-auto b3d::tools::fits::applyMask(const std::vector<float>& data, const std::vector<bool>& mask,
-	const float maskedValue) -> std::vector<float>
+auto b3d::tools::fits::applyMask(const std::vector<float>& data, const std::vector<bool>& mask, const float maskedValue)
+	-> std::vector<float>
 {
 	assert(data.size() == mask.size());
 	auto result = std::vector<float>{};
@@ -234,8 +232,8 @@ auto b3d::tools::fits::applyMask(const std::vector<float>& data, const std::vect
 	return result;
 }
 
-auto b3d::tools::fits::applyMask(const std::vector<float>& data, const std::vector<int>& mask,
-	const float maskedValue) -> std::vector<float>
+auto b3d::tools::fits::applyMask(const std::vector<float>& data, const std::vector<int>& mask, const float maskedValue)
+	-> std::vector<float>
 {
 	assert(data.size() == mask.size());
 	auto result = std::vector<float>{};
@@ -248,11 +246,11 @@ auto b3d::tools::fits::applyMask(const std::vector<float>& data, const std::vect
 	return result;
 }
 
-auto b3d::tools::fits::applyMaskInPlace(std::vector<float>& data, const std::vector<int>& mask,
-	const float maskedValue) -> void
+auto b3d::tools::fits::applyMaskInPlace(std::vector<float>& data, const std::vector<int>& mask, const float maskedValue)
+	-> void
 {
 	assert(data.size() == mask.size());
-	for ( auto i = size_t{0}; i < data.size(); i++)
+	for (auto i = size_t{ 0 }; i < data.size(); i++)
 	{
 		data[i] = mask[i] > 0 ? data[i] : maskedValue;
 	}
@@ -266,7 +264,7 @@ auto b3d::tools::fits::applyMaskInPlace(std::vector<float>& data, const std::vec
 }
 
 auto b3d::tools::fits::applyMask(const std::filesystem::path& fitsDataFilePath,
-                                      const std::filesystem::path& fitsMaskFilePath, const float maskedValue)
+								 const std::filesystem::path& fitsMaskFilePath, const float maskedValue)
 	-> ExtractedFloatData
 {
 	auto dataFitsFile = openFitsFile(fitsDataFilePath, READONLY);
@@ -293,4 +291,42 @@ auto b3d::tools::fits::getFitsProperties(const std::filesystem::path& fitsFilePa
 {
 	const auto fitsFile = openFitsFile(fitsFilePath, READONLY);
 	return getFitsProperties(fitsFile);
+}
+
+auto b3d::tools::fits::getFitsHeaderInfo(const std::filesystem::path& fitsFilePath) -> b3d::tools::fits::FitsHeaderInfo
+{
+	const auto fitsFile = openFitsFile(fitsFilePath, READONLY);
+
+	auto fitsHeaderInfo = b3d::tools::fits::FitsHeaderInfo{};
+
+	auto readKey = [&](const char* key) -> std::optional<std::string>
+	{
+		auto valueString = std::optional<std::string>{};
+		char* value;
+		auto fitsError = 0;
+
+		auto retVal = fits_read_key_longstr(fitsFile.get(), key, &value, nullptr, &fitsError);
+		if (fitsError != 0)
+		{
+			return valueString;
+		}
+		valueString = std::string{ value };
+		fits_free_memory(value, &fitsError);
+		if (fitsError != 0)
+		{
+			return valueString;
+		}
+
+		return valueString;
+	};
+
+	fitsHeaderInfo.author = readKey("AUTHOR");
+	fitsHeaderInfo.comment = readKey("COMMENT");
+	fitsHeaderInfo.fileCreationDate = readKey("DATE");
+	fitsHeaderInfo.object = readKey("OBJECT");
+	fitsHeaderInfo.observationDate = readKey("DATE-OBS");
+	fitsHeaderInfo.observer = readKey("OBSERVER");
+	fitsHeaderInfo.originOrganisation = readKey("ORIGIN");
+
+	return fitsHeaderInfo;
 }

@@ -42,6 +42,8 @@ namespace b3d::tools::fits
 	/// \return Properties of the FITS file.
 	auto getFitsProperties(const std::filesystem::path& fitsFilePath) -> b3d::tools::fits::FitsProperties;
 
+	auto getFitsHeaderInfo(const std::filesystem::path& fitsFilePath) -> b3d::tools::fits::FitsHeaderInfo;
+
 	/// \brief Reads the data from the FITS file as floats.
 	/// \param fitsFilePath Path to the FITS file.
 	/// \param searchBox Region to extract. Zero indexed, lower and upper are included. Use Box3I::maxBox() to extract everything.

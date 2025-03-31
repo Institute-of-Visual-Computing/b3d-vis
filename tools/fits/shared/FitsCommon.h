@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <optional>
 
 #ifdef B3D_USE_NLOHMANN_JSON
 	#include <nlohmann/json.hpp>
@@ -49,5 +50,18 @@ namespace b3d::tools::fits
 	#ifdef B3D_USE_NLOHMANN_JSON
 		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(FitsProperties, axisCount, imgType, axisDimensions, axisTypes);
 	#endif
+
+
+		struct FitsHeaderInfo
+		{
+			//https://heasarc.gsfc.nasa.gov/docs/fcg/standard_dict.html
+			std::optional<std::string> author;
+			std::optional<std::string> object;
+			std::optional<std::string> observer;
+			std::optional<std::string> originOrganisation;
+			std::optional<std::string> comment;
+			std::optional<std::string> fileCreationDate;
+			std::optional<std::string> observationDate;
+		};
 
 } // namespace b3d::tools::fits

@@ -125,6 +125,7 @@ target_link_libraries(${viewerTargetName}
 	B3D::Tools::ServerFileProvider
 	B3D::Tools::Project
 	B3D::Tools::RuntimeDataset
+	B3D::Tools::Fits
 	OpenGL::GL
 	glad::glad
 	imguizmo_modefied
@@ -137,6 +138,7 @@ target_link_libraries(${viewerTargetName}
 	nlohmann_json::nlohmann_json
 	legit
 	B3D::Header::Sofia
+	imGuiFileDialog
 )
 
 target_compile_definitions(${viewerTargetName} PUBLIC B3D_USE_NLOHMANN_JSON)

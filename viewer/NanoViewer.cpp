@@ -7,9 +7,9 @@
 #include <GLFW/glfw3.h>
 
 
+#include <Logging.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
-#include <Logging.h>
 
 #include <format>
 #include <print>
@@ -33,6 +33,8 @@
 #include "features/serverConnect/ServerConnectSettingsView.h"
 #include "framework/ModalViewBase.h"
 
+#include <ImGuiFileDialog.h>
+
 using namespace owl;
 
 namespace
@@ -43,9 +45,6 @@ namespace
 									legit::Colors::orange,	  legit::Colors::carrot,	  legit::Colors::pumpkin,
 									legit::Colors::alizarin,  legit::Colors::pomegranate, legit::Colors::clouds,
 									legit::Colors::silver };
-
-
-	
 
 
 	[[nodiscard]] auto requestRequiredDpiScales() -> std::vector<float>
@@ -73,7 +72,7 @@ namespace
 	auto windowContentScaleCallback([[maybe_unused]] GLFWwindow* window, const float scaleX,
 									[[maybe_unused]] float scaleY)
 	{
-		auto& applicationContext  = static_cast<NanoViewer*>(glfwGetWindowUserPointer(window))->getApplicationContext();
+		auto& applicationContext = static_cast<NanoViewer*>(glfwGetWindowUserPointer(window))->getApplicationContext();
 		const auto dpiScales = requestRequiredDpiScales();
 		applicationContext.getFontCollection().rebuildFont(dpiScales);
 		const auto defaultDpiScale = applicationContext.getFontCollection().getDefaultFontDpiScale();
@@ -114,7 +113,12 @@ namespace
 		ImGui::DestroyContext();
 	}
 
-
+	void setUpOpenFileDialogStyle()
+	{
+		ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByExtention, ".fits", ImVec4(2.0f, 7.0f, 2.0f, 0.9f), ICON_LC_BOX);
+		ImGuiFileDialog::Instance()->SetFileStyle(IGFD_FileStyleByTypeDir, "", ImVec4(1.0f, 1.0f, 1.0f, 0.9f), ICON_LC_FOLDER);
+		ImGuiFileDialog::Instance()->SetFlashingAttenuationInSeconds(1.0f);
+	}
 } // namespace
 
 auto NanoViewer::gui() -> void
@@ -323,6 +327,8 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 	{
 		registeredRendererNames_.push_back(b3d::renderer::registry[i].name);
 	}
+
+	setUpOpenFileDialogStyle();
 }
 
 auto NanoViewer::showAndRunWithGui() -> void
@@ -489,7 +495,6 @@ auto NanoViewer::draw() -> void
 	applicationContext_->gpuGraph_.maxFrameTime = maxFrameTime * 3.0f;
 	applicationContext_->gpuGraph_.useColoredLegendText = useColoredLegendText;
 
-
 	ImGui::PopFont();
 	ImGui::EndFrame();
 
@@ -562,7 +567,7 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 			{
 				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.1, 0.5, 0.1, 1.0 });
 			}
-			else if (applicationContext_->serverClient_.getLastServerStatusState().health  ==
+			else if (applicationContext_->serverClient_.getLastServerStatusState().health ==
 					 b3d::tools::project::ServerHealthState::testing)
 			{
 				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 1, 0.65, 0.0, 1.0 });
@@ -601,8 +606,9 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 			};
 
 			static auto actualRequests = std::vector<Request>{};
-			
-			auto hasPendingRequests = applicationContext_->serverClient_.getLastServerStatusState().busyState == b3d::tools::project::ServerBusyState::processing;
+
+			auto hasPendingRequests = applicationContext_->serverClient_.getLastServerStatusState().busyState ==
+				b3d::tools::project::ServerBusyState::processing;
 			// update fake requests
 			/*
 			for (auto& request : actualRequests)
@@ -618,13 +624,13 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 				}
 			}
 			*/
-			
+
 			ImGui::SameLine();
 			ImGui::SetNextItemAllowOverlap();
 			const auto pos = ImGui::GetCursorPos();
 			const auto spinnerRadius = ImGui::GetFontSize() * 0.25f;
 			const auto itemWidth = ImGui::GetStyle().FramePadding.x * 2 + spinnerRadius * 4;
-			
+
 			if (ImGui::Button("##requestQueue", ImVec2(itemWidth, 32)))
 			{
 				/*
@@ -637,7 +643,7 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 				if (ImGui::BeginTooltip())
 				{
 					ImGui::SetNextItemOpen(true);
-					if(hasPendingRequests)
+					if (hasPendingRequests)
 					{
 						if (ImGui::TreeNode("Request ongoing"))
 						{
@@ -666,7 +672,7 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 					ImGui::EndTooltip();
 				}
 			}
-			
+
 			if (hasPendingRequests)
 			{
 				ImGui::SetCursorPos(pos + ImGui::GetStyle().FramePadding * 2);
@@ -710,12 +716,11 @@ auto NanoViewer::showAndRunWithGui(const std::function<bool()>& keepgoing) -> vo
 		"Help", ICON_FA_GITHUB " Source Code");
 
 
-	applicationContext_->addMenuToggleAction(
-		showAboutWindow_, [](bool) {}, "Help", "About");
+	applicationContext_->addMenuToggleAction(showAboutWindow_, [](bool) {}, "Help", "About");
 
 	applicationContext_->addMenuAction([&]() { isRunning_ = false; }, "Program", "Quit", "Alt+F4", std::nullopt, 100);
 	applicationContext_->addMenuAction([&]() { applicationContext_->settings_.restoreDefaultLayoutSettings(); },
-									  "Program", "Restore Layout", "", std::nullopt, 10);
+									   "Program", "Restore Layout", "", std::nullopt, 10);
 
 
 	glfwMakeContextCurrent(applicationContext_->mainWindowHandle_);
