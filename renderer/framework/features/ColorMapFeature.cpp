@@ -1,6 +1,6 @@
 #include "ColorMapFeature.h"
 #include "Logging.h"
-#include "owl/helper/cuda.h"
+#include <owl/helper/cuda.h>
 
 void b3d::renderer::ColorMapFeature::onInitialize()
 {

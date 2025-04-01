@@ -3,7 +3,7 @@
 #include <format>
 
 #include "Logging.h"
-#include "owl/helper/cuda.h"
+#include <owl/helper/cuda.h>
 
 auto b3d::renderer::RenderTargetFeature::beginUpdate() -> void
 {

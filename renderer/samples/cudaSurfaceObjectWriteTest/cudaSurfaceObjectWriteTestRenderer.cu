@@ -1,11 +1,11 @@
 #include "CudaSurfaceObjectWriteTestRenderer.h"
 
-#include "cuda_runtime.h"
+#include <cuda_runtime.h>
 
-#include "device_launch_parameters.h"
-#include "cuda/std/cmath"
+#include <device_launch_parameters.h>
+#include <cuda/std/cmath>
 
-#include "math_functions.h"
+#include <math_functions.h>
 
 using namespace b3d::renderer;
 

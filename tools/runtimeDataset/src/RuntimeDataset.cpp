@@ -5,8 +5,8 @@
 
 #include <execution>
 #include "NanoVDB.h"
-#include "owl/common/math/AffineSpace.h"
-#include "owl/helper/cuda.h"
+#include <owl/common/math/AffineSpace.h>
+#include <owl/helper/cuda.h>
 
 #include <nanovdb/tools/GridStats.h>
 #include <nanovdb/io/IO.h>

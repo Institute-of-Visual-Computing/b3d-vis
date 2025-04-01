@@ -19,7 +19,7 @@
 #include "Common.h"
 #include "deviceCode.h"
 
-#include "owl/owl_device.h"
+#include <owl/owl_device.h>
 #include "../../nano/OptixHelper.cuh"
 
 namespace

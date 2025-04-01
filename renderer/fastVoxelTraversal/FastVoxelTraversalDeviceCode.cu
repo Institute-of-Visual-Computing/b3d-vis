@@ -5,12 +5,12 @@
 #include <device_launch_parameters.h>
 
 #include "FastVoxelTraversalSharedStructs.h"
-#include "owl/owl_device.h"
+#include <owl/owl_device.h>
 
-#include "cuda_runtime.h"
-#include "owl/common/math/vec.h"
+#include <cuda_runtime.h>
+#include <owl/common/math/vec.h>
 
-#include "math_constants.h"
+#include <math_constants.h>
 
 namespace
 {

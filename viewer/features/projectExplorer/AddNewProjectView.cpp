@@ -2,7 +2,9 @@
 #include "imgui_stdlib.h"
 
 #include <FitsTools.h>
+#pragma warning(push, 0)
 #include <ImGuiFileDialog.h>
+#pragma warning (pop)
 
 #include <filesystem>
 #include <unordered_map>
@@ -20,7 +22,7 @@ namespace
 
 	std::unordered_map<std::filesystem::path, b3d::tools::fits::FitsHeaderInfo> cachedFitsInfos;
 
-	auto fitsFileInfoPanel(const char* filter, IGFDUserDatas userData, bool* cantContinue) -> void
+	auto fitsFileInfoPanel(const char*, IGFDUserDatas userData, bool*) -> void
 	{
 		const auto fitsFileInfo = *reinterpret_cast<FitsFileInfoData*>(userData);
 		auto fitsInfo = b3d::tools::fits::FitsHeaderInfo{};

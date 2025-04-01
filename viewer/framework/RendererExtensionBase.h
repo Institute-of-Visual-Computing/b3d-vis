@@ -8,7 +8,7 @@ namespace b3d::renderer
 }
 
 
-/// \brief Interacts with Renderer and allows acces to the rendering data.
+/// \brief Interacts with Renderer and allows access to the rendering data.
 class RendererExtensionBase : public ExtensionBase
 {
 public:

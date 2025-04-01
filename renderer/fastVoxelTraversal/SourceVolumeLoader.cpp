@@ -2,9 +2,9 @@
 
 #include <map>
 
-#include "cfitsio/fitsio.h"
-#include "owl/common/math/box.h"
-#include "tinyxml2.h"
+#include <cfitsio/fitsio.h>
+#include <owl/common/math/box.h>
+#include <tinyxml2.h>
 
 #include "FastVoxelTraversalSharedStructs.h"
 

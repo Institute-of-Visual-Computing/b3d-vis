@@ -51,7 +51,7 @@ namespace
 	{
 		auto changed = false;
 		ImGui::PushID(label);
-		if (ImGui::DragInt(label, value, v_speed, v_min, v_max, "%d", ImGuiSliderFlags_AlwaysClamp) && oddOnly)
+		if (ImGui::DragInt(label, value, static_cast<float>(v_speed), v_min, v_max, "%d", ImGuiSliderFlags_AlwaysClamp) && oddOnly)
 		{
 			changed = true;
 			if (*value > v_min + 1 && *value % 2 == 0)
@@ -153,7 +153,7 @@ auto SoFiaSearchView::onDraw() -> void
 		ImGui::BeginDisabled(true);
 	}
 
-	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.1, 0.5, 0.1, 1.0 });
+	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.1f, 0.5f, 0.1f, 1.0f });
 	if (ImGui::Button("Submit Search"))
 	{
 		startSearchFunction_();
@@ -720,7 +720,7 @@ auto SoFiaSearchView::onDraw() -> void
 		{
 			ImGuiMultiSelectIO* ms_io =
 				ImGui::BeginMultiSelect(ImGuiMultiSelectFlags_NoAutoSelect | ImGuiMultiSelectFlags_NoAutoClear, -1,
-										reliabilityParamItemBoxes.size());
+										static_cast<int>(reliabilityParamItemBoxes.size()));
 			ImGuiSelectionExternalStorage storage_wrapper;
 			storage_wrapper.UserData = reliabilityParamItemBoxes.data();
 			storage_wrapper.AdapterSetItemSelected = [](ImGuiSelectionExternalStorage* self, int n, bool selected)

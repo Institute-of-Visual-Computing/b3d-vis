@@ -76,9 +76,6 @@ public:
 							 std::string_view label, const std::optional<std::string_view>& shortcut = std::nullopt,
 							 const std::optional<std::string_view>& group = std::nullopt, int sortOrderKey = 0) -> void;
 	auto addMenuBarTray(const Action& trayDrawCallback = []() {}) -> void;
-	//TODO: investigate if thous API is needed
-	//auto addTool(std::string_view iconLabel, Action action) -> void;
-	// auto registerAsyncTasks(asyncEngine& )
 
 
 	struct ToggleEntryAction

@@ -39,7 +39,6 @@ private:
 	ProjectExplorer* projectExplorer_;
 	std::unique_ptr<ProjectExplorerView> projectExplorerView_;
 	std::unique_ptr<ProjectSelectionView> projectSelectionView_;
-	std::unique_ptr<OpenFileDialogView> openFileDialogView_;
 
 	bool showExplorerWindow_{ true };
 

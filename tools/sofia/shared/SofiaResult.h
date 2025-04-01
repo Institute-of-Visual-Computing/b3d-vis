@@ -3,7 +3,7 @@
 #include "Result.h"
 
 #ifdef B3D_USE_NLOHMANN_JSON
-	#include "nlohmann/json.hpp"
+	#include <nlohmann/json.hpp>
 #endif
 
 namespace b3d::tools::sofia

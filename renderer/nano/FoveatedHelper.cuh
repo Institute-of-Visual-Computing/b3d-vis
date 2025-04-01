@@ -1,6 +1,6 @@
 #pragma once
 #include <owl/common.h>
-#include "math_constants.h"
+#include <math_constants.h>
 
 template<typename T>
 inline __device__ auto length(const owl::vec_t<T, 2>& v) -> T

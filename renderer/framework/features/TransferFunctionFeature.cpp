@@ -1,6 +1,6 @@
 #include "TransferFunctionFeature.h"
 #include "Logging.h"
-#include "owl/helper/cuda.h"
+#include <owl/helper/cuda.h>
 
 using namespace b3d::renderer;
 

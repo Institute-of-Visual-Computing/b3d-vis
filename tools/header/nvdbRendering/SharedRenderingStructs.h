@@ -1,7 +1,7 @@
 #pragma once
 
-#include "cuda.h"
-#include "owl/common/math/affinespace.h"
+#include <cuda.h>
+#include <owl/common/math/affinespace.h>
 
 namespace b3d::tools::renderer::nvdb
  {

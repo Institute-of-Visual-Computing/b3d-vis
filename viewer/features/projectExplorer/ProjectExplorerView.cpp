@@ -9,7 +9,7 @@
 #include "IconsLucide.h"
 #include "IdGenerator.h"
 #include "ImGuiExtension.h"
-#include "imspinner.h"
+#include <imspinner.h>
 
 namespace
 {
@@ -51,10 +51,7 @@ ProjectExplorerView::ProjectExplorerView(
 			project.projectName = view->model().projectName;
 		});
 	deleteProjectView_ = std::make_unique<DeleteProjectView>(
-		appContext, "Delete Project",
-		[&](ModalViewBase* self)
-		{
-		},
+		appContext, "Delete Project", [&]([[maybe_unused]] ModalViewBase* self) {},
 		[&](ModalViewBase* self)
 		{
 			auto view = reinterpret_cast<DeleteProjectView*>(self);
@@ -136,11 +133,8 @@ auto ProjectExplorerView::drawSelectableItemGridPanel(const char* panelId, int& 
 				ImGui::Text(ICON_LC_FILE_UP);
 				ImGui::PopFont();
 
-
 				const auto text = std::string{ "Uploading" };
-				auto approximatedLength = text.size();
 				auto approximatedTextSize = textSize;
-
 
 				ImGui::SetCursorPos(
 					itemPosition +
@@ -292,7 +286,7 @@ auto ProjectExplorerView::onDraw() -> void
 	ImGui::SameLine(middleSpace);
 	ImGui::Text(serverNameText.c_str());
 	ImGui::SameLine();
-	const auto switchServerPressed = ImGui::Button(ICON_LC_ARROW_RIGHT_LEFT);
+	[[maybe_unused]] const auto switchServerPressed = ImGui::Button(ICON_LC_ARROW_RIGHT_LEFT);
 	ImGui::SetItemTooltip("Switch Server");
 
 	if (applicationContext_->isDevelopmentModeEnabled)
@@ -350,7 +344,7 @@ auto ProjectExplorerView::onDraw() -> void
 		}
 
 		const auto projectChanged = drawSelectableItemGridPanel(
-			"projects", selectedProjectItemIndex_, model_.projects->size(),
+			"projects", selectedProjectItemIndex_, static_cast<const int>(model_.projects->size()),
 			[&](const int index) { return model_.projects->at(index).projectName.c_str(); }, ICON_LC_BOX,
 			applicationContext_->getFontCollection().getBigIconsFont(),
 			[&](const int index)
@@ -409,9 +403,6 @@ auto ProjectExplorerView::onDraw() -> void
 					ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
 					ImGui::BeginChild("Properties", ImVec2(0, 260 * scaleFactor), ImGuiChildFlags_Border, window_flags);
 
-					// Common Properties
-					// Size
-					// Properties per Axis
 					for (auto i = 0; i < project.fitsOriginProperties.axisTypes.size(); i++)
 					{
 						ImGui::LabelText(std::format("Axis {}", i).c_str(),
@@ -423,9 +414,6 @@ auto ProjectExplorerView::onDraw() -> void
 				}
 				ImGui::EndUnderDevelopmentScope();
 			}
-
-
-			// TODO: list, item "name", "id", "request status", Button "Jump TO" and highlight in volume view onhover
 
 			static auto selectedRequest = defaultVolumeDataRequest;
 

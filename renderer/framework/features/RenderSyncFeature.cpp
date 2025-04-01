@@ -2,7 +2,7 @@
 
 #include "Logging.h"
 
-#include "owl/helper/cuda.h"
+#include <owl/helper/cuda.h>
 
 #include <format>
 

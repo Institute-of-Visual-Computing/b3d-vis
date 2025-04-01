@@ -16,8 +16,8 @@ class GlGpuTimers final
 public:
 	struct Timings
 	{
-		GLuint64 start;
-		GLuint64 stop;
+		GLuint start;
+		GLuint stop;
 	};
 
 	class Record
@@ -29,14 +29,14 @@ public:
 	private:
 		friend GlGpuTimers;
 
-		Record(GlGpuTimers* parent, const GLuint64 start, const GLuint64 stop)
+		Record(GlGpuTimers* parent, const GLuint start, const GLuint stop)
 			: parent_{ parent }, start_{ start }, stop_{ stop }
 		{
 		}
 
 		GlGpuTimers* parent_{};
-		GLuint64 start_{};
-		GLuint64 stop_{};
+		GLuint start_{};
+		GLuint stop_{};
 	};
 
 	auto nextFrame() -> void;
@@ -62,7 +62,7 @@ public:
 
 private:
 	friend Record;
-	std::array<std::array<GLuint64, PoolSize>, DoubleBufferedFrames> eventsPool_;
+	std::array<std::array<GLuint, PoolSize>, DoubleBufferedFrames> eventsPool_;
 
 
 	std::array<std::unordered_map<std::string, Timings>, DoubleBufferedFrames> labeledTimestamps_;
@@ -103,8 +103,6 @@ auto GlGpuTimers<PoolSize, DoubleBufferedFrames, WaitOnNotReady>::nextFrame() ->
 	isFirstRecord_ = true;
 
 	labeledTimestamps_[currentPoolIndex_].clear();
-	// TODO: Investigate: do we require previews result clearing??
-	// results_[completedPoolIndex_].clear();
 	auto availableAll = true;
 	GLint available = 0;
 
@@ -112,9 +110,6 @@ auto GlGpuTimers<PoolSize, DoubleBufferedFrames, WaitOnNotReady>::nextFrame() ->
 	{
 		auto start = event.second.start;
 		auto stop = event.second.stop;
-		/*const auto r1 = cudaEventQuery(start);
-		const auto r2 = cudaEventQuery(stop);*/
-
 
 		GL_CALL(glGetQueryObjectiv(stop, GL_QUERY_RESULT_AVAILABLE, &available));
 
@@ -140,7 +135,6 @@ auto GlGpuTimers<PoolSize, DoubleBufferedFrames, WaitOnNotReady>::nextFrame() ->
 	lastFrameResults_.clear();
 	lastFrameResults_.reserve(results_.size());
 
-
 	if (availableAll)
 	{
 		uint64_t frameStart = 0;
@@ -157,7 +151,8 @@ auto GlGpuTimers<PoolSize, DoubleBufferedFrames, WaitOnNotReady>::nextFrame() ->
 			GL_CALL(glGetQueryObjectui64v(timings.stop, GL_QUERY_RESULT, &timeEnd));
 			const auto deltaStart = timeStart - frameStart;
 			const auto deltaEnd = timeEnd - frameStart;
-			lastFrameResults_.push_back(b3d::profiler::ProfilerResult{ lable, static_cast<float>(deltaStart) / 1000000.0f, static_cast<float>(deltaEnd) / 1000000.0f });
+			lastFrameResults_.push_back(b3d::profiler::ProfilerResult{
+				lable, static_cast<float>(deltaStart) / 1000000.0f, static_cast<float>(deltaEnd) / 1000000.0f });
 		}
 	}
 }
@@ -185,28 +180,11 @@ GlGpuTimers<PoolSize, DoubleBufferedFrames, WaitOnNotReady>::GlGpuTimers()
 {
 	for (auto& pool : eventsPool_)
 	{
-		GL_CALL(glGenQueries(pool.size(), (GLuint*)pool.data()));
+		GL_CALL(glGenQueries(static_cast<GLsizei>(pool.size()), (GLuint*)pool.data()));
 	}
 }
 template <int PoolSize, int DoubleBufferedFrames, bool WaitOnNotReady>
 GlGpuTimers<PoolSize, DoubleBufferedFrames, WaitOnNotReady>::~GlGpuTimers()
 {
 	assert(startedRecord_ == 0);
-
-	for (auto& pool : eventsPool_)
-	{
-		for (auto& event : pool)
-		{
-			// OWL_CUDA_CHECK(cudaEventSynchronize(event));
-		}
-	}
-
-	for (auto& pool : eventsPool_)
-	{
-		for (auto& event : pool)
-		{
-			// OWL_CUDA_CHECK(cudaEventDestroy(event));
-			//GL_CALL(glDeleteQueries(1, event));
-		}
-	}
 }

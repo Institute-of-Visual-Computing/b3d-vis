@@ -1,13 +1,11 @@
 #include "TextureFillerSyncSample.h"
 
-#include "cuda_runtime.h"
+#include <cuda_runtime.h>
 
-#include "cuda/std/cmath"
-#include "device_launch_parameters.h"
+#include <cuda/std/cmath>
+#include <device_launch_parameters.h>
 
-
-
-#include "math_functions.h"
+#include <math_functions.h>
 
 __global__ auto writeVertexBuffer(cudaSurfaceObject_t surface, unsigned int width, unsigned int height, int frmidx) -> void
 {

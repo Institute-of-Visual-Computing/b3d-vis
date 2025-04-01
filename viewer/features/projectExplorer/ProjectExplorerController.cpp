@@ -7,8 +7,6 @@
 
 #include "ProjectExplorerController.h"
 
-#include "../fileDialog/OpenFileDialogView.h"
-
 #include <RenderData.h>
 
 namespace
@@ -31,7 +29,7 @@ ProjectExplorerController::ProjectExplorerController(ApplicationContext& applica
 {
 	projectExplorerView_ = std::make_unique<ProjectExplorerView>(
 		applicationContext, applicationContext.getMainDockspace(), [&] { projectSelectionView_->open(); },
-		[&] { openFileDialogView_->open(); },
+		[&] { },
 		[&](const std::string& fileUUID) { return projectExplorer_->loadAndShowFile(fileUUID); },
 		[&]() { return projectExplorer_->refreshProjects(); });
 
@@ -55,21 +53,6 @@ ProjectExplorerController::ProjectExplorerController(ApplicationContext& applica
 				{
 					// projectExplorerView_->setModel({ &*it });
 				}
-			}
-		});
-
-	openFileDialogView_ = std::make_unique<OpenFileDialogView>(
-		applicationContext,
-		[&](ModalViewBase* self)
-		{ reinterpret_cast<OpenFileDialogView*>(self)->setViewParams(std::filesystem::current_path(), { ".nvdb" }); },
-		[&](ModalViewBase* self)
-		{
-			const auto selectedPath = reinterpret_cast<OpenFileDialogView*>(self)->getModel().selectedPath_;
-			if (!selectedPath.empty())
-			{
-
-
-				projectExplorer_->loadAndShowFileWithPath(selectedPath);
 			}
 		});
 
@@ -127,5 +110,4 @@ auto ProjectExplorerController::update() -> void
 		setProjects(nullptr);
 	}
 	projectSelectionView_->draw();
-	openFileDialogView_->draw();
 }

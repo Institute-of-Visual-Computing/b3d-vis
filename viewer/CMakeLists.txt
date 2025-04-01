@@ -98,8 +98,6 @@ target_sources(${viewerTargetName} PRIVATE
 	features/projectExplorer/DeleteProjectView.cpp
 	features/projectExplorer/EditProjectView.h
 	features/projectExplorer/EditProjectView.cpp
-	features/fileDialog/OpenFileDialogView.h
-	features/fileDialog/OpenFileDialogView.cpp
 	features/sofiaSearch/SoFiaSearch.h
 	features/sofiaSearch/SoFiaSearch.cpp
 	features/sofiaSearch/SoFiaSearchView.h
@@ -116,11 +114,7 @@ target_link_libraries(${viewerTargetName}
 	imgui::imgui
 	B3D::Renderer::Framework
 	B3D::Renderer::Null
-	B3D::Renderer::CudaSurfaceObjectWriteTest
-	B3D::Renderer::SimpleTriangles
-	B3D::Renderer::Nano
 	B3D::Renderer::FitsNvdb
-	B3D::Renderer::FastVoxelTraversal
 	B3D::Tools::ServerClient
 	B3D::Tools::ServerFileProvider
 	B3D::Tools::Project
@@ -177,3 +171,7 @@ add_custom_target(copy_viewer_resources ALL COMMAND ${commands})
 set_property(TARGET copy_viewer_resources PROPERTY FOLDER "Utility")
 
 add_dependencies(${viewerTargetName}  copy_viewer_resources)
+
+if(MSVC)
+    target_compile_options(${viewerTargetName} PRIVATE /W4 /WX /external:W0 /external:anglebrackets)
+endif()

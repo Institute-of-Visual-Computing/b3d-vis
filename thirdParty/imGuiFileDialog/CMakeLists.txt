@@ -6,14 +6,14 @@ FetchContent_Declare(
   GIT_TAG        master
 )
 
-
 FetchContent_MakeAvailable(ImGuiFileDialog)
-
 
 find_package(imgui CONFIG REQUIRED)
 
 add_library(imGuiFileDialog STATIC)
-target_sources(imGuiFileDialog PUBLIC
+target_sources(
+	imGuiFileDialog
+PRIVATE
 	${ImGuiFileDialog_SOURCE_DIR}/ImGuiFileDialog.cpp
 	${ImGuiFileDialog_SOURCE_DIR}/ImGuiFileDialog.h
 	CustomImGuiFileDialogConfig.h
@@ -29,8 +29,9 @@ PRIVATE
 )
 
 target_compile_definitions(imGuiFileDialog PUBLIC CUSTOM_IMGUIFILEDIALOG_CONFIG="${CMAKE_CURRENT_SOURCE_DIR}/CustomImGuiFileDialogConfig.h")
+if(MSVC)
+    target_compile_options(imguizmo_modefied PRIVATE /W0)
+endif()
 
 set_property(TARGET imGuiFileDialog PROPERTY FOLDER "ThirdParty/imGuiFileDialog")
-
-
 set_target_properties(ImGuiFileDialog PROPERTIES FOLDER "thirdParty/imGuiFileDialog_unused")

@@ -65,7 +65,7 @@ auto FontCollection::rebuildFont(const std::vector<float>& dpiList) -> void
 			const auto fontIndex = loadedFonts_.size();
 			loadedFonts_.push_back(font);
 			loadedFonts_.push_back(fontBig);
-			dpiToFont_[dpi] = fontIndex;
+			dpiToFont_[dpi] = static_cast<int>(fontIndex);
 		}
 	}
 

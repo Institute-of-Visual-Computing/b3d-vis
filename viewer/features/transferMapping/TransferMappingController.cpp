@@ -23,7 +23,7 @@ auto TransferMappingController::update() -> void
 	if (showToolWindow_)
 	{
 		mappingView_->setColorMapInfos(transferMapping_->colorMapResources_.colorMap.colorMapNames,
-									   reinterpret_cast<void*>(transferMapping_->colorMapResources_.colorMapTexture));
+									   reinterpret_cast<void*>(static_cast<GLuint64>(transferMapping_->colorMapResources_.colorMapTexture)));
 		mappingView_->draw();
 	}
 }

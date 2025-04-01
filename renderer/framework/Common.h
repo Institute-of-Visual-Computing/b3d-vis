@@ -3,7 +3,7 @@
 #include <array>
 #include <owl/common.h>
 
-#include "cuda_runtime.h"
+#include <cuda_runtime.h>
 
 #include <optix_types.h>
 

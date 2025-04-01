@@ -51,14 +51,14 @@ namespace
 		commands.push_back(Command{ commandName, description });
 
 		auto foundBegin = std::ranges::find_if(vector,
-									   [&](const Param& param)
-									   {
-										   if (param.value == "--" + commandName)
-										   {
-											   return true;
-										   }
-										   return false;
-									   });
+											   [&](const Param& param)
+											   {
+												   if (param.value == "--" + commandName)
+												   {
+													   return true;
+												   }
+												   return false;
+											   });
 		if (foundBegin != vector.end())
 		{
 			auto foundEnd = std::find_if(foundBegin + 1, vector.end(),
@@ -94,13 +94,9 @@ auto Application::run() -> void
 	std::cout << registry.front().name << std::endl;
 	using namespace std::string_literals;
 	auto viewer = NanoViewer{ "Default Viewer"s, 1980, 1080, !disableVsync, rendererIndex };
-	//viewer.enableFlyMode();
-	//viewer.enableInspectMode();
+
 	viewer.enableDevelopmentMode(enableDevMode);
-	
-	auto& camera = viewer.getCamera();
-	camera.setOrientation(glm::vec3(1.0,1.0,1.0), glm::vec3(0.0,0.0,0.0), camera.getUp(), camera.getFovYInDegrees());
-	viewer.showAndRunWithGui();
+	viewer.run();
 }
 
 auto Application::initialization(const std::vector<Param>& parameters) -> void

@@ -6,16 +6,16 @@
 
 #include "FastVoxelTraversalSharedStructs.h"
 
-#include "owl/owl.h"
+#include <owl/owl.h>
 
-#include "imgui.h"
-#include "owl/helper/cuda.h"
+#include <imgui.h>
+#include <owl/helper/cuda.h>
 
 #include "Logging.h"
 #include "SourceVolumeLoader.h"
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#include <stb_image.h>
 
 using namespace b3d::renderer;
 

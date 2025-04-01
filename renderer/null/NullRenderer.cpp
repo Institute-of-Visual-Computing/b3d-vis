@@ -1,6 +1,6 @@
 #include "NullRenderer.h"
 #include <Logging.h>
-#include "cuda_runtime.h"
+#include <cuda_runtime.h>
 
 using namespace b3d::renderer;
 

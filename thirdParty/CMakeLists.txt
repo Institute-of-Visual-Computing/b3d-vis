@@ -1,7 +1,12 @@
 find_package(glfw3 CONFIG REQUIRED)
 set(owl_dir ${CMAKE_CURRENT_LIST_DIR}/owl)
+option(OWL_BUILD_SAMPLES "" OFF)
 add_subdirectory(${owl_dir} EXCLUDE_FROM_ALL)
 set_property(TARGET owl PROPERTY FOLDER "ThirdParty/owl")
+if(MSVC)
+    target_compile_options(owl PRIVATE  $<$<COMPILE_LANGUAGE:C>:/W0>)
+endif()
+
 
 add_subdirectory(imGuizmo)
 add_subdirectory(imCurve)

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ProfilerTask.h"
-#include "imgui.h"
+#include <imgui.h>
 #include <array>
 #include <map>
 #include <vector>
@@ -373,7 +373,6 @@ namespace ImGuiUtils
       std::stringstream title;
       title.precision(2);
       title << std::fixed << "Legit profiler [" << 1.0f / avgFrameTime << "fps\t" << avgFrameTime * 1000.0f << "ms]###ProfilerWindow";
-      //###AnimatedTitle
       ImGui::Begin(title.str().c_str(), 0, ImGuiWindowFlags_NoScrollbar);
       ImVec2 canvasSize = ImGui::GetContentRegionAvail();
 
@@ -388,9 +387,7 @@ namespace ImGuiUtils
       if (graphHeight * 2 + sizeMargin + sizeMargin < canvasSize.y)
       {
         ImGui::Columns(2);
-        size_t textSize = 50;
         ImGui::Checkbox("Stop profiling", &stopProfiling);
-        //ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - textSize);
         ImGui::Checkbox("Colored legend text", &useColoredLegendText);
         ImGui::DragInt("Frame offset", &frameOffset, 1.0f, 0, 400);
         ImGui::NextColumn();

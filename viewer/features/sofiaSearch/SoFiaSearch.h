@@ -4,9 +4,9 @@
 #include <memory>
 
 #include "SofiaParams.h"
-#include "framework/RendererExtensionBase.h"
-#include "framework/UpdatableComponentBase.h"
-#include "owl/common/math/AffineSpace.h"
+#include <framework/RendererExtensionBase.h>
+#include <framework/UpdatableComponentBase.h>
+#include <owl/common/math/AffineSpace.h>
 
 class GizmoHelper;
 class SoFiaSearchView;
