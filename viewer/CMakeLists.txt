@@ -5,6 +5,7 @@ find_package(glad CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(OpenVDB CONFIG REQUIRED COMPONENTS nanovdb)
+find_package(Stb REQUIRED)
 
 set(viewerTargetName NanoViewer)
 add_executable(${viewerTargetName})
@@ -134,6 +135,8 @@ target_link_libraries(${viewerTargetName}
 	B3D::Header::Sofia
 	imGuiFileDialog
 )
+
+target_include_directories(${viewerTargetName} PRIVATE ${Stb_INCLUDE_DIR})
 
 target_compile_definitions(${viewerTargetName} PUBLIC B3D_USE_NLOHMANN_JSON)
 

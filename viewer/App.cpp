@@ -1,14 +1,12 @@
 #include "App.h"
 
-#include "CudaSurfaceObjectWriteTestRenderer.h"
-#include "NanoRenderer.h"
-#include "FitsNvdbRenderer.h"
-#include "NanoViewer.h"
-#include "NullRenderer.h"
-#include "SimpleTrianglesRenderer.h"
+#include <functional>
 
-#include "FastVoxelTraversalRenderer.h"
-#include "samples/common/owlViewer/OWLViewer.h"
+#include "NanoViewer.h"
+
+
+#include <FitsNvdbRenderer.h>
+#include <NullRenderer.h>
 
 
 using namespace b3d::renderer;
@@ -101,12 +99,8 @@ auto Application::run() -> void
 
 auto Application::initialization(const std::vector<Param>& parameters) -> void
 {
-	registerRenderer<NullRenderer>("nullRenderer");
-	registerRenderer<NanoRenderer>("NanoRenderer");
 	registerRenderer<FitsNvdbRenderer>("FitsNvdbRenderer");
-	registerRenderer<SimpleTrianglesRenderer>("SimpleTrianglesRenderer");
-	registerRenderer<CudaSurfaceObjectWriteTestRenderer>("CudaSurfaceObjectWriteTestRenderer");
-	registerRenderer<FastVoxelTraversalRenderer>("FastVoxelTraversalRenderer");
+	registerRenderer<NullRenderer>("nullRenderer");
 
 	addParamCommand(parameters, "renderer", "Sets default renderer.",
 					[&](const std::vector<std::string>& values)

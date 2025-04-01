@@ -4,6 +4,8 @@
 #include <owl/common.h>
 #include <owl/helper/cuda.h>
 
+//TODO: It's not clear, but it is good enought for now
+#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
 #include <RenderData.h>
