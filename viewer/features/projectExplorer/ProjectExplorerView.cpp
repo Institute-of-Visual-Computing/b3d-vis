@@ -49,6 +49,8 @@ ProjectExplorerView::ProjectExplorerView(
 			auto view = reinterpret_cast<EditProjectView*>(self);
 			auto& project = model_.projects->at(view->projectIndex());
 			project.projectName = view->model().projectName;
+			changeProjectFuture_ =
+				applicationContext_->serverClient_.changeProjectAsync(project.projectUUID, project.projectName);
 		});
 	deleteProjectView_ = std::make_unique<DeleteProjectView>(
 		appContext, "Delete Project",
@@ -58,6 +60,8 @@ ProjectExplorerView::ProjectExplorerView(
 		[&](ModalViewBase* self)
 		{
 			auto view = reinterpret_cast<DeleteProjectView*>(self);
+			std::string uuid = model_.projects->at(view->projectIndex()).projectUUID;
+			deleteProjectFuture_ = applicationContext_->serverClient_.deleteProjectAsync(uuid);
 			model_.projects->erase(model_.projects->begin() + view->projectIndex());
 		});
 }

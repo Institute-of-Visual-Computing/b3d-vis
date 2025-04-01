@@ -18,7 +18,7 @@ class ProjectExplorerView final : public DockableWindowViewBase
 public:
 	struct Model
 	{
-		std::vector<b3d::tools::project::Project>* projects;
+		std::vector<b3d::tools::project::Project>* projects{};
 	};
 
 	ProjectExplorerView(ApplicationContext& appContext, Dockspace* dockspace, std::function<void()> showSelectionModal,
@@ -54,7 +54,9 @@ private:
 	std::function<std::shared_future<void>()> refreshProjectsFunction_{};
 	std::shared_future<void> refreshProjectsFuture_{};
 	std::shared_future<void> loadAndShowFileFuture_{};
-
+	std::future<void> deleteProjectFuture_{};
+	std::future<void> changeProjectFuture_{};
+	
 	std::unique_ptr<SofiaParameterSummaryView> parameterSummaryView_{};
 	std::unique_ptr<AddNewProjectView> addNewProjectView_;
 	std::unique_ptr<EditProjectView> editProjectView_;

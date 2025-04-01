@@ -124,7 +124,7 @@ auto ProjectExplorerController::update() -> void
 
 	if (not isConnectedToAnyServer)
 	{
-		setProjects(nullptr);
+		// setProjects(nullptr);
 	}
 	projectSelectionView_->draw();
 	openFileDialogView_->draw();
