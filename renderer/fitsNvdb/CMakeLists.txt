@@ -12,6 +12,8 @@ embed_optixir(
 		SamplerMapper.h
 	#DEVICE_DEBUG
 )
+target_compile_options(fitsNvdb-optixir PRIVATE -rdc=true)
+
 
 set_property(TARGET fitsNvdb-optixir PROPERTY FOLDER "Renderer/PTX Targets")
 set_property(TARGET fitsNvdb-optixir_optixir PROPERTY FOLDER "Renderer/PTX Targets")
@@ -28,6 +30,9 @@ embed_ptx(
 		SamplerMapper.h
 	#DEVICE_DEBUG
 )
+
+
+target_compile_options(fitsNvdb-ptx PRIVATE -rdc=true)
 
 
 set_property(TARGET fitsNvdb-ptx PROPERTY FOLDER "Renderer/PTX Targets")
@@ -52,3 +57,4 @@ add_b3d_renderer(
 		Tracy::TracyClient
 		B3D::Header::Shared::NvdbRendering
 )
+
