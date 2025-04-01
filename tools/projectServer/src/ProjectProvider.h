@@ -17,6 +17,8 @@ namespace b3d::tools::projectServer
 			flagInvalidFilesInProjects();
 		}
 
+		auto addExistingProject(const std::string &uuid) -> const bool;
+
 		auto getProjects() -> const std::map<std::string, b3d::tools::project::Project>&
 		{
 			return knownProjects_;
@@ -41,6 +43,8 @@ namespace b3d::tools::projectServer
 
 		auto saveProject(const std::string& projectUUID) -> bool;
 
+		auto removeProject(const std::string& projectUUID) -> bool;
+
 		auto getRootPath() -> std::filesystem::path
 		{
 			return rootPath_;
@@ -55,6 +59,7 @@ namespace b3d::tools::projectServer
 		{
 			return rootPath_ / projectsPath_;
 		}
+
 
 	private:
 		auto findProjects() -> void;

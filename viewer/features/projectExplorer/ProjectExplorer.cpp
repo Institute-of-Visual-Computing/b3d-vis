@@ -17,7 +17,7 @@ ProjectExplorer::ProjectExplorer(ApplicationContext& applicationContext) : Rende
 	serverFileProvider_ = std::make_unique<ServerFileProvider>("./", appContext_->serverClient_);
 	applicationContext.addUpdatableComponent(projectExplorerController_.get());
 	applicationContext.addRendererExtensionComponent(this);
-
+	projectExplorerController_->setProjects(&projects_);
 	cudaStreamCreate(&stream_);
 }
 

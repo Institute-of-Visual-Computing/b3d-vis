@@ -39,7 +39,7 @@ private:
 
 	std::unique_ptr<ProjectExplorerController> projectExplorerController_;
 	std::unique_ptr<b3d::tools::project::ServerFileProvider> serverFileProvider_;
-	std::vector<b3d::tools::project::Project> projects_;
+	std::vector<b3d::tools::project::Project> projects_{};
 
 	std::future<std::optional<std::vector<b3d::tools::project::Project>>> projectsRequestFuture_;
 	std::unique_ptr<std::promise<void>> projectsViewPromise_;
