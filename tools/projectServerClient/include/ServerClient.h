@@ -102,6 +102,8 @@ namespace b3d::tools::project
 		auto uploadFileAsync(const std::filesystem::path& sourceFile, const std::string& projectName,
 							 UploadFeedback& uploadFeedback) const -> std::future<UploadResult>;
 
+		auto deleteProjectAsync(const std::string projectUUID) const -> std::future<void>;
+
 		auto isServerBusy() const -> std::future<bool>;
 
 		/// \brief Start a search on the server
@@ -111,6 +113,8 @@ namespace b3d::tools::project
 		/// \return UUID of the request, if started
 		auto startSearchAsync(const std::string& projectUUID, const sofia::SofiaParams& params, bool force = false)
 			-> std::future<std::string>;
+		auto changeProjectAsync(const std::string& projectUUID, const std::string &name)
+			-> std::future<void>;
 
 		auto getProjectAsync(const std::string& projectUUID) -> Project;
 		auto getRequests(const std::string& projectUUID) -> std::vector<Request>;
@@ -125,8 +129,14 @@ namespace b3d::tools::project
 			-> std::optional<std::vector<Project>>;
 		static auto downloadFile(ServerConnectionDescription connectionDescription, std::string fileUUID,
 								 std::filesystem::path targetDirectoryPath) -> std::filesystem::path;
+		static auto deleteProject(ServerConnectionDescription connectionDescription, const std::string& projectUUID)
+			-> void;
+		static auto changeProject(ServerConnectionDescription connectionDescription, const std::string& projectUUID, const std::string& projectName)
+			-> void;
 
-		static auto uploadFile(const std::filesystem::path& sourceFile, const std::string& projectName,
+		static auto uploadFile(
+			ServerConnectionDescription connectionDescription, const std::filesystem::path& sourceFile,
+							   const std::string& projectName,
 							   UploadFeedback& uploadFeedback) -> UploadResult;
 
 		auto startSearch(ServerConnectionDescription connectionDescription, const std::string& projectUUID,

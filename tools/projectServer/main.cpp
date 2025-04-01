@@ -7,14 +7,18 @@
 #include <httplib.h>
 #include <boost/process.hpp>
 
+#include <uuid.h>
+
 #include <plog/Log.h>
 #include <plog/Formatters/TxtFormatter.h>
 #include <plog/Initializers/ConsoleInitializer.h>
 
+#include "FitsTools.h"
 #include "SofiaNanoPipeline.h"
 #include "SofiaProcessRunner.h"
 
 #include "Internals.h"
+#include "NanoTools.h"
 #include "ProjectProvider.h"
 #include "TimeStamp.h"
 
@@ -264,7 +268,6 @@ auto postStartSearch(const httplib::Request& req, httplib::Response& res, const 
 
 	auto& project = projectProvider->getProject(projectUuid);
 	auto& catalog = projectProvider->getCatalog(project.projectUUID);
-
 
 	// First successful request is original mask.
 	const auto possibleRequest =
@@ -660,6 +663,174 @@ auto getFile(const httplib::Request& req, httplib::Response& res) -> void
 		});
 }
 
+auto postNewProject(const httplib::Request& req, httplib::Response& res, const httplib::ContentReader& contentReader) -> void
+{
+	// Create Random project UUID
+	std::random_device rd;
+	auto seed_data = std::array<int, std::mt19937::state_size>{};
+	std::generate(std::begin(seed_data), std::end(seed_data), std::ref(rd));
+	std::seed_seq seq(std::begin(seed_data), std::end(seed_data));
+	std::mt19937 generator(seq);
+	uuids::uuid_random_generator gen{ generator };
+
+	std::string projectUUIDString = uuids::to_string(gen());
+
+	b3d::tools::project::Project newProject;
+	newProject.projectUUID = projectUUIDString;
+	newProject.projectPathAbsolute = projectProvider->getProjectsPathAbsolute() / newProject.projectUUID;
+
+	b3d::tools::project::catalog::FileCatalog newCatalog =
+		b3d::tools::project::catalog::FileCatalog::createOrLoadCatalogInDirectory(newProject.projectPathAbsolute);
+
+	newProject.projectName = "NEW";
+	newProject.fitsOriginFileName = "original.fits";
+	newProject.fitsOriginUUID =
+		newCatalog.addFilePathAbsolute(newProject.projectPathAbsolute / newProject.fitsOriginFileName);
+
+	std::filesystem::create_directories(newProject.projectPathAbsolute / "requests");
+
+	newCatalog.writeCatalog();
+	{
+		const auto projectFilePath = newProject.projectPathAbsolute / "project.json";
+		std::ofstream ofs(projectFilePath, std::ofstream::trunc);
+		nlohmann::json j = newProject;
+		ofs << std::setw(4) << j << std::endl;
+		ofs.close();
+	}
+
+	projectProvider->addExistingProject(newProject.projectUUID);
+	// Create new Project
+	// create new catalog
+	// Create new Directory for project
+	// Add Project to projectprovider
+	auto &createdProject = projectProvider->getProject(newProject.projectUUID);
+	createdProject.projectPathAbsolute = newProject.projectPathAbsolute;
+	auto fout = new std::ofstream(createdProject.projectPathAbsolute / createdProject.fitsOriginFileName,
+								  std::ifstream::binary);
+	
+	contentReader([&](const char* data, size_t data_length)
+	{
+		fout->write(data, data_length);
+		return true;
+	});
+	fout->close();
+
+	createdProject.fitsOriginProperties = b3d::tools::fits::getFitsProperties(createdProject.projectPathAbsolute / createdProject.fitsOriginFileName);
+
+	auto request = b3d::tools::project::Request{ .uuid = uuids::to_string(gen()),
+												 .subRegion = { createdProject.fitsOriginProperties.axisDimensions[0],
+																createdProject.fitsOriginProperties.axisDimensions[1],
+																createdProject.fitsOriginProperties.axisDimensions[2] },
+												 .sofiaParameters = {},
+												 .result = {},
+												 .createdAt = b3d::common::helper::getSecondsSinceEpochUtc() };
+
+
+	std::filesystem::create_directories(createdProject.projectPathAbsolute / "requests" / request.uuid / "nano");
+	request.result.nanoResult = b3d::tools::nano::convertFitsToNano(
+		createdProject.projectPathAbsolute / createdProject.fitsOriginFileName,
+		createdProject.projectPathAbsolute / "requests" / request.uuid / "nano" /
+											"out.nvdb");
+	if (!request.result.nanoResult.wasSuccess())
+	{
+		LOG_ERROR << "Failed to create NVDB.";
+		return;
+	}
+	request.result.nanoResult.resultFile = newCatalog.addFilePathAbsolute(createdProject.projectPathAbsolute / "requests" / request.uuid / "nano" / "out.nvdb");
+	createdProject.requests.push_back(request);
+	newCatalog.writeCatalog();
+	projectProvider->saveProject(createdProject.projectUUID);
+}
+
+auto deleteProject(const httplib::Request& req, httplib::Response& res) -> void
+{
+	// ProjectUUID not provided!
+	if (!req.path_params.contains("projectUUID") || req.path_params.at("projectUUID").empty())
+	{
+		LOG_INFO << "Missing projectUUID!";
+		nlohmann::json retJ;
+		retJ["message"] = "Project UUID not provided!";
+
+		res.status = httplib::StatusCode::BadRequest_400;
+		res.set_content(retJ.dump(), "application/json");
+		return;
+	}
+	const auto projectUUID = req.path_params.at("projectUUID");
+
+	// Project does not exist!
+	if (!projectProvider->hasProject(projectUUID))
+	{
+		LOG_INFO << "Project with UUID " << projectUUID << " not found!";
+
+		nlohmann::json retJ;
+		retJ["message"] = "Project with given projectUUID not found!";
+
+		res.status = httplib::StatusCode::NotFound_404;
+		res.set_content(retJ.dump(), "application/json");
+		return;
+	}
+
+	projectProvider->removeProject(projectUUID);
+	res.status = httplib::StatusCode::OK_200;
+}
+
+auto putChangeProject(const httplib::Request& req, httplib::Response& res, const httplib::ContentReader& contentReader)
+	-> void
+{
+	// ProjectUUID not provided!
+	if (!req.path_params.contains("projectUUID") || req.path_params.at("projectUUID").empty())
+	{
+		LOG_INFO << "Missing projectUUID!";
+		nlohmann::json retJ;
+		retJ["message"] = "Project UUID not provided!";
+
+		res.status = httplib::StatusCode::BadRequest_400;
+		res.set_content(retJ.dump(), "application/json");
+		return;
+	}
+	const auto projectUUID = req.path_params.at("projectUUID");
+
+	// Project does not exist!
+	if (!projectProvider->hasProject(projectUUID))
+	{
+		LOG_INFO << "Project with UUID " << projectUUID << " not found!";
+
+		nlohmann::json retJ;
+		retJ["message"] = "Project with given projectUUID not found!";
+
+		res.status = httplib::StatusCode::NotFound_404;
+		res.set_content(retJ.dump(), "application/json");
+		return;
+	}
+
+	std::string bodyString;
+	contentReader(
+		[&bodyString](const char* data, size_t data_length)
+		{
+			bodyString.append(data, data_length);
+			return true;
+		});
+
+	auto jsonInput = nlohmann::json::parse(bodyString);
+
+	// Input not valid
+	if (jsonInput.empty() || !jsonInput.contains("projectName"))
+	{
+		nlohmann::json retJ;
+		retJ["message"] = "Parameters empty or projectName not provided!";
+
+		res.status = httplib::StatusCode::BadRequest_400;
+		res.set_content(retJ.dump(), "application/json");
+		return;
+	}
+
+	auto &proj = projectProvider->getProject(projectUUID);
+	proj.projectName = jsonInput["projectName"];
+	auto saved = projectProvider->saveProject(projectUUID);
+	res.status = httplib::StatusCode::OK_200;
+}
+
+
 auto main(const int argc, char** argv) -> int
 {
 	static plog::ConsoleAppender<plog::TxtFormatter> consoleAppender;
@@ -764,11 +935,14 @@ auto main(const int argc, char** argv) -> int
 	svr.Get("/requestRunning", &getRequestRunning);
 	// svr.Get("/catalog", &getCatalog);
 	svr.Get("/projects", &getProjects);
-	svr.Get("/project/:uuid", &getProjectFromUuid);
+	svr.Get("/project/:projectUUID", &getProjectFromUuid);
 	svr.Post("/startSearch", &postStartSearch);
 	svr.Get("/request/:projectUUID/:requestUUID", &getRequest);
 	svr.Get("/requests/:projectUUID", &getRequestsFromProjectUuid);
 	svr.Get("/file/:fileUUID", &getFile);
+	svr.Post("/project/new", &postNewProject);
+	svr.Delete("/project/:projectUUID", &deleteProject);
+	svr.Put("/project/:projectUUID", &putChangeProject);
 
 	LOG_NONE << "Server is listening on port " << args::get(serverListeningPortArgument);
 	svr.listen("0.0.0.0", args::get(serverListeningPortArgument));
