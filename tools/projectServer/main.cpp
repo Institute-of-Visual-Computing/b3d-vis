@@ -682,7 +682,7 @@ auto postNewProject(const httplib::Request& req, httplib::Response& res, const h
 	b3d::tools::project::catalog::FileCatalog newCatalog =
 		b3d::tools::project::catalog::FileCatalog::createOrLoadCatalogInDirectory(newProject.projectPathAbsolute);
 
-	newProject.projectName = "NEW";
+	newProject.projectName = b3d::common::helper::getNowAsFormattedDateTimeString("{:%d.%m.%Y %H\:%M}");
 	newProject.fitsOriginFileName = "original.fits";
 	newProject.fitsOriginUUID =
 		newCatalog.addFilePathAbsolute(newProject.projectPathAbsolute / newProject.fitsOriginFileName);
@@ -699,6 +699,7 @@ auto postNewProject(const httplib::Request& req, httplib::Response& res, const h
 	}
 
 	projectProvider->addExistingProject(newProject.projectUUID);
+	auto &createdCatalog = projectProvider->getCatalog(newProject.projectUUID);
 	// Create new Project
 	// create new catalog
 	// Create new Directory for project
@@ -736,9 +737,10 @@ auto postNewProject(const httplib::Request& req, httplib::Response& res, const h
 		LOG_ERROR << "Failed to create NVDB.";
 		return;
 	}
-	request.result.nanoResult.resultFile = newCatalog.addFilePathAbsolute(createdProject.projectPathAbsolute / "requests" / request.uuid / "nano" / "out.nvdb");
+	request.result.nanoResult.resultFile = createdCatalog.addFilePathAbsolute(
+		createdProject.projectPathAbsolute / "requests" / request.uuid / "nano" / "out.nvdb");
 	createdProject.requests.push_back(request);
-	newCatalog.writeCatalog();
+	createdCatalog.writeCatalog();
 	projectProvider->saveProject(createdProject.projectUUID);
 	res.set_content(nlohmann::json(createdProject).dump(), "application/json");
 }
