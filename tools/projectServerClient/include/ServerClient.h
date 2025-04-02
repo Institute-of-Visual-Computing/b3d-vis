@@ -44,6 +44,7 @@ namespace b3d::tools::project
 	{
 		UploadState state;
 		std::string projectName;
+		std::optional<Project> project;
 	};
 
 	struct UploadFeedback

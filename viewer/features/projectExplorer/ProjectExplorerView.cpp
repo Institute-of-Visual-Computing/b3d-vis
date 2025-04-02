@@ -342,7 +342,10 @@ auto ProjectExplorerView::onDraw() -> void
 			const auto uploadResult = upload.get();
 			if (uploadResult.state == b3d::tools::project::UploadState::ok)
 			{
-				model_.projects->push_back(b3d::tools::project::Project{ .projectName = uploadResult.projectName });
+				if (uploadResult.project.has_value())
+				{
+					model_.projects->push_back(uploadResult.project.value());
+				}
 				uploadFeedback.progress = 0;
 			}
 		}

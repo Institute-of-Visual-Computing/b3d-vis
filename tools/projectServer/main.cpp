@@ -740,6 +740,7 @@ auto postNewProject(const httplib::Request& req, httplib::Response& res, const h
 	createdProject.requests.push_back(request);
 	newCatalog.writeCatalog();
 	projectProvider->saveProject(createdProject.projectUUID);
+	res.set_content(nlohmann::json(createdProject).dump(), "application/json");
 }
 
 auto deleteProject(const httplib::Request& req, httplib::Response& res) -> void

@@ -270,7 +270,7 @@ auto b3d::tools::project::ServerClient::uploadFile(
 	const auto fileSize = static_cast<size_t>(fin->tellg());
 	const float byteToPercent = 100.0f / static_cast<float>(fileSize);
 	fin->seekg(0);
-	auto response = client.Post(
+	auto res = client.Post(
 		"/project/new", fileSize,
 		[&fin, &fileSize, &byteToPercent, &uploadFeedback](size_t offset, size_t length, httplib::DataSink& sink)
 		{
@@ -292,7 +292,24 @@ auto b3d::tools::project::ServerClient::uploadFile(
 		}, "application/fits");
 	fin->close();
 	delete fin;
-	return UploadResult{ .state = UploadState::ok, .projectName = projectName };
+	auto ulResult = UploadResult{ .state = UploadState::ok, .projectName = projectName, .project = std::nullopt };
+
+	// parse respone to Project
+	if (res->status == 200)
+	{
+		const auto jsonObj = nlohmann::json::parse(res->body);
+		try
+		{
+			ulResult.project = jsonObj.get<Project>();
+			ulResult.projectName = ulResult.project.value().projectName;
+		}
+		catch (const nlohmann::json::exception& e)
+		{
+			// Todo: Log error
+		}
+	}
+
+	return ulResult;
 }
 
 auto ServerClient::startSearch(ServerConnectionDescription connectionDescription, const std::string& projectUUID,
