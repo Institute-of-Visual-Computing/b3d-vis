@@ -34,7 +34,7 @@ ProjectExplorerView::ProjectExplorerView(
 											{
 												const auto model = reinterpret_cast<AddNewProjectView*>(self)->model();
 												upload = applicationContext_->serverClient_.uploadFileAsync(
-													model.sourcePath, model.projectName, uploadFeedback);
+													model.sourcePath, uploadFeedback);
 											});
 	editProjectView_ = std::make_unique<EditProjectView>(
 		appContext, "Edit Project",

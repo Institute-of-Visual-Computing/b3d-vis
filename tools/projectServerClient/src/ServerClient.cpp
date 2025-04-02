@@ -103,12 +103,11 @@ auto ServerClient::downloadFileAsync(const std::string& fileUUID,
 }
 
 auto b3d::tools::project::ServerClient::uploadFileAsync(const std::filesystem::path& sourceFile,
-														const std::string& projectName,
 														UploadFeedback& uploadFeedback) const
 	-> std::future<UploadResult>
 {
-	return std::async(std::launch::async, [this, sourceFile, &uploadFeedback, projectName]()
-					  { return uploadFile(serverConnectionDescription_, sourceFile, projectName, uploadFeedback); });
+	return std::async(std::launch::async, [this, sourceFile, &uploadFeedback]()
+					  { return uploadFile(serverConnectionDescription_, sourceFile, uploadFeedback); });
 }
 
 auto ServerClient::deleteProjectAsync(const std::string projectUUID) const -> std::future<void>
@@ -260,7 +259,7 @@ auto ServerClient::changeProject(ServerConnectionDescription connectionDescripti
 
 auto b3d::tools::project::ServerClient::uploadFile(
 	ServerConnectionDescription connectionDescription, const std::filesystem::path& sourceFile,
-												   const std::string& projectName, UploadFeedback& uploadFeedback)
+												   UploadFeedback& uploadFeedback)
 	-> UploadResult
 {
 
@@ -292,7 +291,7 @@ auto b3d::tools::project::ServerClient::uploadFile(
 		}, "application/fits");
 	fin->close();
 	delete fin;
-	auto ulResult = UploadResult{ .state = UploadState::ok, .projectName = projectName, .project = std::nullopt };
+	auto ulResult = UploadResult{ .state = UploadState::ok, .project = std::nullopt };
 
 	// parse respone to Project
 	if (res->status == 200)

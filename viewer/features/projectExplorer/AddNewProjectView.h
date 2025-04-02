@@ -7,7 +7,6 @@
 struct NewProjectModel
 {
 	std::filesystem::path sourcePath;
-	std::string projectName;
 };
 
 class AddNewProjectView final : public ModalViewBase
