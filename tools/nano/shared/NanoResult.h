@@ -4,9 +4,8 @@
 #include <nlohmann/json.hpp>
 #endif
 
-#include "Result.h"
-
-#include "Vec.h"
+#include <Result.h>
+#include <Vec.h>
 
 namespace b3d::tools::nano
 {

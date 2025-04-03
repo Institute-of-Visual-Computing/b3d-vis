@@ -1,15 +1,15 @@
+#include "FileCatalog.h"
+
 #include <fstream>
 #include <iostream>
 #include <ranges>
 
-#include <uuid.h>
 #include <nlohmann/json.hpp>
+#include <uuid.h>
 
-#include "FileCatalog.h"
-
-
-
-static uuids::uuid_name_generator gNameGenerator{ uuids::uuid::from_string("123456789-abcdef-123456789-abcdef-12").value() };
+static uuids::uuid_name_generator gNameGenerator{
+	uuids::uuid::from_string("123456789-abcdef-123456789-abcdef-12").value()
+};
 
 b3d::tools::project::catalog::FileCatalog::FileCatalog(const std::filesystem::path& rootPath,
 													   const std::string& filename)
@@ -19,8 +19,7 @@ b3d::tools::project::catalog::FileCatalog::FileCatalog(const std::filesystem::pa
 
 // Absolute Path!
 auto b3d::tools::project::catalog::FileCatalog::addFilePathAbsolute(const std::filesystem::path& absoluteFilePath,
-																	bool relativizePath)
-	->const std::string
+																	bool relativizePath) -> const std::string
 {
 	if (relativizePath)
 	{
@@ -30,8 +29,7 @@ auto b3d::tools::project::catalog::FileCatalog::addFilePathAbsolute(const std::f
 	return addFilePathRelativeToRoot(absoluteFilePath);
 }
 
-auto b3d::tools::project::catalog::FileCatalog::addFilePathRelativeToRoot( 
-	const std::filesystem::path& relativeFilePath)
+auto b3d::tools::project::catalog::FileCatalog::addFilePathRelativeToRoot(const std::filesystem::path& relativeFilePath)
 	-> const std::string
 {
 	auto fileUUID = uuids::to_string(gNameGenerator(relativeFilePath.generic_string()));
@@ -40,13 +38,13 @@ auto b3d::tools::project::catalog::FileCatalog::addFilePathRelativeToRoot(
 		return fileUUID;
 	}
 	FileCatalogEntry ce{ relativeFilePath, relativeFilePath.filename() };
-	
+
 	mappings_.insert(std::make_pair(fileUUID, ce));
 	return fileUUID;
 }
 
 auto b3d::tools::project::catalog::FileCatalog::addFilePathAbsoluteWithUUID(const std::filesystem::path& filePath,
-	const std::string& fileUUID) -> void
+																			const std::string& fileUUID) -> void
 {
 	const auto relativeFilePath = filePath.lexically_relative(rootPath_);
 	FileCatalogEntry ce{ relativeFilePath, relativeFilePath.filename() };
@@ -58,8 +56,8 @@ auto b3d::tools::project::catalog::FileCatalog::contains(const std::string& file
 	return mappings_.contains(fileUUID);
 }
 
-auto b3d::tools::project::catalog::FileCatalog::getFilePathRelativeToRoot(
-	const std::string& fileUUID) const -> const std::filesystem::path
+auto b3d::tools::project::catalog::FileCatalog::getFilePathRelativeToRoot(const std::string& fileUUID) const
+	-> const std::filesystem::path
 {
 	if (mappings_.contains(fileUUID))
 	{
@@ -69,8 +67,8 @@ auto b3d::tools::project::catalog::FileCatalog::getFilePathRelativeToRoot(
 }
 
 
-auto b3d::tools::project::catalog::FileCatalog::getFilePathAbsolute(
-	const std::string& fileUUID) const -> const std::filesystem::path
+auto b3d::tools::project::catalog::FileCatalog::getFilePathAbsolute(const std::string& fileUUID) const
+	-> const std::filesystem::path
 {
 	if (mappings_.contains(fileUUID))
 	{
@@ -164,20 +162,20 @@ b3d::tools::project::catalog::FileCatalog b3d::tools::project::catalog::FileCata
 
 			c.setRootPath(absoluteRootPath);
 			c.setFileName(catalogFileName);
-			
+
 			c.removeInvalidMappings();
 			catalog = c;
 		}
-		catch (nlohmann::json::type_error& e)
+		catch ([[maybe_unused]] nlohmann::json::type_error& e)
 		{
 			// std::cout << e.what();
 			// [json.exception.type_error.304] cannot use at() with object
 		}
-		catch (nlohmann::json::parse_error& e)
+		catch ([[maybe_unused]] nlohmann::json::parse_error& e)
 		{
 			// std::cout << e.what();
 		}
-		catch (nlohmann::json::exception& e)
+		catch ([[maybe_unused]] nlohmann::json::exception& e)
 		{
 			// std::cout << e.what();
 		}

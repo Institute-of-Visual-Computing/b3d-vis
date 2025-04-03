@@ -3,7 +3,7 @@
 #include <atomic>
 #include <future>
 
-#include "Project.h"
+#include <Project.h>
 
 #ifdef B3D_USE_NLOHMANN_JSON
 #include <nlohmann/json.hpp>

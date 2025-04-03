@@ -2,7 +2,7 @@
 #include <string>
 
 #ifdef B3D_USE_NLOHMANN_JSON
-	#include <nlohmann/json.hpp>
+#include <nlohmann/json.hpp>
 #endif
 
 namespace b3d::common::pipeline
@@ -30,9 +30,9 @@ namespace b3d::common::pipeline
 		bool fileAvailable{ true };
 	};
 
-	#ifdef B3D_USE_NLOHMANN_JSON
+#ifdef B3D_USE_NLOHMANN_JSON
 	NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(BaseResult, returnCode, message, finished, finishedAt);
 	NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(BaseFileResult, returnCode, message, finished, resultFile, fileAvailable,
 									   finishedAt);
-	#endif
-} // namespace b3d::tools::common::pipeline
+#endif
+} // namespace b3d::common::pipeline

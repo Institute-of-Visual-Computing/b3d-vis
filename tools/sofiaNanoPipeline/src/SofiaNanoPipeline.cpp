@@ -1,12 +1,11 @@
-#include "Box.h"
-#include "NanoTools.h"
-#include "SofiaProcessRunner.h"
-
 #include "SofiaNanoPipeline.h"
-#include "include/SofiaNanoPipeline_internal.h"
+
+#include <Box.h>
+#include <NanoTools.h>
+#include <SofiaProcessRunner.h>
 
 auto b3d::tools::sofia_nano_pipeline::runSearchAndCreateNvdbSync(sofia::SofiaProcessRunner& processRunner,
-															   SofiaNanoPipelineInitialParams pipelineParams)
+																 SofiaNanoPipelineInitialParams pipelineParams)
 	-> PipelineResult
 {
 	PipelineResult result;
@@ -21,7 +20,8 @@ auto b3d::tools::sofia_nano_pipeline::runSearchAndCreateNvdbSync(sofia::SofiaPro
 	}
 
 	const auto paramsOutputPathStr = pipelineParams.sofiaParams.getStringValue("output.directory").value_or("");
-	const auto outputDirectoryPath = paramsOutputPathStr.empty() ? pipelineParams.fitsInputFilePath.parent_path() : std::filesystem::path{ paramsOutputPathStr };
+	const auto outputDirectoryPath = paramsOutputPathStr.empty() ? pipelineParams.fitsInputFilePath.parent_path() :
+																   std::filesystem::path{ paramsOutputPathStr };
 	const auto outputFilesNamePrefix = pipelineParams.sofiaParams.getStringValue("output.filename").value_or("");
 
 	// Get Path to mask file. The mask cube will have the suffix _mask.fits
@@ -37,8 +37,8 @@ auto b3d::tools::sofia_nano_pipeline::runSearchAndCreateNvdbSync(sofia::SofiaPro
 	// - Fits file
 	// - mask file
 	// - path to nvdb output file
-	result.nanoResult = b3d::tools::nano::convertFitsWithMaskToNano(
-		pipelineParams.fitsInputFilePath, maskFilePath,pipelineParams.outputNvdbFilePath);
+	result.nanoResult = b3d::tools::nano::convertFitsWithMaskToNano(pipelineParams.fitsInputFilePath, maskFilePath,
+																	pipelineParams.outputNvdbFilePath);
 
 	if (!result.nanoResult.wasSuccess())
 	{
@@ -54,7 +54,7 @@ auto b3d::tools::sofia_nano_pipeline::runSearchAndCreateNvdbSync(sofia::SofiaPro
 }
 
 auto b3d::tools::sofia_nano_pipeline::runSearchAndUpdateNvdbSync(sofia::SofiaProcessRunner& processRunner,
-															   SofiaNanoPipelineUpdateParams pipelineParams)
+																 SofiaNanoPipelineUpdateParams pipelineParams)
 	-> PipelineResult
 {
 	PipelineResult result;
@@ -62,7 +62,7 @@ auto b3d::tools::sofia_nano_pipeline::runSearchAndUpdateNvdbSync(sofia::SofiaPro
 	// All paths in sofiaParams should be absolute!
 	// sofiaParams.setOrReplace("output.writeMask", "true");
 
-	// Produces _mask-raw.fits. 
+	// Produces _mask-raw.fits.
 	pipelineParams.sofiaParams.setOrReplace("output.writeRawMask", "true");
 
 	// TODO: This skips Reliability filter.
@@ -84,7 +84,7 @@ auto b3d::tools::sofia_nano_pipeline::runSearchAndUpdateNvdbSync(sofia::SofiaPro
 		std::filesystem::remove(maskFilePath);
 	}
 
-	result.sofiaResult = processRunner.runSofiaSync(pipelineParams.sofiaParams, pipelineParams.sofiaWorkingDirectoy);
+	result.sofiaResult = processRunner.runSofiaSync(pipelineParams.sofiaParams, pipelineParams.sofiaWorkingDirectory);
 	if (result.sofiaResult.returnCode != 8)
 	{
 		result.message = "SoFiA failed.";
@@ -96,7 +96,7 @@ auto b3d::tools::sofia_nano_pipeline::runSearchAndUpdateNvdbSync(sofia::SofiaPro
 		}
 		return result;
 	}
-	
+
 
 	result.sofiaResult.resultFile = maskFilePath.generic_string();
 

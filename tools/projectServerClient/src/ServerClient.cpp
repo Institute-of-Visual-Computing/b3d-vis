@@ -1,17 +1,17 @@
+#include "ServerClient.h"
+
 #include <chrono>
 #include <filesystem>
 #include <future>
-#include <httplib.h>
 #include <string>
 #include <thread>
 #include <vector>
 
 #include <args.hxx>
+#include <httplib.h>
 #include <nlohmann/json.hpp>
 
-#include "Project.h"
-
-#include "ServerClient.h"
+#include <Project.h>
 
 using namespace b3d::tools::project;
 
@@ -113,8 +113,8 @@ auto b3d::tools::project::ServerClient::uploadFileAsync(const std::filesystem::p
 
 auto ServerClient::deleteProjectAsync(const std::string projectUUID) const -> std::future<void>
 {
-	return std::async(std::launch::async, [this, projectUUID]()
-		{ return deleteProject(serverConnectionDescription_, projectUUID); });
+	return std::async(std::launch::async,
+					  [this, projectUUID]() { return deleteProject(serverConnectionDescription_, projectUUID); });
 }
 
 auto ServerClient::isServerBusy() const -> std::future<bool>
@@ -201,7 +201,7 @@ auto ServerClient::getProjects(const ServerConnectionDescription connectionDescr
 		{
 			return jsonObj.get<std::vector<Project>>();
 		}
-		catch (const nlohmann::json::exception& e)
+		catch ([[maybe_unused]] const nlohmann::json::exception& e)
 		{
 			// Todo: Log error
 			return std::nullopt;
@@ -239,27 +239,27 @@ auto ServerClient::downloadFile(const ServerConnectionDescription connectionDesc
 	return finalFilePath;
 }
 
-auto ServerClient::deleteProject(ServerConnectionDescription connectionDescription,
-	const std::string& projectUUID) -> void
+auto ServerClient::deleteProject(ServerConnectionDescription connectionDescription, const std::string& projectUUID)
+	-> void
 {
 	httplib::Client client(connectionDescription.ipHost, std::stoi(connectionDescription.port));
 	client.Delete(std::format("/project/{}", projectUUID));
 }
 
 auto ServerClient::changeProject(ServerConnectionDescription connectionDescription, const std::string& projectUUID,
-	const std::string& projectName) -> void
+								 const std::string& projectName) -> void
 {
 	httplib::Client client(connectionDescription.ipHost, std::stoi(connectionDescription.port));
 
 
 	nlohmann::json requestJSON;
 	requestJSON["projectName"] = projectName;
-	
+
 	client.Put(std::format("/project/{}", projectUUID), requestJSON.dump().c_str(), "application/json");
 }
 
-auto b3d::tools::project::ServerClient::uploadFile(
-	ServerConnectionDescription connectionDescription, const std::filesystem::path& sourceFile,
+auto b3d::tools::project::ServerClient::uploadFile(ServerConnectionDescription connectionDescription,
+												   const std::filesystem::path& sourceFile,
 												   const std::string& projectName, UploadFeedback& uploadFeedback)
 	-> UploadResult
 {
@@ -274,7 +274,6 @@ auto b3d::tools::project::ServerClient::uploadFile(
 		"/project/new", fileSize,
 		[&fin, &fileSize, &byteToPercent, &uploadFeedback](size_t offset, size_t length, httplib::DataSink& sink)
 		{
-
 			if (fin->good() && !fin->eof() && offset < fileSize)
 			{
 				std::vector<char> data(std::min((size_t)10240, length));
@@ -282,14 +281,15 @@ auto b3d::tools::project::ServerClient::uploadFile(
 				fin->read(data.data(), std::min(data.size(), fileSize - offset));
 				auto l = fin->tellg();
 				sink.write(data.data(), std::min(data.size(), fileSize - offset));
-				uploadFeedback.progress = std::round(byteToPercent * offset);
+				uploadFeedback.progress = static_cast<int>(std::round(byteToPercent * static_cast<float>(offset)));
 			}
 			else
 			{
 				sink.done(); // No more data
 			}
 			return true;
-		}, "application/fits");
+		},
+		"application/fits");
 	fin->close();
 	delete fin;
 	return UploadResult{ .state = UploadState::ok, .projectName = projectName };

@@ -4,7 +4,7 @@
 
 using namespace b3d::renderer;
 
-TransferFunctionFeature::TransferFunctionFeature(const std::string& name, const size_t dataPointsCount)
+TransferFunctionFeature::TransferFunctionFeature(const std::string& name, [[maybe_unused]] const size_t dataPointsCount)
 	: RenderFeature{ name }, transferFunctionTexture_{ nullptr }
 {
 }

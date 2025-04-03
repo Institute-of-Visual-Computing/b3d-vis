@@ -2,9 +2,8 @@
 
 #include <filesystem>
 
-#include "Box.h"
-
-#include "FitsCommon.h"
+#include <Box.h>
+#include <FitsCommon.h>
 
 namespace b3d::tools::fits
 {

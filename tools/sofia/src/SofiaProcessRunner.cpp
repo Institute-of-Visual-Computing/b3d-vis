@@ -1,7 +1,7 @@
-#include <boost/process.hpp>
-
 #include "SofiaProcessRunner.h"
-#include "TimeStamp.h"
+
+#include <boost/process.hpp>
+#include <TimeStamp.h>
 
 // ReSharper disable once CppPassValueParameterByConstReference
 auto b3d::tools::sofia::SofiaProcessRunner::runSofiaSync(const SofiaParams params,

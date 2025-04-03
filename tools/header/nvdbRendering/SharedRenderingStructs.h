@@ -4,7 +4,7 @@
 #include <owl/common/math/affinespace.h>
 
 namespace b3d::tools::renderer::nvdb
- {
+{
 	enum class RuntimeVolumeState
 	{
 		loadingRequested,
@@ -53,4 +53,4 @@ namespace b3d::tools::renderer::nvdb
 		bool newProjectAvailable{ false };
 		owl::box3f originalIndexBox{};
 	};
- }
+} // namespace b3d::tools::renderer::nvdb

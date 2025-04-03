@@ -29,30 +29,29 @@ function(add_b3d_renderer)
 		message(FATAL_ERROR "NAME must be defined")
 	endif()
 
-	set(MODULE_NAME ${TARGET_NAME})
-	set(SRC ${TARGET_SOURCES})
-
 	#TODO: Move static/dynamic to optianal parameter
-	add_library(${MODULE_NAME} STATIC ${SRC} ${HEADERS})
-	target_compile_features(${MODULE_NAME} PUBLIC cxx_std_20)
+	add_library(${TARGET_NAME} STATIC)
+	target_sources(${TARGET_NAME} PRIVATE ${TARGET_SOURCES} ${TARGET_HEADERS})
+	target_compile_features(${TARGET_NAME} PRIVATE cxx_std_20)
 	if(MSVC)
 		set(MSVC_CXX_COMPILER_FLAGS "/Zc:__cplusplus")
-		target_compile_options(${MODULE_NAME} PUBLIC $<$<COMPILE_LANGUAGE:CXX>:${MSVC_CXX_COMPILER_FLAGS}>)
+		target_compile_options(${TARGET_NAME} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:${MSVC_CXX_COMPILER_FLAGS}>)
+		target_compile_options(${TARGET_NAME} PRIVATE /W4 /WX /external:W0 /external:anglebrackets)
 	endif()
-	target_include_directories(${MODULE_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+	target_include_directories(${TARGET_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-	target_link_libraries(${MODULE_NAME}
+	target_link_libraries(${TARGET_NAME}
 		PRIVATE
 			B3D::Renderer::Framework
 			"${TARGET_LIBRARIES}"
 	)
-	set_target_properties(${MODULE_NAME}
+	set_target_properties(${TARGET_NAME}
 		PROPERTIES
 			CUDA_STANDARD 20
 			FOLDER "Renderer"
 	)
 
-	add_library(B3D::Renderer::${MODULE_NAME} ALIAS ${MODULE_NAME})
+	add_library(B3D::Renderer::${TARGET_NAME} ALIAS ${TARGET_NAME})
 endfunction()
 
 add_subdirectory(thirdParty)

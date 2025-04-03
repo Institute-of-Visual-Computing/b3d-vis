@@ -116,6 +116,8 @@ target_link_libraries(${viewerTargetName}
 	B3D::Renderer::Framework
 	B3D::Renderer::Null
 	B3D::Renderer::FitsNvdb
+	B3D::Header::Sofia
+	B3D::Tools::ColorMap
 	B3D::Tools::ServerClient
 	B3D::Tools::ServerFileProvider
 	B3D::Tools::Project
@@ -125,14 +127,12 @@ target_link_libraries(${viewerTargetName}
 	glad::glad
 	imguizmo_modefied
 	iconFontCppHeaders
-	B3D::Tools::ColorMap
 	${CUDA_nvml_LIBRARY}
 	imcurve_modefied
 	imspinner
 	OpenVDB::nanovdb
 	nlohmann_json::nlohmann_json
 	legit
-	B3D::Header::Sofia
 	imGuiFileDialog
 )
 

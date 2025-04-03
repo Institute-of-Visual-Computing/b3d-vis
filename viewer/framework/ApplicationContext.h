@@ -10,15 +10,17 @@
 #include "FontCollection.h"
 
 #include "ApplicationSettings.h"
-#include "RuntimeDataset.h"
-#include "ServerClient.h"
+
 #include "framework/Dockspace.h"
 
 #include <glm/glm.hpp>
 #include "GLGpuTimers.h"
 #include "ImGuiProfilerRenderer.h"
 #include "Profiler.h"
-#include "SharedRenderingStructs.h"
+
+#include <SharedRenderingStructs.h>
+#include <RuntimeDataset.h>
+#include <ServerClient.h>
 
 struct GLFWwindow;
 class DebugDrawList;
@@ -49,7 +51,7 @@ public:
 		return fonts_;
 	}
 
-	[[nodiscard]] auto getGlGpuTimers() -> GpuTimers&
+	[[nodiscard]] auto getGlGpuTimers() -> ::GpuTimers&
 	{
 		return glGpuTimers_;
 	}
@@ -109,7 +111,7 @@ public:
 
 private:
 	FontCollection fonts_{};
-	GpuTimers glGpuTimers_{};
+	::GpuTimers glGpuTimers_{};
 
 	std::shared_ptr<DebugDrawList> debugDrawList_{};
 	std::shared_ptr<GizmoHelper> gizmoHelper_{};

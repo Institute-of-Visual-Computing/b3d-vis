@@ -3,8 +3,8 @@
 #include <filesystem>
 #include <future>
 
-#include "SofiaParams.h"
-#include "SoFiaResult.h"
+#include <SoFiaResult.h>
+#include <SofiaParams.h>
 
 namespace b3d::tools::sofia
 {
@@ -19,7 +19,7 @@ namespace b3d::tools::sofia
 		/// \brief Run Sofia with the given parameters.
 		/// \return The result as future but resultFile is not set
 		auto runSofia(const SofiaParams& params,
-					  const  std::filesystem::path workingDirectory = std::filesystem::path(".") / "")
+					  const std::filesystem::path workingDirectory = std::filesystem::path(".") / "")
 			-> std::future<b3d::tools::sofia::SofiaResult>;
 
 		/// \brief Run Sofia with the given parameters.

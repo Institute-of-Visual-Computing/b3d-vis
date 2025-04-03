@@ -15,7 +15,7 @@ namespace
 auto b3d::profiler::Profiler::collectGpuTimers(const std::vector<ProfilerResult>& timers) -> void
 {
 	const auto& currentTimings = timers;
-	auto gpuLastEndTime = 0.0;
+	auto gpuLastEndTime = 0.0f;
 	for (const auto& [name, start, stop] : currentTimings)
 	{
 		auto profilerTask = legit::ProfilerTask{};
@@ -28,15 +28,14 @@ auto b3d::profiler::Profiler::collectGpuTimers(const std::vector<ProfilerResult>
 		profilerTask.color = colors[hash % colors.size()];
 		gpuTasks_.push_back(profilerTask);
 
-		gpuLastEndTime = std::max(gpuLastEndTime, profilerTask.endTime);
+		gpuLastEndTime = std::max(gpuLastEndTime, static_cast<float>(profilerTask.endTime));
 	}
-
 	gpuOffset_ += gpuLastEndTime;
 }
 auto b3d::profiler::Profiler::collectCpuTimers(const std::vector<ProfilerResult>& timers) -> void
 {
 	const auto& currentTimings = timers;
-	auto cpuLastEndTime = 0.0;
+	auto cpuLastEndTime = 0.0f;
 	for (const auto& [name, start, stop] : currentTimings)
 	{
 		auto profilerTask = legit::ProfilerTask{};
@@ -47,8 +46,7 @@ auto b3d::profiler::Profiler::collectCpuTimers(const std::vector<ProfilerResult>
 		profilerTask.color = colors[hash % colors.size()];
 		cpuTasks_.push_back(profilerTask);
 
-		cpuLastEndTime = std::max(cpuLastEndTime, profilerTask.endTime);
+		cpuLastEndTime = std::max(cpuLastEndTime, static_cast<float>(profilerTask.endTime));
 	}
-
 	cpuOffset_ += cpuLastEndTime;
 }

@@ -3,14 +3,10 @@ set(HEADER_MODULE_NAME "B3DHeader${HEADER_SIMPLE_NAME}")
 
 add_library(${HEADER_MODULE_NAME} INTERFACE)
 
-target_sources(${HEADER_MODULE_NAME}
-	INTERFACE
-		Result.h
- )
-
-target_include_directories(${HEADER_MODULE_NAME}
-	INTERFACE
-		./
+target_include_directories(
+	${HEADER_MODULE_NAME}
+INTERFACE
+	./
 )
 
 add_library(B3D::Header::Shared::${HEADER_SIMPLE_NAME} ALIAS ${HEADER_MODULE_NAME})
@@ -23,13 +19,11 @@ set(HEADER_SIMPLE_NAME Pipeline)
 set(HEADER_MODULE_NAME "B3DHeader${HEADER_SIMPLE_NAME}Json")
 
 add_library(${HEADER_MODULE_NAME} INTERFACE)
-target_sources(${HEADER_MODULE_NAME}
-	INTERFACE
-		Result.h
- )
-target_include_directories(${HEADER_MODULE_NAME}
-	INTERFACE
-		./
+
+target_include_directories(
+	${HEADER_MODULE_NAME}
+INTERFACE
+	./
 )
 
 target_compile_definitions(${HEADER_MODULE_NAME} INTERFACE B3D_USE_NLOHMANN_JSON)

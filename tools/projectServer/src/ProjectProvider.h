@@ -2,8 +2,8 @@
 
 #include <filesystem>
 
-#include "FileCatalog.h"
-#include "Project.h"
+#include <FileCatalog.h>
+#include <Project.h>
 
 namespace b3d::tools::projectServer
 {

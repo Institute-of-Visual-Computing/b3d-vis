@@ -1,28 +1,21 @@
 #include <cstdlib>
-
-#include <plog/Formatters/TxtFormatter.h>
-#include <plog/Initializers/ConsoleInitializer.h>
-#include <plog/Log.h>
-
-#include <uuid.h>
-
-#include "FitsTools.h"
-#include "Request.h"
-
 #include <filesystem>
 
 #include <args.hxx>
+#include <plog/Formatters/TxtFormatter.h>
+#include <plog/Initializers/ConsoleInitializer.h>
+#include <plog/Log.h>
+#include <uuid.h>
 
-#include "FileCatalog.h"
+#include <FileCatalog.h>
+#include <FitsTools.h>
+#include <NanoTools.h>
+#include <Result.h>
+#include <SofiaNanoPipeline.h>
+#include <TimeStamp.h>
+
 #include "Project.h"
-#include "TimeStamp.h"
-#include "Result.h"
-#include "NanoTools.h"
-#include "SofiaNanoPipeline.h"
-
-namespace
-{
-}
+#include "Request.h"
 
 void AddRequestFromFitsAndMaskAsNanoCommandFunction(args::Subparser& parser)
 {
@@ -89,7 +82,7 @@ void AddRequestFromFitsAndMaskAsNanoCommandFunction(args::Subparser& parser)
 		LOG_INFO << parser;
 		return;
 	}
-	
+
 	auto projectDirectoryPath = projectArgument.Get();
 
 
@@ -104,7 +97,7 @@ void AddRequestFromFitsAndMaskAsNanoCommandFunction(args::Subparser& parser)
 		project.projectPathAbsolute = projectDirectoryPath;
 		f.close();
 	}
-	catch(const std::exception &e)
+	catch (const std::exception& e)
 	{
 		LOG_ERROR << "Failed to read project.json.";
 		LOG_ERROR << e.what();
@@ -161,11 +154,12 @@ void AddRequestFromFitsAndMaskAsNanoCommandFunction(args::Subparser& parser)
 	if (maskAvailable)
 	{
 		LOG_INFO << "Copy mask";
-		if (std::filesystem::create_directories(project.projectPathAbsolute / "requests" / request.uuid / "sofia", ec) && ec)
+		if (std::filesystem::create_directories(project.projectPathAbsolute / "requests" / request.uuid / "sofia",
+												ec) &&
+			ec)
 		{
 			LOG_ERROR << "Failed to create directory for mask at "
-					  << project.projectPathAbsolute / "requests" / request.uuid / "sofia"
-					  << ". Don't copy mask.";
+					  << project.projectPathAbsolute / "requests" / request.uuid / "sofia" << ". Don't copy mask.";
 		}
 		else
 		{
@@ -178,8 +172,7 @@ void AddRequestFromFitsAndMaskAsNanoCommandFunction(args::Subparser& parser)
 			else
 			{
 				request.result.sofiaResult.resultFile = catalog.addFilePathAbsolute(
-					project.projectPathAbsolute / "requests" / request.uuid / "sofia" /
-											maskPath.filename());
+					project.projectPathAbsolute / "requests" / request.uuid / "sofia" / maskPath.filename());
 			}
 		}
 	}
@@ -196,8 +189,7 @@ void AddRequestFromFitsAndMaskAsNanoCommandFunction(args::Subparser& parser)
 	if (std::filesystem::create_directories(project.projectPathAbsolute / "requests" / request.uuid / "nano", ec) && ec)
 	{
 		LOG_ERROR << "Failed to create directory for nano result at "
-				  << project.projectPathAbsolute / "requests" / request.uuid / "nano"
-				  << ".";
+				  << project.projectPathAbsolute / "requests" / request.uuid / "nano" << ".";
 		return;
 	}
 
@@ -245,7 +237,7 @@ void AddRequestFromFitsAndMaskAsNanoCommandFunction(args::Subparser& parser)
 			const auto outPath = project.projectPathAbsolute / "requests" / request.uuid / "nano" / "out.nvdb";
 			request.result.nanoResult = b3d::tools::nano::createNanoVdbWithExistingAndSubregion(
 				nvdbPath, sourcePath, initialMaskDataPath, maskPath,
-				{ static_cast<int>(maskOffset[0]), static_cast<int>(maskOffset[1]), static_cast<int> (maskOffset[2]) },
+				{ static_cast<int>(maskOffset[0]), static_cast<int>(maskOffset[1]), static_cast<int>(maskOffset[2]) },
 				outPath);
 		}
 	}
@@ -392,13 +384,13 @@ void CreateCommandFunction(args::Subparser& parser)
 		return;
 	}
 	maskPath = project.projectPathAbsolute / maskPath.filename();
-	
+
 	LOG_INFO << "Creating FileCatalog";
 	b3d::tools::project::catalog::FileCatalog catalog =
 		b3d::tools::project::catalog::FileCatalog::createOrLoadCatalogInDirectory(project.projectPathAbsolute);
-	
+
 	project.fitsOriginUUID = catalog.addFilePathAbsolute(project.projectPathAbsolute / project.fitsOriginFileName);
-	
+
 	LOG_INFO << "Creating Request";
 
 	auto request = b3d::tools::project::Request{ .uuid = uuids::to_string(gen()),
@@ -410,14 +402,13 @@ void CreateCommandFunction(args::Subparser& parser)
 												 .createdAt = b3d::common::helper::getSecondsSinceEpochUtc() };
 
 
-	if (std::filesystem::create_directories(project.projectPathAbsolute / "requests" / request.uuid , ec) &&
-		ec)
+	if (std::filesystem::create_directories(project.projectPathAbsolute / "requests" / request.uuid, ec) && ec)
 	{
 		LOG_ERROR << "Failed to create request directory at " << project.projectPathAbsolute / "requests" / request.uuid
 				  << ".";
 		return;
 	}
-	
+
 	request.result.returnCode = 0;
 	request.result.message = "Success";
 	request.result.finished = true;
@@ -430,10 +421,10 @@ void CreateCommandFunction(args::Subparser& parser)
 	request.result.sofiaResult.fileAvailable = true;
 	request.result.sofiaResult.resultFile = catalog.addFilePathAbsolute(maskPath);
 
-	if(std::filesystem::create_directories(project.projectPathAbsolute / "requests" / request.uuid / "nano", ec) && ec)
+	if (std::filesystem::create_directories(project.projectPathAbsolute / "requests" / request.uuid / "nano", ec) && ec)
 	{
-		LOG_ERROR << "Failed to create directory for nano result at " << project.projectPathAbsolute / "requests" / request.uuid / "nano"
-				  << ".";
+		LOG_ERROR << "Failed to create directory for nano result at "
+				  << project.projectPathAbsolute / "requests" / request.uuid / "nano" << ".";
 		return;
 	}
 
@@ -447,7 +438,8 @@ void CreateCommandFunction(args::Subparser& parser)
 		return;
 	}
 
-	request.result.nanoResult.resultFile = catalog.addFilePathAbsolute(project.projectPathAbsolute / "requests" / request.uuid / "nano" / "out.nvdb");
+	request.result.nanoResult.resultFile =
+		catalog.addFilePathAbsolute(project.projectPathAbsolute / "requests" / request.uuid / "nano" / "out.nvdb");
 
 	project.requests.push_back(request);
 
@@ -464,7 +456,6 @@ void CreateCommandFunction(args::Subparser& parser)
 
 	LOG_INFO << "Project " << project.projectName << " (" << project.projectUUID << ") created.";
 	LOG_INFO << "Project path: " << project.projectPathAbsolute;
-
 }
 
 auto main(const int argc, char** argv) -> int
@@ -477,7 +468,8 @@ auto main(const int argc, char** argv) -> int
 
 	args::Group commands(parser, "commands");
 	args::Command create(commands, "create", "Create a project.", &CreateCommandFunction);
-	args::Command add(commands, "add", "Add nvdb generated by fits and mask to an existing project.", &AddRequestFromFitsAndMaskAsNanoCommandFunction);
+	args::Command add(commands, "add", "Add nvdb generated by fits and mask to an existing project.",
+					  &AddRequestFromFitsAndMaskAsNanoCommandFunction);
 
 	// args::CompletionFlag completion(parser, { "complete" });
 	try

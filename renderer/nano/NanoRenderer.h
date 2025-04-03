@@ -5,8 +5,8 @@
 #include <owl/owl_host.h>
 
 #include <CudaGpuTimers.h>
-#include "SharedRenderingStructs.h"
-#include "RuntimeDataset.h"
+#include <SharedRenderingStructs.h>
+#include <RuntimeDataset.h>
 #include <FoveatedRendering.h>
 
 #include "features/BackgroundColorFeature.h"

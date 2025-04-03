@@ -2,17 +2,15 @@
 
 #include <concepts>
 #include <filesystem>
-
 #include <execution>
-#include "NanoVDB.h"
+
 #include <owl/common/math/AffineSpace.h>
 #include <owl/helper/cuda.h>
-
-#include <nanovdb/tools/GridStats.h>
 #include <nanovdb/io/IO.h>
 #include <nanovdb/tools/CreatePrimitives.h>
+#include <nanovdb/tools/GridStats.h>
 
-#include "SharedRenderingStructs.h"
+#include <SharedRenderingStructs.h>
 
 using namespace b3d::tools::renderer::nvdb;
 
@@ -28,7 +26,7 @@ namespace
 		OWL_CUDA_CHECK(cudaMemcpyAsync(reinterpret_cast<void*>(volume.grid), gridVolume.data(), gridVolume.size(),
 									   cudaMemcpyHostToDevice, stream));
 		cudaStreamSynchronize(stream);
-		std::cout << "Transfer dones\n";
+		std::cout << "finishing transfer\n";
 
 		const auto gridHandle = gridVolume.grid<float>();
 		const auto& map = gridHandle->mMap;
@@ -66,12 +64,11 @@ namespace
 
 	auto setRuntimeVolumeReady(void* runtimeVolumePointer) -> void
 	{
-		static_cast<RuntimeVolume*>(runtimeVolumePointer)->state =
-			RuntimeVolumeState::ready;
+		static_cast<RuntimeVolume*>(runtimeVolumePointer)->state = RuntimeVolumeState::ready;
 	}
 
-	auto loadVolumeToDevice(RuntimeVolume& container, const nanovdb::GridHandle<>& gridVolume,
-							cudaStream_t stream) -> void
+	auto loadVolumeToDevice(RuntimeVolume& container, const nanovdb::GridHandle<>& gridVolume, cudaStream_t stream)
+		-> void
 	{
 		std::cout << "starting transfer\n";
 		OWL_CUDA_CHECK(cudaMallocAsync(reinterpret_cast<void**>(&container.volume.grid), gridVolume.size(), stream));
@@ -126,7 +123,7 @@ b3d::tools::renderer::nvdb::RuntimeDataset::RuntimeDataset()
 	const auto longestAxis = std::max({ volumeSize.x, volumeSize.y, volumeSize.z });
 
 	const auto scale = 1.0f / longestAxis;
-	
+
 	const auto renormalizeScale = owl::AffineSpace3f::scale(owl::vec3f{ scale, scale, scale });
 	dummyVolume_ = std::make_unique<RuntimeVolume>(volume, RuntimeVolumeState::ready, renormalizeScale);
 }
@@ -142,8 +139,7 @@ auto RuntimeDataset::getVolumeState(const std::string& uuid) -> std::optional<Ru
 }
 
 auto b3d::tools::renderer::nvdb::RuntimeDataset::addNanoVdb(const std::filesystem::path& path, cudaStream_t stream,
-														  const std::string& volumeUuid)
-	-> void
+															const std::string& volumeUuid) -> void
 {
 	assert(std::filesystem::exists(path));
 	listMutex_.lock();

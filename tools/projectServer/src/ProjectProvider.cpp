@@ -1,13 +1,13 @@
+#include "ProjectProvider.h"
 
 #include <fstream>
 #include <iostream>
 
 #include <nlohmann/json.hpp>
 
-#include "FileCatalog.h"
-#include "FitsTools.h"
+#include <FileCatalog.h>
+#include <FitsTools.h>
 
-#include "ProjectProvider.h"
 
 auto b3d::tools::projectServer::ProjectProvider::addExistingProject(const std::string& uuid) -> const bool
 {

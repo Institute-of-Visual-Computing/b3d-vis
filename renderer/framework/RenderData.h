@@ -34,7 +34,7 @@ namespace b3d::renderer
 		Schema schema{};
 		size_t schemaContentSize{};
 	};
-
+#pragma warning(push, 0)
 #define SCHEMA_ENTRY(keyValue, memberName, parentStruct) { keyValue, offsetof(parentStruct, memberName) }
 
 	static const SchemaData schemaData_0{
@@ -51,7 +51,8 @@ namespace b3d::renderer
 		  SCHEMA_ENTRY("runtimeVolumeData", runtimeVolumeData, RenderingData) },
 		sizeof(RenderingData)
 	};
-
+#undef SCHEMA_ENTRY
+#pragma warning(pop)
 	class RenderingDataBuffer
 	{
 	private:
