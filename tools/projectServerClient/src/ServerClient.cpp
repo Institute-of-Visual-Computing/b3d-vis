@@ -293,7 +293,7 @@ auto b3d::tools::project::ServerClient::uploadFile(
 	delete fin;
 	auto ulResult = UploadResult{ .state = UploadState::ok, .project = std::nullopt };
 
-	// parse respone to Project
+	// parse response to Project
 	if (res->status == 200)
 	{
 		const auto jsonObj = nlohmann::json::parse(res->body);
@@ -302,7 +302,7 @@ auto b3d::tools::project::ServerClient::uploadFile(
 			ulResult.project = jsonObj.get<Project>();
 			ulResult.projectName = ulResult.project.value().projectName;
 		}
-		catch (const nlohmann::json::exception& e)
+		catch ([[maybe_unused]] const nlohmann::json::exception& e)
 		{
 			// Todo: Log error
 		}

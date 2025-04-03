@@ -20,10 +20,10 @@ namespace b3d::common::helper
 
 	// https://stackoverflow.com/a/68754043
 	// https://creativecommons.org/licenses/by-sa/4.0/
-	inline auto getNowAsFormattedDateTimeString(const std::string formatString) -> std::string
+	inline auto getNowAsFormattedDateTimeString() -> std::string
 	{
 		auto const time = std::chrono::current_zone()->to_local(std::chrono::system_clock::now());
-		return std::format("{:%d.%m.%Y %H\:%M}", time);
+		return std::format("{:%d.%m.%Y %R}", time);
 	}
 
 } // namespace b3d::common::helper

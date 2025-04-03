@@ -679,7 +679,7 @@ auto postNewProject([[maybe_unused]] const httplib::Request& req,[[maybe_unused]
 	b3d::tools::project::catalog::FileCatalog newCatalog =
 		b3d::tools::project::catalog::FileCatalog::createOrLoadCatalogInDirectory(newProject.projectPathAbsolute);
 
-	newProject.projectName = b3d::common::helper::getNowAsFormattedDateTimeString("{:%d.%m.%Y %H\:%M}");
+	newProject.projectName = b3d::common::helper::getNowAsFormattedDateTimeString();
 	newProject.fitsOriginFileName = "original.fits";
 	newProject.fitsOriginUUID =
 		newCatalog.addFilePathAbsolute(newProject.projectPathAbsolute / newProject.fitsOriginFileName);
