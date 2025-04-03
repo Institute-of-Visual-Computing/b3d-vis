@@ -2,7 +2,6 @@
 #include <d3d11.h>
 #include <d3d11_3.h>
 
-
 #include "SyncPrimitive.h"
 
 namespace b3d::unity_cuda_interop {

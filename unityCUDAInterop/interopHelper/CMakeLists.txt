@@ -1,6 +1,10 @@
 set(MODULE_NAME UnityCUDAInteropHelper)
 
-add_library(${MODULE_NAME} STATIC
+add_library(${MODULE_NAME} STATIC)
+
+target_sources(
+	${MODULE_NAME}
+PRIVATE
 	src/Texture/Texture.cpp
 	src/Texture/Texture_D3D11.cpp
     src/PluginHandler.cpp
@@ -8,12 +12,13 @@ add_library(${MODULE_NAME} STATIC
 	src/RenderAPI/RenderAPI.cpp
 	src/RenderAPI/RenderAPI_D3D11.cpp
 	src/RenderingContext/RenderingContext_D3D11.cpp
-	src/SyncPrimitive/SyncPrimitive_D3D11.cpp)
+	src/SyncPrimitive/SyncPrimitive_D3D11.cpp
+)
 
 # If Shared
 # set_property(TARGET ${MODULE_NAME} PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS true)
 
-
+target_compile_options(${MODULE_NAME} PRIVATE /W4 /WX /external:W0 /external:anglebrackets)
 target_include_directories(${MODULE_NAME} 
 	PUBLIC
 		include

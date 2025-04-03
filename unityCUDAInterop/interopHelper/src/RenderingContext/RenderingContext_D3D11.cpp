@@ -1,6 +1,6 @@
 #include "RenderingContext/RenderingContext_D3D11.h"
 
-#include "PluginLogger.h"
+#include <PluginLogger.h>
 
 b3d::unity_cuda_interop::RenderingContext_D3D11::RenderingContext_D3D11(PluginLogger* logger,
 																				 ID3D11Device* d3d11Device)

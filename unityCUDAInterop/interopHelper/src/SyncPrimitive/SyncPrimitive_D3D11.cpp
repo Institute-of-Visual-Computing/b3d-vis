@@ -2,7 +2,7 @@
 
 #include <d3d11_4.h>
 
-#include "PluginLogger.h"
+#include <PluginLogger.h>
 
 using namespace b3d::unity_cuda_interop;
 

@@ -1,25 +1,24 @@
-#include "Action.h"
+#include <Action.h>
 
-#include "NullDebugDrawList.h"
-#include "NullGizmoHelper.h"
-#include "PluginLogger.h"
-#include "RenderAPI.h"
-#include "RendererBase.h"
+#include <NullDebugDrawList.h>
+#include <NullGizmoHelper.h>
+#include <PluginLogger.h>
+#include <RenderAPI.h>
+#include <RendererBase.h>
 
-#include "Texture.h"
+#include <Texture.h>
 
-#include "FitsNvdbRenderer.h"
-#
+#include <FitsNvdbRenderer.h>
 
 // This line is crucial and must stay. Should be one of the last include. But in any case after the include of Action.
 #include <cuda_d3d11_interop.h>
 #include <filesystem>
 
-#include "IUnityGraphicsD3D11.h"
-#include "create_action.h"
+#include <IUnityGraphicsD3D11.h>
+#include <create_action.h>
 
-#include "RuntimeDataset.h"
-#include "SharedRenderingStructs.h"
+#include <RuntimeDataset.h>
+#include <SharedRenderingStructs.h>
 
 
 using namespace b3d::renderer;
@@ -281,15 +280,23 @@ auto ActionFitsNvdbRenderer::customRenderEvent(int eventId, void* data) -> void
 				return;
 			}
 
-			auto uuidWString = std::wstring{ nanovdbLoadingData->nanoVdbUUID, static_cast<size_t>(nanovdbLoadingData->uuidStringLength) };
-			auto pathWString = std::wstring{ nanovdbLoadingData->nanoVdbFilePath, static_cast<size_t>(nanovdbLoadingData->pathStringLength) };
+			auto uuidWString = std::wstring{ nanovdbLoadingData->nanoVdbUUID,
+											 static_cast<size_t>(nanovdbLoadingData->uuidStringLength) };
+			auto pathWString = std::wstring{ nanovdbLoadingData->nanoVdbFilePath,
+											 static_cast<size_t>(nanovdbLoadingData->pathStringLength) };
 
-			auto uuid = std::string{ uuidWString.begin(), uuidWString.end() };
-			auto path = std::string{ pathWString.begin(), pathWString.end() };
-			
+			auto uuid = std::string(uuidWString.length(), 0);
+			std::transform(uuidWString.begin(), uuidWString.end(), uuid.begin(), [](wchar_t c) { return (char)c; });
+
+
+			auto path = std::string(pathWString.length(), 0);
+			std::transform(pathWString.begin(), pathWString.end(), path.begin(), [](wchar_t c) { return (char)c; });
+
 			currentVolumeInfos_ = { uuid, path, nanovdbLoadingData->fitsDimensions, true };
-			
-			//currentVolumeInfos_ = { "301db4c9-6fef-5398-8a78-946ba1f37739", "E:\\data\\b3d_root\\projects\\8b53c8b1-9a47-4614-b8bb-16573b8064ca\\requests\\b888028b-5c3a-4a35-8c3a-33d04d04fa74\\nano\\out.nvdb", true };
+
+			// currentVolumeInfos_ = { "301db4c9-6fef-5398-8a78-946ba1f37739",
+			// "E:\\data\\b3d_root\\projects\\8b53c8b1-9a47-4614-b8bb-16573b8064ca\\requests\\b888028b-5c3a-4a35-8c3a-33d04d04fa74\\nano\\out.nvdb",
+			// true };
 
 			// TODO: Possible to call method if copy not done yet? Check CUDA docs
 			runtimeDataset_->addNanoVdb(std::filesystem::path{ currentVolumeInfos_.path }, copyStream_,

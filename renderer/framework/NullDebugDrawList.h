@@ -7,8 +7,9 @@ namespace b3d::renderer
 	class NullDebugDrawList final : public b3d::renderer::DebugDrawListBase
 	{
 	public:
-		auto drawBox(const owl::vec3f& origin, const owl::vec3f& midPoint, const owl::vec3f& extent, owl::vec4f color,
-					 const owl::LinearSpace3f& orientation) -> void override
+		auto drawBox([[maybe_unused]] const owl::vec3f& origin, [[maybe_unused]] const owl::vec3f& midPoint,
+					 [[maybe_unused]] const owl::vec3f& extent, [[maybe_unused]] owl::vec4f color,
+					 [[maybe_unused]] const owl::LinearSpace3f& orientation) -> void override
 		{
 		}
 	};

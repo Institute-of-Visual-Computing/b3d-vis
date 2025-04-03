@@ -6,7 +6,6 @@
 #include "PluginLogger.h"
 
 #include "RenderAPI/RenderAPI_D3D11.h"
-
 #include "RenderingContext/RenderingContext_D3D11.h"
 #include "SyncPrimitive/SyncPrimitive_D3D11.h"
 #include "Texture/Texture_D3D11.h"
