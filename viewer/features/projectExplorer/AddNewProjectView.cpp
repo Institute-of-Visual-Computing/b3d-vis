@@ -97,7 +97,6 @@ auto AddNewProjectView::onDraw() -> void
 	FitsFileInfoData fitsFileData;
 	fitsFileData.selectedFile = std::filesystem::path{ ImGuiFileDialog::Instance()->GetCurrentPath() } /
 		ImGuiFileDialog::Instance()->GetCurrentFileName();
-	ImGui::InputText("Project Name", &model_.projectName);
 	ImGui::InputTextWithHint("##FITS File Path", "Please specify a path to the FITS file.", &path);
 	ImGui::SameLine();
 	if (ImGui::SmallButton(ICON_LC_SEARCH))
@@ -128,7 +127,7 @@ auto AddNewProjectView::onDraw() -> void
 
 	model_.sourcePath = path;
 
-	if (not model_.projectName.empty() and fitsFileValid(path))
+	if (fitsFileValid(path))
 	{
 		unblock();
 	}

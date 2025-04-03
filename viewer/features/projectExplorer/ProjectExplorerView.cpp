@@ -34,7 +34,7 @@ ProjectExplorerView::ProjectExplorerView(
 											{
 												const auto model = reinterpret_cast<AddNewProjectView*>(self)->model();
 												upload = applicationContext_->serverClient_.uploadFileAsync(
-													model.sourcePath, model.projectName, uploadFeedback);
+													model.sourcePath, uploadFeedback);
 											});
 	editProjectView_ = std::make_unique<EditProjectView>(
 		appContext, "Edit Project",
@@ -342,7 +342,10 @@ auto ProjectExplorerView::onDraw() -> void
 			const auto uploadResult = upload.get();
 			if (uploadResult.state == b3d::tools::project::UploadState::ok)
 			{
-				model_.projects->push_back(b3d::tools::project::Project{ .projectName = uploadResult.projectName });
+				if (uploadResult.project.has_value())
+				{
+					model_.projects->push_back(uploadResult.project.value());
+				}
 				uploadFeedback.progress = 0;
 			}
 		}

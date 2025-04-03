@@ -44,6 +44,7 @@ namespace b3d::tools::project
 	{
 		UploadState state;
 		std::string projectName;
+		std::optional<Project> project;
 	};
 
 	struct UploadFeedback
@@ -99,7 +100,7 @@ namespace b3d::tools::project
 		auto downloadFileAsync(const std::string& fileUUID, const std::filesystem::path& targetDirectoryPath) const
 			-> std::future<std::filesystem::path>;
 
-		auto uploadFileAsync(const std::filesystem::path& sourceFile, const std::string& projectName,
+		auto uploadFileAsync(const std::filesystem::path& sourceFile,
 							 UploadFeedback& uploadFeedback) const -> std::future<UploadResult>;
 
 		auto deleteProjectAsync(const std::string projectUUID) const -> std::future<void>;
@@ -136,7 +137,6 @@ namespace b3d::tools::project
 
 		static auto uploadFile(
 			ServerConnectionDescription connectionDescription, const std::filesystem::path& sourceFile,
-							   const std::string& projectName,
 							   UploadFeedback& uploadFeedback) -> UploadResult;
 
 		auto startSearch(ServerConnectionDescription connectionDescription, const std::string& projectUUID,
