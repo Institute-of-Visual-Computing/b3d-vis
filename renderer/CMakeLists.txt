@@ -1,6 +1,3 @@
 add_subdirectory(framework)
 add_subdirectory(null)
-add_subdirectory(fastVoxelTraversal)
-add_subdirectory(nano)
 add_subdirectory(fitsNvdb)
-add_subdirectory(samples)

@@ -7,7 +7,7 @@
 #include <string>
 
 #ifdef B3D_USE_NLOHMANN_JSON
-	#include <nlohmann/json.hpp>
+#include <nlohmann/json.hpp>
 #endif
 
 namespace b3d::tools::sofia
@@ -146,7 +146,7 @@ namespace b3d::tools::sofia
 	/// \brief Parameters for executing SoFiA. Those Params are copied from the SoFiA source code/wiki.
 	class SofiaParams
 	{
-		public:
+	public:
 		SofiaParams() = default;
 		SofiaParams(std::initializer_list<std::pair<const std::string, std::string>> params)
 		{
@@ -276,7 +276,7 @@ namespace b3d::tools::sofia
 			}
 			return cliArgs;
 		}
-		
+
 		auto begin() const
 		{
 			return params_.begin();
@@ -287,12 +287,12 @@ namespace b3d::tools::sofia
 			return params_.end();
 		}
 
-		private:
-			std::map<std::string, std::string> params_{};
+	private:
+		std::map<std::string, std::string> params_{};
 
-		#ifdef B3D_USE_NLOHMANN_JSON
-				NLOHMANN_DEFINE_TYPE_INTRUSIVE(SofiaParams, params_);
-		#endif
+#ifdef B3D_USE_NLOHMANN_JSON
+		NLOHMANN_DEFINE_TYPE_INTRUSIVE(SofiaParams, params_);
+#endif
 	};
 
 } // namespace b3d::tools::sofia

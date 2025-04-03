@@ -4,11 +4,13 @@
 #include <owl/common.h>
 #include <owl/helper/cuda.h>
 
+//TODO: It's not clear, but it is good enought for now
+#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
 #include <RenderData.h>
 #include "TransferMappingController.h"
-#include "framework/ApplicationContext.h";
+#include "framework/ApplicationContext.h"
 
 #include <ranges>
 
@@ -44,23 +46,28 @@ auto TransferMapping::initializeResources() -> void
 		{
 			filePath = colorMapResources_.colorMap.colorMapFilePath;
 		}
-		int x, y, n;
 
+		auto x = 0;
+		auto y = 0;
+		auto n = 0;
 		const auto result = stbi_info(filePath.string().c_str(), &x, &y, &n);
 		assert(result);
-		const auto data = stbi_loadf(filePath.string().c_str(), &x, &y, &n, 0);
+		if (result)
+		{
+			const auto data = stbi_loadf(filePath.string().c_str(), &x, &y, &n, 0);
 
-		GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, x, y, 0, GL_RGBA, GL_FLOAT, data));
+			GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, x, y, 0, GL_RGBA, GL_FLOAT, data));
 
-		stbi_image_free(data);
+			stbi_image_free(data);
 
-		colorMapResources_.colorMapTextureExtent =
-			b3d::renderer::Extent{ static_cast<uint32_t>(x), static_cast<uint32_t>(y), 1 };
+			colorMapResources_.colorMapTextureExtent =
+				b3d::renderer::Extent{ static_cast<uint32_t>(x), static_cast<uint32_t>(y), 1 };
+		}
 	}
 
 	const auto colorMapTextureName = std::string{ "ColorMap" };
-	GL_CALL(glObjectLabel(GL_TEXTURE, colorMapResources_.colorMapTexture, colorMapTextureName.length() + 1,
-						  colorMapTextureName.c_str()));
+	GL_CALL(glObjectLabel(GL_TEXTURE, colorMapResources_.colorMapTexture,
+						  static_cast<GLsizei>(colorMapTextureName.length() + 1), colorMapTextureName.c_str()));
 
 	OWL_CUDA_CHECK(cudaGraphicsGLRegisterImage(&colorMapResources_.cudaGraphicsResource,
 											   colorMapResources_.colorMapTexture, GL_TEXTURE_2D,
@@ -77,13 +84,14 @@ auto TransferMapping::initializeResources() -> void
 
 	auto initBufferData = std::array<float, 512>{};
 
-	std::ranges::fill(initBufferData, 1);
+	std::ranges::fill(initBufferData, 1.0f);
 	GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, transferFunctionSamples_, 1, 0, GL_RED, GL_FLOAT,
 						 initBufferData.data()));
 
 	const auto transferFunctionBufferName = std::string{ "TransferFunctionTexture" };
 	GL_CALL(glObjectLabel(GL_TEXTURE, transferFunctionResources_.transferFunctionTexture,
-						  transferFunctionBufferName.length() + 1, transferFunctionBufferName.c_str()));
+						  static_cast<GLsizei>(transferFunctionBufferName.length() + 1),
+						  transferFunctionBufferName.c_str()));
 
 	OWL_CUDA_CHECK(cudaGraphicsGLRegisterImage(
 		&transferFunctionResources_.cudaGraphicsResource, transferFunctionResources_.transferFunctionTexture,

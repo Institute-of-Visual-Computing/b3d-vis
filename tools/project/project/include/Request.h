@@ -8,9 +8,9 @@
 #include <nlohmann/json.hpp>
 #endif
 
-#include "Box.h"
-#include "PipelineResult.h"
-#include "SofiaParams.h"
+#include <Box.h>
+#include <PipelineResult.h>
+#include <SofiaParams.h>
 
 namespace b3d::tools::project
 {

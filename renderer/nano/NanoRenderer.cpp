@@ -1,7 +1,7 @@
 #include "NanoRenderer.h"
 #include <nanovdb/NanoVDB.h>
 #include <owl/helper/cuda.h>
-#include "cuda_runtime.h"
+#include <cuda_runtime.h>
 
 #include <nanovdb/cuda/DeviceBuffer.h>
 #include <nanovdb/tools/CreatePrimitives.h>
@@ -11,7 +11,7 @@
 
 
 #include "SharedStructs.h"
-#include "owl/owl_host.h"
+#include <owl/owl_host.h>
 
 #include <format>
 

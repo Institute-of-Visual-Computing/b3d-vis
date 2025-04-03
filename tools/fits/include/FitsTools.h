@@ -2,9 +2,8 @@
 
 #include <filesystem>
 
-#include "Box.h"
-
-#include "FitsCommon.h"
+#include <Box.h>
+#include <FitsCommon.h>
 
 namespace b3d::tools::fits
 {
@@ -41,6 +40,8 @@ namespace b3d::tools::fits
 	/// \param fitsFilePath Path to the FITS file.
 	/// \return Properties of the FITS file.
 	auto getFitsProperties(const std::filesystem::path& fitsFilePath) -> b3d::tools::fits::FitsProperties;
+
+	auto getFitsHeaderInfo(const std::filesystem::path& fitsFilePath) -> b3d::tools::fits::FitsHeaderInfo;
 
 	/// \brief Reads the data from the FITS file as floats.
 	/// \param fitsFilePath Path to the FITS file.

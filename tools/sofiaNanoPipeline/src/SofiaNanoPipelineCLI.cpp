@@ -1,22 +1,18 @@
 #include <cstdlib>
-
-#include <plog/Formatters/TxtFormatter.h>
-#include <plog/Initializers/ConsoleInitializer.h>
-#include <plog/Log.h>
-
-#include <uuid.h>
-
-#include "FitsTools.h"
-#include "Request.h"
-
 #include <filesystem>
 
 #include <args.hxx>
+#include <plog/Formatters/TxtFormatter.h>
+#include <plog/Initializers/ConsoleInitializer.h>
+#include <plog/Log.h>
+#include <uuid.h>
 
-#include "Project.h"
-#include "TimeStamp.h"
-#include "Result.h"
-#include "NanoTools.h"
+#include <FitsTools.h>
+#include <NanoTools.h>
+#include <Project.h>
+#include <Request.h>
+#include <Result.h>
+#include <TimeStamp.h>
 
 
 void CreateNvdbFromDataAndMaskCommandFunction(args::Subparser& parser)
@@ -28,14 +24,14 @@ void CreateNvdbFromDataAndMaskCommandFunction(args::Subparser& parser)
 	// Setup help for argument parser
 	args::HelpFlag help(parser, "help", "Display this help menu", { 'h', "help" });
 
-	
+
 	args::Positional<std::filesystem::path> sourceArgument(parser, "SOURCE_FILE", "Path to source file (.fits)",
 														   args::Options::Required);
 	args::Positional<std::filesystem::path> maskArgument(parser, "MASK_FILE", "Path to mask file (.fits)",
 														 args::Options::Required);
 
-	args::Positional<std::filesystem::path> destinationPathArgument(
-		parser, "DESTINATION_PATH", "Filename to the nvdb created.", "");
+	args::Positional<std::filesystem::path> destinationPathArgument(parser, "DESTINATION_PATH",
+																	"Filename to the nvdb created.", "");
 
 	parser.Parse();
 
@@ -88,8 +84,7 @@ void CreateNvdbFromDataAndMaskCommandFunction(args::Subparser& parser)
 	const auto maskDims = b3d::tools::fits::getFitsProperties(maskPath).axisDimensions;
 	if (sourceDims.size() != maskDims.size())
 	{
-		LOG_ERROR << std::format("Dimension count ({}) of source and mask file ({}) do not match.",
-								 sourceDims.size(),
+		LOG_ERROR << std::format("Dimension count ({}) of source and mask file ({}) do not match.", sourceDims.size(),
 								 maskDims.size());
 		LOG_INFO << parser;
 		return;
@@ -163,7 +158,8 @@ auto main(const int argc, char** argv) -> int
 
 	args::Group commands(parser, "commands");
 
-	args::Command createWithMask(commands, "fits-mask-to-nvdb", "Create a nvdb with mask.", &CreateNvdbFromDataAndMaskCommandFunction);
+	args::Command createWithMask(commands, "fits-mask-to-nvdb", "Create a nvdb with mask.",
+								 &CreateNvdbFromDataAndMaskCommandFunction);
 	args::Command createWithoutMask(commands, "fits-to-nvdb", "Create a nvdb without mask.",
 									&CreateNvdbFromDataCommandFunction);
 

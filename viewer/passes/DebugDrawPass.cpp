@@ -106,7 +106,7 @@ auto DebugDrawPass::execute() const -> void
 						 debugDrawList_->vertices_.data(), GL_STREAM_DRAW));
 
 
-	GL_CALL(glDrawArrays(GL_TRIANGLES, 0, debugDrawList_->vertices_.size()));
+	GL_CALL(glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(debugDrawList_->vertices_.size())));
 	glUseProgram(0);
 	if (lastIsEnabledDepthTest)
 	{

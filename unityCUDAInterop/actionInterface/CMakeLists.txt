@@ -10,7 +10,7 @@ target_include_directories(${MODULE_NAME}
 target_link_libraries(${MODULE_NAME}
 	INTERFACE
 		B3D::UnityCUDAInterop::Helper
-		B3D::Renderer::Library
+		B3D::Renderer::Framework
 )
 
 set_target_properties(${MODULE_NAME} PROPERTIES CXX_STANDARD 20)

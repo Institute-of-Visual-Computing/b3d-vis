@@ -19,7 +19,7 @@
 #include <owl/owl.h>
 
 #include <cuda_runtime.h>
-#include "owl/Object.h"
+#include <owl/Object.h>
 
 #include <owl/common/math/vec.h>
 

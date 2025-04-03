@@ -1,8 +1,8 @@
 #pragma once
 
-#include <corecrt_math_defines.h>
 #include <functional>
 #include <vector>
+#include <glm/ext/scalar_constants.hpp>
 
 namespace animation
 {
@@ -11,8 +11,8 @@ namespace animation
 	{
 		const auto z = fabs(x);
 		const auto w = z > 1.0f ? 1.0f / z : z;
-		const float y = (M_PI / 4.0f) * w - w * (w - 1) * (0.2447f + 0.0663f * w);
-		return copysign(z > 1.0f ? M_PI / 2.0 - y : y, x);
+		const float y = (glm::pi<float>() / 4.0f) * w - w * (w - 1.0f) * (0.2447f + 0.0663f * w);
+		return copysign(z > 1.0f ? glm::pi<float>() / 2.0f - y : y, x);
 	}
 
 	inline auto fastNegExp(const float x) -> float
@@ -81,8 +81,8 @@ namespace animation
 		}
 		else if (s - (d * d) / 4.0f < 0.0) // Over Damped
 		{
-			const auto y0 = (d + sqrtf(d * d - 4 * s)) / 2.0f;
-			const auto y1 = (d - sqrtf(d * d - 4 * s)) / 2.0f;
+			const auto y0 = (d + sqrtf(d * d - 4.0f * s)) / 2.0f;
+			const auto y1 = (d - sqrtf(d * d - 4.0f * s)) / 2.0f;
 			const auto j1 = (c * y0 - x * y0 - v) / (y1 - y0);
 			const auto j0 = x - j1 - c;
 

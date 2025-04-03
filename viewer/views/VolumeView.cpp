@@ -177,7 +177,7 @@ auto VolumeView::onDraw() -> void
 	{
 		ImGui::SetNextItemAllowOverlap();
 		ImGui::SetCursorScreenPos(p);
-		const auto cameraMatrices = computeViewProjectionMatrixFromCamera(camera_, viewportSize_.x, viewportSize_.y);
+		const auto cameraMatrices = computeViewProjectionMatrixFromCamera(camera_, static_cast<int>(viewportSize_.x), static_cast<int>(viewportSize_.y));
 		drawGizmos(cameraMatrices, glm::vec2{ p.x, p.y }, glm::vec2{ viewportSize_.x, viewportSize_.y });
 	}
 
@@ -283,7 +283,7 @@ auto VolumeView::onDraw() -> void
 			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12.0f);
 			ImGui::PushStyleVar(ImGuiStyleVar_GrabRounding, 12.0f);
 			ImGui::SetNextItemWidth(40 * scale);
-			ImGui::SliderInt(/*ICON_LC_EYE*/ "##cameraType", &cameraType, 0, types.size() - 1, types[cameraType]);
+			ImGui::SliderInt("##cameraType", &cameraType, 0, static_cast<int>(types.size() - 1), types[cameraType]);
 			if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
 			{
 				cameraControllerType_ =
@@ -291,10 +291,6 @@ auto VolumeView::onDraw() -> void
 			}
 			ImGui::PopStyleVar(2);
 		}
-#if 0
-		ImGui::SetCursorPosY(500.0f);
-		ImGui::Text("test");
-#endif
 	}
 
 	if (ImGui::IsKeyPressed(ImGuiKey_F2, false))
@@ -323,7 +319,7 @@ auto VolumeView::onDraw() -> void
 
 				const auto sizeMargin = static_cast<int>(ImGui::GetStyle().ItemSpacing.y);
 				constexpr auto maxGraphHeight = 140;
-				const auto availableGraphHeight = (static_cast<int>(canvasSize.y) - sizeMargin); // /2;
+				const auto availableGraphHeight = (static_cast<int>(canvasSize.y) - sizeMargin);
 				const auto graphHeight = std::min(maxGraphHeight, availableGraphHeight);
 				constexpr auto legendWidth = 400;
 				const auto graphWidth = static_cast<int>(glm::min(canvasSize.x, 1200.0f)) - legendWidth;
@@ -332,7 +328,7 @@ auto VolumeView::onDraw() -> void
 				const auto position = ImGui::GetCursorPos();
 				ImGui::PushFont(applicationContext_->getFontCollection().getGpuCpuExtraBigTextFont());
 				ImGui::SetNextItemAllowOverlap();
-				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4{ 0.6, 0.6, 0.6, 0.4 });
+				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4{ 0.6f, 0.6f, 0.6f, 0.4f });
 				ImGui::Text("GPU");
 				ImGui::PopStyleColor();
 				ImGui::PopFont();
@@ -349,17 +345,6 @@ auto VolumeView::onDraw() -> void
 			}
 		}
 	}
-
-#if 0
-	ImGui::SliderFloat("stiffness", &flyAnimationSettings_.stiffness, 0.0f, 100.0f);
-	ImGui::SliderFloat("damping", &flyAnimationSettings_.dumping, 0.0f, 100.0f);
-	/*const auto d = (flyAnimationSettings_.dumping * flyAnimationSettings_.dumping) / 4.0f;
-
-	if (d > flyAnimationSettings_.stiffness)
-	{
-		flyAnimationSettings_.stiffness = d;
-	}*/
-#endif
 	auto& io = ImGui::GetIO();
 	animator_.animate(io.DeltaTime);
 }
@@ -376,7 +361,6 @@ auto VolumeView::setRenderVolume(b3d::renderer::RendererBase* renderer,
 	renderer_ = renderer;
 	renderingData_ = renderingData;
 }
-
 
 auto VolumeView::drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec2& position,
 							const glm::vec2& size) const -> void
@@ -441,7 +425,6 @@ auto VolumeView::drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec
 		}
 	}
 	auto blockInput = false;
-
 
 	for (const auto& [bound, transform, worldTransform] : applicationContext_->getGizmoHelper()->getBoundTransforms())
 	{
@@ -517,7 +500,7 @@ auto VolumeView::initializeGraphicsResources() -> void
 		OWL_CUDA_CHECK(cudaFree(graphicsResources_.framebufferPointer));
 	}
 	OWL_CUDA_CHECK(cudaMallocManaged(&graphicsResources_.framebufferPointer,
-									 viewportSize_.x * viewportSize_.y * sizeof(uint32_t)));
+									 static_cast<size_t>(viewportSize_.x * viewportSize_.y * sizeof(uint32_t))));
 
 	graphicsResources_.framebufferSize = glm::vec2{ viewportSize_.x, viewportSize_.y };
 	if (graphicsResources_.framebufferTexture == 0)
@@ -534,7 +517,7 @@ auto VolumeView::initializeGraphicsResources() -> void
 	}
 
 	GL_CALL(glBindTexture(GL_TEXTURE_2D, graphicsResources_.framebufferTexture));
-	GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, viewportSize_.x, viewportSize_.y, 0, GL_RGBA, GL_UNSIGNED_BYTE,
+	GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, static_cast<GLsizei>(viewportSize_.x), static_cast<GLsizei>(viewportSize_.y), 0, GL_RGBA, GL_UNSIGNED_BYTE,
 						 nullptr));
 	GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
 	GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
@@ -557,8 +540,8 @@ auto VolumeView::deinitializeGraphicsResources() -> void
 auto VolumeView::renderVolume() -> void
 {
 
-	const auto width = viewportSize_.x;
-	const auto height = viewportSize_.y;
+	const auto width = static_cast<int>(viewportSize_.x);
+	const auto height = static_cast<int>(viewportSize_.y);
 	const auto [view, projection, viewProjection] = computeViewProjectionMatrixFromCamera(camera_, width, height);
 
 	GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, graphicsResources_.framebuffer));

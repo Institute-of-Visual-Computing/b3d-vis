@@ -1,6 +1,6 @@
 set(UNITY_ASSET_SUBDIRECTORY_INTEROP_ACTIONS "UnityCudaInterop/Actions")
 
-if(not defined UNITY_PROJECT_ROOT_DIR)
+if(NOT UNITY_PROJECT_ROOT_DIR)
     message(STATUS "UNITY_PROJECT_ROOT_DIR is not set, skip extansion install target")
 endif()
 

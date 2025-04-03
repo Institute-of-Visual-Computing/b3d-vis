@@ -2,8 +2,8 @@
 
 #include "RendererBase.h"
 
-#include "features/RenderSyncFeature.h"
-#include "features/RenderTargetFeature.h"
+#include <features/RenderSyncFeature.h>
+#include <features/RenderTargetFeature.h>
 
 namespace b3d::renderer
 {

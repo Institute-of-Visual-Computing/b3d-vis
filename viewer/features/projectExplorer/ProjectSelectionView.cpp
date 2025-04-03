@@ -21,9 +21,6 @@ ProjectSelectionView::ProjectSelectionView(ApplicationContext& applicationContex
 
 auto ProjectSelectionView::onDraw() -> void
 {
-
-	const auto& style = ImGui::GetStyle();
-	const auto windowVisibleX2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
 	auto la = ImGui::GetContentRegionAvail();
 	ImGui::Text(availableProjectString_.c_str());
 

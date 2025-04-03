@@ -4,18 +4,18 @@
 
 #include <owl/owl.h>
 
-#include "SharedStructs.h"
 #include "Common.h"
+#include "SharedStructs.h"
 
 #include <owl/owl_device.h>
-#include "OptixHelper.cuh"
 #include "FitsNvdbRenderer.h"
+#include "OptixHelper.cuh"
 
 #include <device_launch_parameters.h>
 
 #include <nanovdb/NanoVDB.h>
-#include <nanovdb/math/Ray.h>
 #include <nanovdb/math/HDDA.h>
+#include <nanovdb/math/Ray.h>
 #include "SampleAccumulators.h"
 
 using namespace owl;
@@ -25,7 +25,7 @@ extern "C" __constant__ LaunchParams optixLaunchParams;
 
 struct PerRayData
 {
-	bool middlePos{false};
+	bool middlePos{ false };
 	float tFar;
 	vec3f color;
 	float alpha;
@@ -66,8 +66,8 @@ __device__ inline auto confine(const nanovdb::math::BBox<nanovdb::Coord>& bbox, 
 	}
 }
 
-__device__ inline auto confine(const nanovdb::math::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& start, nanovdb::Vec3f& end)
-	-> void
+__device__ inline auto confine(const nanovdb::math::BBox<nanovdb::Coord>& bbox, nanovdb::Vec3f& start,
+							   nanovdb::Vec3f& end) -> void
 {
 	confine(bbox, start);
 	confine(bbox, end);
@@ -77,7 +77,7 @@ OPTIX_BOUNDS_PROGRAM(bounds)
 (const void* geometryData, owl::box3f& primitiveBounds, const int primitiveID)
 {
 	const FitsNvdbGeometry& self = *(const FitsNvdbGeometry*)geometryData;
-	
+
 	// printf("Min: %.1f, %.1f, %.1f", self.fitsBox.lower.x, self.fitsBox.lower.y, self.fitsBox.lower.z);
 	// printf("max: %.1f, %.1f, %.1f", self.fitsBox.upper.x, self.fitsBox.upper.y, self.fitsBox.upper.z);
 	primitiveBounds = self.fitsBox;
@@ -126,12 +126,12 @@ OPTIX_RAYGEN_PROGRAM(raygen)()
 
 	const auto color = prd.isBackground ? bgColor : vec4f(prd.color, prd.alpha);
 
-	
+
 	if (pixelId.x == self.frameBufferSize.x / 2 && pixelId.y == self.frameBufferSize.y / 2)
 	{
 		// printf("Hello from the center %d\n", true);
 	}
-	
+
 	surf2Dwrite(owl::make_rgba(color), optixLaunchParams.surfacePointer, sizeof(uint32_t) * pixelId.x, pixelId.y);
 }
 
@@ -206,7 +206,7 @@ OPTIX_CLOSEST_HIT_PROGRAM(closestHit)()
 
 	const auto direction = end - start;
 	const auto length = direction.length();
-	const auto ray = nanovdb::Ray<float>(start, direction / length, 0.0f, length);
+	const auto ray = nanovdb::math::Ray<float>(start, direction / length, 0.0f, length);
 	auto ijk = nanovdb::math::RoundDown<nanovdb::Coord>(ray.start());
 
 	auto hdda = nanovdb::math::HDDA<nanovdb::math::Ray<float>>(ray, accessor.getDim(ijk, ray));
@@ -264,9 +264,7 @@ OPTIX_CLOSEST_HIT_PROGRAM(closestHit)()
 		}
 		break;
 	}
-	
+
 	prd.color = vec3f{ result.x, result.y, result.z };
 	prd.alpha = result.w;
 }
-
-

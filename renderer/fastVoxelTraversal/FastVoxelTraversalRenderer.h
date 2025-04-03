@@ -2,7 +2,7 @@
 
 #include <RendererBase.h>
 
-#include "owl/owl_host.h"
+#include <owl/owl_host.h>
 
 #include "features/RenderSyncFeature.h"
 #include "features/RenderTargetFeature.h"

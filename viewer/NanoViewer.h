@@ -22,8 +22,8 @@ class NanoViewer final
 public:
 	explicit NanoViewer(const std::string& title = "Nano Viewer", int initWindowWidth = 1980,
 						int initWindowHeight = 1080, bool enableVsync = false, int rendererIndex = 0);
-	auto showAndRunWithGui() -> void;
-	auto showAndRunWithGui(const std::function<bool()>& keepgoing) -> void;
+	auto run() -> void;
+	auto run(const std::function<bool()>& keepgoing) -> void;
 
 	auto enableDevelopmentMode(const bool enable = true) const -> void
 	{

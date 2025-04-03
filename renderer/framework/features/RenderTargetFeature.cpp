@@ -3,7 +3,7 @@
 #include <format>
 
 #include "Logging.h"
-#include "owl/helper/cuda.h"
+#include <owl/helper/cuda.h>
 
 auto b3d::renderer::RenderTargetFeature::beginUpdate() -> void
 {
@@ -34,9 +34,9 @@ auto b3d::renderer::RenderTargetFeature::beginUpdate() -> void
 			cudaGraphicsMapResources(1, &renderTargets_->colorRt.target));
 			
 
-		for (auto i = 0; i < renderTargets_->colorRt.extent.depth; i++)
+		for (auto i = 0u; i < renderTargets_->colorRt.extent.depth; i++)
 		{
-			OWL_CUDA_CHECK(cudaGraphicsSubResourceGetMappedArray(&cudaColorRT_.surfaces[i].buffer, renderTargets_->colorRt.target, i, 0));
+			OWL_CUDA_CHECK(cudaGraphicsSubResourceGetMappedArray(&cudaColorRT_.surfaces[i].buffer, renderTargets_->colorRt.target, i, 0u));
 
 			auto resDesc = cudaResourceDesc{};
 			resDesc.resType = cudaResourceTypeArray;
@@ -55,7 +55,7 @@ auto b3d::renderer::RenderTargetFeature::endUpdate() -> void
 		return;
 	}
 
-	for (auto i = 0; i < renderTargets_->colorRt.extent.depth; i++)
+	for (auto i = 0u; i < renderTargets_->colorRt.extent.depth; i++)
 	{
 		OWL_CUDA_CHECK(cudaDestroySurfaceObject(cudaColorRT_.surfaces[i].surface));
 	}

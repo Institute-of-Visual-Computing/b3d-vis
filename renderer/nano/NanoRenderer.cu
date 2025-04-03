@@ -8,10 +8,10 @@
 #include <nanovdb/math/HDDA.h>
 #include <nanovdb/math/Ray.h>
 #include "SharedStructs.h"
-#include "nanovdb/NanoVDB.h"
-#include "owl/common/math/vec.h"
+#include <nanovdb/NanoVDB.h>
+#include <owl/common/math/vec.h>
 
-#include "owl/owl_device.h"
+#include <owl/owl_device.h>
 
 #include "FoveatedHelper.cuh"
 #include "OptixHelper.cuh"

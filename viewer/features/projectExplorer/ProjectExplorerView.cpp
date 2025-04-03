@@ -9,30 +9,13 @@
 #include "IconsLucide.h"
 #include "IdGenerator.h"
 #include "ImGuiExtension.h"
-#include "imspinner.h"
+#include <imspinner.h>
 
 namespace
 {
-
-	struct ProjectItem
-	{
-		std::string name;
-	};
-
-	std::vector<ProjectItem> model;
-
-	void populateTestModelData()
-	{
-		model.push_back({ ProjectItem{ "b3d_test_1" } });
-		model.push_back({ ProjectItem{ "b3d_test_1_very_long_name___________________" } });
-		model.push_back({ ProjectItem{ "b3d_test_2_very_long_name___________________" } });
-		model.push_back({ ProjectItem{ "b3d_test_3_very_long_name___________________" } });
-		model.push_back({ ProjectItem{ "b3d_test_4_very_long_name___________________" } });
-		model.push_back({ ProjectItem{ "b3d_test_5_very_long_name___________________" } });
-		model.push_back({ ProjectItem{ "b3d_test_6_very_long_name___________________" } });
-		model.push_back({ ProjectItem{ "b3d_test_7_very_long_name___________________" } });
-	}
-
+	b3d::tools::project::UploadFeedback uploadFeedback;
+	std::future<b3d::tools::project::UploadResult> upload;
+	int hoveredProjectIndex = -1;
 } // namespace
 
 ProjectExplorerView::ProjectExplorerView(
@@ -44,8 +27,40 @@ ProjectExplorerView::ProjectExplorerView(
 	  showSelectionModal_(std::move(showSelectionModal)), showNvdbSelectionModal_(std::move(showNvdbSelectionModal)),
 	  loadAndShowFunction_(std::move(loadAndShowFunction)), refreshProjectsFunction_(std::move(refreshProjectsFunction))
 {
-	populateTestModelData();
 	parameterSummaryView_ = std::make_unique<SofiaParameterSummaryView>(appContext);
+	addNewProjectView_ =
+		std::make_unique<AddNewProjectView>(appContext, "Add New Project",
+											[&](ModalViewBase* self)
+											{
+												const auto model = reinterpret_cast<AddNewProjectView*>(self)->model();
+												upload = applicationContext_->serverClient_.uploadFileAsync(
+													model.sourcePath, uploadFeedback);
+											});
+	editProjectView_ = std::make_unique<EditProjectView>(
+		appContext, "Edit Project",
+		[&](ModalViewBase* self)
+		{
+			auto view = reinterpret_cast<EditProjectView*>(self);
+			const auto& project = model_.projects->at(view->projectIndex());
+			view->setModel(EditProjectModel{ project.projectName });
+		},
+		[&](ModalViewBase* self)
+		{
+			auto view = reinterpret_cast<EditProjectView*>(self);
+			auto& project = model_.projects->at(view->projectIndex());
+			project.projectName = view->model().projectName;
+			changeProjectFuture_ =
+				applicationContext_->serverClient_.changeProjectAsync(project.projectUUID, project.projectName);
+		});
+	deleteProjectView_ = std::make_unique<DeleteProjectView>(
+		appContext, "Delete Project", [&]([[maybe_unused]] ModalViewBase* self) {},
+		[&](ModalViewBase* self)
+		{
+			auto view = reinterpret_cast<DeleteProjectView*>(self);
+			std::string uuid = model_.projects->at(view->projectIndex()).projectUUID;
+			deleteProjectFuture_ = applicationContext_->serverClient_.deleteProjectAsync(uuid);
+			model_.projects->erase(model_.projects->begin() + view->projectIndex());
+		});
 }
 
 ProjectExplorerView::~ProjectExplorerView() = default;
@@ -55,11 +70,12 @@ auto ProjectExplorerView::setModel(Model model) -> void
 	model_ = std::move(model);
 }
 
-auto drawSelectableItemGridPanel(
-	const char* panelId, int& selectedItemIndex, const int items,
-	const std::function<const char*(const int index)>& name, const char* icon, ImFont* iconFont,
-	const std::function<void(const int index)>& popup = [](const int) {}, const ImVec2 itemSize = { 100, 100 },
-	const ImVec2 panelSize = { 0, 300 }) -> bool
+
+auto ProjectExplorerView::drawSelectableItemGridPanel(const char* panelId, int& selectedItemIndex, const int items,
+													  const std::function<const char*(const int index)>& name,
+													  const char* icon, ImFont* iconFont,
+													  const std::function<void(const int index)>& popup,
+													  const ImVec2 itemSize, const ImVec2 panelSize) -> bool
 {
 	auto projectSelected{ false };
 	const auto& style = ImGui::GetStyle();
@@ -68,10 +84,12 @@ auto drawSelectableItemGridPanel(
 	ImGui::BeginChild("", panelSize, ImGuiChildFlags_Border, ImGuiWindowFlags_AlwaysVerticalScrollbar);
 	auto pos = ImGui::GetCursorPos();
 	const auto widgetStartPosition = ImGui::GetCursorPos();
+	const auto itemsCount = items + 1; // add button as last item
 
-
-	for (auto n = 0; n < items; n++)
+	for (auto n = 0; n < itemsCount; n++)
 	{
+		const auto lastItem = n == items;
+
 		constexpr auto padding = 10;
 		ImGui::PushID(n);
 		ImGui::SetNextItemAllowOverlap();
@@ -85,67 +103,156 @@ auto drawSelectableItemGridPanel(
 		ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, alignment);
 
 		ImGui::PushID(n);
-		const auto itemPosition = ImGui::GetCursorPos();
-		if (ImGui::Selectable("", selectedItemIndex == n,
-							  ImGuiSelectableFlags_DontClosePopups | ImGuiSelectableFlags_AllowOverlap, itemSize))
+		if (lastItem)
 		{
-			selectedItemIndex = n;
-			projectSelected = true;
-		}
-		if (ImGui::BeginItemTooltip())
-		{
-			popup(n);
-			ImGui::EndTooltip();
-		}
+			static auto isUploadButton = true;
 
-		const auto textSize = ImGui::CalcTextSize(name(n));
-		const auto dotsTextSize = ImGui::CalcTextSize("...");
-		ImGui::PushFont(iconFont);
-		ImGui::SetNextItemAllowOverlap();
-		const auto iconSize = ImGui::CalcTextSize(icon);
+			if (not upload.valid())
+			{
 
-		const auto height = textSize.y + iconSize.y + ImGui::GetStyle().FramePadding.y;
+				ImGui::PushStyleColor(ImGuiCol_Button,
+									  ImGui::ColorConvertFloat4ToU32(ImVec4{ 0.1f, 0.7f, 0.1f, 1.0f }));
+				ImGui::SetNextItemAllowOverlap();
+				ImGui::PushFont(iconFont);
+				if (ImGui::Button(ICON_LC_FILE_UP, itemSize))
+				{
+					addNewProjectView_->open();
+				}
+				ImGui::PopFont();
+				ImGui::PopStyleColor();
+			}
+			else
+			{
+				const auto itemPosition = ImGui::GetCursorPos();
+				ImGui::InvisibleButton("##uploading", itemSize);
+				const auto textSize = ImGui::CalcTextSize("Uploading");
+				ImGui::PushFont(iconFont);
+				ImGui::SetNextItemAllowOverlap();
+				const auto iconSize = ImGui::CalcTextSize(ICON_LC_FILE_UP);
 
-		ImGui::SetCursorPos(itemPosition + ImVec2{ (itemSize.x - iconSize.x) * 0.5f, (itemSize.y - height) * 0.5f });
-		ImGui::Text(icon);
-		ImGui::PopFont();
+				const auto height = textSize.y + iconSize.y + ImGui::GetStyle().FramePadding.y;
 
+				ImGui::SetCursorPos(itemPosition +
+									ImVec2{ (itemSize.x - iconSize.x) * 0.5f, (itemSize.y - height) * 0.5f });
+				ImGui::Text(ICON_LC_FILE_UP);
+				ImGui::PopFont();
 
-		if (textSize.x - ImGui::GetStyle().FramePadding.x < itemSize.x)
-		{
-			ImGui::SetCursorPos(itemPosition +
-								ImVec2{ (itemSize.x - textSize.x) * 0.5f,
-										(itemSize.y - height) * 0.5f + iconSize.y + ImGui::GetStyle().FramePadding.y });
-			ImGui::Text(name(n));
+				const auto text = std::string{ "Uploading" };
+				auto approximatedTextSize = textSize;
+
+				ImGui::SetCursorPos(
+					itemPosition +
+					ImVec2{ (itemSize.x - approximatedTextSize.x) * 0.5f,
+							(itemSize.y - height) * 0.5f + iconSize.y + ImGui::GetStyle().FramePadding.y });
+				ImGui::Text(text.c_str());
+				ImGui::ProgressBar(uploadFeedback.progress / 100.0f);
+			}
 		}
 		else
 		{
-			const auto nameText = std::string{ name(n) };
-			auto approximatedLength = nameText.size();
-			auto approximatedTextSize = textSize;
-			while ((approximatedTextSize.x - ImGui::GetStyle().FramePadding.x) >= itemSize.x)
+
+			const auto itemPosition = ImGui::GetCursorPos();
+
+
+			if (ImGui::Selectable("", selectedItemIndex == n,
+								  ImGuiSelectableFlags_DontClosePopups | ImGuiSelectableFlags_AllowOverlap, itemSize))
 			{
-				approximatedLength /= 2;
-				approximatedTextSize =
-					ImGui::CalcTextSize(nameText.substr(0, approximatedLength).c_str()) + dotsTextSize;
+				selectedItemIndex = n;
+				projectSelected = true;
+			}
+			const auto isItemHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenOverlappedByItem);
+			if (ImGui::BeginItemTooltip())
+			{
+				popup(n);
+				ImGui::EndTooltip();
 			}
 
-			const auto text = std::format("{}{}", nameText.substr(0, approximatedLength), "...");
-			;
+			const auto textSize = ImGui::CalcTextSize(name(n));
+			auto approximatedTextSize = textSize;
+			const auto dotsTextSize = ImGui::CalcTextSize("...");
+			ImGui::PushFont(iconFont);
+			// ImGui::SetNextItemAllowOverlap();
+			const auto iconSize = ImGui::CalcTextSize(icon);
+
+			const auto height = textSize.y + iconSize.y + ImGui::GetStyle().FramePadding.y;
 
 			ImGui::SetCursorPos(itemPosition +
-								ImVec2{ (itemSize.x - approximatedTextSize.x) * 0.5f,
-										(itemSize.y - height) * 0.5f + iconSize.y + ImGui::GetStyle().FramePadding.y });
-			ImGui::Text(text.c_str());
-		}
+								ImVec2{ (itemSize.x - iconSize.x) * 0.5f, (itemSize.y - height) * 0.5f });
+			ImGui::Text(icon);
+			ImGui::PopFont();
 
+
+			if (textSize.x - ImGui::GetStyle().FramePadding.x < itemSize.x)
+			{
+				ImGui::SetCursorPos(
+					itemPosition +
+					ImVec2{ (itemSize.x - textSize.x) * 0.5f,
+							(itemSize.y - height) * 0.5f + iconSize.y + ImGui::GetStyle().FramePadding.y });
+				ImGui::Text(name(n));
+			}
+			else
+			{
+				const auto nameText = std::string{ name(n) };
+				auto approximatedLength = nameText.size();
+
+				while ((approximatedTextSize.x - ImGui::GetStyle().FramePadding.x) >= itemSize.x)
+				{
+					approximatedLength /= 2;
+					approximatedTextSize =
+						ImGui::CalcTextSize(nameText.substr(0, approximatedLength).c_str()) + dotsTextSize;
+				}
+
+				const auto text = std::format("{}{}", nameText.substr(0, approximatedLength), "...");
+				;
+
+				ImGui::SetCursorPos(
+					itemPosition +
+					ImVec2{ (itemSize.x - approximatedTextSize.x) * 0.5f,
+							(itemSize.y - height) * 0.5f + iconSize.y + ImGui::GetStyle().FramePadding.y });
+				ImGui::Text(text.c_str());
+			}
+			if (isItemHovered)
+			{
+				ImGui::SetCursorPos(itemPosition +
+									ImVec2{ (itemSize.x) * 0.5f - iconSize.x - ImGui::GetStyle().FramePadding.x * 2 -
+												ImGui::GetStyle().ItemSpacing.x * 0.5f,
+											(itemSize.y - height) * 0.5f + iconSize.y + dotsTextSize.y +
+												ImGui::GetStyle().FramePadding.y });
+				ImGui::PushFont(iconFont);
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.7f, 0.7f, 0.3f, 1.0f });
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.4f, 0.4f, 0.2f, 1.0f });
+				ImGui::PushID(n);
+				ImGui::SetNextItemAllowOverlap();
+				if (ImGui::Button(ICON_LC_PENCIL) || ImGui::IsItemClicked())
+				{
+					editProjectView_->setProjectIndex(n);
+					editProjectView_->open();
+				}
+				ImGui::PopStyleColor(2);
+				ImGui::PopFont();
+				ImGui::SetItemTooltip("Edit Project Name");
+				ImGui::SameLine();
+				ImGui::PushFont(iconFont);
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.8f, 0.1f, 0.1f, 1.0f });
+				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.4f, 0.1f, 0.1f, 1.0f });
+				if (ImGui::Button(ICON_LC_TRASH_2) || ImGui::IsItemClicked())
+				{
+					deleteProjectView_->setProjectIndex(n);
+					deleteProjectView_->open();
+				}
+				ImGui::PopID();
+				ImGui::PopFont();
+				ImGui::SetItemTooltip("Delete Project");
+				ImGui::PopStyleColor(2);
+			}
+		}
 		ImGui::PopID();
 		ImGui::PopStyleVar();
 		ImGui::EndChild();
 		ImGui::PopStyleVar();
 		const auto lastButtonX2 = ImGui::GetItemRectMax().x;
 		const auto nextButtonX2 = lastButtonX2 + style.ItemSpacing.x + itemSize.x;
-		if (n + 1 < items && nextButtonX2 < windowVisibleX2)
+		if (n + 1 < itemsCount && nextButtonX2 < windowVisibleX2)
 		{
 			pos.x = pos.x + padding * 2 + itemSize.x;
 		}
@@ -166,9 +273,9 @@ auto ProjectExplorerView::onDraw() -> void
 {
 	const auto availableWidth = ImGui::GetContentRegionAvail().x;
 
-
-	const auto isConnectedToAnyServer =
-		applicationContext_->serverClient_.getLastServerStatusState().health == b3d::tools::project::ServerHealthState::ok;
+	const auto scaleFactor = ImGui::GetWindowDpiScale();
+	const auto isConnectedToAnyServer = applicationContext_->serverClient_.getLastServerStatusState().health ==
+		b3d::tools::project::ServerHealthState::ok;
 	const auto serverNameText = std::format(
 		"Server: {}",
 		isConnectedToAnyServer ? applicationContext_->serverClient_.getConnectionInfo().name : "Disconnected!");
@@ -183,7 +290,7 @@ auto ProjectExplorerView::onDraw() -> void
 	ImGui::SameLine(middleSpace);
 	ImGui::Text(serverNameText.c_str());
 	ImGui::SameLine();
-	const auto switchServerPressed = ImGui::Button(ICON_LC_ARROW_RIGHT_LEFT);
+	[[maybe_unused]] const auto switchServerPressed = ImGui::Button(ICON_LC_ARROW_RIGHT_LEFT);
 	ImGui::SetItemTooltip("Switch Server");
 
 	if (applicationContext_->isDevelopmentModeEnabled)
@@ -229,8 +336,22 @@ auto ProjectExplorerView::onDraw() -> void
 
 	if (model_.projects)
 	{
+		using namespace std::chrono_literals;
+		if (upload.valid() and upload.wait_for(0s) == std::future_status::ready)
+		{
+			const auto uploadResult = upload.get();
+			if (uploadResult.state == b3d::tools::project::UploadState::ok)
+			{
+				if (uploadResult.project.has_value())
+				{
+					model_.projects->push_back(uploadResult.project.value());
+				}
+				uploadFeedback.progress = 0;
+			}
+		}
+
 		const auto projectChanged = drawSelectableItemGridPanel(
-			"projects", selectedProjectItemIndex_, model_.projects->size(),
+			"projects", selectedProjectItemIndex_, static_cast<const int>(model_.projects->size()),
 			[&](const int index) { return model_.projects->at(index).projectName.c_str(); }, ICON_LC_BOX,
 			applicationContext_->getFontCollection().getBigIconsFont(),
 			[&](const int index)
@@ -243,7 +364,7 @@ auto ProjectExplorerView::onDraw() -> void
 									 model_.projects->at(index).fitsOriginProperties.axisTypes[i].c_str());
 				}
 			},
-			ImVec2{ 100, 100 });
+			ImVec2{ 100 * scaleFactor, 100 * scaleFactor });
 
 
 		if (selectedProjectItemIndex_ >= 0)
@@ -286,13 +407,9 @@ auto ProjectExplorerView::onDraw() -> void
 				if (ImGui::CollapsingHeader(project.fitsOriginFileName.c_str()))
 				{
 					ImGuiWindowFlags window_flags = ImGuiWindowFlags_None;
-					// window_flags |= ImGuiWindowFlags_MenuBar;
 					ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 5.0f);
-					ImGui::BeginChild("Properties", ImVec2(0, 260), ImGuiChildFlags_Border, window_flags);
+					ImGui::BeginChild("Properties", ImVec2(0, 260 * scaleFactor), ImGuiChildFlags_Border, window_flags);
 
-					// Common Properties
-					// Size
-					// Properties per Axis
 					for (auto i = 0; i < project.fitsOriginProperties.axisTypes.size(); i++)
 					{
 						ImGui::LabelText(std::format("Axis {}", i).c_str(),
@@ -304,9 +421,6 @@ auto ProjectExplorerView::onDraw() -> void
 				}
 				ImGui::EndUnderDevelopmentScope();
 			}
-
-
-			// TODO: list, item "name", "id", "request status", Button "Jump TO" and highlight in volume view onhover
 
 			static auto selectedRequest = defaultVolumeDataRequest;
 
@@ -352,7 +466,7 @@ auto ProjectExplorerView::onDraw() -> void
 															   static_cast<float>(request.subRegion.upper.y),
 															   static_cast<float>(request.subRegion.upper.z) } };
 
-						
+
 						const auto originalBoxSize = owl::vec3f{
 							static_cast<float>(-(project.fitsOriginProperties.axisDimensions[0] - 1)),
 							static_cast<float>(-(project.fitsOriginProperties.axisDimensions[1] - 1)),
@@ -362,14 +476,13 @@ auto ProjectExplorerView::onDraw() -> void
 						auto boxTranslate = box.size() / 2.0f;
 						boxTranslate.z *= -1.0f;
 						boxTranslate += owl::vec3f{ box.lower.x, box.lower.y, -box.lower.z };
-						
+
 
 						constexpr auto blinkFrequency = 10.0f;
 						const auto blinkIntensity =
 							0.5f + 0.5f * glm::sin(ImGui::GetCurrentContext()->HoveredIdTimer * blinkFrequency);
 						applicationContext_->getDrawList()->drawBox(
-							volumeTransform_.p / 2, originalBoxSize / 2.0f + boxTranslate,
-							box.size(),	
+							volumeTransform_.p / 2, originalBoxSize / 2.0f + boxTranslate, box.size(),
 							{ 1.0, 0.0, 0.0,
 							  1.0f -
 								  blinkIntensity * blinkIntensity * blinkIntensity * blinkIntensity * blinkIntensity },
@@ -528,6 +641,9 @@ auto ProjectExplorerView::onDraw() -> void
 		}
 	}
 	parameterSummaryView_->draw();
+	addNewProjectView_->draw();
+	editProjectView_->draw();
+	deleteProjectView_->draw();
 }
 
 auto ProjectExplorerView::projectAvailable() const -> bool

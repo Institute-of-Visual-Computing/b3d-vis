@@ -17,7 +17,7 @@ ProjectExplorer::ProjectExplorer(ApplicationContext& applicationContext) : Rende
 	serverFileProvider_ = std::make_unique<ServerFileProvider>("./", appContext_->serverClient_);
 	applicationContext.addUpdatableComponent(projectExplorerController_.get());
 	applicationContext.addRendererExtensionComponent(this);
-
+	projectExplorerController_->setProjects(&projects_);
 	cudaStreamCreate(&stream_);
 }
 
@@ -29,12 +29,10 @@ ProjectExplorer::~ProjectExplorer()
 
 auto ProjectExplorer::initializeResources() -> void
 {
-	
 }
 
 auto ProjectExplorer::deinitializeResources() -> void
 {
-
 }
 
 auto ProjectExplorer::updateRenderingData(b3d::renderer::RenderingDataWrapper& renderingData) -> void
@@ -75,7 +73,7 @@ auto ProjectExplorer::updateRenderingData(b3d::renderer::RenderingDataWrapper& r
 				{
 					const auto optPath = serverFileProvider_->getFilePath(requestedVolumeUUid);
 
-					if(optPath.has_value())
+					if (optPath.has_value())
 					{
 						const auto path = optPath.value();
 						appContext_->runtimeDataset_.addNanoVdb(path, stream_, requestedVolumeUUid);
@@ -95,7 +93,8 @@ auto ProjectExplorer::updateRenderingData(b3d::renderer::RenderingDataWrapper& r
 		else
 		{
 			const auto runtimeVolume = appContext_->runtimeDataset_.getRuntimeVolume(requestedVolumeUUid);
-			if (runtimeVolume.has_value() && runtimeVolume.value().state == b3d::tools::renderer::nvdb::RuntimeVolumeState::ready)
+			if (runtimeVolume.has_value() &&
+				runtimeVolume.value().state == b3d::tools::renderer::nvdb::RuntimeVolumeState::ready)
 			{
 				// Get nvdbVolume
 				// Set sharedBuffer
@@ -104,9 +103,10 @@ auto ProjectExplorer::updateRenderingData(b3d::renderer::RenderingDataWrapper& r
 				renderingData.data.runtimeVolumeData.volume = runtimeVolume.value();
 
 
-				const auto it = std::ranges::find_if(projects_.begin(), projects_.end(),
-													 [&uuid = appContext_->selectedProject_->projectUUID](const Project& currProject)
-													 { return currProject.projectUUID == uuid; });
+				const auto it = std::ranges::find_if(
+					projects_.begin(), projects_.end(),
+					[&uuid = appContext_->selectedProject_->projectUUID](const Project& currProject)
+					{ return currProject.projectUUID == uuid; });
 
 				if (it != projects_.end())
 				{
@@ -136,7 +136,8 @@ auto ProjectExplorer::updateRenderingData(b3d::renderer::RenderingDataWrapper& r
 
 auto ProjectExplorer::refreshProjects() -> std::shared_future<void>
 {
-	// To be 100% safe we need to protect projectsViewSharedFuture_. But the updates are called synchronously so it should be fine.
+	// To be 100% safe we need to protect projectsViewSharedFuture_. But the updates are called synchronously so it
+	// should be fine.
 	if (projectsViewPromise_ && projectsViewSharedFuture_.valid())
 	{
 		return projectsViewSharedFuture_;
@@ -153,9 +154,9 @@ auto ProjectExplorer::loadAndShowFileWithPath(std::filesystem::path absoluteFile
 {
 	// To be 100% safe we need to protect loadAndShowViewFuture_. But the updates are called synchronously so it
 	// should be fine.
-	
+
 	const auto uuid = serverFileProvider_->addLocalFile(absoluteFilePath);
-	return loadAndShowFile(uuid);	
+	return loadAndShowFile(uuid);
 }
 
 auto ProjectExplorer::loadAndShowFile(const std::string fileUUID) -> std::shared_future<void>
@@ -175,7 +176,6 @@ auto ProjectExplorer::loadAndShowFile(const std::string fileUUID) -> std::shared
 	return loadAndShowViewFuture_;
 }
 
-auto ProjectExplorer::setCurrentProject(const std::string& projectUUID) -> void
+auto ProjectExplorer::setCurrentProject([[maybe_unused]] const std::string& projectUUID) -> void
 {
-	
 }

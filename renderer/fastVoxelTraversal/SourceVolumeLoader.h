@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 
-#include "owl/common/math/vec.h"
+#include <owl/common/math/vec.h>
 
 struct SourceRegion;
 

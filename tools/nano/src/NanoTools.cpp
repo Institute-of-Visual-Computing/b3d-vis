@@ -1,14 +1,30 @@
-#include <nanovdb/tools/CreateNanoGrid.h>
-#include <nanovdb/io/IO.h>
-
-#include "FitsTools.h"
-#include "TimeStamp.h"
-
 #include "NanoTools.h"
-#include "include/NanoTools_Internal.h"
+
+#pragma warning (push, 0)
+#include <io/IO.h>
+#include <tools/CreateNanoGrid.h>
+#pragma warning (pop)
+#include <FitsTools.h>
+#include <TimeStamp.h>
 
 using namespace b3d::common;
 using namespace b3d::tools;
+
+namespace
+{
+	auto extractOffsetSizeToNanoResult(const nanovdb::GridHandle<>& gridHandle, b3d::tools::nano::NanoResult& result)
+		-> void
+	{
+		const auto gridMetaData = gridHandle.gridMetaData(0);
+
+		const auto& gridBox = gridMetaData->indexBBox();
+		const auto& lower = gridBox.min();
+		const auto size = gridBox.dim();
+
+		result.voxelOffset = Vec3I{ lower.x(), lower.y(), lower.z() };
+		result.voxelSize = Vec3I{ size.x(), size.y(), size.z() };
+	}
+} // namespace
 
 auto b3d::tools::nano::generateNanoVdb(const Vec3I boxSize, const float maskedValues, const float emptySpaceValue,
 									   const std::vector<float>& data) -> nanovdb::GridHandle<>
@@ -138,10 +154,9 @@ auto b3d::tools::nano::createNanoVdbWithExistingAndSubregion(
 	// Open the source NanoVDB
 	// The grid of the source NanoVDB is most likely smaller than the grid of the original fits file.
 	// Calculate offset of source NanoVDB in originalFitsFileBounds
-	const auto sourceGridhandle = nanovdb::io::readGrid(sourceNanoVdbFilePath.generic_string());
+	const auto sourceGridHandle = nanovdb::io::readGrid(sourceNanoVdbFilePath.generic_string());
 
-	auto nanoGrid = sourceGridhandle.grid<float>(0);
-	const auto sourceGridMetaData = sourceGridhandle.gridMetaData(0);
+	const auto sourceGridMetaData = sourceGridHandle.gridMetaData(0);
 
 	// The sourceGridIndexBox is most likely smaller than
 	// originalFitsFileBounds because empty space is not stored in the NanoVDB.
@@ -181,7 +196,7 @@ auto b3d::tools::nano::createNanoVdbWithExistingAndSubregion(
 			position.y <= sourceGridIndexBox3I.upper.y && position.z <= sourceGridIndexBox3I.upper.z)
 		{
 
-			return sourceGridhandle.grid<float>(0)->getAccessor().getValue(position.x, position.y, position.z);
+			return sourceGridHandle.grid<float>(0)->getAccessor().getValue(position.x, position.y, position.z);
 		}
 
 		return 0.0f;
@@ -212,18 +227,3 @@ auto b3d::tools::nano::createNanoVdbWithExistingAndSubregion(
 
 	return result;
 }
-
-auto b3d::tools::nano::extractOffsetSizeToNanoResult(const nanovdb::GridHandle<>& gridHandle,
-													 b3d::tools::nano::NanoResult& result)
-	-> void
-{
-	const auto gridMetaData = gridHandle.gridMetaData(0);
-
-	const auto& gridBox = gridMetaData->indexBBox();
-	const auto lower = gridBox.min();
-	const auto size = gridBox.dim();
-
-	result.voxelOffset = Vec3I{ lower.x(), lower.y(), lower.z() };
-	result.voxelSize = Vec3I{ size.x(), size.y(), size.z() };
-}
-

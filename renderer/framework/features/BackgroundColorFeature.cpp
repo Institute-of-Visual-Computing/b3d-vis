@@ -2,7 +2,7 @@
 
 #include <format>
 
-#include "imgui.h"
+#include <imgui.h>
 
 b3d::renderer::BackgroundColorFeature::BackgroundColorFeature(const std::string& name) : RenderFeature{ name }
 {

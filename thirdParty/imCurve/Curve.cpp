@@ -1,6 +1,6 @@
 #include "Curve.h"
 
-#include "imgui_internal.h"
+#include <imgui_internal.h>
 
 #include <cmath>
 
@@ -505,7 +505,6 @@ namespace ImGui
 					 const ImVec2& rangeMin, const ImVec2& rangeMax)
 	{
 		int modified = 0;
-		int i;
 		if (maxpoints < 2 || points == nullptr)
 			return 0;
 
@@ -607,7 +606,7 @@ namespace ImGui
 					// select
 					currentSelection = left + 1;
 
-					for (i = pointCount; i > left; --i)
+					for (int i = pointCount; i > left; --i)
 						points[i] = points[i - 1];
 
 					++pointCount;
@@ -623,7 +622,7 @@ namespace ImGui
 				// delete point
 				if (currentSelection > 0 && currentSelection < maxpoints - 1)
 				{
-					for (i = currentSelection; i < maxpoints - 1; ++i)
+					for (int i = currentSelection; i < maxpoints - 1; ++i)
 						points[i] = points[i + 1];
 
 					--pointCount;
@@ -691,7 +690,7 @@ namespace ImGui
 
 		drawList->AddLine(ImVec2(bb.Min.x, bb.Min.y + ht / 4 * 3), ImVec2(bb.Max.x, bb.Min.y + ht / 4 * 3), gridColor1);
 
-		for (i = 0; i < 9; i++)
+		for (int i = 0; i < 9; i++)
 		{
 			drawList->AddLine(ImVec2(bb.Min.x + (wd / 10) * (i + 1), bb.Min.y),
 							  ImVec2(bb.Min.x + (wd / 10) * (i + 1), bb.Max.y), gridColor2);
@@ -704,7 +703,7 @@ namespace ImGui
 		{
 			smoothness = 256
 		}; // the higher the smoother
-		for (i = 0; i <= (smoothness - 1); ++i)
+		for (int i = 0; i <= (smoothness - 1); ++i)
 		{
 			float px = (i + 0) / float(smoothness);
 			float qx = (i + 1) / float(smoothness);
@@ -727,7 +726,7 @@ namespace ImGui
 		}
 
 		// lines
-		for (i = 1; i < pointCount; i++)
+		for (int i = 1; i < pointCount; i++)
 		{
 			ImVec2 a = ImRemap(points[i - 1], rangeMin, rangeMax, ImVec2(0, 0), ImVec2(1, 1));
 			ImVec2 b = ImRemap(points[i], rangeMin, rangeMax, ImVec2(0, 0), ImVec2(1, 1));
@@ -744,7 +743,7 @@ namespace ImGui
 		if (hovered || draggingPoint)
 		{
 			// control points
-			for (i = 0; i < pointCount; i++)
+			for (int i = 0; i < pointCount; i++)
 			{
 				ImVec2 p = ImRemap(points[i], rangeMin, rangeMax, ImVec2(0, 0), ImVec2(1, 1));
 				p.y = 1.0f - p.y;
@@ -809,7 +808,7 @@ namespace ImGui
 			}
 			if (ImGui::Selectable("Flip"))
 			{
-				for (i = 0; i < pointCount; ++i)
+				for (int i = 0; i < pointCount; ++i)
 				{
 					const float yVal = 1.0f - ImRemap(points[i].y, rangeMin.y, rangeMax.y, 0, 1);
 					points[i].y = ImRemap(yVal, 0, 1, rangeMin.y, rangeMax.y);
@@ -822,7 +821,7 @@ namespace ImGui
 				{
 					ImSwap(points[i], points[j]);
 				}
-				for (i = 0; i < pointCount; ++i)
+				for (int i = 0; i < pointCount; ++i)
 				{
 					const float xVal = 1.0f - ImRemap(points[i].x, rangeMin.x, rangeMax.x, 0, 1);
 					points[i].x = ImRemap(xVal, 0, 1, rangeMin.x, rangeMax.x);
@@ -837,7 +836,7 @@ namespace ImGui
 				{
 					if (ImGui::MenuItem(items[row]))
 					{
-						for (i = 0; i < maxpoints; ++i)
+						for (int i = 0; i < maxpoints; ++i)
 						{
 							const float px = i / float(maxpoints - 1);
 							const float py = float(tween::ease(row - 1, px));

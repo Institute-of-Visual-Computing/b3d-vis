@@ -5,6 +5,7 @@ find_package(glad CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(OpenVDB CONFIG REQUIRED COMPONENTS nanovdb)
+find_package(Stb REQUIRED)
 
 set(viewerTargetName NanoViewer)
 add_executable(${viewerTargetName})
@@ -92,8 +93,12 @@ target_sources(${viewerTargetName} PRIVATE
 	features/projectExplorer/ProjectExplorerController.h
 	features/projectExplorer/SofiaParameterSummaryView.h
 	features/projectExplorer/SofiaParameterSummaryView.cpp
-	features/fileDialog/OpenFileDialogView.h
-	features/fileDialog/OpenFileDialogView.cpp
+	features/projectExplorer/AddNewProjectView.h
+	features/projectExplorer/AddNewProjectView.cpp
+	features/projectExplorer/DeleteProjectView.h
+	features/projectExplorer/DeleteProjectView.cpp
+	features/projectExplorer/EditProjectView.h
+	features/projectExplorer/EditProjectView.cpp
 	features/sofiaSearch/SoFiaSearch.h
 	features/sofiaSearch/SoFiaSearch.cpp
 	features/sofiaSearch/SoFiaSearchView.h
@@ -110,28 +115,28 @@ target_link_libraries(${viewerTargetName}
 	imgui::imgui
 	B3D::Renderer::Framework
 	B3D::Renderer::Null
-	B3D::Renderer::CudaSurfaceObjectWriteTest
-	B3D::Renderer::SimpleTriangles
-	B3D::Renderer::Nano
 	B3D::Renderer::FitsNvdb
-	B3D::Renderer::FastVoxelTraversal
+	B3D::Header::Sofia
+	B3D::Tools::ColorMap
 	B3D::Tools::ServerClient
 	B3D::Tools::ServerFileProvider
 	B3D::Tools::Project
 	B3D::Tools::RuntimeDataset
+	B3D::Tools::Fits
 	OpenGL::GL
 	glad::glad
 	imguizmo_modefied
 	iconFontCppHeaders
-	B3D::Tools::ColorMap
 	${CUDA_nvml_LIBRARY}
 	imcurve_modefied
 	imspinner
 	OpenVDB::nanovdb
 	nlohmann_json::nlohmann_json
 	legit
-	B3D::Header::Sofia
+	imGuiFileDialog
 )
+
+target_include_directories(${viewerTargetName} PRIVATE ${Stb_INCLUDE_DIR})
 
 target_compile_definitions(${viewerTargetName} PUBLIC B3D_USE_NLOHMANN_JSON)
 
@@ -169,3 +174,7 @@ add_custom_target(copy_viewer_resources ALL COMMAND ${commands})
 set_property(TARGET copy_viewer_resources PROPERTY FOLDER "Utility")
 
 add_dependencies(${viewerTargetName}  copy_viewer_resources)
+
+if(MSVC)
+    target_compile_options(${viewerTargetName} PRIVATE /W4 /WX /external:W0 /external:anglebrackets)
+endif()

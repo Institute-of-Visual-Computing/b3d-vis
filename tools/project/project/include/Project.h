@@ -1,12 +1,12 @@
 #pragma once
 
 #ifdef B3D_USE_NLOHMANN_JSON
-	#include "nlohmann/json.hpp"
+	#include <nlohmann/json.hpp>
 #endif
 
 #include "Request.h"
 
-#include "FitsCommon.h"
+#include <FitsCommon.h>
 
 namespace b3d::tools::project
 {

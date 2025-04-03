@@ -1,13 +1,13 @@
 #pragma once
 #include "ColorMap.h"
 #include "RendererBase.h"
-#include "owl/owl_host.h"
+#include <owl/owl_host.h>
 
-#include "features/BackgroundColorFeature.h"
-#include "features/ColorMapFeature.h"
-#include "features/RenderSyncFeature.h"
-#include "features/RenderTargetFeature.h"
-#include "features/TransferFunctionFeature.h"
+#include <features/BackgroundColorFeature.h>
+#include <features/ColorMapFeature.h>
+#include <features/RenderSyncFeature.h>
+#include <features/RenderTargetFeature.h>
+#include <features/TransferFunctionFeature.h>
 
 namespace b3d::renderer
 {

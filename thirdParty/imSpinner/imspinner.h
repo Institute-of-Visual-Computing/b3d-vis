@@ -41,8 +41,8 @@
 #endif // __has_include
 
 // imgui headers
-#include "imgui.h"
-#include "imgui_internal.h"
+#include <imgui.h>
+#include <imgui_internal.h>
 
 namespace ImSpinner
 {

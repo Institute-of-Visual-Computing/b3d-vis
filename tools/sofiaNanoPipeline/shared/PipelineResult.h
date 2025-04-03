@@ -4,8 +4,8 @@
 #include <nlohmann/json.hpp>
 #endif
 
-#include "NanoResult.h"
-#include "SofiaResult.h"
+#include <NanoResult.h>
+#include <SofiaResult.h>
 
 namespace b3d::tools::sofia_nano_pipeline
 {
@@ -15,7 +15,7 @@ namespace b3d::tools::sofia_nano_pipeline
 		nano::NanoResult nanoResult;
 	};
 
-	#ifdef B3D_USE_NLOHMANN_JSON
-		NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(PipelineResult, returnCode, message, finished, sofiaResult, nanoResult);
-	#endif
+#ifdef B3D_USE_NLOHMANN_JSON
+	NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(PipelineResult, returnCode, message, finished, sofiaResult, nanoResult);
+#endif
 } // namespace b3d::tools::sofia_nano_pipeline

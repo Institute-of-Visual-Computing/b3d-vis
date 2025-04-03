@@ -9,7 +9,7 @@
 #include <format>
 #include <vector>
 
-#include "imspinner.h"
+#include <imspinner.h>
 
 namespace
 {
@@ -39,7 +39,7 @@ ServerConnectSettingsView::ServerConnectSettingsView(ApplicationContext& appCont
 		{
 			const auto model = reinterpret_cast<ServerAddEditView*>(self)->model();
 			applicationContext_->settings_.configuredServerSettings_.push_back(model);
-			selectedItem_ = applicationContext_->settings_.configuredServerSettings_.size() - 1;
+			selectedItem_ = static_cast<int>(applicationContext_->settings_.configuredServerSettings_.size() - 1);
 
 			serverClient_ = b3d::tools::project::ServerClient(model);
 			applicationContext_->settings_.save();
@@ -69,7 +69,6 @@ auto ServerConnectSettingsView::onDraw() -> void
 	const auto itemSize = ImVec2{ 100 * scale, 100 * scale };
 
 	const auto margin = ImGui::GetStyle().WindowPadding;
-	const auto scrollbarWidth = ImGui::GetStyle().ScrollbarSize;
 	const auto itemSpacing = ImGui::GetStyle().ItemInnerSpacing.x;
 	ImGui::BeginChild("##servers", ImVec2{ 8 * itemSize.x + margin.x * 2 + 7 * itemSpacing, 200 * scale }, ImGuiChildFlags_Border,
 					  ImGuiWindowFlags_AlwaysVerticalScrollbar);

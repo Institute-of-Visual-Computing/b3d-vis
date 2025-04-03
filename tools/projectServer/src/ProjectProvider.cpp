@@ -1,13 +1,58 @@
+#include "ProjectProvider.h"
 
 #include <fstream>
 #include <iostream>
 
 #include <nlohmann/json.hpp>
 
-#include "FileCatalog.h"
-#include "FitsTools.h"
+#include <FileCatalog.h>
+#include <FitsTools.h>
 
-#include "ProjectProvider.h"
+
+auto b3d::tools::projectServer::ProjectProvider::addExistingProject(const std::string& uuid) -> const bool
+{
+	bool foundProject = false;
+	std::string projectUUID;
+	
+	try
+	{
+		std::ifstream f(getProjectsPathAbsolute() / uuid / "project.json");
+		const auto data = nlohmann::json::parse(f);
+		f.close();
+		auto project = data.get<project::Project>();
+
+		// Read Props for fits
+		// project.fitsOriginProperties.unit
+
+		projectUUID = project.projectUUID;
+		knownProjects_.insert(std::make_pair(project.projectUUID, project));
+		saveProject(project.projectUUID);
+		foundProject = true;
+	}
+	catch (nlohmann::json::type_error& e)
+	{
+		std::cout << e.what();
+		// [json.exception.type_error.304] cannot use at() with object
+	}
+	catch (nlohmann::json::parse_error& e)
+	{
+		std::cout << e.what();
+	}
+	catch (nlohmann::json::exception& e)
+	{
+		std::cout << e.what();
+	}
+	
+	if (foundProject)
+	{
+		auto catalog = project::catalog::FileCatalog::createOrLoadCatalogInDirectory(
+			getProjectsPathAbsolute() / uuid);
+
+		knownFileCatalogs_.insert(std::make_pair(projectUUID, catalog));
+
+	}
+	return foundProject;
+}
 
 auto b3d::tools::projectServer::ProjectProvider::getCatalog(
 	const std::string& projectUUID) -> project::catalog::FileCatalog&
@@ -35,6 +80,18 @@ auto b3d::tools::projectServer::ProjectProvider::saveProject(const std::string& 
 	nlohmann::json j = project;
 	ofs << std::setw(4) << j << std::endl;
 	ofs.close();
+	return true;
+}
+
+auto b3d::tools::projectServer::ProjectProvider::removeProject(const std::string& projectUUID) -> bool
+{
+	auto projectToRemove = knownProjects_.at(projectUUID);
+	auto projectRemoved = knownProjects_.erase(projectUUID) > 0;
+
+	if (projectRemoved)
+	{
+		std::filesystem::remove_all(projectToRemove.projectPathAbsolute);
+	}
 	return true;
 }
 

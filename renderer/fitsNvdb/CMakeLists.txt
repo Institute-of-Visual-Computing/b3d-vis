@@ -12,6 +12,9 @@ embed_optixir(
 		SamplerMapper.h
 	#DEVICE_DEBUG
 )
+target_compile_options(fitsNvdb-optixir_optixir PRIVATE -rdc=true)
+target_compile_options(fitsNvdb-optixir_optixir PRIVATE -diag-suppress 1427)
+
 
 set_property(TARGET fitsNvdb-optixir PROPERTY FOLDER "Renderer/PTX Targets")
 set_property(TARGET fitsNvdb-optixir_optixir PROPERTY FOLDER "Renderer/PTX Targets")
@@ -29,6 +32,8 @@ embed_ptx(
 	#DEVICE_DEBUG
 )
 
+target_compile_options(fitsNvdb-ptx_ptx PRIVATE -rdc=true)
+target_compile_options(fitsNvdb-ptx_ptx PRIVATE -diag-suppress 1427)
 
 set_property(TARGET fitsNvdb-ptx PROPERTY FOLDER "Renderer/PTX Targets")
 set_property(TARGET fitsNvdb-ptx_ptx PROPERTY FOLDER "Renderer/PTX Targets")

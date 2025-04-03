@@ -1,7 +1,9 @@
 #pragma once
 
+#include <cstddef>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
 #include "Common.h"
@@ -32,28 +34,25 @@ namespace b3d::renderer
 		Schema schema{};
 		size_t schemaContentSize{};
 	};
+#pragma warning(push, 0)
+#define SCHEMA_ENTRY(keyValue, memberName, parentStruct) { keyValue, offsetof(parentStruct, memberName) }
 
-#define SCHEMA_ENTRY(keyValue, memberName, parentStruct)                                                               \
-	{                                                                                                                  \
-		keyValue, offsetof(parentStruct, memberName)                                                                   \
-	}
-
-	static const SchemaData schemaData_0{ {
-											  SCHEMA_ENTRY("rendererInitializationInfo", rendererInitializationInfo, RenderingData),
-											  SCHEMA_ENTRY("view", view, RenderingData),
-											  SCHEMA_ENTRY("renderTargets", renderTargets, RenderingData),
-											  SCHEMA_ENTRY("synchronization", synchronization, RenderingData),
-											  SCHEMA_ENTRY("volumeTransform", volumeTransform, RenderingData),
-											  SCHEMA_ENTRY("transferOffset", transferOffset, RenderingData),
-											  SCHEMA_ENTRY("colorMapTexture", colorMapTexture, RenderingData),
-											  SCHEMA_ENTRY("coloringInfo", coloringInfo, RenderingData),
-												SCHEMA_ENTRY("colorMapInfos", colorMapInfos, RenderingData),
-												SCHEMA_ENTRY("transferFunctionTexture", transferFunctionTexture, RenderingData),
-												SCHEMA_ENTRY("foveatedRenderingControl", foveatedRenderingControl, RenderingData),
-			  SCHEMA_ENTRY("runtimeVolumeData", runtimeVolumeData, RenderingData)
-										  },
-										  sizeof(RenderingData) };
-
+	static const SchemaData schemaData_0{
+		{ SCHEMA_ENTRY("rendererInitializationInfo", rendererInitializationInfo, RenderingData),
+		  SCHEMA_ENTRY("view", view, RenderingData), SCHEMA_ENTRY("renderTargets", renderTargets, RenderingData),
+		  SCHEMA_ENTRY("synchronization", synchronization, RenderingData),
+		  SCHEMA_ENTRY("volumeTransform", volumeTransform, RenderingData),
+		  SCHEMA_ENTRY("transferOffset", transferOffset, RenderingData),
+		  SCHEMA_ENTRY("colorMapTexture", colorMapTexture, RenderingData),
+		  SCHEMA_ENTRY("coloringInfo", coloringInfo, RenderingData),
+		  SCHEMA_ENTRY("colorMapInfos", colorMapInfos, RenderingData),
+		  SCHEMA_ENTRY("transferFunctionTexture", transferFunctionTexture, RenderingData),
+		  SCHEMA_ENTRY("foveatedRenderingControl", foveatedRenderingControl, RenderingData),
+		  SCHEMA_ENTRY("runtimeVolumeData", runtimeVolumeData, RenderingData) },
+		sizeof(RenderingData)
+	};
+#undef SCHEMA_ENTRY
+#pragma warning(pop)
 	class RenderingDataBuffer
 	{
 	private:
@@ -130,47 +129,15 @@ namespace b3d::renderer
 			}
 			return reinterpret_cast<T*>(&dataPtr_[schemaEntry->second]);
 		}
-		/*
-			template <typename T>
-			auto getOpt(const std::string& key) -> std::optional<T&>
-			{
-				const auto schemaEntry = getSchemaEntry(key);
-				if (schemaData_.schema.end() == schemaEntry)
-				{
-					return std::nullopt;
-				}
-				return static_cast<T>(dataPtr_[schemaEntry->second]);
-			}
-
-			template <typename T>
-			auto tryGet(const std::string& key, T& t) -> bool
-			{
-				const auto schemaEntry = getSchemaEntry(key);
-				if (schemaData_.schema.end() == schemaEntry)
-				{
-					return false;
-				}
-				t = static_cast<T>(dataPtr_[schemaEntry->second]);
-				return true;
-			}
-
-
-
-			template <typename T>
-			auto operator[](const std::string& key) -> T&
-			{
-				return static_cast<T>(dataPtr_[schemaData_.schema[key]]);
-			}
-			*/
 	};
 
-	struct RenderingDataWrapper
+	class RenderingDataWrapper
 	{
+	public:
 		RenderingData data{};
 		RenderingDataBuffer buffer;
 		RenderingDataWrapper() : buffer{ schemaData_0, 1, static_cast<void*>(&data) }
 		{
-
 		}
 	};
 } // namespace b3d::renderer

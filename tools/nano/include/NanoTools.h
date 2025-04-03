@@ -1,12 +1,11 @@
 #pragma once
 
 #include <functional>
-
+#pragma warning (push, 0)
 #include <nanovdb/GridHandle.h>
-
-#include "Vec.h"
-
-#include "NanoResult.h"
+#pragma warning (pop)
+#include <Vec.h>
+#include <NanoResult.h>
 
 namespace b3d::tools::nano
 {

@@ -1,6 +1,6 @@
-#include <uuid.h>
-
 #include "Request.h"
+
+#include <uuid.h>
 
 static uuids::uuid_name_generator gNameGenerator{ uuids::uuid::from_string("123456789-abcdef-123456789-abcdef-12").value() };
 

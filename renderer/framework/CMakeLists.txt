@@ -36,9 +36,12 @@ set(SHARED_HEADERS
 find_package(httplib CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 add_library(${MODULE_NAME} ${SRC} ${SHARED_HEADERS})
+
 target_include_directories(${MODULE_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_features(${MODULE_NAME} PUBLIC cxx_std_20)
-target_link_libraries(${MODULE_NAME}
+
+target_link_libraries(
+	${MODULE_NAME}
   PUBLIC
 	owl::owl
 	imgui::imgui
@@ -48,5 +51,9 @@ target_link_libraries(${MODULE_NAME}
 	httplib::httplib
 )
 add_library(B3D::Renderer::Framework ALIAS ${MODULE_NAME})
+
+if(MSVC)
+    target_compile_options(${MODULE_NAME} PRIVATE /W4 /WX /external:W0 /external:anglebrackets)
+endif()
 
 set_property(TARGET ${MODULE_NAME} PROPERTY FOLDER "Renderer")

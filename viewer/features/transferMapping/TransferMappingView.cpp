@@ -1,11 +1,9 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "TransferMappingView.h"
 
-
 #include <Curve.h>
-
 #include <imgui_internal.h>
-#include "imgui.h"
+#include <imgui.h>
 
 TransferMappingView::TransferMappingView(ApplicationContext& appContext, Dockspace* dockspace)
 	: DockableWindowViewBase{ appContext, "Transfer Mapping", dockspace, WindowFlagBits::none }
@@ -30,7 +28,7 @@ auto TransferMappingView::resampleData(const int samplesCount) const -> std::vec
 	const auto inc = 1.0f / (samples.size() - 1);
 	for (auto i = 0; i < samples.size(); i++)
 	{
-		samples[i] = ImGui::CurveValue(i * inc, dataPoints_.size(), dataPoints_.data());
+		samples[i] = ImGui::CurveValue(i * inc, static_cast<int>(dataPoints_.size()), dataPoints_.data());
 	}
 	return samples;
 }
@@ -58,10 +56,10 @@ auto TransferMappingView::onDraw() -> void
 			ImGui::SetNextItemWidth(-1);
 			if (ImGui::BeginCombo("##coloringModeSelector", "", ImGuiComboFlags_CustomPreview))
 			{
-				const auto mapItemSize = ImVec2{ ImGui::GetContentRegionAvail().x, 20 };
+				const auto mapItemSize = ImVec2{ ImGui::GetContentRegionAvail().x, 20.0f };
 				ImGui::Image((ImTextureID)colorMapTextureHandle_, mapItemSize,
-							 ImVec2(0, (selectedColoringMap_ + 0.5) / static_cast<float>(totalItems)),
-							 ImVec2(1, (selectedColoringMap_ + 0.5) / static_cast<float>(totalItems)));
+							 ImVec2(0, (selectedColoringMap_ + 0.5f) / static_cast<float>(totalItems)),
+							 ImVec2(1, (selectedColoringMap_ + 0.5f) / static_cast<float>(totalItems)));
 
 				for (auto n = 0; n < totalItems; n++)
 				{
@@ -74,8 +72,8 @@ auto TransferMappingView::onDraw() -> void
 					}
 					ImGui::SameLine(1);
 					ImGui::Image((ImTextureID)colorMapTextureHandle_, mapItemSize,
-								 ImVec2(0, (n + 0.5) / static_cast<float>(totalItems)),
-								 ImVec2(1, (n + 0.5) / static_cast<float>(totalItems)));
+								 ImVec2(0, (n + 0.5f) / static_cast<float>(totalItems)),
+								 ImVec2(1, (n + 0.5f) / static_cast<float>(totalItems)));
 
 					if (isSelected)
 					{
@@ -87,10 +85,10 @@ auto TransferMappingView::onDraw() -> void
 
 			if (ImGui::BeginComboPreview())
 			{
-				const auto mapItemSize = ImVec2{ ImGui::GetContentRegionAvail().x, 20 };
+				const auto mapItemSize = ImVec2{ ImGui::GetContentRegionAvail().x, 20.0f };
 				ImGui::Image((ImTextureID)colorMapTextureHandle_, mapItemSize,
-							 ImVec2(0, selectedColoringMap_ / static_cast<float>(totalItems)),
-							 ImVec2(1, (selectedColoringMap_ + 1) / static_cast<float>(totalItems)));
+							 ImVec2(0.0f, selectedColoringMap_ / static_cast<float>(totalItems)),
+							 ImVec2(1.0f, (selectedColoringMap_ + 1.0f) / static_cast<float>(totalItems)));
 				ImGui::EndComboPreview();
 			}
 		}
@@ -99,7 +97,7 @@ auto TransferMappingView::onDraw() -> void
 
 
 	// TODO:: Curve crashes sometimes in release
-	if (ImGui::Curve("##transferFunction", size, dataPoints_.size(), dataPoints_.data(), &selectedCurveHandleIdx_))
+	if (ImGui::Curve("##transferFunction", size, static_cast<const int>(dataPoints_.size()), dataPoints_.data(), &selectedCurveHandleIdx_))
 	{
 		newDataAvailable_ = true;
 	}

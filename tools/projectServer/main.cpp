@@ -4,19 +4,21 @@
 #include <vector>
 
 #include <args.hxx>
-#include <httplib.h>
 #include <boost/process.hpp>
-
-#include <plog/Log.h>
+#include <httplib.h>
 #include <plog/Formatters/TxtFormatter.h>
 #include <plog/Initializers/ConsoleInitializer.h>
+#include <plog/Log.h>
+#include <uuid.h>
 
-#include "SofiaNanoPipeline.h"
-#include "SofiaProcessRunner.h"
+#include <FitsTools.h>
+#include <NanoTools.h>
+#include <SofiaNanoPipeline.h>
+#include <SofiaProcessRunner.h>
+#include <TimeStamp.h>
 
-#include "Internals.h"
-#include "ProjectProvider.h"
-#include "TimeStamp.h"
+#include "src/Internals.h"
+#include "src/ProjectProvider.h"
 
 using namespace b3d::tools::projectServer;
 
@@ -64,19 +66,17 @@ auto processCurrentRequest() -> void
 	// Save request and modify paths to UUIDs
 
 	auto req = currentRequest->get();
-	auto &projectCatalog = projectProvider->getCatalog(req.projectUUID);
+	auto& projectCatalog = projectProvider->getCatalog(req.projectUUID);
 	if (req.userRequest.result.sofiaResult.wasSuccess())
 	{
-		
+
 		req.userRequest.result.sofiaResult.resultFile =
-			projectCatalog
-				.addFilePathAbsolute(
-			req.userRequest.result.sofiaResult.resultFile);
+			projectCatalog.addFilePathAbsolute(req.userRequest.result.sofiaResult.resultFile);
 	}
 
 	if (req.userRequest.result.nanoResult.wasSuccess())
 	{
-		if(req.userRequest.result.sofiaResult.returnCode == 8)
+		if (req.userRequest.result.sofiaResult.returnCode == 8)
 		{
 			req.userRequest.result.sofiaResult.resultFile =
 				projectCatalog.addFilePathAbsolute(req.userRequest.result.sofiaResult.resultFile);
@@ -90,12 +90,11 @@ auto processCurrentRequest() -> void
 	projectProvider->getProject(req.projectUUID).requests.emplace_back(req.userRequest);
 	projectProvider->saveProject(req.projectUUID);
 	projectCatalog.writeCatalog();
-	
+
 	currentRequest.reset();
 }
 
-auto startUpdateRequest(b3d::tools::projectServer::InternalRequest internalRequest)
-	-> InternalRequest
+auto startUpdateRequest(b3d::tools::projectServer::InternalRequest internalRequest) -> InternalRequest
 {
 	LOG_INFO << "Starting update request " << internalRequest.userRequest.uuid;
 	auto pipelineParams = b3d::tools::sofia_nano_pipeline::SofiaNanoPipelineUpdateParams{
@@ -105,28 +104,29 @@ auto startUpdateRequest(b3d::tools::projectServer::InternalRequest internalReque
 		.maskInputFilePath = internalRequest.fitsMaskInputFilePath,
 		.inputNvdbFilePath = internalRequest.inputNvdbFilePath,
 		.outputNvdbFilePath = internalRequest.outputNvdbFilePath,
-		.sofiaWorkingDirectoy = internalRequest.sofiaOutputDirectoryPath,
-		.nanoWorkingDirectoy = internalRequest.nvdbOutputDirectoryPath
+		.sofiaWorkingDirectory = internalRequest.sofiaOutputDirectoryPath,
+		.nanoWorkingDirectory = internalRequest.nvdbOutputDirectoryPath
 	};
 
-	internalRequest.userRequest.result = b3d::tools::sofia_nano_pipeline::runSearchAndUpdateNvdbSync(*sofiaProcessRunner, pipelineParams);
+	internalRequest.userRequest.result =
+		b3d::tools::sofia_nano_pipeline::runSearchAndUpdateNvdbSync(*sofiaProcessRunner, pipelineParams);
 
 	LOG_INFO << "Update request " << internalRequest.userRequest.uuid << " finished "
 			 << (internalRequest.userRequest.result.wasSuccess() ? "successful" : "with error");
 	return internalRequest;
 }
 
-auto startCreateRequest(b3d::tools::projectServer::InternalRequest internalRequest)
-	-> InternalRequest
+auto startCreateRequest(b3d::tools::projectServer::InternalRequest internalRequest) -> InternalRequest
 {
 	LOG_INFO << "Starting create request " << internalRequest.userRequest.uuid;
-	auto pipelineParams = b3d::tools::sofia_nano_pipeline::SofiaNanoPipelineInitialParams {
+	auto pipelineParams = b3d::tools::sofia_nano_pipeline::SofiaNanoPipelineInitialParams{
 		.sofiaParams = internalRequest.internalParams,
 		.fitsInputFilePath = internalRequest.fitsDataInputFilePath,
 		.outputNvdbFilePath = internalRequest.outputNvdbFilePath
 	};
 
-	internalRequest.userRequest.result = b3d::tools::sofia_nano_pipeline::runSearchAndCreateNvdbSync(*sofiaProcessRunner, pipelineParams);
+	internalRequest.userRequest.result =
+		b3d::tools::sofia_nano_pipeline::runSearchAndCreateNvdbSync(*sofiaProcessRunner, pipelineParams);
 
 	LOG_INFO << "Update request " << internalRequest.userRequest.uuid << " finished "
 			 << (internalRequest.userRequest.result.wasSuccess() ? "successful" : "with error");
@@ -208,14 +208,15 @@ auto getProjectFromUuid(const httplib::Request& req, httplib::Response& res) -> 
 		res.set_content(retJ.dump(), "application/json");
 		return;
 	}
-	
+
 	LOG_INFO << "Sending Project " << projectUUID;
 
 	const auto& proj = projectProvider->getProject(projectUUID);
 	res.set_content(nlohmann::json(proj).dump(), "application/json");
 }
 
-auto postStartSearch(const httplib::Request& req, httplib::Response& res, const httplib::ContentReader& contentReader) -> void
+auto postStartSearch([[maybe_unused]] const httplib::Request& req, httplib::Response& res, const httplib::ContentReader& contentReader)
+	-> void
 {
 	processCurrentRequest();
 	std::lock_guard currRequestLock(currentRequestMutex);
@@ -265,7 +266,6 @@ auto postStartSearch(const httplib::Request& req, httplib::Response& res, const 
 	auto& project = projectProvider->getProject(projectUuid);
 	auto& catalog = projectProvider->getCatalog(project.projectUUID);
 
-
 	// First successful request is original mask.
 	const auto possibleRequest =
 		std::ranges::find_if(project.requests, [](const auto& request) { return request.result.wasSuccess(); });
@@ -292,18 +292,18 @@ auto postStartSearch(const httplib::Request& req, httplib::Response& res, const 
 			internalRequest.userRequest.sofiaParameters =
 				jsonInput["sofia_params"].get<b3d::tools::sofia::SofiaParams>();
 		}
-		catch (nlohmann::json::type_error& e)
+		catch ([[maybe_unused]] nlohmann::json::type_error& e)
 		{
 			err = true;
 			// std::cout << e.what();
 			// [json.exception.type_error.304] cannot use at() with object
 		}
-		catch (nlohmann::json::parse_error& e)
+		catch ([[maybe_unused]] nlohmann::json::parse_error& e)
 		{
 			err = true;
 			// std::cout << e.what();
 		}
-		catch (nlohmann::json::exception& e)
+		catch ([[maybe_unused]] nlohmann::json::exception& e)
 		{
 			err = true;
 			// std::cout << e.what();
@@ -424,16 +424,15 @@ auto postStartSearch(const httplib::Request& req, httplib::Response& res, const 
 	internalRequest.internalParams.setOrReplace("input.mask", internalRequest.fitsMaskInputFilePath.generic_string());
 
 	// Identifier already used (Same Request)
-	const auto& possibleExistingRequest = std::ranges::find_if(project.requests,
-															   [&cm = internalRequest](const auto& request) -> bool
-															   { return cm.userRequest.uuid == request.uuid; });
+	const auto& possibleExistingRequest =
+		std::ranges::find_if(project.requests, [&cm = internalRequest](const auto& request) -> bool
+							 { return cm.userRequest.uuid == request.uuid; });
 	if (possibleExistingRequest != project.requests.end())
 	{
 		auto& previousRequest = *possibleExistingRequest;
 		auto forceRun = jsonInput.at("force");
-		
-		if (!previousRequest.result.wasSuccess() ||
-									 (jsonInput.contains("force") && jsonInput.at("force").get<bool>()))
+
+		if (!previousRequest.result.wasSuccess() || (jsonInput.contains("force") && jsonInput.at("force").get<bool>()))
 		{
 			project.requests.erase(possibleExistingRequest);
 		}
@@ -520,9 +519,9 @@ auto getRequest(const httplib::Request& req, httplib::Response& res) -> void
 	const auto& project = projectProvider->getProject(projectUUID);
 
 	// Request does not exist!
-	const auto& possibleRequest = std::ranges::find_if(
-		project.requests,
-		[&ruuid = requestUUID](const b3d::tools::project::Request& m) -> bool { return ruuid == m.uuid; });
+	const auto& possibleRequest =
+		std::ranges::find_if(project.requests, [&ruuid = requestUUID](const b3d::tools::project::Request& m) -> bool
+							 { return ruuid == m.uuid; });
 	if (possibleRequest == project.requests.end())
 	{
 		LOG_INFO << "Request with UUID " << requestUUID << " not found!";
@@ -534,7 +533,7 @@ auto getRequest(const httplib::Request& req, httplib::Response& res) -> void
 		return;
 	}
 
-	
+
 	LOG_INFO << "Sending Requests " << requestUUID << "from project " << projectUUID;
 
 	const auto request = *possibleRequest;
@@ -595,8 +594,8 @@ auto getFile(const httplib::Request& req, httplib::Response& res) -> void
 		return;
 	}
 
-	auto pathToFile = std::filesystem::path{ };
-	for (auto &catalog : projectProvider->getAllCatalogs())
+	auto pathToFile = std::filesystem::path{};
+	for (auto& catalog : projectProvider->getAllCatalogs())
 	{
 		if (catalog.second.contains(req.path_params.at("fileUUID")))
 		{
@@ -639,7 +638,7 @@ auto getFile(const httplib::Request& req, httplib::Response& res) -> void
 
 		[fin, start, fileSize](size_t offset, size_t length, httplib::DataSink& sink)
 		{
-			if (fin->good() && !fin->eof() && offset < fileSize)
+			if (fin->good() && !fin->eof() && offset < static_cast<size_t>(fileSize))
 			{
 				std::vector<char> data(std::min((size_t)10240, length));
 
@@ -653,12 +652,185 @@ auto getFile(const httplib::Request& req, httplib::Response& res) -> void
 			}
 			return true; // return 'false' if you want to cancel the process.
 		},
-		[fin](bool success)
+		[fin]([[maybe_unused]] bool success)
 		{
 			fin->close();
 			delete fin;
 		});
 }
+
+auto postNewProject([[maybe_unused]] const httplib::Request& req,[[maybe_unused]]  httplib::Response& res, const httplib::ContentReader& contentReader)
+	-> void
+{
+	// Create Random project UUID
+	std::random_device rd;
+	auto seed_data = std::array<int, std::mt19937::state_size>{};
+	std::generate(std::begin(seed_data), std::end(seed_data), std::ref(rd));
+	std::seed_seq seq(std::begin(seed_data), std::end(seed_data));
+	std::mt19937 generator(seq);
+	uuids::uuid_random_generator gen{ generator };
+
+	std::string projectUUIDString = uuids::to_string(gen());
+
+	b3d::tools::project::Project newProject;
+	newProject.projectUUID = projectUUIDString;
+	newProject.projectPathAbsolute = projectProvider->getProjectsPathAbsolute() / newProject.projectUUID;
+
+	b3d::tools::project::catalog::FileCatalog newCatalog =
+		b3d::tools::project::catalog::FileCatalog::createOrLoadCatalogInDirectory(newProject.projectPathAbsolute);
+
+	newProject.projectName = b3d::common::helper::getNowAsFormattedDateTimeString();
+	newProject.fitsOriginFileName = "original.fits";
+	newProject.fitsOriginUUID =
+		newCatalog.addFilePathAbsolute(newProject.projectPathAbsolute / newProject.fitsOriginFileName);
+
+	std::filesystem::create_directories(newProject.projectPathAbsolute / "requests");
+
+	newCatalog.writeCatalog();
+	{
+		const auto projectFilePath = newProject.projectPathAbsolute / "project.json";
+		std::ofstream ofs(projectFilePath, std::ofstream::trunc);
+		nlohmann::json j = newProject;
+		ofs << std::setw(4) << j << std::endl;
+		ofs.close();
+	}
+
+	projectProvider->addExistingProject(newProject.projectUUID);
+	auto &createdCatalog = projectProvider->getCatalog(newProject.projectUUID);
+	// Create new Project
+	// create new catalog
+	// Create new Directory for project
+	// Add Project to projectprovider
+	auto& createdProject = projectProvider->getProject(newProject.projectUUID);
+	createdProject.projectPathAbsolute = newProject.projectPathAbsolute;
+	auto fout = new std::ofstream(createdProject.projectPathAbsolute / createdProject.fitsOriginFileName,
+								  std::ifstream::binary);
+
+	contentReader(
+		[&](const char* data, size_t data_length)
+		{
+			fout->write(data, data_length);
+			return true;
+		});
+	fout->close();
+
+	createdProject.fitsOriginProperties =
+		b3d::tools::fits::getFitsProperties(createdProject.projectPathAbsolute / createdProject.fitsOriginFileName);
+
+	auto request = b3d::tools::project::Request{ .uuid = uuids::to_string(gen()),
+												 .subRegion = { createdProject.fitsOriginProperties.axisDimensions[0],
+																createdProject.fitsOriginProperties.axisDimensions[1],
+																createdProject.fitsOriginProperties.axisDimensions[2] },
+												 .sofiaParameters = {},
+												 .result = {},
+												 .createdAt = b3d::common::helper::getSecondsSinceEpochUtc() };
+
+
+	std::filesystem::create_directories(createdProject.projectPathAbsolute / "requests" / request.uuid / "nano");
+	request.result.nanoResult = b3d::tools::nano::convertFitsToNano(
+		createdProject.projectPathAbsolute / createdProject.fitsOriginFileName,
+		createdProject.projectPathAbsolute / "requests" / request.uuid / "nano" / "out.nvdb");
+	if (!request.result.nanoResult.wasSuccess())
+	{
+		LOG_ERROR << "Failed to create NVDB.";
+		return;
+	}
+	request.result.nanoResult.resultFile = createdCatalog.addFilePathAbsolute(
+		createdProject.projectPathAbsolute / "requests" / request.uuid / "nano" / "out.nvdb");
+	createdProject.requests.push_back(request);
+	createdCatalog.writeCatalog();
+	projectProvider->saveProject(createdProject.projectUUID);
+	res.set_content(nlohmann::json(createdProject).dump(), "application/json");
+}
+
+auto deleteProject(const httplib::Request& req, httplib::Response& res) -> void
+{
+	// ProjectUUID not provided!
+	if (!req.path_params.contains("projectUUID") || req.path_params.at("projectUUID").empty())
+	{
+		LOG_INFO << "Missing projectUUID!";
+		nlohmann::json retJ;
+		retJ["message"] = "Project UUID not provided!";
+
+		res.status = httplib::StatusCode::BadRequest_400;
+		res.set_content(retJ.dump(), "application/json");
+		return;
+	}
+	const auto projectUUID = req.path_params.at("projectUUID");
+
+	// Project does not exist!
+	if (!projectProvider->hasProject(projectUUID))
+	{
+		LOG_INFO << "Project with UUID " << projectUUID << " not found!";
+
+		nlohmann::json retJ;
+		retJ["message"] = "Project with given projectUUID not found!";
+
+		res.status = httplib::StatusCode::NotFound_404;
+		res.set_content(retJ.dump(), "application/json");
+		return;
+	}
+
+	projectProvider->removeProject(projectUUID);
+	res.status = httplib::StatusCode::OK_200;
+}
+
+auto putChangeProject(const httplib::Request& req, httplib::Response& res, const httplib::ContentReader& contentReader)
+	-> void
+{
+	// ProjectUUID not provided!
+	if (!req.path_params.contains("projectUUID") || req.path_params.at("projectUUID").empty())
+	{
+		LOG_INFO << "Missing projectUUID!";
+		nlohmann::json retJ;
+		retJ["message"] = "Project UUID not provided!";
+
+		res.status = httplib::StatusCode::BadRequest_400;
+		res.set_content(retJ.dump(), "application/json");
+		return;
+	}
+	const auto projectUUID = req.path_params.at("projectUUID");
+
+	// Project does not exist!
+	if (!projectProvider->hasProject(projectUUID))
+	{
+		LOG_INFO << "Project with UUID " << projectUUID << " not found!";
+
+		nlohmann::json retJ;
+		retJ["message"] = "Project with given projectUUID not found!";
+
+		res.status = httplib::StatusCode::NotFound_404;
+		res.set_content(retJ.dump(), "application/json");
+		return;
+	}
+
+	std::string bodyString;
+	contentReader(
+		[&bodyString](const char* data, size_t data_length)
+		{
+			bodyString.append(data, data_length);
+			return true;
+		});
+
+	auto jsonInput = nlohmann::json::parse(bodyString);
+
+	// Input not valid
+	if (jsonInput.empty() || !jsonInput.contains("projectName"))
+	{
+		nlohmann::json retJ;
+		retJ["message"] = "Parameters empty or projectName not provided!";
+
+		res.status = httplib::StatusCode::BadRequest_400;
+		res.set_content(retJ.dump(), "application/json");
+		return;
+	}
+
+	auto& proj = projectProvider->getProject(projectUUID);
+	proj.projectName = jsonInput["projectName"];
+	[[maybe_unused]] auto saved = projectProvider->saveProject(projectUUID);
+	res.status = httplib::StatusCode::OK_200;
+}
+
 
 auto main(const int argc, char** argv) -> int
 {
@@ -666,15 +838,20 @@ auto main(const int argc, char** argv) -> int
 	static plog::ColorConsoleAppender<plog::TxtFormatter> colorConsoleAppender;
 
 	plog::init(plog::debug, &colorConsoleAppender);
-	
+
 	LOG_NONE << "Starting ProjectServer!";
 
 	args::ArgumentParser parser("SoFiA-2 Wrapper Server", "");
 	args::HelpFlag help(parser, "help", "Display this help menu", { 'h', "help" });
 
-	args::ValueFlag<std::string> sofiaPathArgument(parser, "path/to/sofia/executable", "Absolute path to sofia executable", { "sofia-executable","se" });
-	args::ValueFlag<std::string> commonRootPathArgument(parser, "common/root/path", "Common root path where shared data is located and written to. All relative paths starting from here.", { "root-path", "rp" });
-	args::ValueFlag<int> serverListeningPortArgument(parser, "5051","Port the server is listening", { "port", "p" }, 5051);
+	args::ValueFlag<std::string> sofiaPathArgument(parser, "path/to/sofia/executable",
+												   "Absolute path to sofia executable", { "sofia-executable", "se" });
+	args::ValueFlag<std::string> commonRootPathArgument(
+		parser, "common/root/path",
+		"Common root path where shared data is located and written to. All relative paths starting from here.",
+		{ "root-path", "rp" });
+	args::ValueFlag<int> serverListeningPortArgument(parser, "5051", "Port the server is listening", { "port", "p" },
+													 5051);
 
 	// Argument parsing & validation
 	{
@@ -731,18 +908,18 @@ auto main(const int argc, char** argv) -> int
 
 	projectProvider = std::make_unique<ProjectProvider>(std::filesystem::path{ args::get(commonRootPathArgument) });
 	sofiaProcessRunner = std::make_unique<b3d::tools::sofia::SofiaProcessRunner>(sofiaPath);
-	
+
 	httplib::Server svr;
-		
+
 	// Error
 	svr.set_exception_handler(
-		[](const auto& req, auto& res, std::exception_ptr ep)
+		[]([[maybe_unused]] const auto& req, auto& res, std::exception_ptr ep)
 		{
 			const auto fmt = "<h1>Error 500</h1><p>{}</p>";
 			std::string message = "";
 			try
 			{
-				
+
 				std::rethrow_exception(ep);
 			}
 			catch (std::exception& e)
@@ -764,11 +941,14 @@ auto main(const int argc, char** argv) -> int
 	svr.Get("/requestRunning", &getRequestRunning);
 	// svr.Get("/catalog", &getCatalog);
 	svr.Get("/projects", &getProjects);
-	svr.Get("/project/:uuid", &getProjectFromUuid);
+	svr.Get("/project/:projectUUID", &getProjectFromUuid);
 	svr.Post("/startSearch", &postStartSearch);
 	svr.Get("/request/:projectUUID/:requestUUID", &getRequest);
 	svr.Get("/requests/:projectUUID", &getRequestsFromProjectUuid);
 	svr.Get("/file/:fileUUID", &getFile);
+	svr.Post("/project/new", &postNewProject);
+	svr.Delete("/project/:projectUUID", &deleteProject);
+	svr.Put("/project/:projectUUID", &putChangeProject);
 
 	LOG_NONE << "Server is listening on port " << args::get(serverListeningPortArgument);
 	svr.listen("0.0.0.0", args::get(serverListeningPortArgument));

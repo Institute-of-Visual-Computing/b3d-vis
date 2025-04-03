@@ -3,11 +3,6 @@ set(HEADER_MODULE_NAME "B3DHeader${HEADER_SIMPLE_NAME}")
 
 add_library(${HEADER_MODULE_NAME} INTERFACE)
 
-target_sources(${HEADER_MODULE_NAME}
-	INTERFACE
-		Timestamp.h
- )
-
 target_include_directories(${HEADER_MODULE_NAME}
 	INTERFACE
 		./

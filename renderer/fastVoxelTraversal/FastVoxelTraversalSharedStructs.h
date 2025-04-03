@@ -2,7 +2,7 @@
 
 #include <owl/common/math/vec.h>
 #include <owl/owl.h>
-#include "owl/Object.h"
+#include <owl/Object.h>
 
 
 using namespace owl;

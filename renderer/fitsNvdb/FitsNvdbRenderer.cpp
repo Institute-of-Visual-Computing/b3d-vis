@@ -75,7 +75,7 @@ auto b3d::renderer::FitsNvdbRenderer::onInitialize() -> void
 			OWLVarDecl{ "world", OWL_GROUP, OWL_OFFSETOF(RayGenerationData, world) },
 		};
 		const auto rayGen = owlRayGenCreate(owlContext, irModule, "raygen", sizeof(RayGenerationData),
-											rayGenerationVars.data(), rayGenerationVars.size());
+											rayGenerationVars.data(), static_cast<int>(rayGenerationVars.size()));
 		context_.rayGen = rayGen;
 	}
 
@@ -87,8 +87,9 @@ auto b3d::renderer::FitsNvdbRenderer::onInitialize() -> void
 			OWLVarDecl{ "nvdbBox", OWL_USER_TYPE(owl::box3f), OWL_OFFSETOF(FitsNvdbGeometry, nvdbBox) },
 		};
 
-		const auto geometryType = owlGeomTypeCreate(owlContext, OWL_GEOM_USER, sizeof(FitsNvdbGeometry),
-													volumeGeometryVars.data(), volumeGeometryVars.size());
+		const auto geometryType =
+			owlGeomTypeCreate(owlContext, OWL_GEOM_USER, sizeof(FitsNvdbGeometry), volumeGeometryVars.data(),
+							  static_cast<int>(volumeGeometryVars.size()));
 
 		owlGeomTypeSetIntersectProg(geometryType, 0, irModule, "intersect");
 		owlGeomTypeSetClosestHit(geometryType, 0, irModule, "closestHit");
@@ -136,8 +137,8 @@ auto b3d::renderer::FitsNvdbRenderer::onInitialize() -> void
 						OWL_OFFSETOF(LaunchParams, volume) }
 		};
 
-		context_.launchParams =
-			owlParamsCreate(owlContext, sizeof(LaunchParams), launchParamsVars.data(), launchParamsVars.size());
+		context_.launchParams = owlParamsCreate(owlContext, sizeof(LaunchParams), launchParamsVars.data(),
+												static_cast<int>(launchParamsVars.size()));
 	}
 
 	owlBuildPrograms(owlContext);
@@ -276,7 +277,7 @@ auto b3d::renderer::FitsNvdbRenderer::onRender() -> void
 	}
 
 
-	//TODO: Controll this value over the dataset's maximum and minimum velues
+	// TODO: Controll this value over the dataset's maximum and minimum velues
 	owlParamsSet2f(context_.launchParams, "sampleRemapping", owl2f{ 0.0f, 0.1f });
 	const auto sampleIntegrationMethod = SampleIntegrationMethod::maximumIntensityProjection;
 	owlParamsSetRaw(context_.launchParams, "sampleIntegrationMethod", &sampleIntegrationMethod);

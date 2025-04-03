@@ -1,9 +1,9 @@
 #pragma once
 #include <filesystem>
 
-#include "Box.h"
-#include "PipelineResult.h"
-#include "SofiaParams.h"
+#include <Box.h>
+#include <PipelineResult.h>
+#include <SofiaParams.h>
 
 namespace b3d::tools::sofia
 {
@@ -29,8 +29,8 @@ namespace b3d::tools::sofia_nano_pipeline
 		std::filesystem::path maskInputFilePath;
 		std::filesystem::path inputNvdbFilePath;
 		std::filesystem::path outputNvdbFilePath;
-		std::filesystem::path sofiaWorkingDirectoy;
-		std::filesystem::path nanoWorkingDirectoy;
+		std::filesystem::path sofiaWorkingDirectory;
+		std::filesystem::path nanoWorkingDirectory;
 	};
 
 	/// \brief Run SoFiA with given params and create a new NVDB based on the output mask
@@ -40,7 +40,8 @@ namespace b3d::tools::sofia_nano_pipeline
 	auto runSearchAndCreateNvdbSync(sofia::SofiaProcessRunner& processRunner,
 									SofiaNanoPipelineInitialParams pipelineParams) -> PipelineResult;
 
-	/// \brief Run SoFiA with given params for a subregion. Update an existing nvdb with the potential new sources found in the subregion
+	/// \brief Run SoFiA with given params for a subregion. Update an existing nvdb with the potential new sources found
+	/// in the subregion
 	/// \param processRunner Runner for SoFiA process
 	/// \param pipelineParams Params for the pipeline
 	/// \return Result of the pipeline

@@ -3,17 +3,17 @@
 #include "SimpleTrianglesRenderer.h"
 
 // public owl node-graph API
-#include "owl/owl.h"
+#include <owl/owl.h>
 // our device-side data structures
 #include <cuda/std/cstddef>
 #include <filesystem>
 
 
-#include "imgui.h"
-#include "owl/helper/cuda.h"
+#include <imgui.h>
+#include <owl/helper/cuda.h>
 
 
-#include "stb_image.h"
+#include <stb_image.h>
 
 #include "ColorMap.h"
 
