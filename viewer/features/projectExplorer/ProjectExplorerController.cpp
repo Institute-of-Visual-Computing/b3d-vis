@@ -60,16 +60,12 @@ ProjectExplorerController::ProjectExplorerController(ApplicationContext& applica
 		showExplorerWindow_,
 		[&](const bool isOn) { isOn ? projectExplorerView_->open() : projectExplorerView_->close(); }, "Tools",
 		"Projects");
+	projectSelectionView_->setModel({ projectSelectionView_->getSelectedProjectUUID(), projects_ });
+	projectExplorerView_->setModel(ProjectExplorerView::Model{ projects_ });
 }
 
 ProjectExplorerController::~ProjectExplorerController() = default;
 
-auto ProjectExplorerController::setProjects(std::vector<b3d::tools::project::Project>* projects) -> void
-{
-	projects_ = projects;
-	projectSelectionView_->setModel({ projectSelectionView_->getSelectedProjectUUID(), projects_ });
-	projectExplorerView_->setModel(ProjectExplorerView::Model{ projects_ });
-}
 auto ProjectExplorerController::updateRenderingData(b3d::renderer::RenderingDataWrapper& renderingData) -> void
 {
 	renderingData_ = &renderingData;
@@ -107,7 +103,7 @@ auto ProjectExplorerController::update() -> void
 
 	if (not isConnectedToAnyServer)
 	{
-		// setProjects(nullptr);
+		projects_->clear();
 	}
 	projectSelectionView_->draw();
 }
