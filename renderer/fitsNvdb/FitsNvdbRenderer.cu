@@ -126,12 +126,6 @@ OPTIX_RAYGEN_PROGRAM(raygen)()
 
 	const auto color = prd.isBackground ? bgColor : vec4f(prd.color, prd.alpha);
 
-
-	if (pixelId.x == self.frameBufferSize.x / 2 && pixelId.y == self.frameBufferSize.y / 2)
-	{
-		// printf("Hello from the center %d\n", true);
-	}
-
 	surf2Dwrite(owl::make_rgba(color), optixLaunchParams.surfacePointer, sizeof(uint32_t) * pixelId.x, pixelId.y);
 }
 

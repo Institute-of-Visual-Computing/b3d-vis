@@ -6,32 +6,33 @@
 
 DebugDrawPass::DebugDrawPass(DebugDrawList* debugDrawList) : viewProjection_{}, debugDrawList_{ debugDrawList }
 {
-	using namespace std::string_literals;
-	const auto vertexShader = "#version 400\n"
-							  "uniform mat4 viewProjection;\n"
-							  "layout (location = 0) in vec3 position;\n"
-							  "layout (location = 1) in vec2 uv;\n"
-							  "layout (location = 2) in vec4 color;\n"
-							  "out vec2 frag_uv;\n"
-							  "out vec4 frag_color;\n"
-							  "void main()\n"
-							  "{\n"
-							  "    frag_uv = uv;\n"
-							  "    frag_color = color;\n"
-							  "    gl_Position = viewProjection * vec4(position, 1.0f);\n"
-							  "}\n"s;
+	const auto vertexShader = std::string{ R"(
+#version 400
+uniform mat4 viewProjection;
+layout (location = 0) in vec3 position;
+layout (location = 1) in vec2 uv;
+layout (location = 2) in vec4 color;
+out vec2 frag_uv;
+out vec4 frag_color;
+void main()
+{
+    frag_uv = uv;
+    frag_color = color;
+    gl_Position = viewProjection * vec4(position, 1.0f);
+}
+)" };
 
-	const auto fragmentShader =
-		"#version 400\n"
-		"in vec2 frag_uv;\n"
-		"in vec4 frag_color;"
-		"uniform float lineWidth;\n"
-		"layout (location = 0) out vec4 outColor;\n"
-		"void main()\n"
-		"{\n"
-		"    outColor = vec4(frag_color.xyz, frag_color.w*(1.0f -  1.0f/(lineWidth * fwidth(frag_uv.x))*frag_uv.x));\n"
-		"}\n"s;
-
+	const auto fragmentShader = std::string{ R"(
+#version 400
+in vec2 frag_uv;
+in vec4 frag_color;
+uniform float lineWidth;
+layout (location = 0) out vec4 outColor;
+void main()
+{
+    outColor = vec4(frag_color.xyz, frag_color.w*(1.0f -  1.0f/(lineWidth * fwidth(frag_uv.x))*frag_uv.x));
+}
+)" };
 	const auto vertexShaderHandle = glCreateShader(GL_VERTEX_SHADER);
 	auto length = vertexShader.length();
 	const GLchar* v[1] = { vertexShader.c_str() };
@@ -63,23 +64,54 @@ DebugDrawPass::DebugDrawPass(DebugDrawList* debugDrawList) : viewProjection_{}, 
 	uvAttributeLocation_ = glGetAttribLocation(program_, "uv");
 	colorAttributeLocation_ = glGetAttribLocation(program_, "color");
 
-	glGenBuffers(1, &vboHandle_);
+	const auto defaultBufferSize = 16 * 1024;
+	vertexBufferSize_ = defaultBufferSize;
+	glCreateBuffers(1, &vertexBufferHandle_);
+	glNamedBufferStorage(vertexBufferHandle_, defaultBufferSize, nullptr, GL_DYNAMIC_STORAGE_BIT);
+
+	glCreateVertexArrays(1, &vao_);
+
+	glVertexArrayVertexBuffer(vao_, 0, vertexBufferHandle_, 0, sizeof(DebugDrawVertex));
+
+	glEnableVertexArrayAttrib(vao_, positionAttributeLocation_);
+	glVertexArrayAttribBinding(vao_, positionAttributeLocation_, 0);
+	glVertexArrayAttribFormat(vao_, positionAttributeLocation_, 3, GL_FLOAT, GL_FALSE,
+							  offsetof(DebugDrawVertex, position));
+
+	glEnableVertexArrayAttrib(vao_, uvAttributeLocation_);
+	glVertexArrayAttribBinding(vao_, uvAttributeLocation_, 0);
+	glVertexArrayAttribFormat(vao_, uvAttributeLocation_, 2, GL_FLOAT, GL_FALSE, offsetof(DebugDrawVertex, uv));
+
+	glEnableVertexArrayAttrib(vao_, colorAttributeLocation_);
+	glVertexArrayAttribBinding(vao_, colorAttributeLocation_, 0);
+	glVertexArrayAttribFormat(vao_, colorAttributeLocation_, 4, GL_UNSIGNED_BYTE, GL_TRUE,
+							  offsetof(DebugDrawVertex, color));
 }
 
 DebugDrawPass::~DebugDrawPass()
 {
+	glDeleteVertexArrays(1, &vao_);
 	glDeleteProgram(program_);
-	glDeleteBuffers(1, &vboHandle_);
+	glDeleteBuffers(1, &vertexBufferHandle_);
 }
 
-auto DebugDrawPass::execute() const -> void
+auto DebugDrawPass::execute() -> void
 {
 	if (debugDrawList_->vertices_.empty())
 	{
 		return;
 	}
-	GLuint vertexArrayObject;
-	glGenVertexArrays(1, &vertexArrayObject);
+
+	const auto vertexDataSize = debugDrawList_->vertices_.size() * sizeof(DebugDrawVertex);
+	if (vertexDataSize > vertexBufferSize_)
+	{
+		vertexBufferSize_ = vertexBufferSize_ * 2;
+		glDeleteBuffers(1, &vertexBufferHandle_);
+		glCreateBuffers(1, &vertexBufferHandle_);
+		glNamedBufferStorage(vertexBufferHandle_, vertexBufferSize_, nullptr, GL_DYNAMIC_STORAGE_BIT);
+		glVertexArrayVertexBuffer(vao_, 0, vertexBufferHandle_, 0, sizeof(DebugDrawVertex));
+	}
+	glNamedBufferSubData(vertexBufferHandle_, 0, vertexDataSize, debugDrawList_->vertices_.data());
 
 	const auto lastIsEnabledDepthTest = glIsEnabled(GL_DEPTH_TEST);
 	glEnable(GL_BLEND);
@@ -89,32 +121,14 @@ auto DebugDrawPass::execute() const -> void
 	glUniformMatrix4fv(viewProjectionUniformLocation_, 1, GL_FALSE, glm::value_ptr(viewProjection_));
 	glUniform1f(lineWidthUniformLocation_, lineWidth_);
 	glEnable(GL_MULTISAMPLE);
-	glBindVertexArray(vertexArrayObject);
-	GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, vboHandle_));
-	glEnableVertexAttribArray(positionAttributeLocation_);
-	glEnableVertexAttribArray(uvAttributeLocation_);
-	glEnableVertexAttribArray(colorAttributeLocation_);
-	glVertexAttribPointer(positionAttributeLocation_, 3, GL_FLOAT, GL_FALSE, sizeof(DebugDrawVertex),
-						  reinterpret_cast<GLvoid*>(offsetof(DebugDrawVertex, position)));
-	glVertexAttribPointer(uvAttributeLocation_, 2, GL_FLOAT, GL_FALSE, sizeof(DebugDrawVertex),
-						  reinterpret_cast<GLvoid*>(offsetof(DebugDrawVertex, uv)));
-	glVertexAttribPointer(colorAttributeLocation_, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(DebugDrawVertex),
-						  reinterpret_cast<GLvoid*>(offsetof(DebugDrawVertex, color)));
-
-
-	GL_CALL(glBufferData(GL_ARRAY_BUFFER, debugDrawList_->vertices_.size() * sizeof(DebugDrawVertex),
-						 debugDrawList_->vertices_.data(), GL_STREAM_DRAW));
-
-
+	glBindVertexArray(vao_);
 	GL_CALL(glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(debugDrawList_->vertices_.size())));
 	glUseProgram(0);
 	if (lastIsEnabledDepthTest)
 	{
 		glEnable(GL_DEPTH_TEST);
 	}
-	// glDisable(GL_CULL_FACE);
 	glDisable(GL_MULTISAMPLE);
-	glDeleteVertexArrays(1, &vertexArrayObject);
 	debugDrawList_->reset();
 }
 auto DebugDrawPass::setViewport(const int width, const int height) -> void

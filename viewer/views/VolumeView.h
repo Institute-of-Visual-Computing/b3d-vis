@@ -155,6 +155,6 @@ private:
 	GizmoOperationFlags currentGizmoOperation_{ GizmoOperationFlagBits::none };
 
 	std::unique_ptr<FullscreenTexturePass> fullscreenTexturePass_{};
-	std::unique_ptr<InfinitGridPass> infiniteGridPass_{};
+	std::unique_ptr<InfiniteGridPass> infiniteGridPass_{};
 	std::unique_ptr<DebugDrawPass> debugDrawPass_{};
 };

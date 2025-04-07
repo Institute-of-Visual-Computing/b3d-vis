@@ -214,7 +214,7 @@ auto b3d::renderer::FitsNvdbRenderer::onRender() -> void
 			owlGroupRefitAccel(context_.worldGeometryGroup);
 		}
 
-		debugDraw().drawBox(trs_.p / 2, 0, fitsBox.size(), owl::vec4f(0.1f, 0.82f, 0.15f, 1.0f), trs_.l);
+		debugDraw().drawBox(trs_.p / 2, 0, fitsBox.size(), owl::vec4f(0.1f, 0.82f, 0.15f, 0.6f), trs_.l);
 		debugInfo_.gizmoHelper->drawGizmo(volumeTransform->worldMatTRS);
 	}
 

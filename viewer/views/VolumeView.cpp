@@ -52,7 +52,7 @@ VolumeView::VolumeView(ApplicationContext& appContext, Dockspace* dockspace)
 								 WindowFlagBits::noCollapse)
 {
 	fullscreenTexturePass_ = std::make_unique<FullscreenTexturePass>();
-	infiniteGridPass_ = std::make_unique<InfinitGridPass>();
+	infiniteGridPass_ = std::make_unique<InfiniteGridPass>();
 	debugDrawPass_ = std::make_unique<DebugDrawPass>(applicationContext_->getDrawList().get());
 
 	camera_.setOrientation(glm::vec3(1.0, 1.0, 1.0), glm::vec3(0.0, 0.0, 0.0), camera_.getUp(),
@@ -171,7 +171,7 @@ auto VolumeView::onDraw() -> void
 	ImGui::SetCursorScreenPos(p);
 	ImGui::SetNextItemAllowOverlap();
 	ImGui::Image((ImTextureID)viewGraphicsResources_.viewFbo.colorAttachment, viewportSize_, { 0.0f, 1.0f },
-				 { 1.0f, 0.0f });
+				 { 1.0f, 0.0f }, ImVec4{ 1.0f, 1.0f, 1.0f, 1.0f });
 
 	if (viewerSettings_.enableDebugDraw)
 	{

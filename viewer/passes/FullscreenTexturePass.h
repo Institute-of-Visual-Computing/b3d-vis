@@ -11,7 +11,7 @@ class FullscreenTexturePass final : public Pass
 
 		~FullscreenTexturePass() override;
 
-		auto execute() const -> void override;
+		auto execute() -> void override;
 
 		auto setSourceTexture(const GLuint texture) -> void
 		{
