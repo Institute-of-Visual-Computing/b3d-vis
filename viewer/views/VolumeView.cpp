@@ -33,8 +33,8 @@
 
 namespace
 {
-	auto computeViewProjectionMatrixFromCamera(const Camera& camera, const int width,
-											   const int height) -> VolumeView::CameraMatrices
+	auto computeViewProjectionMatrixFromCamera(const Camera& camera, const int width, const int height)
+		-> VolumeView::CameraMatrices
 	{
 		const auto aspect = width / static_cast<float>(height);
 
@@ -52,7 +52,7 @@ VolumeView::VolumeView(ApplicationContext& appContext, Dockspace* dockspace)
 								 WindowFlagBits::noCollapse)
 {
 	fullscreenTexturePass_ = std::make_unique<FullscreenTexturePass>();
-	infinitGridPass_ = std::make_unique<InfinitGridPass>();
+	infiniteGridPass_ = std::make_unique<InfinitGridPass>();
 	debugDrawPass_ = std::make_unique<DebugDrawPass>(applicationContext_->getDrawList().get());
 
 	camera_.setOrientation(glm::vec3(1.0, 1.0, 1.0), glm::vec3(0.0, 0.0, 0.0), camera_.getUp(),
@@ -170,14 +170,15 @@ auto VolumeView::onDraw() -> void
 
 	ImGui::SetCursorScreenPos(p);
 	ImGui::SetNextItemAllowOverlap();
-	ImGui::Image((ImTextureID)graphicsResources_.framebufferTexture, viewportSize_, { 0.0f, 1.0f },
+	ImGui::Image((ImTextureID)viewGraphicsResources_.viewFbo.colorAttachment, viewportSize_, { 0.0f, 1.0f },
 				 { 1.0f, 0.0f });
 
 	if (viewerSettings_.enableDebugDraw)
 	{
 		ImGui::SetNextItemAllowOverlap();
 		ImGui::SetCursorScreenPos(p);
-		const auto cameraMatrices = computeViewProjectionMatrixFromCamera(camera_, static_cast<int>(viewportSize_.x), static_cast<int>(viewportSize_.y));
+		const auto cameraMatrices = computeViewProjectionMatrixFromCamera(camera_, static_cast<int>(viewportSize_.x),
+																		  static_cast<int>(viewportSize_.y));
 		drawGizmos(cameraMatrices, glm::vec2{ p.x, p.y }, glm::vec2{ viewportSize_.x, viewportSize_.y });
 	}
 
@@ -362,6 +363,15 @@ auto VolumeView::setRenderVolume(b3d::renderer::RendererBase* renderer,
 	renderingData_ = renderingData;
 }
 
+auto VolumeView::setInternalRenderingResolutionScale(const float scale) -> void
+{
+	internalResolutionScale_ = scale;
+	assert(glm::length(internalGraphicsResources_.internalVolumeTextureSize) > 0.001f);
+	glfwMakeContextCurrent(applicationContext_->mainWindowHandle_);
+	deinitializeInternalGraphicsResources();
+	initializeInternalGraphicsResources();
+}
+
 auto VolumeView::drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec2& position,
 							const glm::vec2& size) const -> void
 {
@@ -493,48 +503,80 @@ auto VolumeView::drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec
 auto VolumeView::initializeGraphicsResources() -> void
 {
 	glfwMakeContextCurrent(applicationContext_->mainWindowHandle_);
-
-
-	if (graphicsResources_.framebufferPointer)
-	{
-		OWL_CUDA_CHECK(cudaFree(graphicsResources_.framebufferPointer));
-	}
-	OWL_CUDA_CHECK(cudaMallocManaged(&graphicsResources_.framebufferPointer,
-									 static_cast<size_t>(viewportSize_.x * viewportSize_.y * sizeof(uint32_t))));
-
-	graphicsResources_.framebufferSize = glm::vec2{ viewportSize_.x, viewportSize_.y };
-	if (graphicsResources_.framebufferTexture == 0)
-	{
-		GL_CALL(glGenTextures(1, &graphicsResources_.framebufferTexture));
-	}
-	else
-	{
-		if (graphicsResources_.cuFramebufferTexture)
-		{
-			OWL_CUDA_CHECK(cudaGraphicsUnregisterResource(graphicsResources_.cuFramebufferTexture));
-			graphicsResources_.cuFramebufferTexture = 0;
-		}
-	}
-
-	GL_CALL(glBindTexture(GL_TEXTURE_2D, graphicsResources_.framebufferTexture));
-	GL_CALL(glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, static_cast<GLsizei>(viewportSize_.x), static_cast<GLsizei>(viewportSize_.y), 0, GL_RGBA, GL_UNSIGNED_BYTE,
-						 nullptr));
-	GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
-	GL_CALL(glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
-
-	OWL_CUDA_CHECK(cudaGraphicsGLRegisterImage(&graphicsResources_.cuFramebufferTexture,
-											   graphicsResources_.framebufferTexture, GL_TEXTURE_2D, 0));
-
-	GL_CALL(glGenFramebuffers(1, &graphicsResources_.framebuffer));
-
-	GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, graphicsResources_.framebuffer));
-	GL_CALL(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D,
-								   graphicsResources_.framebufferTexture, 0));
-	GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+	initializeViewGraphicsResources();
+	initializeInternalGraphicsResources();
 }
 
 auto VolumeView::deinitializeGraphicsResources() -> void
 {
+	glfwMakeContextCurrent(applicationContext_->mainWindowHandle_);
+	deinitializeInternalGraphicsResources();
+	deinitializeViewGraphicsResources();
+}
+
+auto VolumeView::initializeViewGraphicsResources() -> void
+{
+	GL_CALL(glCreateFramebuffers(1, &viewGraphicsResources_.viewFbo.nativeHandle));
+	GL_CALL(glCreateTextures(GL_TEXTURE_2D, 1, &viewGraphicsResources_.viewFbo.colorAttachment));
+	GL_CALL(glTextureParameteri(viewGraphicsResources_.viewFbo.colorAttachment, GL_TEXTURE_BASE_LEVEL, 0));
+	GL_CALL(glTextureParameteri(viewGraphicsResources_.viewFbo.colorAttachment, GL_TEXTURE_MAX_LEVEL, 0));
+	GL_CALL(glTextureStorage2D(viewGraphicsResources_.viewFbo.colorAttachment, 1, GL_RGBA8,
+							   static_cast<GLsizei>(viewportSize_.x), static_cast<GLsizei>(viewportSize_.y)));
+	GL_CALL(glNamedFramebufferTexture(viewGraphicsResources_.viewFbo.nativeHandle, GL_COLOR_ATTACHMENT0,
+									  viewGraphicsResources_.viewFbo.colorAttachment, 0));
+}
+
+auto VolumeView::deinitializeViewGraphicsResources() -> void
+{
+	GL_CALL(glDeleteTextures(1, &viewGraphicsResources_.viewFbo.colorAttachment));
+	GL_CALL(glDeleteFramebuffers(1, &viewGraphicsResources_.viewFbo.nativeHandle));
+}
+
+auto VolumeView::initializeInternalGraphicsResources() -> void
+{
+	internalGraphicsResources_.internalVolumeTextureSize =
+		glm::vec2{ viewportSize_.x, viewportSize_.y } * internalResolutionScale_;
+	assert(glm::length(internalGraphicsResources_.internalVolumeTextureSize) > 0.001f);
+
+	GL_CALL(glCreateTextures(GL_TEXTURE_2D, 1, &internalGraphicsResources_.internalVolumeTexture));
+	GL_CALL(glTextureParameteri(internalGraphicsResources_.internalVolumeTexture, GL_TEXTURE_BASE_LEVEL, 0));
+	GL_CALL(glTextureParameteri(internalGraphicsResources_.internalVolumeTexture, GL_TEXTURE_MAX_LEVEL, 0));
+	GL_CALL(glTextureParameteri(internalGraphicsResources_.internalVolumeTexture, GL_TEXTURE_MIN_FILTER, GL_LINEAR));
+	GL_CALL(glTextureParameteri(internalGraphicsResources_.internalVolumeTexture, GL_TEXTURE_MAG_FILTER, GL_LINEAR));
+	GL_CALL(glTextureStorage2D(internalGraphicsResources_.internalVolumeTexture, 1, GL_RGBA8,
+							   static_cast<GLsizei>(internalGraphicsResources_.internalVolumeTextureSize.x),
+							   static_cast<GLsizei>(internalGraphicsResources_.internalVolumeTextureSize.y)));
+
+	OWL_CUDA_CHECK(
+		cudaMalloc(&internalGraphicsResources_.volumeTexturePointer,
+				   static_cast<size_t>(internalGraphicsResources_.internalVolumeTextureSize.x *
+									   internalGraphicsResources_.internalVolumeTextureSize.y * sizeof(uint32_t))));
+
+	if (internalGraphicsResources_.cuInternalVolumeTexture)
+	{
+		OWL_CUDA_CHECK(cudaGraphicsUnregisterResource(internalGraphicsResources_.cuInternalVolumeTexture));
+		internalGraphicsResources_.cuInternalVolumeTexture = 0;
+	}
+
+	OWL_CUDA_CHECK(cudaGraphicsGLRegisterImage(&internalGraphicsResources_.cuInternalVolumeTexture,
+											   internalGraphicsResources_.internalVolumeTexture, GL_TEXTURE_2D, 0));
+}
+
+auto VolumeView::deinitializeInternalGraphicsResources() -> void
+{
+	GL_CALL(glDeleteTextures(1, &internalGraphicsResources_.internalVolumeTexture));
+
+	if (internalGraphicsResources_.cuInternalVolumeTexture)
+	{
+		OWL_CUDA_CHECK(cudaGraphicsUnregisterResource(internalGraphicsResources_.cuInternalVolumeTexture));
+		internalGraphicsResources_.cuInternalVolumeTexture = 0;
+	}
+
+	if (internalGraphicsResources_.volumeTexturePointer)
+	{
+		OWL_CUDA_CHECK(cudaFree(internalGraphicsResources_.volumeTexturePointer));
+		internalGraphicsResources_.volumeTexturePointer = 0;
+	}
 }
 
 auto VolumeView::renderVolume() -> void
@@ -544,15 +586,8 @@ auto VolumeView::renderVolume() -> void
 	const auto height = static_cast<int>(viewportSize_.y);
 	const auto [view, projection, viewProjection] = computeViewProjectionMatrixFromCamera(camera_, width, height);
 
-	GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, graphicsResources_.framebuffer));
-	glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-	glClear(GL_COLOR_BUFFER_BIT);
-
-
-	if (renderingData_ && renderer_ && graphicsResources_.cuFramebufferTexture)
+	if (renderingData_ && renderer_ && internalGraphicsResources_.cuInternalVolumeTexture)
 	{
-
-
 		const auto cam = b3d::renderer::Camera{ .origin = owl_cast(camera_.getFrom()),
 												.at = owl_cast(camera_.getAt()),
 												.up = owl_cast(camera_.getUp()),
@@ -565,21 +600,26 @@ auto VolumeView::renderVolume() -> void
 		};
 
 		renderingData_->data.renderTargets = b3d::renderer::RenderTargets{
-			.colorRt = { graphicsResources_.cuFramebufferTexture,
-						 { static_cast<uint32_t>(graphicsResources_.framebufferSize.x),
-						   static_cast<uint32_t>(graphicsResources_.framebufferSize.y), 1 } },
-			.minMaxRt = { graphicsResources_.cuFramebufferTexture,
-						  { static_cast<uint32_t>(graphicsResources_.framebufferSize.x),
-							static_cast<uint32_t>(graphicsResources_.framebufferSize.y), 1 } },
+			.colorRt = { internalGraphicsResources_.cuInternalVolumeTexture,
+						 { static_cast<uint32_t>(internalGraphicsResources_.internalVolumeTextureSize.x),
+						   static_cast<uint32_t>(internalGraphicsResources_.internalVolumeTextureSize.y), 1 } },
+			.minMaxRt = { internalGraphicsResources_.cuInternalVolumeTexture,
+						  { static_cast<uint32_t>(internalGraphicsResources_.internalVolumeTextureSize.x),
+							static_cast<uint32_t>(internalGraphicsResources_.internalVolumeTextureSize.y), 1 } },
 		};
 
 		renderer_->render();
 	}
 
+	GL_CALL(glBindFramebuffer(GL_FRAMEBUFFER, viewGraphicsResources_.viewFbo.nativeHandle));
+	const auto colorClearValue = std::array{ 0.0f, 0.0f, 0.0f, 1.0f };
+	GL_CALL(
+		glClearNamedFramebufferfv(viewGraphicsResources_.viewFbo.nativeHandle, GL_COLOR, 0, colorClearValue.data()));
+
 	const auto& r1 = applicationContext_->getGlGpuTimers().record("Fullscreen Quad Pass");
 	r1.start();
 	fullscreenTexturePass_->setViewport(width, height);
-	fullscreenTexturePass_->setSourceTexture(graphicsResources_.framebufferTexture);
+	fullscreenTexturePass_->setSourceTexture(internalGraphicsResources_.internalVolumeTexture);
 	fullscreenTexturePass_->execute();
 	r1.stop();
 
@@ -587,11 +627,11 @@ auto VolumeView::renderVolume() -> void
 	{
 		const auto& record = applicationContext_->getGlGpuTimers().record("Grid Floor Pass");
 		record.start();
-		infinitGridPass_->setViewProjectionMatrix(viewProjection);
-		infinitGridPass_->setViewport(width, height);
-		infinitGridPass_->setGridColor(
+		infiniteGridPass_->setViewProjectionMatrix(viewProjection);
+		infiniteGridPass_->setViewport(width, height);
+		infiniteGridPass_->setGridColor(
 			glm::vec3{ viewerSettings_.gridColor[0], viewerSettings_.gridColor[1], viewerSettings_.gridColor[2] });
-		infinitGridPass_->execute();
+		infiniteGridPass_->execute();
 		record.stop();
 	}
 

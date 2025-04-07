@@ -35,7 +35,7 @@
 
 #pragma warning(push, 0)
 #include <ImGuiFileDialog.h>
-#pragma warning (pop)
+#pragma warning(pop)
 
 using namespace owl;
 
@@ -287,6 +287,18 @@ auto NanoViewer::draw() -> void
 		ImGui::ShowDemoWindow(&showImGuiDemo_);
 	}
 
+	if (showDebugOptions_)
+	{
+		ImGui::Begin("Debug Options", &showDebugOptions_, ImGuiWindowFlags_AlwaysAutoResize);
+
+		auto scale = volumeView_->getInternalRenderingResolutionScale();
+		if (ImGui::SliderFloat("Internal Resolution Scale", &scale, 0.1f, 1.0f))
+		{
+			volumeView_->setInternalRenderingResolutionScale(scale);
+		}
+		ImGui::End();
+	}
+
 	const auto currentFrameTime = 1.0f / ImGui::GetIO().Framerate;
 	const auto maxFrameTimeTarget = currentFrameTime > (1.0f / 60.0f) ? 1.0f / 30.0f : 1.0f / 60.0f;
 
@@ -515,6 +527,7 @@ auto NanoViewer::run(const std::function<bool()>& keepgoing) -> void
 	}
 
 	deinitializeGui();
+	volumeView_.reset(); //TODO: unify and maybe also provide initilize/deinitialize
 	currentRenderer_->deinitialize();
 	glfwDestroyWindow(applicationContext_->mainWindowHandle_);
 	glfwTerminate();

@@ -27,8 +27,8 @@ namespace b3d
 				OWLGeom geometry;
 				OWLGroup geometryGroup;
 				OWLGroup worldGeometryGroup;
-
 				OWLLaunchParams launchParams;
+				std::vector<OWLModule> modules{};
 			};
 
 		public:

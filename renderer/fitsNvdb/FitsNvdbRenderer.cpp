@@ -65,7 +65,8 @@ auto b3d::renderer::FitsNvdbRenderer::onInitialize() -> void
 
 	const auto irModule = owlModuleCreateFromIR(owlContext, FitsNvdbRenderer_optixir, FitsNvdbRenderer_optixir_length);
 	const auto module = owlModuleCreate(owlContext, FitsNvdbRenderer_ptx);
-
+	context_.modules.push_back(irModule);
+	context_.modules.push_back(module);
 	// Ray Generation
 	// Define Variables required in Ray Generation
 	// Create Ray Generation Program
@@ -143,7 +144,6 @@ auto b3d::renderer::FitsNvdbRenderer::onInitialize() -> void
 
 	owlBuildPrograms(owlContext);
 	owlBuildPipeline(owlContext);
-
 
 	owlGeomSetRaw(context_.geometry, "fitsBox", &fitsBox, 0);
 	owlGeomSetRaw(context_.geometry, "nvdbBox", &fitsBox, 0);
@@ -309,5 +309,13 @@ auto b3d::renderer::FitsNvdbRenderer::onRender() -> void
 
 auto b3d::renderer::FitsNvdbRenderer::onDeinitialize() -> void
 {
+	for (auto& module : context_.modules)
+	{
+		owlModuleRelease(module);
+	}
+	owlGeomRelease(context_.geometry);
+	owlRayGenRelease(context_.rayGen);
+	owlGroupRelease(context_.geometryGroup);
+	owlGroupRelease(context_.worldGeometryGroup);
 	owlContextDestroy(context_.owlContext);
 }
