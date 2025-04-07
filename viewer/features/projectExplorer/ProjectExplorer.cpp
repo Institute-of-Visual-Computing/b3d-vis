@@ -17,7 +17,6 @@ ProjectExplorer::ProjectExplorer(ApplicationContext& applicationContext) : Rende
 	serverFileProvider_ = std::make_unique<ServerFileProvider>("./", appContext_->serverClient_);
 	applicationContext.addUpdatableComponent(projectExplorerController_.get());
 	applicationContext.addRendererExtensionComponent(this);
-	projectExplorerController_->setProjects(&projects_);
 	cudaStreamCreate(&stream_);
 }
 
@@ -49,7 +48,6 @@ auto ProjectExplorer::updateRenderingData(b3d::renderer::RenderingDataWrapper& r
 				if (projects.has_value() && !projects->empty())
 				{
 					projects_ = *projects;
-					projectExplorerController_->setProjects(&projects_);
 				}
 				projectsViewPromise_->set_value();
 				projectsViewPromise_.reset();

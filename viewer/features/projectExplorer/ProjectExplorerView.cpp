@@ -59,6 +59,15 @@ ProjectExplorerView::ProjectExplorerView(
 			auto view = reinterpret_cast<DeleteProjectView*>(self);
 			std::string uuid = model_.projects->at(view->projectIndex()).projectUUID;
 			deleteProjectFuture_ = applicationContext_->serverClient_.deleteProjectAsync(uuid);
+			if (selectedProjectItemIndex_ == view->projectIndex())
+			{
+				selectedProjectItemIndex_ = -1;
+				applicationContext_->selectedProject_ = std::nullopt;
+			}
+			else if (view->projectIndex() < selectedProjectItemIndex_)
+			{
+				selectedProjectItemIndex_--;
+			}
 			model_.projects->erase(model_.projects->begin() + view->projectIndex());
 		});
 }
@@ -367,7 +376,7 @@ auto ProjectExplorerView::onDraw() -> void
 			ImVec2{ 100 * scaleFactor, 100 * scaleFactor });
 
 
-		if (selectedProjectItemIndex_ >= 0)
+		if (selectedProjectItemIndex_ >= 0 && !model_.projects->empty())
 		{
 			struct RequestLoad
 			{
