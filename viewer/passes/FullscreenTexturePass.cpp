@@ -8,9 +8,9 @@ FullscreenTexturePass::FullscreenTexturePass() : srcTexture_{ 0 }
 out vec2 textureCoords;
 void main()
 {
-    vec2 vertices[3]=vec2[3](vec2(-1, -1), vec2(3, -1), vec2(-1, 3));
-    gl_Position = vec4(vertices[gl_VertexID], 0, 1);
-    textureCoords = 0.5 * gl_Position.xy + vec2(0.5);
+    vec2 vertices[3] = vec2[3](vec2(-1.0f, -1.0f), vec2(3.0f, -1.0f), vec2(-1.0f, 3.0f));
+    gl_Position = vec4(vertices[gl_VertexID], 0.0f, 1.0f);
+    textureCoords = 0.5f * gl_Position.xy + vec2(0.5f);
 }
 )" };
 

@@ -12,8 +12,8 @@ uniform mat4 viewProjection;
 out vec2 uv;
 void main()
 {
-	vec3 vertices[4]=vec3[4](vec3(-200, 0, -200), vec3(200,0, -200), vec3(200,0,200), vec3(-200,0, 200));
-	vec2 vertices_coord[4]=vec2[4](vec2(0, 0), vec2(1, 0), vec2(1,1), vec2(0, 1) );
+	vec3 vertices[4] = vec3[4](vec3(-200.0f, 0.0f, -200.0f), vec3(200.0f, 0.0f, -200.0f), vec3(200.0f, 0.0f, 200.0f), vec3(-200.0f, 0.0f, 200.0f));
+	vec2 vertices_coord[4] = vec2[4](vec2(0.0f, 0.0f), vec2(1.0f, 0.0f), vec2(1.0f, 1.0f), vec2(0.0f, 1.0f) );
 	gl_Position = viewProjection * vec4(vertices[gl_VertexID], 1.0f);
 	uv = vertices_coord[gl_VertexID];
 }
@@ -29,41 +29,39 @@ const float gridRatio = 32.0f;
 float pristineGrid( in vec2 uv, in vec2 ddx, in vec2 ddy, vec2 lineWidth)
 {
 	vec2 uvDeriv = vec2(length(vec2(ddx.x, ddy.x)), length(vec2(ddx.y, ddy.y)));
-	bvec2 invertLine = bvec2(lineWidth.x > 0.5, lineWidth.y > 0.5);
-	vec2 targetWidth = vec2(
-	invertLine.x ? 1.0 - lineWidth.x : lineWidth.x,
-	invertLine.y ? 1.0 - lineWidth.y : lineWidth.y
-	);
-	vec2 drawWidth = clamp(targetWidth, uvDeriv, vec2(0.5));
-	vec2 lineAA = uvDeriv * 1.5;
-	vec2 gridUV = abs(fract(uv) * 2.0 - 1.0);
-	gridUV.x = invertLine.x ? gridUV.x : 1.0 - gridUV.x;
-	gridUV.y = invertLine.y ? gridUV.y : 1.0 - gridUV.y;
+	bvec2 invertLine = bvec2(lineWidth.x > 0.5f, lineWidth.y > 0.5f);
+	vec2 targetWidth = vec2( invertLine.x ? 1.0f - lineWidth.x : lineWidth.x, invertLine.y ? 1.0f - lineWidth.y : lineWidth.y);
+	vec2 drawWidth = clamp(targetWidth, uvDeriv, vec2(0.5f));
+	vec2 lineAA = uvDeriv * 1.5f;
+	vec2 gridUV = abs(fract(uv) * 2.0f - 1.0f);
+	gridUV.x = invertLine.x ? gridUV.x : 1.0f - gridUV.x;
+	gridUV.y = invertLine.y ? gridUV.y : 1.0f - gridUV.y;
 	vec2 grid2 = smoothstep(drawWidth + lineAA, drawWidth - lineAA, gridUV);
 	
-	grid2 *= clamp(targetWidth / drawWidth, 0.0, 1.0);
-	grid2 = mix(grid2, targetWidth, clamp(uvDeriv * 2.0 - 1.0, 0.0, 1.0));
-	grid2.x = invertLine.x ? 1.0 - grid2.x : grid2.x;
-	grid2.y = invertLine.y ? 1.0 - grid2.y : grid2.y;
-	return mix(grid2.x, 1.0, grid2.y);
-	}
+	grid2 *= clamp(targetWidth / drawWidth, 0.0f, 1.0f);
+	grid2 = mix(grid2, targetWidth, clamp(uvDeriv * 2.0f - 1.0f, 0.0f, 1.0f));
+	grid2.x = invertLine.x ? 1.0f - grid2.x : grid2.x;
+	grid2.y = invertLine.y ? 1.0f - grid2.y : grid2.y;
+	return mix(grid2.x, 1.0f, grid2.y);
+}
+
 float gridTextureGradBox( in vec2 p, in vec2 ddx, in vec2 ddy )
 {
-	vec2 w = max(abs(ddx), abs(ddy)) + 0.01;
-   vec2 a = p + 0.5*w;                        
-   vec2 b = p - 0.5*w;           
-   vec2 i = (floor(a)+min(fract(a)*gridRatio,1.0)-
-             floor(b)-min(fract(b)*gridRatio,1.0))/(gridRatio*w);
-   return (1.0-i.x)*(1.0-i.y);
+	vec2 w = max(abs(ddx), abs(ddy)) + 0.01f;
+	vec2 a = p + 0.5f * w;                        
+	vec2 b = p - 0.5f * w;           
+	vec2 i = (floor(a) + min(fract(a) * gridRatio, 1.0f) - floor(b) -min(fract(b) * gridRatio, 1.0f))/(gridRatio * w);
+    return (1.0f- i.x) * (1.0f - i.y);
 }
+
 void main()
 {
-	vec2 uvw = uv*4000.0f;
-	vec2 ddx_uvw = dFdx( uvw );
-      	vec2 ddy_uvw = dFdy( uvw );
-   float alpha = pristineGrid(uvw, ddx_uvw, ddy_uvw, vec2(1.0/gridRatio));
-   alpha = 1.0f - gridTextureGradBox(uvw, ddx_uvw, ddy_uvw);
-   outColor = vec4(gridColor, alpha);
+	vec2 uvw = uv * 4000.0f;
+	vec2 ddx_uvw = dFdx(uvw);
+	vec2 ddy_uvw = dFdy(uvw);
+	float alpha = pristineGrid(uvw, ddx_uvw, ddy_uvw, vec2(1.0f / gridRatio));
+	alpha = 1.0f - gridTextureGradBox(uvw, ddx_uvw, ddy_uvw);
+	outColor = vec4(gridColor, alpha);
 }
 )" };
 

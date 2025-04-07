@@ -30,7 +30,7 @@ uniform float lineWidth;
 layout (location = 0) out vec4 outColor;
 void main()
 {
-    outColor = vec4(frag_color.xyz, frag_color.w*(1.0f -  1.0f/(lineWidth * fwidth(frag_uv.x))*frag_uv.x));
+    outColor = vec4(frag_color.xyz, frag_color.w * (1.0f -  1.0f / (lineWidth * fwidth(frag_uv.x)) * frag_uv.x));
 }
 )" };
 	const auto vertexShaderHandle = glCreateShader(GL_VERTEX_SHADER);
