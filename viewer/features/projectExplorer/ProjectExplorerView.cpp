@@ -98,7 +98,6 @@ auto ProjectExplorerView::drawSelectableItemGridPanel(const char* panelId, int& 
 						  ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeX | ImGuiChildFlags_AutoResizeY);
 		auto alignment = ImVec2(0.5f, 0.0f);
 		ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, alignment);
-		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 1.0f);
 		ImGui::PushID(n);
 		if (lastItem)
 		{
@@ -246,6 +245,7 @@ auto ProjectExplorerView::drawSelectableItemGridPanel(const char* panelId, int& 
 		ImGui::PopStyleVar();
 		ImGui::EndChild();
 		ImGui::PopStyleVar();
+
 		const auto lastButtonX2 = ImGui::GetItemRectMax().x;
 		const auto nextButtonX2 = lastButtonX2 + style.ItemSpacing.x + itemSize.x;
 		if (n + 1 < itemsCount && nextButtonX2 < windowVisibleX2)
@@ -260,7 +260,6 @@ auto ProjectExplorerView::drawSelectableItemGridPanel(const char* panelId, int& 
 		ImGui::PopID();
 	}
 	ImGui::EndChild();
-	ImGui::PopStyleColor();
 	ImGui::PopID();
 	return projectSelected;
 }
@@ -278,7 +277,7 @@ auto ProjectExplorerView::onDraw() -> void
 		isConnectedToAnyServer ? applicationContext_->serverClient_.getConnectionInfo().name : "Disconnected!");
 	const auto textSize = ImGui::CalcTextSize(serverNameText.c_str());
 
-
+	const auto positionForLoadingPlaceholder = ImGui::GetCursorPos();
 	const auto refreshedPressed = ImGui::Button(ICON_LC_REFRESH_CW);
 	const auto buttonWidth = ImGui::CalcTextSize(ICON_LC_REFRESH_CW).x;
 	const auto middleSpace = availableWidth - textSize.x - 2 * buttonWidth;
@@ -322,7 +321,9 @@ auto ProjectExplorerView::onDraw() -> void
 	{
 		if (refreshProjectsFuture_.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
 		{
+			ImGui::SetCursorPos(positionForLoadingPlaceholder + ImVec2{ buttonWidth, 0.0f } * 2.0f);
 			ImSpinner::SpinnerRotateSegments("project_loading_spinner", ImGui::GetFontSize() * 0.5f, 2.0f);
+			ImGui::SameLine();
 			ImGui::Text("Loading");
 		}
 		else
