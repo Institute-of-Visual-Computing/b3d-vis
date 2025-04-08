@@ -17,7 +17,7 @@ DockableWindowViewBase::DockableWindowViewBase(ApplicationContext& appContext, c
 
 	if ((flags_ & WindowFlagBits::noUndocking) == WindowFlagBits::noUndocking)
 	{
-		windowClass_.DockNodeFlagsOverrideSet |= ImGuiDockNodeFlags_NoUndocking;
+		//windowClass_.DockNodeFlagsOverrideSet |= ImGuiDockNodeFlags_NoUndocking;
 	}
 }
 

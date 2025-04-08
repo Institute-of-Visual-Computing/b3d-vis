@@ -23,7 +23,7 @@ WindowViewBase::WindowViewBase(ApplicationContext& appContext, const std::string
 	}
 	if ((flags_ & WindowFlagBits::noDocking) == WindowFlagBits::noDocking)
 	{
-		windowClass_.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoDockingSplitOther | ImGuiDockNodeFlags_NoDocking;
+		windowClass_.DockNodeFlagsOverrideSet = /*ImGuiDockNodeFlags_NoDockingSplitOther |*/ImGuiDockNodeFlags_NoDocking;
 	}
 	if ((flags_ & WindowFlagBits::autoResize) == WindowFlagBits::autoResize)
 	{

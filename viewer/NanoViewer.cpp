@@ -48,6 +48,12 @@ namespace
 									legit::Colors::alizarin,  legit::Colors::pomegranate, legit::Colors::clouds,
 									legit::Colors::silver };
 
+	auto setupGuiStyle() -> void
+	{
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+		ImGui::GetStyle().WindowMenuButtonPosition = ImGuiDir_None;
+	}
 
 	[[nodiscard]] auto requestRequiredDpiScales() -> std::vector<float>
 	{
@@ -106,6 +112,7 @@ namespace
 
 		ImGui_ImplGlfw_InitForOpenGL(window, true);
 		ImGui_ImplOpenGL3_Init();
+		setupGuiStyle();
 	}
 
 	auto deinitializeGui() -> void

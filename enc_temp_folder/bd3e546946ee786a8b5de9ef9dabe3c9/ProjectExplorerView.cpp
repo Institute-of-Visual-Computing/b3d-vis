@@ -80,6 +80,7 @@ auto ProjectExplorerView::drawSelectableItemGridPanel(const char* panelId, int& 
 	const auto& style = ImGui::GetStyle();
 	const auto windowVisibleX2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
 	ImGui::PushID(panelId);
+	ImGui::PushStyleColor(ImGuiCol_WindowBg, ImGui::ColorConvertFloat4ToU32(ImVec4{ 0.1f, 0.1f, 0.1f, 1.0f }));
 	ImGui::BeginChild("", panelSize, ImGuiChildFlags_Border, ImGuiWindowFlags_AlwaysVerticalScrollbar);
 	auto pos = ImGui::GetCursorPos();
 	const auto widgetStartPosition = ImGui::GetCursorPos();
@@ -243,7 +244,7 @@ auto ProjectExplorerView::drawSelectableItemGridPanel(const char* panelId, int& 
 			}
 		}
 		ImGui::PopID();
-		ImGui::PopStyleVar();
+		ImGui::PopStyleVar(2);
 		ImGui::EndChild();
 		ImGui::PopStyleVar();
 		const auto lastButtonX2 = ImGui::GetItemRectMax().x;
