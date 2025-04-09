@@ -48,8 +48,8 @@ namespace
 
 VolumeView::VolumeView(ApplicationContext& appContext, Dockspace* dockspace)
 	: DockableWindowViewBase(appContext, "Volume Viewport", dockspace,
-							 /*WindowFlagBits::noTitleBar | */WindowFlagBits::noUndocking | WindowFlagBits::hideTabBar |
-								 WindowFlagBits::noCollapse | WindowFlagBits::noClose)
+							 /*WindowFlagBits::noTitleBar | */ WindowFlagBits::noUndocking |
+								 WindowFlagBits::hideTabBar | WindowFlagBits::noCollapse | WindowFlagBits::noClose)
 {
 	fullscreenTexturePass_ = std::make_unique<FullscreenTexturePass>();
 	infiniteGridPass_ = std::make_unique<InfiniteGridPass>();
@@ -330,7 +330,11 @@ auto VolumeView::onDraw() -> void
 				ImGui::PushFont(applicationContext_->getFontCollection().getGpuCpuExtraBigTextFont());
 				ImGui::SetNextItemAllowOverlap();
 				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4{ 0.6f, 0.6f, 0.6f, 0.4f });
-				ImGui::Text("GPU");
+				const auto gpuTextSize = ImGui::CalcTextSize("GPU");
+				if (gpuTextSize.x < graphWidth)
+				{
+					ImGui::Text("GPU");
+				}
 				ImGui::PopStyleColor();
 				ImGui::PopFont();
 				ImGui::SetCursorPos(position);
@@ -341,7 +345,10 @@ auto VolumeView::onDraw() -> void
 										ImVec2(ImGui::GetContentRegionAvail().x, profilerHeight),
 									true);
 
-				applicationContext_->gpuGraph_.RenderTimings(graphWidth, legendWidth, graphHeight, frameOffset);
+				if (legendWidth < canvasSize.x)
+				{
+					applicationContext_->gpuGraph_.RenderTimings(graphWidth, legendWidth, graphHeight, frameOffset);
+				}
 				ImGui::PopClipRect();
 			}
 		}

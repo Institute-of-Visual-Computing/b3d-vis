@@ -28,16 +28,13 @@ ProjectExplorerController::ProjectExplorerController(ApplicationContext& applica
 	  projectExplorer_(&projectExplorer), projects_(&projects)
 {
 	projectExplorerView_ = std::make_unique<ProjectExplorerView>(
-		applicationContext, applicationContext.getMainDockspace(), [&] { projectSelectionView_->open(); },
-		[&] { },
+		applicationContext, applicationContext.getMainDockspace(), [&] { projectSelectionView_->open(); }, [&] {},
 		[&](const std::string& fileUUID) { return projectExplorer_->loadAndShowFile(fileUUID); },
 		[&]() { return projectExplorer_->refreshProjects(); });
 
 	projectSelectionView_ = std::make_unique<ProjectSelectionView>(
-		applicationContext, [&]() { return projectExplorer_->refreshProjects(); },
-		[&](ModalViewBase* self) {
-			reinterpret_cast<ProjectSelectionView*>(self)->setModel({ selectedProjectUUID_, projects_ });
-		},
+		applicationContext, [&]() { return projectExplorer_->refreshProjects(); }, [&](ModalViewBase* self)
+		{ reinterpret_cast<ProjectSelectionView*>(self)->setModel({ selectedProjectUUID_, projects_ }); },
 		[&](ModalViewBase* self)
 		{
 			const auto selectedProjectUUID = reinterpret_cast<ProjectSelectionView*>(self)->getSelectedProjectUUID();
@@ -57,9 +54,8 @@ ProjectExplorerController::ProjectExplorerController(ApplicationContext& applica
 		});
 
 	applicationContext.addMenuToggleAction(
-		showExplorerWindow_,
-		[&](const bool isOn) { isOn ? projectExplorerView_->open() : projectExplorerView_->close(); }, "Tools",
-		"Projects");
+		showExplorerWindow_, [&](const bool isOn)
+		{ isOn ? projectExplorerView_->open() : projectExplorerView_->close(); }, "Tools", "Projects");
 }
 
 ProjectExplorerController::~ProjectExplorerController() = default;
@@ -77,6 +73,8 @@ auto ProjectExplorerController::updateRenderingData(b3d::renderer::RenderingData
 
 auto ProjectExplorerController::update() -> void
 {
+	showExplorerWindow_ = projectExplorerView_->isOpen();
+
 	if (showExplorerWindow_)
 	{
 		projectExplorerView_->draw();
@@ -102,8 +100,8 @@ auto ProjectExplorerController::update() -> void
 		}
 	}
 
-	const auto isConnectedToAnyServer =
-		applicationContext_->serverClient_.getLastServerStatusState().health == b3d::tools::project::ServerHealthState::ok;
+	const auto isConnectedToAnyServer = applicationContext_->serverClient_.getLastServerStatusState().health ==
+		b3d::tools::project::ServerHealthState::ok;
 
 	if (not isConnectedToAnyServer)
 	{

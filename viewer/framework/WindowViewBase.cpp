@@ -35,8 +35,10 @@ auto WindowViewBase::beginDraw() -> void
 {
 	ImGui::SetNextWindowClass(&windowClass_);
 	drawContent_ = false;
+	needEndScope_ = false;
 	if (isOpen_)
 	{
+		needEndScope_ = true;
 		auto hasCloseButton = (flags_ & WindowFlagBits::noClose) != WindowFlagBits::noClose;
 		drawContent_ = ImGui::Begin(windowId_.c_str(), hasCloseButton ? &isOpen_ : nullptr, imGuiWindowFlags_);
 
@@ -58,7 +60,7 @@ auto WindowViewBase::beginDraw() -> void
 
 auto WindowViewBase::endDraw() -> void
 {
-	if (isOpen_ or drawContent_)
+	if (needEndScope_)
 	{
 		ImGui::End();
 	}

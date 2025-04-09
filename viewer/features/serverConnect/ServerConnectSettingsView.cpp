@@ -182,7 +182,7 @@ auto ServerConnectSettingsView::onDraw() -> void
 			applicationContext_->settings_.configuredServerSettings_.begin() + selectedItem_);
 		selectedItem_ -= 1;
 	}
-	ImGui::SameLine(ImGui::GetContentRegionAvail().x - 225);
+	ImGui::SameLine(ImGui::GetContentRegionAvail().x - 400); //TODO: fix size brakes the window somtimes
 
 	ImGui::BeginGroup();
 
