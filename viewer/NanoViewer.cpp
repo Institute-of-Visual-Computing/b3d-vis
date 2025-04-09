@@ -86,10 +86,8 @@ namespace
 		const auto accentColorDark2 = Color{ 0.00854f, 0.05469f, 0.18164f };
 		const auto accentColorDark3 = Color{ 0.00275f, 0.01941f, 0.05469f };
 #endif
-		// ImGui::PushStyleColor(ImGuiCol_TabActive, accentColor);
-		ImGuiStyle& style = ImGui::GetStyle();
+		auto& style = ImGui::GetStyle();
 
-		// Layout and rounding
 		style.WindowRounding = 8.0f;
 		style.FrameRounding = 4.0f;
 		style.GrabRounding = 4.0f;
@@ -110,43 +108,40 @@ namespace
 
 		style.TabBarBorderSize = 2.0f;
 
-		// Colors (Fluent-like soft colors, slight translucency where possible)
-		ImVec4* styleColors = style.Colors;
-		styleColors[ImGuiCol_Text] = ImVec4(0.95f, 0.95f, 0.95f, 1.00f);
-		styleColors[ImGuiCol_WindowBg] = ImVec4(0.12f, 0.12f, 0.12f, 0.94f); // Slight transparency
-		styleColors[ImGuiCol_ChildBg] = ImVec4(0.15f, 0.15f, 0.15f, 0.85f);
-		styleColors[ImGuiCol_PopupBg] = ImVec4(0.18f, 0.18f, 0.18f, 0.94f);
-		styleColors[ImGuiCol_Border] = ImVec4(0.25f, 0.25f, 0.25f, 0.60f);
+		auto& styleColors = style.Colors;
+		styleColors[ImGuiCol_Text] = Color{ 0.95f, 0.95f, 0.95f, 1.00f };
+		styleColors[ImGuiCol_WindowBg] = Color{ 0.12f, 0.12f, 0.12f, 0.94f };
+		styleColors[ImGuiCol_ChildBg] = Color{ 0.15f, 0.15f, 0.15f, 0.85f };
+		styleColors[ImGuiCol_PopupBg] = Color{ 0.18f, 0.18f, 0.18f, 0.94f };
+		styleColors[ImGuiCol_Border] = Color{ 0.25f, 0.25f, 0.25f, 0.60f };
 
-		styleColors[ImGuiCol_FrameBg] = ImVec4(0.22f, 0.22f, 0.22f, 1.00f);
+		styleColors[ImGuiCol_FrameBg] = Color{ 0.22f, 0.22f, 0.22f, 1.00f };
 		styleColors[ImGuiCol_FrameBgHovered] = accentColorDark3;
-		styleColors[ImGuiCol_FrameBgActive] = ImVec4(0.30f, 0.30f, 0.30f, 1.00f);
+		styleColors[ImGuiCol_FrameBgActive] = Color{ 0.30f, 0.30f, 0.30f, 1.00f };
 
-		styleColors[ImGuiCol_TitleBg] = ImVec4(0.16f, 0.16f, 0.16f, 1.00f);
-		styleColors[ImGuiCol_TitleBgActive] = ImVec4(0.18f, 0.18f, 0.18f, 1.00f);
-		styleColors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.10f, 0.10f, 0.10f, 0.75f);
+		styleColors[ImGuiCol_TitleBg] = Color{ 0.16f, 0.16f, 0.16f, 1.00f };
+		styleColors[ImGuiCol_TitleBgActive] = Color{ 0.18f, 0.18f, 0.18f, 1.00f };
+		styleColors[ImGuiCol_TitleBgCollapsed] = Color{ 0.10f, 0.10f, 0.10f, 0.75f };
 
-		styleColors[ImGuiCol_Button] = ImVec4(0.24f, 0.24f, 0.24f, 1.00f);
+		styleColors[ImGuiCol_Button] = Color{ 0.24f, 0.24f, 0.24f, 1.00f };
 		styleColors[ImGuiCol_ButtonHovered] = accentColorDark3;
-		styleColors[ImGuiCol_ButtonActive] = ImVec4(0.36f, 0.36f, 0.36f, 1.00f);
+		styleColors[ImGuiCol_ButtonActive] = Color{ 0.36f, 0.36f, 0.36f, 1.00f };
 
-		styleColors[ImGuiCol_Tab] = ImVec4(0.24f, 0.24f, 0.24f, 1.00f);
+		styleColors[ImGuiCol_Tab] = Color{ 0.24f, 0.24f, 0.24f, 1.00f };
 		styleColors[ImGuiCol_TabHovered] = accentColorDark3;
 		styleColors[ImGuiCol_TabActive] = accentColor;
 
-		styleColors[ImGuiCol_TabDimmed] = ImVec4(0.24f, 0.24f, 0.24f, 1.00f);
+		styleColors[ImGuiCol_TabDimmed] = Color{ 0.24f, 0.24f, 0.24f, 1.00f };
 		styleColors[ImGuiCol_TabDimmedSelected] = accentColorDark1;
 
-		styleColors[ImGuiCol_SliderGrab] = ImVec4(0.38f, 0.50f, 0.94f, 1.00f);
-		styleColors[ImGuiCol_SliderGrabActive] = ImVec4(0.26f, 0.40f, 0.85f, 1.00f);
+		styleColors[ImGuiCol_SliderGrab] = Color{ 0.38f, 0.50f, 0.94f, 1.00f };
+		styleColors[ImGuiCol_SliderGrabActive] = Color{ 0.26f, 0.40f, 0.85f, 1.00f };
 
-		styleColors[ImGuiCol_Header] = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
+		styleColors[ImGuiCol_Header] = Color{ 0.20f, 0.20f, 0.20f, 1.00f };
 		styleColors[ImGuiCol_HeaderHovered] = accentColorDark3;
-		styleColors[ImGuiCol_HeaderActive] = ImVec4(0.30f, 0.30f, 0.30f, 1.00f);
-
-		// Optional: if you’re using docking or nav
-		styleColors[ImGuiCol_DockingPreview] = ImVec4(0.30f, 0.30f, 0.90f, 0.70f);
-		styleColors[ImGuiCol_NavHighlight] = ImVec4(0.26f, 0.40f, 0.85f, 1.00f);
+		styleColors[ImGuiCol_HeaderActive] = Color{ 0.30f, 0.30f, 0.30f, 1.00f };
+		styleColors[ImGuiCol_DockingPreview] = Color{ 0.30f, 0.30f, 0.90f, 0.70f };
+		styleColors[ImGuiCol_NavHighlight] = Color{ 0.26f, 0.40f, 0.85f, 1.00f };
 
 		styleColors[ImGuiCol_ResizeGrip] = accentColorDark3;
 		styleColors[ImGuiCol_ResizeGripActive] = accentColor;
