@@ -12,6 +12,7 @@ add_executable(${viewerTargetName})
 
 IF (WIN32)
 	target_sources(${viewerTargetName} PRIVATE App.rc)
+	target_link_options(${viewerTargetName} PRIVATE /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup )
 ENDIF()
 
 target_sources(${viewerTargetName} PRIVATE
