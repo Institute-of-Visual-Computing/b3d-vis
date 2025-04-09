@@ -104,6 +104,7 @@ target_sources(${viewerTargetName} PRIVATE
 	features/sofiaSearch/SoFiaSearchView.h
 	features/sofiaSearch/SoFiaSearchView.cpp
 	features/sofiaSearch/ParamsSerializer.h
+	Color.h
 )
 
 target_include_directories(${viewerTargetName} PUBLIC /)

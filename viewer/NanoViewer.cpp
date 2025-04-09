@@ -37,6 +37,12 @@
 #include <ImGuiFileDialog.h>
 #pragma warning(pop)
 
+#include "Color.h"
+
+#ifdef WIN32
+#include <winrt/Windows.UI.ViewManagement.h>
+#endif
+
 using namespace owl;
 
 namespace
@@ -53,6 +59,103 @@ namespace
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
 		ImGui::GetStyle().WindowMenuButtonPosition = ImGuiDir_None;
+
+
+#ifdef WIN32
+		winrt::Windows::UI::ViewManagement::UISettings const ui_settings{};
+		const auto accentColor =
+			Color{ ui_settings.GetColorValue(winrt::Windows::UI::ViewManagement::UIColorType::Accent) };
+		const auto accentColorLight1 =
+			Color{ ui_settings.GetColorValue(winrt::Windows::UI::ViewManagement::UIColorType::AccentLight1) };
+		const auto accentColorLight2 =
+			Color{ ui_settings.GetColorValue(winrt::Windows::UI::ViewManagement::UIColorType::AccentLight2) };
+		const auto accentColorLight3 =
+			Color{ ui_settings.GetColorValue(winrt::Windows::UI::ViewManagement::UIColorType::AccentLight3) };
+		const auto accentColorDark1 =
+			Color{ ui_settings.GetColorValue(winrt::Windows::UI::ViewManagement::UIColorType::AccentDark1) };
+		const auto accentColorDark2 =
+			Color{ ui_settings.GetColorValue(winrt::Windows::UI::ViewManagement::UIColorType::AccentDark2) };
+		const auto accentColorDark3 =
+			Color{ ui_settings.GetColorValue(winrt::Windows::UI::ViewManagement::UIColorType::AccentDark3) };
+#else
+		const auto accentColor = Color{ 0.0332f, 0.19141f, 0.69531f };
+		const auto accentColorLight1 = Color{ 0.09082f, 0.33203f, 0.77734f };
+		const auto accentColorLight2 = Color{ 0.21582f, 0.48438f, 0.85547f };
+		const auto accentColorLight3 = Color{ 0.41797f, 0.6875f, 1.0f };
+		const auto accentColorDark1 = Color{ 0.01685f, 0.10205f, 0.34766f };
+		const auto accentColorDark2 = Color{ 0.00854f, 0.05469f, 0.18164f };
+		const auto accentColorDark3 = Color{ 0.00275f, 0.01941f, 0.05469f };
+#endif
+		// ImGui::PushStyleColor(ImGuiCol_TabActive, accentColor);
+		ImGuiStyle& style = ImGui::GetStyle();
+
+		// Layout and rounding
+		style.WindowRounding = 8.0f;
+		style.FrameRounding = 4.0f;
+		style.GrabRounding = 4.0f;
+		style.ScrollbarRounding = 4.0f;
+		style.TabRounding = 4.0f;
+
+		style.WindowBorderSize = 0.0f;
+		style.FrameBorderSize = 1.0f;
+		style.PopupBorderSize = 1.0f;
+
+		style.WindowPadding = ImVec2(16, 16);
+		style.FramePadding = ImVec2(8, 4);
+		style.ItemSpacing = ImVec2(8, 12);
+		style.ItemInnerSpacing = ImVec2(8, 4);
+		style.IndentSpacing = 20.0f;
+		style.ScrollbarSize = 12.0f;
+		style.GrabMinSize = 20.0f;
+
+		style.TabBarBorderSize = 2.0f;
+
+		// Colors (Fluent-like soft colors, slight translucency where possible)
+		ImVec4* styleColors = style.Colors;
+		styleColors[ImGuiCol_Text] = ImVec4(0.95f, 0.95f, 0.95f, 1.00f);
+		styleColors[ImGuiCol_WindowBg] = ImVec4(0.12f, 0.12f, 0.12f, 0.94f); // Slight transparency
+		styleColors[ImGuiCol_ChildBg] = ImVec4(0.15f, 0.15f, 0.15f, 0.85f);
+		styleColors[ImGuiCol_PopupBg] = ImVec4(0.18f, 0.18f, 0.18f, 0.94f);
+		styleColors[ImGuiCol_Border] = ImVec4(0.25f, 0.25f, 0.25f, 0.60f);
+
+		styleColors[ImGuiCol_FrameBg] = ImVec4(0.22f, 0.22f, 0.22f, 1.00f);
+		styleColors[ImGuiCol_FrameBgHovered] = accentColorDark3;
+		styleColors[ImGuiCol_FrameBgActive] = ImVec4(0.30f, 0.30f, 0.30f, 1.00f);
+
+		styleColors[ImGuiCol_TitleBg] = ImVec4(0.16f, 0.16f, 0.16f, 1.00f);
+		styleColors[ImGuiCol_TitleBgActive] = ImVec4(0.18f, 0.18f, 0.18f, 1.00f);
+		styleColors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.10f, 0.10f, 0.10f, 0.75f);
+
+		styleColors[ImGuiCol_Button] = ImVec4(0.24f, 0.24f, 0.24f, 1.00f);
+		styleColors[ImGuiCol_ButtonHovered] = accentColorDark3;
+		styleColors[ImGuiCol_ButtonActive] = ImVec4(0.36f, 0.36f, 0.36f, 1.00f);
+
+		styleColors[ImGuiCol_Tab] = ImVec4(0.24f, 0.24f, 0.24f, 1.00f);
+		styleColors[ImGuiCol_TabHovered] = accentColorDark3;
+		styleColors[ImGuiCol_TabActive] = accentColor;
+
+		styleColors[ImGuiCol_TabDimmed] = ImVec4(0.24f, 0.24f, 0.24f, 1.00f);
+		styleColors[ImGuiCol_TabDimmedSelected] = accentColorDark1;
+
+		styleColors[ImGuiCol_SliderGrab] = ImVec4(0.38f, 0.50f, 0.94f, 1.00f);
+		styleColors[ImGuiCol_SliderGrabActive] = ImVec4(0.26f, 0.40f, 0.85f, 1.00f);
+
+		styleColors[ImGuiCol_Header] = ImVec4(0.20f, 0.20f, 0.20f, 1.00f);
+		styleColors[ImGuiCol_HeaderHovered] = accentColorDark3;
+		styleColors[ImGuiCol_HeaderActive] = ImVec4(0.30f, 0.30f, 0.30f, 1.00f);
+
+		// Optional: if you’re using docking or nav
+		styleColors[ImGuiCol_DockingPreview] = ImVec4(0.30f, 0.30f, 0.90f, 0.70f);
+		styleColors[ImGuiCol_NavHighlight] = ImVec4(0.26f, 0.40f, 0.85f, 1.00f);
+
+		styleColors[ImGuiCol_ResizeGrip] = accentColorDark3;
+		styleColors[ImGuiCol_ResizeGripActive] = accentColor;
+		styleColors[ImGuiCol_ResizeGripHovered] = accentColorLight3;
+
+		styleColors[ImGuiCol_SliderGrab] = accentColor;
+		styleColors[ImGuiCol_SliderGrabActive] = accentColorLight3;
+
+		styleColors[ImGuiCol_CheckMark] = accentColor;
 	}
 
 	[[nodiscard]] auto requestRequiredDpiScales() -> std::vector<float>
@@ -227,7 +330,6 @@ auto NanoViewer::draw() -> void
 	onFrameBegin();
 	glClear(GL_COLOR_BUFFER_BIT);
 
-
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 
@@ -247,10 +349,7 @@ auto NanoViewer::draw() -> void
 	ImGui::BeginMainMenuBar();
 	if (ImGui::BeginMenu("Program"))
 	{
-		if (ImGui::MenuItem(ICON_LC_UNPLUG " Data Service..", nullptr, nullptr))
-		{
-		}
-		if (ImGui::MenuItem("Server Connection...", nullptr, nullptr))
+		if (ImGui::MenuItem(ICON_LC_UNPLUG " Server Connection...", nullptr, nullptr))
 		{
 			connectView.open();
 			connectView.reset();
@@ -262,9 +361,10 @@ auto NanoViewer::draw() -> void
 
 	if (ImGui::BeginMenu("Tools"))
 	{
-		if (ImGui::MenuItem(ICON_LC_BAR_CHART_3 " Histogram", nullptr, nullptr))
+		// TODO: feature request for histogram
+		/*if (ImGui::MenuItem(ICON_LC_BAR_CHART_3 " Histogram", nullptr, nullptr))
 		{
-		}
+		}*/
 
 		ImGui::EndMenu();
 	}
@@ -534,7 +634,7 @@ auto NanoViewer::run(const std::function<bool()>& keepgoing) -> void
 	}
 
 	deinitializeGui();
-	volumeView_.reset(); //TODO: unify and maybe also provide initilize/deinitialize
+	volumeView_.reset(); // TODO: unify and maybe also provide initilize/deinitialize
 	currentRenderer_->deinitialize();
 	glfwDestroyWindow(applicationContext_->mainWindowHandle_);
 	glfwTerminate();
