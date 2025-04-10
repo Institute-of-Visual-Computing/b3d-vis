@@ -38,9 +38,12 @@
 #pragma warning(pop)
 
 #include "Color.h"
+#include "Mathematics.h"
 
 #ifdef WIN32
-#include <winrt/Windows.UI.ViewManagement.h>
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
+#include <dwmapi.h>
 #endif
 
 using namespace owl;
@@ -54,12 +57,12 @@ namespace
 									legit::Colors::alizarin,  legit::Colors::pomegranate, legit::Colors::clouds,
 									legit::Colors::silver };
 
+
 	auto setupGuiStyle() -> void
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
 		ImGui::GetStyle().WindowMenuButtonPosition = ImGuiDir_None;
-
 
 #ifdef WIN32
 		winrt::Windows::UI::ViewManagement::UISettings const ui_settings{};
@@ -98,59 +101,61 @@ namespace
 		style.FrameBorderSize = 1.0f;
 		style.PopupBorderSize = 1.0f;
 
-		style.WindowPadding = ImVec2(16, 16);
-		style.FramePadding = ImVec2(8, 4);
-		style.ItemSpacing = ImVec2(8, 12);
-		style.ItemInnerSpacing = ImVec2(8, 4);
+		style.WindowPadding = Vector2{ 16.0f, 16.0f };
+		style.FramePadding = Vector2{ 8, 4 };
+		style.ItemSpacing = Vector2{ 8, 12 };
+		style.ItemInnerSpacing = Vector2{ 8, 4 };
 		style.IndentSpacing = 20.0f;
 		style.ScrollbarSize = 12.0f;
 		style.GrabMinSize = 20.0f;
 
 		style.TabBarBorderSize = 2.0f;
 
+		style.DisabledAlpha = 1.0f;
+
 		auto& styleColors = style.Colors;
-		styleColors[ImGuiCol_Text] = Color{ 0.95f, 0.95f, 0.95f, 1.00f };
-		styleColors[ImGuiCol_WindowBg] = Color{ 0.12f, 0.12f, 0.12f, 0.94f };
-		styleColors[ImGuiCol_ChildBg] = Color{ 0.15f, 0.15f, 0.15f, 0.85f };
-		styleColors[ImGuiCol_PopupBg] = Color{ 0.18f, 0.18f, 0.18f, 0.94f };
-		styleColors[ImGuiCol_Border] = Color{ 0.25f, 0.25f, 0.25f, 0.60f };
+		styleColors[ImGuiCol_Text] = static_cast<ImVec4>(Color{ 0.95f, 0.95f, 0.95f, 1.00f });
+		styleColors[ImGuiCol_WindowBg] = static_cast<ImVec4>(Color{ 0.12f, 0.12f, 0.12f, 0.94f });
+		styleColors[ImGuiCol_ChildBg] = static_cast<ImVec4>(Color{ 0.15f, 0.15f, 0.15f, 0.85f });
+		styleColors[ImGuiCol_PopupBg] = static_cast<ImVec4>(Color{ 0.18f, 0.18f, 0.18f, 0.94f });
+		styleColors[ImGuiCol_Border] = static_cast<ImVec4>(Color{ 0.25f, 0.25f, 0.25f, 0.60f });
 
-		styleColors[ImGuiCol_FrameBg] = Color{ 0.22f, 0.22f, 0.22f, 1.00f };
-		styleColors[ImGuiCol_FrameBgHovered] = accentColorDark3;
-		styleColors[ImGuiCol_FrameBgActive] = Color{ 0.30f, 0.30f, 0.30f, 1.00f };
+		styleColors[ImGuiCol_FrameBg] = static_cast<ImVec4>(Color{ 0.22f, 0.22f, 0.22f, 1.00f });
+		styleColors[ImGuiCol_FrameBgHovered] = static_cast<ImVec4>(accentColorDark3);
+		styleColors[ImGuiCol_FrameBgActive] = static_cast<ImVec4>(Color{ 0.30f, 0.30f, 0.30f, 1.00f });
 
-		styleColors[ImGuiCol_TitleBg] = Color{ 0.16f, 0.16f, 0.16f, 1.00f };
-		styleColors[ImGuiCol_TitleBgActive] = Color{ 0.18f, 0.18f, 0.18f, 1.00f };
-		styleColors[ImGuiCol_TitleBgCollapsed] = Color{ 0.10f, 0.10f, 0.10f, 0.75f };
+		styleColors[ImGuiCol_TitleBg] = static_cast<ImVec4>(Color{ 0.16f, 0.16f, 0.16f, 1.00f });
+		styleColors[ImGuiCol_TitleBgActive] = static_cast<ImVec4>(Color{ 0.18f, 0.18f, 0.18f, 1.00f });
+		styleColors[ImGuiCol_TitleBgCollapsed] = static_cast<ImVec4>(Color{ 0.10f, 0.10f, 0.10f, 0.75f });
 
-		styleColors[ImGuiCol_Button] = Color{ 0.24f, 0.24f, 0.24f, 1.00f };
-		styleColors[ImGuiCol_ButtonHovered] = accentColorDark3;
-		styleColors[ImGuiCol_ButtonActive] = Color{ 0.36f, 0.36f, 0.36f, 1.00f };
+		styleColors[ImGuiCol_Button] = static_cast<ImVec4>(Color{ 0.24f, 0.24f, 0.24f, 1.00f });
+		styleColors[ImGuiCol_ButtonHovered] = static_cast<ImVec4>(accentColorDark3);
+		styleColors[ImGuiCol_ButtonActive] = static_cast<ImVec4>(Color{ 0.36f, 0.36f, 0.36f, 1.00f });
 
-		styleColors[ImGuiCol_Tab] = Color{ 0.24f, 0.24f, 0.24f, 1.00f };
-		styleColors[ImGuiCol_TabHovered] = accentColorDark3;
-		styleColors[ImGuiCol_TabActive] = accentColor;
+		styleColors[ImGuiCol_Tab] = static_cast<ImVec4>(Color{ 0.24f, 0.24f, 0.24f, 1.00f });
+		styleColors[ImGuiCol_TabHovered] = static_cast<ImVec4>(accentColorDark3);
+		styleColors[ImGuiCol_TabActive] = static_cast<ImVec4>(accentColor);
 
-		styleColors[ImGuiCol_TabDimmed] = Color{ 0.24f, 0.24f, 0.24f, 1.00f };
-		styleColors[ImGuiCol_TabDimmedSelected] = accentColorDark1;
+		styleColors[ImGuiCol_TabDimmed] = static_cast<ImVec4>(Color{ 0.24f, 0.24f, 0.24f, 1.00f });
+		styleColors[ImGuiCol_TabDimmedSelected] = static_cast<ImVec4>(accentColorDark1);
 
-		styleColors[ImGuiCol_SliderGrab] = Color{ 0.38f, 0.50f, 0.94f, 1.00f };
-		styleColors[ImGuiCol_SliderGrabActive] = Color{ 0.26f, 0.40f, 0.85f, 1.00f };
+		styleColors[ImGuiCol_SliderGrab] = static_cast<ImVec4>(Color{ 0.38f, 0.50f, 0.94f, 1.00f });
+		styleColors[ImGuiCol_SliderGrabActive] = static_cast<ImVec4>(Color{ 0.26f, 0.40f, 0.85f, 1.00f });
 
-		styleColors[ImGuiCol_Header] = Color{ 0.20f, 0.20f, 0.20f, 1.00f };
-		styleColors[ImGuiCol_HeaderHovered] = accentColorDark3;
-		styleColors[ImGuiCol_HeaderActive] = Color{ 0.30f, 0.30f, 0.30f, 1.00f };
-		styleColors[ImGuiCol_DockingPreview] = Color{ 0.30f, 0.30f, 0.90f, 0.70f };
-		styleColors[ImGuiCol_NavHighlight] = Color{ 0.26f, 0.40f, 0.85f, 1.00f };
+		styleColors[ImGuiCol_Header] = static_cast<ImVec4>(Color{ 0.20f, 0.20f, 0.20f, 1.00f });
+		styleColors[ImGuiCol_HeaderHovered] = static_cast<ImVec4>(accentColorDark3);
+		styleColors[ImGuiCol_HeaderActive] = static_cast<ImVec4>(Color{ 0.30f, 0.30f, 0.30f, 1.00f });
+		styleColors[ImGuiCol_DockingPreview] = static_cast<ImVec4>(Color{ 0.30f, 0.30f, 0.90f, 0.70f });
+		styleColors[ImGuiCol_NavHighlight] = static_cast<ImVec4>(Color{ 0.26f, 0.40f, 0.85f, 1.00f });
 
-		styleColors[ImGuiCol_ResizeGrip] = accentColorDark3;
-		styleColors[ImGuiCol_ResizeGripActive] = accentColor;
-		styleColors[ImGuiCol_ResizeGripHovered] = accentColorLight3;
+		styleColors[ImGuiCol_ResizeGrip] = static_cast<ImVec4>(accentColorDark3);
+		styleColors[ImGuiCol_ResizeGripActive] = static_cast<ImVec4>(accentColor);
+		styleColors[ImGuiCol_ResizeGripHovered] = static_cast<ImVec4>(accentColorLight3);
 
-		styleColors[ImGuiCol_SliderGrab] = accentColor;
-		styleColors[ImGuiCol_SliderGrabActive] = accentColorLight3;
+		styleColors[ImGuiCol_SliderGrab] = static_cast<ImVec4>(accentColor);
+		styleColors[ImGuiCol_SliderGrabActive] = static_cast<ImVec4>(accentColorLight3);
 
-		styleColors[ImGuiCol_CheckMark] = accentColor;
+		styleColors[ImGuiCol_CheckMark] = static_cast<ImVec4>(accentColor);
 	}
 
 	[[nodiscard]] auto requestRequiredDpiScales() -> std::vector<float>
@@ -174,7 +179,6 @@ namespace
 		return requiredDpiScales;
 	}
 
-
 	auto windowContentScaleCallback([[maybe_unused]] GLFWwindow* window, [[maybe_unused]] const float scaleX,
 									[[maybe_unused]] float scaleY)
 	{
@@ -190,7 +194,6 @@ namespace
 		b3d::renderer::log(std::format("Error: {}\n", description), b3d::renderer::LogLevel::error);
 	}
 
-
 	auto initializeGui(GLFWwindow* window, ApplicationContext* applicationContext) -> void
 	{
 		IMGUI_CHECKVERSION();
@@ -199,8 +202,8 @@ namespace
 		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 		ImGuizmo::AllowAxisFlip(false);
 		auto& io = ImGui::GetIO();
-		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
-		io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad; // Enable Gamepad Controls
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 
 		ImGui::StyleColorsDark();
 
@@ -255,6 +258,16 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 		exit(EXIT_FAILURE);
 	}
 
+#ifdef WIN32
+#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
+#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
+#endif
+	const auto hwnd = glfwGetWin32Window(mainWindowHandle);
+	BOOL value = TRUE;
+	DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(value));
+
+#endif
+
 
 	glfwSetWindowUserPointer(mainWindowHandle, this);
 	glfwMakeContextCurrent(mainWindowHandle);
@@ -268,6 +281,8 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 
 	applicationContext_ = std::make_unique<ApplicationContext>();
 	applicationContext_->mainWindowHandle_ = mainWindowHandle;
+
+	applicationContext_->setStyleBrush(createDarkThemeBrush(AccentColors{}));
 
 	applicationContext_->setExternalDrawLists(debugDrawList_, gizmoHelper_);
 
@@ -459,7 +474,6 @@ auto NanoViewer::run(const std::function<bool()>& keepgoing) -> void
 	int width, height;
 	glfwGetFramebufferSize(applicationContext_->mainWindowHandle_, &width, &height);
 
-
 	glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
 	glfwSetFramebufferSizeCallback(applicationContext_->mainWindowHandle_,
 								   [](GLFWwindow* window, int, int)
@@ -494,16 +508,16 @@ auto NanoViewer::run(const std::function<bool()>& keepgoing) -> void
 			if (applicationContext_->serverClient_.getLastServerStatusState().health ==
 				b3d::tools::project::ServerHealthState::ok)
 			{
-				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.1f, 0.5f, 0.1f, 1.0f });
+				ImGui::PushStyleColor(ImGuiCol_Button, Color{ 0.1f, 0.5f, 0.1f, 1.0f });
 			}
 			else if (applicationContext_->serverClient_.getLastServerStatusState().health ==
 					 b3d::tools::project::ServerHealthState::testing)
 			{
-				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 1.0f, 0.65f, 0.0f, 1.0f });
+				ImGui::PushStyleColor(ImGuiCol_Button, Color{ 1.0f, 0.65f, 0.0f, 1.0f });
 			}
 			else
 			{
-				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.5f, 0.1f, 0.1f, 1.0f });
+				ImGui::PushStyleColor(ImGuiCol_Button, Color{ 0.5f, 0.1f, 0.1f, 1.0f });
 				icon = ICON_LC_SERVER_OFF;
 			}
 
@@ -629,7 +643,7 @@ auto NanoViewer::run(const std::function<bool()>& keepgoing) -> void
 	}
 
 	deinitializeGui();
-	volumeView_.reset(); // TODO: unify and maybe also provide initilize/deinitialize
+	volumeView_.reset(); // TODO: unify and maybe also provide initialize/deinitialize
 	currentRenderer_->deinitialize();
 	glfwDestroyWindow(applicationContext_->mainWindowHandle_);
 	glfwTerminate();

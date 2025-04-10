@@ -43,7 +43,6 @@ public:
 
 private:
 	auto selectRenderer(uint32_t index) -> void;
-	auto gui() -> void;
 	auto draw() -> void;
 	auto onFrameBegin() -> void;
 

@@ -12,7 +12,8 @@ add_executable(${viewerTargetName})
 
 IF (WIN32)
 	target_sources(${viewerTargetName} PRIVATE App.rc)
-	target_link_options(${viewerTargetName} PRIVATE /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup )
+	target_link_options(${viewerTargetName} PRIVATE /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup /VERBOSE)
+	target_link_libraries(${viewerTargetName} PRIVATE Dwmapi.lib)
 ENDIF()
 
 target_sources(${viewerTargetName} PRIVATE
@@ -106,6 +107,9 @@ target_sources(${viewerTargetName} PRIVATE
 	features/sofiaSearch/SoFiaSearchView.cpp
 	features/sofiaSearch/ParamsSerializer.h
 	Color.h
+	Mathematics.h
+	Style.h
+	Style.cpp
 )
 
 target_include_directories(${viewerTargetName} PUBLIC /)

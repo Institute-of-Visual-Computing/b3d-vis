@@ -4,6 +4,7 @@
 #include "GizmoHelper.h"
 #include "framework/ApplicationContext.h"
 #include "IconsLucide.h"
+#include "Style.h"
 
 namespace
 {
@@ -27,7 +28,7 @@ namespace
 	auto ResetButtonOnSameLine(float buttonSizeX) -> bool
 	{
 		ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - buttonSizeX);
-		return ImGui::Button(ICON_LC_UNDO_2);
+		return DecoratedButton(ICON_LC_UNDO_2);
 	}
 
 	template <typename T>
@@ -154,7 +155,7 @@ auto SoFiaSearchView::onDraw() -> void
 	}
 
 	ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.1f, 0.5f, 0.1f, 1.0f });
-	if (ImGui::Button("Submit Search"))
+	if (DecoratedButton("Submit Search"))
 	{
 		startSearchFunction_();
 		resetParams();
@@ -477,7 +478,7 @@ auto SoFiaSearchView::onDraw() -> void
 		ImGui::SameLine();
 		HelpMarker("Comma-separated list of spatial Gaussian kernel sizes to apply. The individual kernel sizes must be floating-point values and denote the full width at half maximum (FWHM) of the Gaussian used to smooth the data in the spatial domain. A value of 0 means that no spatial smoothing will be applied.");
 		ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnDefaultSize);
-		if (ImGui::Button(ICON_LC_UNDO_2))
+		if (DecoratedButton(ICON_LC_UNDO_2))
 		{
 			model_.params.scfind.kernelsXY = { 0, 3, 6 };
 		}
@@ -489,7 +490,7 @@ auto SoFiaSearchView::onDraw() -> void
 				ImGui::PushID(i);
 				ImGui::Text(std::format("{}", kernel).c_str());
 				ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnDefaultSize);
-				if (ImGui::Button(ICON_LC_X))
+				if (DecoratedButton(ICON_LC_X))
 				{
 					model_.params.scfind.kernelsXY.erase(model_.params.scfind.kernelsXY.begin() + i);
 				}
@@ -502,7 +503,7 @@ auto SoFiaSearchView::onDraw() -> void
 		ImGui::InputInt("", &inputXY, 1, 5);
 		inputXY = std::max(0, inputXY);
 		ImGui::SameLine();
-		if (ImGui::Button("Add##AddKernelXY"))
+		if (DecoratedButton("Add##AddKernelXY"))
 		{
 			if (model_.params.scfind.kernelsXY.end() == std::ranges::find(model_.params.scfind.kernelsXY, inputXY))
 			{
@@ -518,7 +519,7 @@ auto SoFiaSearchView::onDraw() -> void
 		HelpMarker(
 			"Comma-separated list of spectral Boxcar kernel sizes to apply. The individual kernel sizes must be odd integer values of 3 or greater and denote the full width of the Boxcar filter used to smooth the data in the spectral domain. A value of 0 means that no spectral smoothing will be applied.");
 		ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnDefaultSize);
-		if (ImGui::Button(ICON_LC_UNDO_2))
+		if (DecoratedButton(ICON_LC_UNDO_2))
 		{
 			model_.params.scfind.kernelsZ = { 0, 3, 7, 15 };
 		}
@@ -532,7 +533,7 @@ auto SoFiaSearchView::onDraw() -> void
 				ImGui::PushID(i);
 				ImGui::Text(std::format("{}", kernel).c_str());
 				ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnDefaultSize);
-				if (ImGui::Button(ICON_LC_X))
+				if (DecoratedButton(ICON_LC_X))
 				{
 					model_.params.scfind.kernelsZ.erase(model_.params.scfind.kernelsZ.begin() + i);
 				}
@@ -548,7 +549,7 @@ auto SoFiaSearchView::onDraw() -> void
 		ImGui::InputInt("", &inputZ, 2, 5);
 
 		ImGui::SameLine();
-		if (ImGui::Button("Add##AddKernelZ"))
+		if (DecoratedButton("Add##AddKernelZ"))
 		{
 			if (model_.params.scfind.kernelsZ.end() == std::ranges::find(model_.params.scfind.kernelsZ, inputZ))
 			{
@@ -711,7 +712,7 @@ auto SoFiaSearchView::onDraw() -> void
 				   "the kurtosis across the source mask. Flux densities will be divided by the global RMS noise level. "
 				   "peak, sum, mean, pix and fill will be logarithmic, all other parameters linear.");
 		ImGui::SameLine(ImGui::GetWindowContentRegionMax().x - btnDefaultSize);
-		if (ImGui::Button(ICON_LC_UNDO_2))
+		if (DecoratedButton(ICON_LC_UNDO_2))
 		{
 			reliabilityParamItemBoxes = { true, true, true, false, false, false, false, false, false };
 		}
