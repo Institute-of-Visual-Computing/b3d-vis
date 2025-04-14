@@ -3,8 +3,6 @@
 
 #include "ProjectExplorer.h"
 #include "ProjectExplorerView.h"
-#include "ProjectSelectionView.h"
-
 #include "ProjectExplorerController.h"
 
 #include <RenderData.h>
@@ -28,30 +26,9 @@ ProjectExplorerController::ProjectExplorerController(ApplicationContext& applica
 	  projectExplorer_(&projectExplorer), projects_(&projects)
 {
 	projectExplorerView_ = std::make_unique<ProjectExplorerView>(
-		applicationContext, applicationContext.getMainDockspace(), [&] { projectSelectionView_->open(); }, [&] {},
+		applicationContext, applicationContext.getMainDockspace(), [&] { }, [&] {},
 		[&](const std::string& fileUUID) { return projectExplorer_->loadAndShowFile(fileUUID); },
 		[&]() { return projectExplorer_->refreshProjects(); });
-
-	projectSelectionView_ = std::make_unique<ProjectSelectionView>(
-		applicationContext, [&]() { return projectExplorer_->refreshProjects(); }, [&](ModalViewBase* self)
-		{ reinterpret_cast<ProjectSelectionView*>(self)->setModel({ selectedProjectUUID_, projects_ }); },
-		[&](ModalViewBase* self)
-		{
-			const auto selectedProjectUUID = reinterpret_cast<ProjectSelectionView*>(self)->getSelectedProjectUUID();
-			if (!selectedProjectUUID.empty())
-			{
-				selectedProjectUUID_ = selectedProjectUUID;
-
-				const auto it =
-					std::ranges::find_if(projects_->begin(), projects_->end(),
-										 [&uuid = selectedProjectUUID](const b3d::tools::project::Project& currProject)
-										 { return currProject.projectUUID == uuid; });
-				if (it != projects_->end())
-				{
-					// projectExplorerView_->setModel({ &*it });
-				}
-			}
-		});
 
 	applicationContext.addMenuToggleAction(
 		showExplorerWindow_, [&](const bool isOn)
@@ -63,7 +40,6 @@ ProjectExplorerController::~ProjectExplorerController() = default;
 auto ProjectExplorerController::setProjects(std::vector<b3d::tools::project::Project>* projects) -> void
 {
 	projects_ = projects;
-	projectSelectionView_->setModel({ projectSelectionView_->getSelectedProjectUUID(), projects_ });
 	projectExplorerView_->setModel(ProjectExplorerView::Model{ projects_ });
 }
 auto ProjectExplorerController::updateRenderingData(b3d::renderer::RenderingDataWrapper& renderingData) -> void
@@ -107,5 +83,4 @@ auto ProjectExplorerController::update() -> void
 	{
 		// setProjects(nullptr);
 	}
-	projectSelectionView_->draw();
 }

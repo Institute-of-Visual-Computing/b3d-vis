@@ -6,10 +6,12 @@
 #include "ProjectExplorerView.h"
 
 #include <imspinner.h>
+
 #include "DebugDrawList.h"
 #include "IconsLucide.h"
 #include "IdGenerator.h"
 #include "ImGuiExtension.h"
+#include "Style.h"
 
 namespace
 {
@@ -81,170 +83,141 @@ auto ProjectExplorerView::drawSelectableItemGridPanel(const char* panelId, int& 
 	const auto windowVisibleX2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
 	ImGui::PushID(panelId);
 	ImGui::BeginChild("", panelSize, ImGuiChildFlags_Border, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+	const auto addButtonText = ICON_LC_FILE_UP " Add";
+	const auto addButtonTextSize = ImGui::CalcTextSize(addButtonText, NULL, true);
+	const auto addButtonSize = ImGui::CalcItemSize(Vector2{}, addButtonTextSize.x + style.FramePadding.x * 2.0f,
+												   addButtonTextSize.y + style.FramePadding.y * 2.0f);
+
+
+	if (not upload.valid())
+	{
+
+
+		ImGui::SetNextItemAllowOverlap();
+		if (ui::AccentButton(addButtonText, addButtonSize))
+		{
+			addNewProjectView_->open();
+		}
+		if (ImGui::BeginItemTooltip())
+		{
+			ImGui::Text("Create and Upload new dataset");
+			ImGui::EndTooltip();
+		}
+	}
+	else
+	{
+		const auto itemPosition = ImGui::GetCursorPos();
+		ImGui::InvisibleButton("##uploading", addButtonSize);
+		ImGui::SetNextItemAllowOverlap();
+
+		ImGui::SetCursorPos(itemPosition);
+		ImGui::ProgressBar(uploadFeedback.progress / 100.0f, addButtonSize, "");
+		const auto bars = 12u;
+		ImGui::SetCursorPos(itemPosition + Vector2{ addButtonSize.x * 0.25f, 0 });
+		ImSpinner::SpinnerBarsScaleMiddle("uploading_new_file", ImGui::GetFontSize() * 0.5f / bars, ImSpinner::white,
+										  2.8f, bars);
+	}
+	if (selectedItemIndex >= 0)
+	{
+		ImGui::PushID(selectedItemIndex);
+		ImGui::SameLine();
+		const auto emptySpace = ImGui::CalcTextSize(ICON_LC_PENCIL " Edit").x +
+			ImGui::CalcTextSize(ICON_LC_TRASH_2 " Delete").x + style.FramePadding.x * 4.f + style.ItemSpacing.x;
+
+		ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - emptySpace);
+		if (ui::Button(ICON_LC_PENCIL " Edit"))
+		{
+			editProjectView_->setProjectIndex(selectedItemIndex);
+			editProjectView_->open();
+		}
+		ImGui::SetItemTooltip("Edit Project Name");
+		ImGui::SameLine();
+
+		if (ui::Button(ICON_LC_TRASH_2 " Delete"))
+		{
+			deleteProjectView_->setProjectIndex(selectedItemIndex);
+			deleteProjectView_->open();
+		}
+		ImGui::SetItemTooltip("Delete Project");
+		ImGui::PopID();
+	}
+
 	auto pos = ImGui::GetCursorPos();
 	const auto widgetStartPosition = ImGui::GetCursorPos();
-	const auto itemsCount = items + 1; // add button as last item
+	const auto itemsCount = items;
 	for (auto n = 0; n < itemsCount; n++)
 	{
-		const auto lastItem = n == items;
-
 		constexpr auto padding = 10;
 
 		ImGui::PushID(n);
 		ImGui::SetNextItemAllowOverlap();
-		ImGui::SetCursorPos(ImVec2(pos.x + padding, pos.y + padding));
-		ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 4.0f);
-		ImGui::BeginChild("", ImVec2{ 0, 0 },
+		ImGui::SetCursorPos(Vector2(pos.x + padding, pos.y + padding));
+		ImGui::BeginChild("", Vector2{ 0, 0 },
 						  ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeX | ImGuiChildFlags_AutoResizeY);
-		auto alignment = ImVec2(0.5f, 0.0f);
+		auto alignment = Vector2(0.5f, 0.0f);
 		ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, alignment);
 		ImGui::PushID(n);
-		if (lastItem)
+
+		const auto itemPosition = ImGui::GetCursorPos();
+
+		if (ui::Selectable("", selectedItemIndex == n,
+						   ImGuiSelectableFlags_DontClosePopups | ImGuiSelectableFlags_AllowOverlap, itemSize))
 		{
-			static auto isUploadButton = true;
+			selectedItemIndex = n;
+			projectSelected = true;
+		}
 
-			if (not upload.valid())
-			{
+		if (ImGui::BeginItemTooltip())
+		{
+			popup(n);
+			ImGui::EndTooltip();
+		}
 
-				ImGui::PushStyleColor(ImGuiCol_Button,
-									  ImGui::ColorConvertFloat4ToU32(ImVec4{ 0.1f, 0.7f, 0.1f, 1.0f }));
-				ImGui::SetNextItemAllowOverlap();
-				ImGui::PushFont(iconFont);
-				if (ImGui::Button(ICON_LC_FILE_UP, itemSize))
-				{
-					addNewProjectView_->open();
-				}
-				ImGui::PopFont();
-				ImGui::PopStyleColor();
-			}
-			else
-			{
-				const auto itemPosition = ImGui::GetCursorPos();
-				ImGui::InvisibleButton("##uploading", itemSize);
-				const auto textSize = ImGui::CalcTextSize("Uploading");
-				ImGui::PushFont(iconFont);
-				ImGui::SetNextItemAllowOverlap();
-				const auto iconSize = ImGui::CalcTextSize(ICON_LC_FILE_UP);
+		const auto textSize = ImGui::CalcTextSize(name(n));
+		auto approximatedTextSize = textSize;
+		const auto dotsTextSize = ImGui::CalcTextSize("...");
+		ImGui::PushFont(iconFont);
+		// ImGui::SetNextItemAllowOverlap();
+		const auto iconSize = ImGui::CalcTextSize(icon);
 
-				const auto height = textSize.y + iconSize.y + ImGui::GetStyle().FramePadding.y;
+		const auto height = textSize.y + iconSize.y + ImGui::GetStyle().FramePadding.y;
 
-				ImGui::SetCursorPos(itemPosition +
-									ImVec2{ (itemSize.x - iconSize.x) * 0.5f, (itemSize.y - height) * 0.5f });
-				ImGui::Text(ICON_LC_FILE_UP);
-				ImGui::PopFont();
+		ImGui::SetCursorPos(itemPosition + ImVec2{ (itemSize.x - iconSize.x) * 0.5f, (itemSize.y - height) * 0.5f });
+		ImGui::Text(icon);
+		ImGui::PopFont();
 
-				const auto text = std::string{ "Uploading" };
-				auto approximatedTextSize = textSize;
 
-				ImGui::SetCursorPos(
-					itemPosition +
-					ImVec2{ (itemSize.x - approximatedTextSize.x) * 0.5f,
-							(itemSize.y - height) * 0.5f + iconSize.y + ImGui::GetStyle().FramePadding.y });
-				ImGui::Text(text.c_str());
-				ImGui::ProgressBar(uploadFeedback.progress / 100.0f);
-			}
+		if (textSize.x - ImGui::GetStyle().FramePadding.x < itemSize.x)
+		{
+			ImGui::SetCursorPos(itemPosition +
+								ImVec2{ (itemSize.x - textSize.x) * 0.5f,
+										(itemSize.y - height) * 0.5f + iconSize.y + ImGui::GetStyle().FramePadding.y });
+			ImGui::Text(name(n));
 		}
 		else
 		{
+			const auto nameText = std::string{ name(n) };
+			auto approximatedLength = nameText.size();
 
-			const auto itemPosition = ImGui::GetCursorPos();
-
-			if (ImGui::Selectable("", selectedItemIndex == n,
-								  ImGuiSelectableFlags_DontClosePopups | ImGuiSelectableFlags_AllowOverlap, itemSize))
+			while ((approximatedTextSize.x - ImGui::GetStyle().FramePadding.x) >= itemSize.x)
 			{
-				selectedItemIndex = n;
-				projectSelected = true;
-			}
-			const auto isItemHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenOverlappedByItem);
-			if (ImGui::BeginItemTooltip())
-			{
-				popup(n);
-				ImGui::EndTooltip();
+				approximatedLength /= 2;
+				approximatedTextSize =
+					ImGui::CalcTextSize(nameText.substr(0, approximatedLength).c_str()) + dotsTextSize;
 			}
 
-			const auto textSize = ImGui::CalcTextSize(name(n));
-			auto approximatedTextSize = textSize;
-			const auto dotsTextSize = ImGui::CalcTextSize("...");
-			ImGui::PushFont(iconFont);
-			// ImGui::SetNextItemAllowOverlap();
-			const auto iconSize = ImGui::CalcTextSize(icon);
-
-			const auto height = textSize.y + iconSize.y + ImGui::GetStyle().FramePadding.y;
+			const auto text = std::format("{}{}", nameText.substr(0, approximatedLength), "...");
+			;
 
 			ImGui::SetCursorPos(itemPosition +
-								ImVec2{ (itemSize.x - iconSize.x) * 0.5f, (itemSize.y - height) * 0.5f });
-			ImGui::Text(icon);
-			ImGui::PopFont();
-
-
-			if (textSize.x - ImGui::GetStyle().FramePadding.x < itemSize.x)
-			{
-				ImGui::SetCursorPos(
-					itemPosition +
-					ImVec2{ (itemSize.x - textSize.x) * 0.5f,
-							(itemSize.y - height) * 0.5f + iconSize.y + ImGui::GetStyle().FramePadding.y });
-				ImGui::Text(name(n));
-			}
-			else
-			{
-				const auto nameText = std::string{ name(n) };
-				auto approximatedLength = nameText.size();
-
-				while ((approximatedTextSize.x - ImGui::GetStyle().FramePadding.x) >= itemSize.x)
-				{
-					approximatedLength /= 2;
-					approximatedTextSize =
-						ImGui::CalcTextSize(nameText.substr(0, approximatedLength).c_str()) + dotsTextSize;
-				}
-
-				const auto text = std::format("{}{}", nameText.substr(0, approximatedLength), "...");
-				;
-
-				ImGui::SetCursorPos(
-					itemPosition +
-					ImVec2{ (itemSize.x - approximatedTextSize.x) * 0.5f,
-							(itemSize.y - height) * 0.5f + iconSize.y + ImGui::GetStyle().FramePadding.y });
-				ImGui::Text(text.c_str());
-			}
-			if (isItemHovered)
-			{
-				ImGui::SetCursorPos(itemPosition +
-									ImVec2{ (itemSize.x) * 0.5f - iconSize.x - ImGui::GetStyle().FramePadding.x * 2 -
-												ImGui::GetStyle().ItemSpacing.x * 0.5f,
-											(itemSize.y - height) * 0.5f + iconSize.y + dotsTextSize.y +
-												ImGui::GetStyle().FramePadding.y });
-				ImGui::PushFont(iconFont);
-				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.7f, 0.7f, 0.3f, 1.0f });
-				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.4f, 0.4f, 0.2f, 1.0f });
-				ImGui::PushID(n);
-				ImGui::SetNextItemAllowOverlap();
-				if (ImGui::Button(ICON_LC_PENCIL) || ImGui::IsItemClicked())
-				{
-					editProjectView_->setProjectIndex(n);
-					editProjectView_->open();
-				}
-				ImGui::PopStyleColor(2);
-				ImGui::PopFont();
-				ImGui::SetItemTooltip("Edit Project Name");
-				ImGui::SameLine();
-				ImGui::PushFont(iconFont);
-				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.8f, 0.1f, 0.1f, 1.0f });
-				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.4f, 0.1f, 0.1f, 1.0f });
-				if (ImGui::Button(ICON_LC_TRASH_2) || ImGui::IsItemClicked())
-				{
-					deleteProjectView_->setProjectIndex(n);
-					deleteProjectView_->open();
-				}
-				ImGui::PopID();
-				ImGui::PopFont();
-				ImGui::SetItemTooltip("Delete Project");
-				ImGui::PopStyleColor(2);
-			}
+								ImVec2{ (itemSize.x - approximatedTextSize.x) * 0.5f,
+										(itemSize.y - height) * 0.5f + iconSize.y + ImGui::GetStyle().FramePadding.y });
+			ImGui::Text(text.c_str());
 		}
+
 		ImGui::PopID();
 		ImGui::PopStyleVar();
 		ImGui::EndChild();
-		ImGui::PopStyleVar();
 
 		const auto lastButtonX2 = ImGui::GetItemRectMax().x;
 		const auto nextButtonX2 = lastButtonX2 + style.ItemSpacing.x + itemSize.x;
@@ -278,26 +251,8 @@ auto ProjectExplorerView::onDraw() -> void
 	const auto textSize = ImGui::CalcTextSize(serverNameText.c_str());
 
 	const auto positionForLoadingPlaceholder = ImGui::GetCursorPos();
-	const auto refreshedPressed = ImGui::Button(ICON_LC_REFRESH_CW);
-	const auto buttonWidth = ImGui::CalcTextSize(ICON_LC_REFRESH_CW).x;
-	const auto middleSpace = availableWidth - textSize.x - 2 * buttonWidth;
+	const auto middleSpace = availableWidth - textSize.x;
 
-	ImGui::SetItemTooltip("Refresh");
-	ImGui::SameLine(middleSpace);
-	ImGui::Text(serverNameText.c_str());
-	ImGui::SameLine();
-	[[maybe_unused]] const auto switchServerPressed = ImGui::Button(ICON_LC_ARROW_RIGHT_LEFT);
-	ImGui::SetItemTooltip("Switch Server");
-
-	if (applicationContext_->isDevelopmentModeEnabled)
-	{
-		ImGui::BeginUnderDevelopmentScope();
-		if (ImGui::Button("Load .nvdb manually"))
-		{
-			showNvdbSelectionModal_();
-		}
-		ImGui::EndUnderDevelopmentScope();
-	}
 	if (isConnectedToAnyServer and not projectAvailable())
 	{
 		static auto timer = 0.0f;
@@ -310,26 +265,51 @@ auto ProjectExplorerView::onDraw() -> void
 		timer -= ImGui::GetIO().DeltaTime;
 	}
 
-	if (refreshedPressed)
-	{
-		refreshProjectsFuture_ = refreshProjectsFunction_();
-	}
+	auto isStillRefreshing = false;
 	if (refreshProjectsFuture_.valid() and
 		(isConnectedToAnyServer or
 		 applicationContext_->serverClient_.getLastServerStatusState().health ==
 			 b3d::tools::project::ServerHealthState::testing))
 	{
-		if (refreshProjectsFuture_.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
-		{
-			ImGui::SetCursorPos(positionForLoadingPlaceholder + ImVec2{ buttonWidth, 0.0f } * 2.0f);
-			ImSpinner::SpinnerRotateSegments("project_loading_spinner", ImGui::GetFontSize() * 0.5f, 2.0f);
-			ImGui::SameLine();
-			ImGui::Text("Loading");
-		}
-		else
+		isStillRefreshing = true;
+		if (not (refreshProjectsFuture_.wait_for(std::chrono::seconds(0)) != std::future_status::ready))
 		{
 			refreshProjectsFuture_ = {};
 		}
+	}
+
+	if (isStillRefreshing)
+	{
+		ImSpinner::SpinnerRotateSegments("project_loading_spinner", ImGui::GetFontSize() * 0.5f, 2.0f);
+		ImGui::SameLine();
+		ImGui::Text("Loading");
+	}
+	else
+	{
+		if (ui::Button(ICON_LC_REFRESH_CW))
+		{
+			refreshProjectsFuture_ = refreshProjectsFunction_();
+		}
+	}
+
+	ImGui::SetItemTooltip("Refresh");
+	ImGui::SameLine(middleSpace);
+	ImGui::Text(serverNameText.c_str());
+	//TODO: Do we really need this button?
+	/*ImGui::SameLine();
+	if (ui::Button(ICON_LC_ARROW_RIGHT_LEFT))
+	{
+	}
+	ImGui::SetItemTooltip("Switch Server");*/
+
+	if (applicationContext_->isDevelopmentModeEnabled)
+	{
+		ImGui::BeginUnderDevelopmentScope();
+		if (ui::Button("Load .nvdb manually"))
+		{
+			showNvdbSelectionModal_();
+		}
+		ImGui::EndUnderDevelopmentScope();
 	}
 
 	if (model_.projects)
@@ -424,8 +404,6 @@ auto ProjectExplorerView::onDraw() -> void
 
 			if (ImGui::TreeNodeEx("Requests", ImGuiTreeNodeFlags_DefaultOpen))
 			{
-
-
 				for (auto i = 0; i < project.requests.size(); i++)
 				{
 					ImGui::PushID(i);
@@ -518,44 +496,45 @@ auto ProjectExplorerView::onDraw() -> void
 					const auto detailIconSize = ImGui::CalcTextSize(ICON_LC_VIEW).x;
 					constexpr auto spinnerThickness = 2.0f;
 					const auto spinnerRadius =
-						(selectableSize.y - spinnerThickness) / 2 - ImGui::GetStyle().FramePadding.y;
+						(selectableSize.y - spinnerThickness) / 2 - ImGui::GetStyle().FramePadding.y * 2;
 					const auto spinnerWidth = spinnerRadius * 2;
 
 					const auto framePadding = ImGui::GetStyle().FramePadding.x * 4;
-					ImGui::SameLine(selectableSize.x - spinnerWidth - framePadding - detailIconSize - framePadding -
-									viewIconSize - framePadding);
+
 					if (loadAndShowFileFuturePerRequest[i].blocked)
 					{
+						ImGui::SameLine(selectableSize.x - spinnerWidth - framePadding - detailIconSize - framePadding -
+										viewIconSize - framePadding);
 						ImSpinner::SpinnerRotateSegments("request_loading_spinner", spinnerRadius, spinnerThickness);
 					}
 
 
-					ImGui::SameLine(selectableSize.x - framePadding - detailIconSize - viewIconSize - framePadding);
-					if (ImGui::SmallButton(ICON_LC_VIEW))
-					{
-						// applicationContext_.
-					}
-					if (ImGui::BeginItemTooltip())
-					{
-						ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-						ImGui::TextWrapped("Move the camera view to the selected sub-volume.");
-						ImGui::PopTextWrapPos();
-						ImGui::EndTooltip();
-					}
-					ImGui::SameLine(selectableSize.x - framePadding - detailIconSize);
-					if (ImGui::SmallButton(ICON_LC_SCROLL_TEXT))
-					{
-						// applicationContext_.
-						parameterSummaryView_->setSofiaParams(request.sofiaParameters);
-						parameterSummaryView_->open();
-					}
-					if (ImGui::BeginItemTooltip())
+					// ImGui::SameLine(selectableSize.x - framePadding - detailIconSize - viewIconSize - framePadding);
+					//  if (ImGui::SmallButton(ICON_LC_VIEW))
+					//{
+					//	// applicationContext_.
+					//  }
+					//  if (ImGui::BeginItemTooltip())
+					//{
+					//	ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					//	ImGui::TextWrapped("Move the camera view to the selected sub-volume.");
+					//	ImGui::PopTextWrapPos();
+					//	ImGui::EndTooltip();
+					//  }
+					//  ImGui::SameLine(selectableSize.x - framePadding - detailIconSize);
+					//  if (ImGui::SmallButton(ICON_LC_SCROLL_TEXT))
+					//{
+					//	// applicationContext_.
+					//	parameterSummaryView_->setSofiaParams(request.sofiaParameters);
+					//	parameterSummaryView_->open();
+					//  }
+					/*if (ImGui::BeginItemTooltip())
 					{
 						ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
 						ImGui::Text("Show SoFiA parameters applied for a given request.");
 						ImGui::PopTextWrapPos();
 						ImGui::EndTooltip();
-					}
+					}*/
 
 					ImGui::EndDisabled();
 
@@ -616,20 +595,17 @@ auto ProjectExplorerView::onDraw() -> void
 						}
 
 						ImGui::TableNextColumn();
-						if (!reqSucc || blockLoadGet)
-						{
-							ImGui::BeginDisabled(true);
-						}
 
-						if (ImGui::Button("Load & Show"))
+						const auto itemDisabled = !reqSucc || blockLoadGet;
+
+						ImGui::BeginDisabled(itemDisabled);
+
+						if (ui::Button("Load & Show"))
 						{
 							// Load & Show
 							loadAndShowFileFuture_ = loadAndShowFunction_(request.result.nanoResult.resultFile);
 						}
-						if (!reqSucc || blockLoadGet)
-						{
-							ImGui::EndDisabled();
-						}
+						ImGui::EndDisabled();
 						ImGui::PopID();
 					}
 					ImGui::EndTable();

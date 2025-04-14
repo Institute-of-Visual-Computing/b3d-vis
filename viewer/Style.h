@@ -55,6 +55,11 @@ struct StyleBrush
 	Color textOnAccentFillColorDisabledBrush;
 	Color textOnAccentFillColorSelectedTextBrush;
 
+	Color accentFillColorDefaultBrush;
+	Color accentFillColorSecondaryBrush;
+	Color accentFillColorTertiaryBrush;
+	Color accentFillColorDisabledBrush;
+
 	Color cardBackgroundFillColorDefaultBrush;
 	Color cardBackgroundFillColorSecondaryBrush;
 
@@ -74,12 +79,31 @@ struct StyleBrush
 	Color controlFillColorTransparentBrush;
 	Color controlFillColorInputActiveBrush;
 
+	Color controlStrokeColorDefaultBrush;
+	Color controlStrokeColorSecondaryBrush;
+	Color controlStrokeColorOnAccentDefaultBrush;
+	Color controlStrokeColorOnAccentSecondaryBrush;
+
 	Color controlElevationBorderBrush;
+	Color textControlElevationBorderFocusedBrush;
+	Color accentControlElevationBorderBrush;
+
 
 	Color cardStrokeColorDefaultBrush;
 	Color cardStrokeColorDefaultSolidBrush;
+
+	Color controlStrongStrokeColorDefaultBrush;
+	Color controlStrongStrokeColorDisabledBrush;
 };
 
+namespace ui
+{
+	auto Button(const char* label, const Vector2& size = Vector2{}) -> bool;
+	auto AccentButton(const char* label, const Vector2& size = Vector2{}) -> bool;
+	auto ToggleButton(const bool toogled, const char* label, const Vector2& size = Vector2{}) -> bool;
+	auto ToggleSwitch(const bool toogled, const char* label, const char* option1, const char* option2) -> bool;
 
-auto DecoratedButton(const char* label, const Vector2& size = Vector2{}, bool disabled = false) -> bool;
+	auto Selectable(const char* label, bool selected, ImGuiSelectableFlags flags, const Vector2& size) -> bool;
+} // namespace ui
+
 auto createDarkThemeBrush(const AccentColors& accentColors) -> StyleBrush;

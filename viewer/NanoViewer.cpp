@@ -128,9 +128,9 @@ namespace
 		styleColors[ImGuiCol_TitleBgActive] = static_cast<ImVec4>(Color{ 0.18f, 0.18f, 0.18f, 1.00f });
 		styleColors[ImGuiCol_TitleBgCollapsed] = static_cast<ImVec4>(Color{ 0.10f, 0.10f, 0.10f, 0.75f });
 
-		styleColors[ImGuiCol_Button] = static_cast<ImVec4>(Color{ 0.24f, 0.24f, 0.24f, 1.00f });
+		/*styleColors[ImGuiCol_Button] = static_cast<ImVec4>(Color{ 0.24f, 0.24f, 0.24f, 1.00f });
 		styleColors[ImGuiCol_ButtonHovered] = static_cast<ImVec4>(accentColorDark3);
-		styleColors[ImGuiCol_ButtonActive] = static_cast<ImVec4>(Color{ 0.36f, 0.36f, 0.36f, 1.00f });
+		styleColors[ImGuiCol_ButtonActive] = static_cast<ImVec4>(Color{ 0.36f, 0.36f, 0.36f, 1.00f });*/
 
 		styleColors[ImGuiCol_Tab] = static_cast<ImVec4>(Color{ 0.24f, 0.24f, 0.24f, 1.00f });
 		styleColors[ImGuiCol_TabHovered] = static_cast<ImVec4>(accentColorDark3);
@@ -139,8 +139,8 @@ namespace
 		styleColors[ImGuiCol_TabDimmed] = static_cast<ImVec4>(Color{ 0.24f, 0.24f, 0.24f, 1.00f });
 		styleColors[ImGuiCol_TabDimmedSelected] = static_cast<ImVec4>(accentColorDark1);
 
-		styleColors[ImGuiCol_SliderGrab] = static_cast<ImVec4>(Color{ 0.38f, 0.50f, 0.94f, 1.00f });
-		styleColors[ImGuiCol_SliderGrabActive] = static_cast<ImVec4>(Color{ 0.26f, 0.40f, 0.85f, 1.00f });
+		/*styleColors[ImGuiCol_SliderGrab] = static_cast<ImVec4>(Color{ 0.38f, 0.50f, 0.94f, 1.00f });
+		styleColors[ImGuiCol_SliderGrabActive] = static_cast<ImVec4>(Color{ 0.26f, 0.40f, 0.85f, 1.00f });*/
 
 		styleColors[ImGuiCol_Header] = static_cast<ImVec4>(Color{ 0.20f, 0.20f, 0.20f, 1.00f });
 		styleColors[ImGuiCol_HeaderHovered] = static_cast<ImVec4>(accentColorDark3);

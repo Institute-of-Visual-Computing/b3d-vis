@@ -30,6 +30,8 @@
 
 #include <ImGuiProfilerRenderer.h>
 
+#include "Style.h"
+
 
 namespace
 {
@@ -185,32 +187,25 @@ auto VolumeView::onDraw() -> void
 
 	if (viewerSettings_.enableControlToolBar)
 	{
-		ImGui::SetNextItemAllowOverlap();
-
 		const auto scale = ImGui::GetWindowDpiScale();
-
 
 		auto buttonPosition = p + ImVec2(scale * 20, scale * 20);
 		ImGui::SetCursorScreenPos(buttonPosition);
 		const auto buttonPadding = scale * 4.0f;
 		const auto buttonSize = scale * 40;
 
-		const auto activeColor = ImGui::GetStyle().Colors[ImGuiCol_ButtonActive];
-
 		const auto prevOperationState = currentGizmoOperation_;
 
-		if (prevOperationState.containsBit(GizmoOperationFlagBits::scale))
-		{
-			ImGui::PushStyleColor(ImGuiCol_Button, activeColor);
-		}
+		const auto enableScale = prevOperationState.containsBit(GizmoOperationFlagBits::scale);
+		const auto enableTranslate = prevOperationState.containsBit(GizmoOperationFlagBits::translate);
+		const auto enableRotate = prevOperationState.containsBit(GizmoOperationFlagBits::rotate);
 
 		ImGui::PushFont(applicationContext_->getFontCollection().getBigIconsFont());
-		if (ImGui::Button(ICON_LC_SCALE_3D "##scale_control_handle", ImVec2{ buttonSize, buttonSize }))
+		if (ui::ToggleButton(enableScale, ICON_LC_SCALE_3D "##scale_control_handle", ImVec2{ buttonSize, buttonSize }))
 		{
 			currentGizmoOperation_.flip(GizmoOperationFlagBits::scale);
 		}
 		ImGui::PopFont();
-
 		if (ImGui::BeginItemTooltip())
 		{
 			ImGui::Text("Scale Volume");
@@ -218,20 +213,12 @@ auto VolumeView::onDraw() -> void
 			ImGui::EndTooltip();
 		}
 
-		if (prevOperationState.containsBit(GizmoOperationFlagBits::scale))
-		{
-			ImGui::PopStyleColor();
-		}
-		ImGui::SetNextItemAllowOverlap();
 		buttonPosition += ImVec2(0, buttonPadding + buttonSize);
 		ImGui::SetCursorScreenPos(buttonPosition);
 
-		if (prevOperationState.containsBit(GizmoOperationFlagBits::translate))
-		{
-			ImGui::PushStyleColor(ImGuiCol_Button, activeColor);
-		}
 		ImGui::PushFont(applicationContext_->getFontCollection().getBigIconsFont());
-		if (ImGui::Button(ICON_LC_MOVE_3D "##translate_control_handle", ImVec2{ buttonSize, buttonSize }))
+		if (ui::ToggleButton(enableTranslate, ICON_LC_MOVE_3D "##translate_control_handle",
+							 ImVec2{ buttonSize, buttonSize }))
 		{
 			currentGizmoOperation_.flip(GizmoOperationFlagBits::translate);
 		}
@@ -243,20 +230,12 @@ auto VolumeView::onDraw() -> void
 			ImGui::EndTooltip();
 		}
 
-		if (prevOperationState.containsBit(GizmoOperationFlagBits::translate))
-		{
-			ImGui::PopStyleColor();
-		}
-		ImGui::SetNextItemAllowOverlap();
 		buttonPosition += ImVec2(0, buttonPadding + buttonSize);
 		ImGui::SetCursorScreenPos(buttonPosition);
 
-		if (prevOperationState.containsBit(GizmoOperationFlagBits::rotate))
-		{
-			ImGui::PushStyleColor(ImGuiCol_Button, activeColor);
-		}
 		ImGui::PushFont(applicationContext_->getFontCollection().getBigIconsFont());
-		if (ImGui::Button(ICON_LC_ROTATE_3D "##rotate_control_handle", ImVec2{ buttonSize, buttonSize }))
+		if (ui::ToggleButton(enableRotate, ICON_LC_ROTATE_3D "##rotate_control_handle",
+							 ImVec2{ buttonSize, buttonSize }))
 		{
 			currentGizmoOperation_.flip(GizmoOperationFlagBits::rotate);
 		}
@@ -268,18 +247,14 @@ auto VolumeView::onDraw() -> void
 			ImGui::EndTooltip();
 		}
 
-		if (prevOperationState.containsBit(GizmoOperationFlagBits::rotate))
-		{
-			ImGui::PopStyleColor();
-		}
-
-		ImGui::SetNextItemAllowOverlap();
 		buttonPosition += ImVec2(0, buttonPadding + buttonSize);
 		ImGui::SetCursorScreenPos(buttonPosition);
 
+		auto cameraType = static_cast<int>(cameraControllerType_);
+		auto isOn = cameraType != 0;
 		// camera switch
 		{
-			static constexpr auto types = std::array{ "orbit", "fly" };
+			/*static constexpr auto types = std::array{ "orbit", "fly" };
 			auto cameraType = static_cast<int>(cameraControllerType_);
 			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12.0f);
 			ImGui::PushStyleVar(ImGuiStyleVar_GrabRounding, 12.0f);
@@ -290,7 +265,13 @@ auto VolumeView::onDraw() -> void
 				cameraControllerType_ =
 					static_cast<CameraControllerType>((static_cast<int>(cameraControllerType_) + 1) % 2);
 			}
-			ImGui::PopStyleVar(2);
+			ImGui::PopStyleVar(2);*/
+			ImGui::SetNextItemWidth(40 * scale);
+			if (ui::ToggleSwitch(isOn, "##cameraType", "orbit", "fly"))
+			{
+				cameraControllerType_ =
+					static_cast<CameraControllerType>((static_cast<int>(cameraControllerType_) + 1) % 2);
+			}
 		}
 	}
 

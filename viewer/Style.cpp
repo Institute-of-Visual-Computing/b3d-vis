@@ -1,54 +1,295 @@
 #include "Style.h"
 
 
-
 #include "framework/ApplicationContext.h"
 
-auto DecoratedButton(const char* label, const Vector2& size, bool disabled) -> bool
-{
-	const auto& brush = ApplicationContext::getStyleBrush();
 
+enum class ItemState
+{
+	base,
+	hovered,
+	pressed,
+	disabled
+};
+
+
+auto ui::Button(const char* label, const Vector2& size) -> bool
+{
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2.0f);
+
+	const auto& brush = ApplicationContext::getStyleBrush();
+	const auto itemId = ImGui::GetID(label);
+	const auto isHovered =
+		ImGui::GetHoveredID() == itemId or ImGui::GetCurrentContext()->HoveredIdPreviousFrame == itemId;
+	const auto isActive = ImGui::GetActiveID() == itemId;
+	const auto isDisabled = ImGui::GetCurrentContext()->CurrentItemFlags & ImGuiItemFlags_Disabled;
+
+	auto result = false;
+	auto state = ItemState::base;
+	if (isHovered)
+	{
+		state = ItemState::hovered;
+	}
+	if (isActive)
+	{
+		state = ItemState::pressed;
+	}
+	if (isDisabled)
+	{
+		state = ItemState::disabled;
+	}
+
+	switch (state)
+	{
+	default:
+	case ItemState::base:
+		ImGui::PushStyleColor(ImGuiCol_Button, brush.controlFillColorDefaultBrush);
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, brush.controlFillColorSecondaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_Border, brush.controlElevationBorderBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorPrimaryBrush);
+
+		result = ImGui::Button(label, size);
+
+		ImGui::PopStyleColor(4);
+		break;
+	case ItemState::hovered:
+		ImGui::PushStyleColor(ImGuiCol_Button, brush.controlFillColorDefaultBrush);
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, brush.controlFillColorTertiaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, brush.controlFillColorSecondaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_Border, brush.controlElevationBorderBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorPrimaryBrush);
+
+		result = ImGui::Button(label, size);
+
+		ImGui::PopStyleColor(5);
+		break;
+	case ItemState::pressed:
+		ImGui::PushStyleColor(ImGuiCol_Button, brush.controlFillColorDefaultBrush);
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, brush.controlFillColorTertiaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, brush.controlFillColorSecondaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_Border, brush.controlStrokeColorDefaultBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorSecondaryBrush);
+
+		result = ImGui::Button(label, size);
+
+		ImGui::PopStyleColor(5);
+		break;
+	case ItemState::disabled:
+		ImGui::PushStyleColor(ImGuiCol_Button, brush.controlFillColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_Border, brush.controlStrokeColorDefaultBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorSecondaryBrush);
+
+		result = ImGui::Button(label, size);
+
+		ImGui::PopStyleColor(3);
+		break;
+	}
+
+	ImGui::PopStyleVar();
+
+	return result;
+}
+
+auto ui::AccentButton(const char* label, const Vector2& size) -> bool
+{
+	ImGui::SetNextItemAllowOverlap();
+	const auto& brush = ApplicationContext::getStyleBrush();
 	const auto itemId = ImGui::GetID(label);
 	const auto isHovered = ImGui::GetHoveredID() == itemId;
 	const auto isActive = ImGui::GetActiveID() == itemId;
+	const auto isDisabled = ImGui::GetCurrentContext()->CurrentItemFlags & ImGuiItemFlags_Disabled;
 
-
-	if (disabled)
+	auto result = false;
+	auto state = ItemState::base;
+	if (isHovered)
 	{
-		ImGui::PushStyleColor(ImGuiCol_Button, brush.controlFillColorDisabledBrush);
-		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, brush.controlFillColorDisabledBrush);
-		ImGui::PushStyleColor(ImGuiCol_ButtonActive, brush.controlFillColorDisabledBrush);
-		ImGui::PushStyleColor(ImGuiCol_Border, brush.cardStrokeColorDefaultBrush);
-		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorDisabledBrush);
+		state = ItemState::hovered;
 	}
-	else if (isHovered)
+	if (isActive)
 	{
+		state = ItemState::pressed;
+	}
+	if (isDisabled)
+	{
+		state = ItemState::disabled;
+	}
+	// state = ItemState::hovered;
+	switch (state)
+	{
+	default:
+	case ItemState::base:
+		ImGui::PushStyleColor(ImGuiCol_Button, brush.accentFillColorDefaultBrush);
+		ImGui::PushStyleColor(ImGuiCol_Border, brush.accentControlElevationBorderBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textOnAccentFillColorPrimaryBrush);
+
+		result = ImGui::Button(label, size);
+
+		ImGui::PopStyleColor(3);
+		break;
+	case ItemState::hovered:
+		ImGui::PushStyleColor(ImGuiCol_Button, brush.accentFillColorDefaultBrush);
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, brush.accentFillColorTertiaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, brush.accentFillColorSecondaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_Border, brush.accentControlElevationBorderBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textOnAccentFillColorPrimaryBrush);
+
+		result = ImGui::Button(label, size);
+
+		ImGui::PopStyleColor(5);
+		break;
+	case ItemState::pressed:
+		ImGui::PushStyleColor(ImGuiCol_Button, brush.accentFillColorDefaultBrush);
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, brush.accentFillColorTertiaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_Border, brush.controlFillColorTransparentBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textOnAccentFillColorSecondaryBrush);
+
+		result = ImGui::Button(label, size);
+
+		ImGui::PopStyleColor(4);
+		break;
+	case ItemState::disabled:
+		ImGui::PushStyleColor(ImGuiCol_Button, brush.accentFillColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_Border, brush.controlFillColorTransparentBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textOnAccentFillColorDisabledBrush);
+
+
+		result = ImGui::Button(label, size);
+
+		ImGui::PopStyleColor(3);
+		break;
+	}
+	return result;
+}
+
+auto ui::ToggleButton(const bool toogled, const char* label, const Vector2& size) -> bool
+{
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2.0f);
+
+	const auto& brush = ApplicationContext::getStyleBrush();
+	const auto itemId = ImGui::GetID(label);
+	const auto isHovered =
+		ImGui::GetHoveredID() == itemId or ImGui::GetCurrentContext()->HoveredIdPreviousFrame == itemId;
+	const auto isActive = ImGui::GetActiveID() == itemId;
+	const auto isDisabled = ImGui::GetCurrentContext()->CurrentItemFlags & ImGuiItemFlags_Disabled;
+
+	auto result = false;
+	auto state = ItemState::base;
+	if (isHovered)
+	{
+		state = ItemState::hovered;
+	}
+	if (isActive or toogled)
+	{
+		state = ItemState::pressed;
+	}
+	if (isDisabled)
+	{
+		state = ItemState::disabled;
+	}
+
+	switch (state)
+	{
+	default:
+	case ItemState::base:
 		ImGui::PushStyleColor(ImGuiCol_Button, brush.controlFillColorDefaultBrush);
 		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, brush.controlFillColorSecondaryBrush);
-		ImGui::PushStyleColor(ImGuiCol_ButtonActive, brush.controlFillColorTertiaryBrush);
 		ImGui::PushStyleColor(ImGuiCol_Border, brush.controlElevationBorderBrush);
 		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorPrimaryBrush);
-	}
-	else if (isActive)
-	{
-		ImGui::PushStyleColor(ImGuiCol_Button, brush.controlFillColorTertiaryBrush);
-		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, brush.controlFillColorTertiaryBrush);
+
+		result = ImGui::Button(label, size);
+
+		ImGui::PopStyleColor(4);
+		break;
+	case ItemState::hovered:
+		ImGui::PushStyleColor(ImGuiCol_Button, brush.controlFillColorDefaultBrush);
 		ImGui::PushStyleColor(ImGuiCol_ButtonActive, brush.controlFillColorTertiaryBrush);
-		ImGui::PushStyleColor(ImGuiCol_Border, brush.cardStrokeColorDefaultBrush);
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, brush.controlFillColorSecondaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_Border, brush.controlElevationBorderBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorPrimaryBrush);
+
+		result = ImGui::Button(label, size);
+
+		ImGui::PopStyleColor(5);
+		break;
+	case ItemState::pressed:
+		ImGui::PushStyleColor(ImGuiCol_Button, brush.controlFillColorDefaultBrush);
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, brush.controlFillColorTertiaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, brush.controlFillColorSecondaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_Border, brush.textControlElevationBorderFocusedBrush);
 		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorSecondaryBrush);
+
+		result = ImGui::Button(label, size);
+
+		ImGui::PopStyleColor(5);
+		break;
+	case ItemState::disabled:
+		ImGui::PushStyleColor(ImGuiCol_Button, brush.controlFillColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_Border, brush.controlStrokeColorDefaultBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorSecondaryBrush);
+
+		result = ImGui::Button(label, size);
+
+		ImGui::PopStyleColor(3);
+		break;
+	}
+
+	ImGui::PopStyleVar();
+
+	return result;
+}
+
+auto ui::ToggleSwitch(const bool isOn, const char* label, const char* option1 = "", const char* option2 = "") -> bool
+{
+	const auto isDisabled = ImGui::GetCurrentContext()->CurrentItemFlags & ImGuiItemFlags_Disabled;
+
+	const auto& brush = ApplicationContext::getStyleBrush();
+
+	const auto types = std::array{ option1, option2 };
+
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 14.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_GrabRounding, 12.0f);
+
+	if (isDisabled)
+	{
+		ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDefaultBrush);
+		ImGui::PushStyleColor(ImGuiCol_Border, brush.controlStrongStrokeColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_SliderGrab, brush.controlStrongStrokeColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, brush.controlFillColorDefaultBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, brush.controlFillColorDefaultBrush);
+		ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, brush.controlStrongStrokeColorDisabledBrush);
 	}
 	else
 	{
-		ImGui::PushStyleColor(ImGuiCol_Button, brush.controlFillColorDefaultBrush);
-		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, brush.controlFillColorSecondaryBrush);
-		ImGui::PushStyleColor(ImGuiCol_ButtonActive, brush.controlFillColorTertiaryBrush);
-		ImGui::PushStyleColor(ImGuiCol_Border, brush.controlElevationBorderBrush);
-		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorPrimaryBrush);
+		if (isOn)
+		{
+			ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.accentFillColorDefaultBrush);
+			ImGui::PushStyleColor(ImGuiCol_Border, brush.accentFillColorDefaultBrush);
+			ImGui::PushStyleColor(ImGuiCol_SliderGrab, brush.controlFillColorDefaultBrush);
+		}
+		else
+		{
+			ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDefaultBrush);
+			ImGui::PushStyleColor(ImGuiCol_Border, brush.controlStrongStrokeColorDefaultBrush);
+			ImGui::PushStyleColor(ImGuiCol_SliderGrab, brush.controlStrongStrokeColorDefaultBrush);
+		}
+		ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, brush.accentFillColorSecondaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, brush.accentFillColorSecondaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, brush.textFillColorSecondaryBrush);
 	}
+	static auto value = isOn ? 1 : 0;
+	const auto isEdited = ImGui::SliderInt(label, &value, 0, 1, types[value], ImGuiSliderFlags_NoInput);
+	const auto result = ImGui::IsItemFocused() ? isEdited : ImGui::IsItemClicked(ImGuiMouseButton_Left);
+	
+	ImGui::PopStyleColor(6);
+	ImGui::PopStyleVar(3);
+	return result;
+}
 
-	const auto result = ImGui::Button(label, size);
-
-	ImGui::PopStyleColor(5);
+auto ui::Selectable(const char* label, bool selected, ImGuiSelectableFlags flags, const Vector2& size) -> bool
+{
+	auto result = false;
+	result = ImGui::Selectable(label, selected, flags, size);
 	return result;
 }
 
@@ -85,10 +326,29 @@ auto createDarkThemeBrush(const AccentColors& accentColors) -> StyleBrush
 	brush.controlFillColorTransparentBrush = Color{ 0.13f, 0.13f, 0.13f, 1.0f };
 	brush.controlFillColorInputActiveBrush = Color{ 0.12f, 0.12f, 0.12f, 1.0f };
 
+	brush.controlStrokeColorDefaultBrush = Color{ 0.19f, 0.19f, 0.19f, 1.0f };
+	brush.controlStrokeColorSecondaryBrush = Color{ 0.21f, 0.21f, 0.21f, 1.0f };
+	brush.controlStrokeColorOnAccentDefaultBrush = Color{ 0.19f, 0.19f, 0.19f, 1.0f };
+	brush.controlStrokeColorOnAccentSecondaryBrush = Color{ 0.11f, 0.11f, 0.11f, 1.0f };
+
 	brush.controlElevationBorderBrush = Color{ 0.19f, 0.19f, 0.19f, 1.0f };
+	brush.textControlElevationBorderFocusedBrush = accentColors.accent;
+	brush.accentControlElevationBorderBrush = brush.controlElevationBorderBrush;
 
 	brush.cardStrokeColorDefaultBrush = Color{ 0.11f, 0.11f, 0.11f, 1.0f };
 	brush.cardStrokeColorDefaultSolidBrush = Color{ 0.11f, 0.11f, 0.11f, 1.0f };
+
+	brush.controlStrongStrokeColorDisabledBrush = Color{ 0.26f, 0.26f, 0.26f, 1.0f };
+	brush.controlStrongStrokeColorDefaultBrush = Color{ 0.6f, 0.6f, 0.6f, 1.0f };
+
+
+	brush.accentFillColorDefaultBrush = accentColors.accentDark1;
+	brush.accentFillColorSecondaryBrush = accentColors.accentDark1;
+	brush.accentFillColorSecondaryBrush.a = static_cast<uint32_t>(0.9f * 255);
+	brush.accentFillColorTertiaryBrush = accentColors.accentDark1;
+	brush.accentFillColorTertiaryBrush.a = static_cast<uint32_t>(0.8f * 255);
+	brush.accentFillColorDisabledBrush = Color{ 0.44f, 0.44f, 0.44f, 1.0f };
+
 
 	return brush;
 }
