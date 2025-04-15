@@ -418,6 +418,14 @@ auto NanoViewer::draw() -> void
 		{
 			applicationContext_->settings_.restoreDefaultLayoutSettings();
 		}
+
+		static bool enableGridFloor = true;
+		if (ui::ToggleSwitch(enableGridFloor, "Enable Grid Floor", "", ""))
+		{
+			enableGridFloor = !enableGridFloor;
+			volumeView_->enableInfinitGridFloor(enableGridFloor);
+		}
+		
 		ImGui::End();
 	}
 

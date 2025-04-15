@@ -47,6 +47,11 @@ public:
 	{
 		viewerSettings_.enableFrameGraph = enable;
 	}
+
+	auto enableInfinitGridFloor(const bool enable) -> void
+	{
+		viewerSettings_.enableGridFloor = enable;
+	}
 	auto setRenderVolume(b3d::renderer::RendererBase* renderer, b3d::renderer::RenderingDataWrapper* renderingData)
 		-> void;
 
