@@ -106,7 +106,7 @@ auto ProjectExplorerView::drawSelectableItemGridPanel(const char* panelId, int& 
 	}
 	else
 	{
-		const auto itemPosition = ImGui::GetCursorPos();
+		const auto itemPosition = Vector2{ ImGui::GetCursorPos() };
 		ImGui::InvisibleButton("##uploading", addButtonSize);
 		ImGui::SetNextItemAllowOverlap();
 
@@ -272,7 +272,7 @@ auto ProjectExplorerView::onDraw() -> void
 			 b3d::tools::project::ServerHealthState::testing))
 	{
 		isStillRefreshing = true;
-		if (not (refreshProjectsFuture_.wait_for(std::chrono::seconds(0)) != std::future_status::ready))
+		if (not(refreshProjectsFuture_.wait_for(std::chrono::seconds(0)) != std::future_status::ready))
 		{
 			refreshProjectsFuture_ = {};
 		}
@@ -295,7 +295,7 @@ auto ProjectExplorerView::onDraw() -> void
 	ImGui::SetItemTooltip("Refresh");
 	ImGui::SameLine(middleSpace);
 	ImGui::Text(serverNameText.c_str());
-	//TODO: Do we really need this button?
+	// TODO: Do we really need this button?
 	/*ImGui::SameLine();
 	if (ui::Button(ICON_LC_ARROW_RIGHT_LEFT))
 	{

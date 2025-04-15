@@ -46,6 +46,16 @@ public:
 		y *= s;
 		return *this;
 	}
+
+	friend inline constexpr auto operator+(const Vector2& lhs, const Vector2& rhs) -> Vector2
+	{
+		return Vector2{ lhs.x + rhs.x, lhs.y + rhs.y };
+	}
+
+	friend inline constexpr auto operator-(const Vector2& lhs, const Vector2& rhs) -> Vector2
+	{
+		return Vector2{ lhs.x - rhs.x, lhs.y - rhs.y };
+	}
 };
 
 struct Vector4

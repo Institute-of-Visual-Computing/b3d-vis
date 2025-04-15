@@ -60,6 +60,8 @@ struct StyleBrush
 	Color accentFillColorTertiaryBrush;
 	Color accentFillColorDisabledBrush;
 
+	Color accentFillColorSelectedTextBackgroundBrush;
+
 	Color cardBackgroundFillColorDefaultBrush;
 	Color cardBackgroundFillColorSecondaryBrush;
 
@@ -94,6 +96,8 @@ struct StyleBrush
 
 	Color controlStrongStrokeColorDefaultBrush;
 	Color controlStrongStrokeColorDisabledBrush;
+
+	Color layerFillColorDefaultBrush;
 };
 
 namespace ui
@@ -103,7 +107,11 @@ namespace ui
 	auto ToggleButton(const bool toogled, const char* label, const Vector2& size = Vector2{}) -> bool;
 	auto ToggleSwitch(const bool toogled, const char* label, const char* option1, const char* option2) -> bool;
 
-	auto Selectable(const char* label, bool selected, ImGuiSelectableFlags flags, const Vector2& size) -> bool;
+	auto Selectable(const char* label, bool selected, ImGuiSelectableFlags flags = {}, const Vector2& size = Vector2{})
+		-> bool;
+
+	auto InputText(const char* label, std::string* text, ImGuiInputTextFlags flags = {}) -> bool;
+	auto HeadedInputText(const std::string& header, const char* label, std::string* text, ImGuiInputTextFlags flags = {}) -> bool;
 } // namespace ui
 
 auto createDarkThemeBrush(const AccentColors& accentColors) -> StyleBrush;

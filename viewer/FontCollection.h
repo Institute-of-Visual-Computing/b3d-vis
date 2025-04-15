@@ -13,6 +13,7 @@ public:
 	[[nodiscard]] auto containsDpi(const float dpi) const noexcept -> bool;
 
 	[[nodiscard]] auto getDefaultFont() const noexcept -> ImFont*;
+	[[nodiscard]] auto getTitleFont() const noexcept -> ImFont*;
 	[[nodiscard]] auto getBigIconsFont() const noexcept -> ImFont*;
 	[[nodiscard]] auto getDefaultFontDpiScale() const noexcept -> float;
 	[[nodiscard]] auto getGpuCpuExtraBigTextFont() const noexcept -> ImFont*;

@@ -2,6 +2,7 @@
 
 
 #include "framework/ApplicationContext.h"
+#include "imgui_stdlib.h"
 
 
 enum class ItemState
@@ -280,7 +281,7 @@ auto ui::ToggleSwitch(const bool isOn, const char* label, const char* option1 = 
 	static auto value = isOn ? 1 : 0;
 	const auto isEdited = ImGui::SliderInt(label, &value, 0, 1, types[value], ImGuiSliderFlags_NoInput);
 	const auto result = ImGui::IsItemFocused() ? isEdited : ImGui::IsItemClicked(ImGuiMouseButton_Left);
-	
+
 	ImGui::PopStyleColor(6);
 	ImGui::PopStyleVar(3);
 	return result;
@@ -290,6 +291,60 @@ auto ui::Selectable(const char* label, bool selected, ImGuiSelectableFlags flags
 {
 	auto result = false;
 	result = ImGui::Selectable(label, selected, flags, size);
+	return result;
+}
+
+auto ui::InputText(const char* label, std::string* text, ImGuiInputTextFlags flags) -> bool
+{
+	const auto& brush = ApplicationContext::getStyleBrush();
+	const auto itemId = ImGui::GetID(label);
+	/*const auto isHovered =
+		ImGui::GetHoveredID() == itemId or ImGui::GetCurrentContext()->HoveredIdPreviousFrame == itemId;*/
+	const auto isActive = ImGui::GetActiveID() == itemId;
+	const auto isDisabled = ImGui::GetCurrentContext()->CurrentItemFlags & ImGuiItemFlags_Disabled;
+
+	const auto borderSize = 2.0f;
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, borderSize);
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+	ImGui::PushStyleColor(ImGuiCol_Border, brush.controlStrokeColorSecondaryBrush);
+	ImGui::PushStyleColor(ImGuiCol_TextSelectedBg, brush.accentFillColorSelectedTextBackgroundBrush);
+
+	if (isDisabled)
+	{
+		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, brush.controlFillColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, brush.controlFillColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDisabledBrush);
+	}
+	else
+	{
+		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, brush.solidBackgroundFillColorBaseBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, brush.controlFillColorSecondaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorSecondaryBrush);
+	}
+
+	const auto position = Vector2{ ImGui::GetCursorScreenPos() };
+	ImGui::PushItemWidth(-1);
+	const auto isEdited = ImGui::InputText(label, text, flags);
+	ImGui::PopItemWidth();
+	const auto inputBoxSize = Vector2{ ImGui::GetItemRectSize() };
+
+	auto& drawList = *ImGui::GetForegroundDrawList();
+	drawList.AddLine(
+		position + Vector2{ 0.0f, inputBoxSize.y - borderSize }, position + inputBoxSize - Vector2{ 0.0f, borderSize },
+		isActive ? brush.accentTextFillColorTertiaryBrush : brush.controlStrongStrokeColorDefaultBrush, borderSize);
+
+	ImGui::PopStyleColor(5);
+	ImGui::PopStyleVar(2);
+	return isEdited;
+}
+
+auto ui::HeadedInputText(const std::string& header, const char* label, std::string* text, ImGuiInputTextFlags flags)
+	-> bool
+{
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, Vector2{ 12.0f, 8.0f });
+	ImGui::Text(header.c_str());
+	const auto result = ui::InputText(label, text, flags);
+	ImGui::PopStyleVar();
 	return result;
 }
 
@@ -309,6 +364,8 @@ auto createDarkThemeBrush(const AccentColors& accentColors) -> StyleBrush
 	brush.textOnAccentFillColorSecondaryBrush = Color{ 0.06f, 0.06f, 0.06f, 1.0f };
 	brush.textOnAccentFillColorDisabledBrush = Color{ 0.59f, 0.59f, 0.59f, 1.0f };
 	brush.textOnAccentFillColorSelectedTextBrush = Color{ 1.0f, 1.0f, 1.0f, 1.0f };
+
+	brush.accentFillColorSelectedTextBackgroundBrush = accentColors.accentDark2;
 
 	brush.solidBackgroundFillColorBaseBrush = Color{ 0.13f, 0.13f, 0.13f, 1.0f };
 	brush.solidBackgroundFillColorBaseAltBrush = Color{ 0.04f, 0.04f, 0.04f, 1.0f };
@@ -349,6 +406,8 @@ auto createDarkThemeBrush(const AccentColors& accentColors) -> StyleBrush
 	brush.accentFillColorTertiaryBrush.a = static_cast<uint32_t>(0.8f * 255);
 	brush.accentFillColorDisabledBrush = Color{ 0.44f, 0.44f, 0.44f, 1.0f };
 
+	brush.cardBackgroundFillColorDefaultBrush = Color{ 0.17f, 0.17f, 0.17f, 1.0f };
+	brush.layerFillColorDefaultBrush = Color{ 0.15f, 0.15f, 0.15f, 1.0f };
 
 	return brush;
 }

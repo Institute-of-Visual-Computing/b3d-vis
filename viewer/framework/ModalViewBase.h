@@ -64,5 +64,6 @@ private:
 	ModalType modalType_{};
 
 	std::string id_{};
+	std::string name_{};
 	ImVec2 minSize_{ 0, 0 };
 };
