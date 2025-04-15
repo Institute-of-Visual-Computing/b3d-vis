@@ -81,12 +81,12 @@ target_sources(${viewerTargetName} PRIVATE
 	features/transferMapping/TransferMappingView.cpp
 	features/projectExplorer/ProjectExplorer.h
 	features/projectExplorer/ProjectExplorer.cpp
-	features/serverConnect/ServerConnectView.h
-	features/serverConnect/ServerConnectView.cpp
 	features/serverConnect/ServerConnectSettingsView.h
 	features/serverConnect/ServerConnectSettingsView.cpp
 	features/serverConnect/ServerAddEditView.h
 	features/serverConnect/ServerAddEditView.cpp
+	features/serverConnect/ServerRemoveView.h
+	features/serverConnect/ServerRemoveView.cpp	
 	features/projectExplorer/ProjectExplorerView.h
 	features/projectExplorer/ProjectExplorerView.cpp
 	features/projectExplorer/ProjectExplorerController.cpp

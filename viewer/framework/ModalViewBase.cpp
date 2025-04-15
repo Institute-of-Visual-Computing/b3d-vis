@@ -52,7 +52,10 @@ auto ModalViewBase::draw() -> void
 		ImGui::PushFont(applicationContext_->getFontCollection().getTitleFont());
 		ImGui::Text(name_.c_str());
 		ImGui::PopFont();
+
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, Vector2{ 16.0f, 24.0f });
 		onDraw();
+		ImGui::PopStyleVar();
 		const auto& style = ImGui::GetStyle();
 
 		const auto position = ImGui::GetCursorScreenPos();
@@ -63,7 +66,7 @@ auto ModalViewBase::draw() -> void
 			Vector2{ style.FramePadding.x + 6, style.FramePadding.y + 10 + style.ItemSpacing.y } +
 			ImGui::GetContentRegionAvail();
 		ImGui::GetWindowDrawList()->AddRectFilled(
-			min, max, brush.solidBackgroundFillColorBaseBrush, containerCornerRadius,
+			min, max, brush.solidBackgroundFillColorSecondaryBrush, containerCornerRadius,
 			ImDrawFlags_RoundCornersBottomLeft | ImDrawFlags_RoundCornersBottomRight);
 		switch (modalType_)
 		{

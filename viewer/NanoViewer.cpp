@@ -413,6 +413,11 @@ auto NanoViewer::draw() -> void
 		{
 			volumeView_->setInternalRenderingResolutionScale(scale);
 		}
+
+		if (ui::Button("Restore Default Layout", Vector2{ ImGui::GetContentRegionAvail().x, 0.0f }))
+		{
+			applicationContext_->settings_.restoreDefaultLayoutSettings();
+		}
 		ImGui::End();
 	}
 
@@ -628,10 +633,7 @@ auto NanoViewer::run(const std::function<bool()>& keepgoing) -> void
 
 
 	applicationContext_->addMenuToggleAction(showAboutWindow_, [](bool) {}, "Help", "About");
-
 	applicationContext_->addMenuAction([&]() { isRunning_ = false; }, "Program", "Quit", "Alt+F4", std::nullopt, 100);
-	applicationContext_->addMenuAction([&]() { applicationContext_->settings_.restoreDefaultLayoutSettings(); },
-									   "Program", "Restore Layout", "", std::nullopt, 10);
 
 	glfwMakeContextCurrent(applicationContext_->mainWindowHandle_);
 

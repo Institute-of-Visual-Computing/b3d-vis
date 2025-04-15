@@ -13,7 +13,7 @@ EditProjectView::EditProjectView(ApplicationContext& appContext, const std::stri
 
 auto EditProjectView::onDraw() -> void
 {
-	ui::HeadedInputText("Name", "##Project Name", &model_.projectName);
+	ui::HeadedInputText("Name:", "##Project Name", &model_.projectName);
 
 	if (not model_.projectName.empty())
 	{

@@ -1,10 +1,10 @@
 #include "AddNewProjectView.h"
-#include "imgui_stdlib.h"
+#include "Style.h"
 
 #include <FitsTools.h>
 #pragma warning(push, 0)
 #include <ImGuiFileDialog.h>
-#pragma warning (pop)
+#pragma warning(pop)
 
 #include <filesystem>
 #include <unordered_map>
@@ -42,7 +42,7 @@ namespace
 				cachedFitsInfos[fitsFileInfo.selectedFile] = fitsInfo;
 			}
 		}
-		
+
 		if (isFitsFile)
 		{
 			ImGui::SeparatorText("FITS File Info");
@@ -97,9 +97,8 @@ auto AddNewProjectView::onDraw() -> void
 	FitsFileInfoData fitsFileData;
 	fitsFileData.selectedFile = std::filesystem::path{ ImGuiFileDialog::Instance()->GetCurrentPath() } /
 		ImGuiFileDialog::Instance()->GetCurrentFileName();
-	ImGui::InputTextWithHint("##FITS File Path", "Please specify a path to the FITS file.", &path);
-	ImGui::SameLine();
-	if (ImGui::SmallButton(ICON_LC_SEARCH))
+	ui::HeadedInputText("Source FITS File Path:", "##FITS File Path", &path);
+	if (ui::AccentButton(ICON_LC_SEARCH, Vector2{ ImGui::GetContentRegionAvail().x, 0.0f }))
 	{
 		IGFD::FileDialogConfig config;
 		config.path = ".";

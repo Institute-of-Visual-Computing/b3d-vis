@@ -1,9 +1,7 @@
 #include "Style.h"
 
-
 #include "framework/ApplicationContext.h"
 #include "imgui_stdlib.h"
-
 
 enum class ItemState
 {
@@ -12,7 +10,6 @@ enum class ItemState
 	pressed,
 	disabled
 };
-
 
 auto ui::Button(const char* label, const Vector2& size) -> bool
 {
@@ -289,8 +286,79 @@ auto ui::ToggleSwitch(const bool isOn, const char* label, const char* option1 = 
 
 auto ui::Selectable(const char* label, bool selected, ImGuiSelectableFlags flags, const Vector2& size) -> bool
 {
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2.0f);
+
+	const auto& brush = ApplicationContext::getStyleBrush();
+	const auto itemId = ImGui::GetID(label);
+	const auto isHovered =
+		ImGui::GetHoveredID() == itemId or ImGui::GetCurrentContext()->HoveredIdPreviousFrame == itemId;
+	const auto isActive = ImGui::GetActiveID() == itemId;
+	const auto isDisabled = ImGui::GetCurrentContext()->CurrentItemFlags & ImGuiItemFlags_Disabled;
+
 	auto result = false;
-	result = ImGui::Selectable(label, selected, flags, size);
+	auto state = ItemState::base;
+	if (isHovered)
+	{
+		state = ItemState::hovered;
+	}
+	if (isActive or selected)
+	{
+		state = ItemState::pressed;
+	}
+	if (isDisabled)
+	{
+		state = ItemState::disabled;
+	}
+
+	switch (state)
+	{
+	default:
+	case ItemState::base:
+		ImGui::PushStyleColor(ImGuiCol_Header, brush.controlFillColorDefaultBrush);
+		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, brush.controlFillColorSecondaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_Border, brush.controlElevationBorderBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorPrimaryBrush);
+
+		
+		result = ImGui::Selectable(label, selected, flags, size);
+
+		ImGui::PopStyleColor(4);
+		break;
+	case ItemState::hovered:
+		ImGui::PushStyleColor(ImGuiCol_Header, brush.controlFillColorDefaultBrush);
+		ImGui::PushStyleColor(ImGuiCol_HeaderActive, brush.controlFillColorTertiaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, brush.controlFillColorSecondaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_Border, brush.controlElevationBorderBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorPrimaryBrush);
+
+		result = ImGui::Selectable(label, selected, flags, size);
+
+		ImGui::PopStyleColor(5);
+		break;
+	case ItemState::pressed:
+		ImGui::PushStyleColor(ImGuiCol_Header, brush.controlFillColorDefaultBrush);
+		ImGui::PushStyleColor(ImGuiCol_HeaderActive, brush.controlFillColorTertiaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, brush.controlFillColorSecondaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_Border, brush.textControlElevationBorderFocusedBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorSecondaryBrush);
+
+		result = ImGui::Selectable(label, selected, flags, size);
+
+		ImGui::PopStyleColor(5);
+		break;
+	case ItemState::disabled:
+		ImGui::PushStyleColor(ImGuiCol_Header, brush.controlFillColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_Border, brush.controlStrokeColorDefaultBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorSecondaryBrush);
+
+		result = ImGui::Selectable(label, selected, flags, size);
+
+		ImGui::PopStyleColor(3);
+		break;
+	}
+
+	ImGui::PopStyleVar();
+
 	return result;
 }
 
@@ -298,8 +366,8 @@ auto ui::InputText(const char* label, std::string* text, ImGuiInputTextFlags fla
 {
 	const auto& brush = ApplicationContext::getStyleBrush();
 	const auto itemId = ImGui::GetID(label);
-	/*const auto isHovered =
-		ImGui::GetHoveredID() == itemId or ImGui::GetCurrentContext()->HoveredIdPreviousFrame == itemId;*/
+	const auto isHovered =
+		ImGui::GetHoveredID() == itemId or ImGui::GetCurrentContext()->HoveredIdPreviousFrame == itemId;
 	const auto isActive = ImGui::GetActiveID() == itemId;
 	const auto isDisabled = ImGui::GetCurrentContext()->CurrentItemFlags & ImGuiItemFlags_Disabled;
 
@@ -313,13 +381,41 @@ auto ui::InputText(const char* label, std::string* text, ImGuiInputTextFlags fla
 	{
 		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, brush.controlFillColorDisabledBrush);
 		ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, brush.controlFillColorDisabledBrush);
-		ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDisabledBrush);
+		if (isActive)
+		{
+			ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDisabledBrush);
+		}
+		else
+		{
+			if (isHovered)
+			{
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDisabledBrush);
+			}
+			else
+			{
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDisabledBrush);
+			}
+		}
 	}
 	else
 	{
-		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, brush.solidBackgroundFillColorBaseBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, brush.controlFillColorTertiaryBrush);
 		ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, brush.controlFillColorSecondaryBrush);
-		ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorSecondaryBrush);
+		if (isActive)
+		{
+			ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorTertiaryBrush);
+		}
+		else
+		{
+			if (isHovered)
+			{
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorSecondaryBrush);
+			}
+			else
+			{
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDefaultBrush);
+			}
+		}
 	}
 
 	const auto position = Vector2{ ImGui::GetCursorScreenPos() };
@@ -343,8 +439,9 @@ auto ui::HeadedInputText(const std::string& header, const char* label, std::stri
 {
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, Vector2{ 12.0f, 8.0f });
 	ImGui::Text(header.c_str());
-	const auto result = ui::InputText(label, text, flags);
 	ImGui::PopStyleVar();
+	const auto result = ui::InputText(label, text, flags);
+
 	return result;
 }
 
@@ -376,15 +473,15 @@ auto createDarkThemeBrush(const AccentColors& accentColors) -> StyleBrush
 	brush.accentAcrylicBackgroundFillColorBaseBrush = accentColors.accentDark2;
 	brush.accentAcrylicBackgroundFillColorDefaultBrush = accentColors.accentDark1;
 
-	brush.controlFillColorDefaultBrush = Color{ 0.18f, 0.18f, 0.18f, 1.0f };
-	brush.controlFillColorSecondaryBrush = Color{ 0.2f, 0.2f, 0.2f, 1.0f };
+	brush.controlFillColorDefaultBrush = Color{ 0.2f, 0.2f, 0.2f, 1.0f };
+	brush.controlFillColorSecondaryBrush = Color{ 0.24f, 0.24f, 0.24f, 1.0f };
 	brush.controlFillColorTertiaryBrush = Color{ 0.15f, 0.15f, 0.15f, 1.0f };
 	brush.controlFillColorDisabledBrush = Color{ 0.16f, 0.16f, 0.16f, 1.0f };
 	brush.controlFillColorTransparentBrush = Color{ 0.13f, 0.13f, 0.13f, 1.0f };
 	brush.controlFillColorInputActiveBrush = Color{ 0.12f, 0.12f, 0.12f, 1.0f };
 
 	brush.controlStrokeColorDefaultBrush = Color{ 0.19f, 0.19f, 0.19f, 1.0f };
-	brush.controlStrokeColorSecondaryBrush = Color{ 0.21f, 0.21f, 0.21f, 1.0f };
+	brush.controlStrokeColorSecondaryBrush = Color{ 0.24f, 0.24f, 0.24f, 1.0f };
 	brush.controlStrokeColorOnAccentDefaultBrush = Color{ 0.19f, 0.19f, 0.19f, 1.0f };
 	brush.controlStrokeColorOnAccentSecondaryBrush = Color{ 0.11f, 0.11f, 0.11f, 1.0f };
 

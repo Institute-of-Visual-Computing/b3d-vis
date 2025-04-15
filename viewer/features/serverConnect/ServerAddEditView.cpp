@@ -2,7 +2,7 @@
 
 #include "framework/ApplicationContext.h"
 
-#include "imgui_stdlib.h"
+#include "Style.h"
 
 ServerAddEditView::ServerAddEditView(ApplicationContext& applicationContext, const std::string_view name,
 									 std::function<void(ModalViewBase*)> onOpenCallback,
@@ -16,9 +16,9 @@ ServerAddEditView::ServerAddEditView(ApplicationContext& applicationContext, con
 
 auto ServerAddEditView::onDraw() -> void
 {
-	ImGui::InputText("Name", &model_.name);
-	ImGui::InputText("IP Address", &model_.ipHost);
-	ImGui::InputText("Port", &model_.port);
+	ui::HeadedInputText("Name:", "##name", &model_.name);
+	ui::HeadedInputText("IP Address:", "##ip_address", &model_.ipHost);
+	ui::HeadedInputText("Port:", "##port", &model_.port);
 
 	unblock();
 }

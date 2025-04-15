@@ -82,65 +82,7 @@ auto ProjectExplorerView::drawSelectableItemGridPanel(const char* panelId, int& 
 	const auto& style = ImGui::GetStyle();
 	const auto windowVisibleX2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
 	ImGui::PushID(panelId);
-	ImGui::BeginChild("", panelSize, ImGuiChildFlags_Border, ImGuiWindowFlags_AlwaysVerticalScrollbar);
-	const auto addButtonText = ICON_LC_FILE_UP " Add";
-	const auto addButtonTextSize = ImGui::CalcTextSize(addButtonText, NULL, true);
-	const auto addButtonSize = ImGui::CalcItemSize(Vector2{}, addButtonTextSize.x + style.FramePadding.x * 2.0f,
-												   addButtonTextSize.y + style.FramePadding.y * 2.0f);
-
-
-	if (not upload.valid())
-	{
-
-
-		ImGui::SetNextItemAllowOverlap();
-		if (ui::AccentButton(addButtonText, addButtonSize))
-		{
-			addNewProjectView_->open();
-		}
-		if (ImGui::BeginItemTooltip())
-		{
-			ImGui::Text("Create and Upload new dataset");
-			ImGui::EndTooltip();
-		}
-	}
-	else
-	{
-		const auto itemPosition = Vector2{ ImGui::GetCursorPos() };
-		ImGui::InvisibleButton("##uploading", addButtonSize);
-		ImGui::SetNextItemAllowOverlap();
-
-		ImGui::SetCursorPos(itemPosition);
-		ImGui::ProgressBar(uploadFeedback.progress / 100.0f, addButtonSize, "");
-		const auto bars = 12u;
-		ImGui::SetCursorPos(itemPosition + Vector2{ addButtonSize.x * 0.25f, 0 });
-		ImSpinner::SpinnerBarsScaleMiddle("uploading_new_file", ImGui::GetFontSize() * 0.5f / bars, ImSpinner::white,
-										  2.8f, bars);
-	}
-	if (selectedItemIndex >= 0)
-	{
-		ImGui::PushID(selectedItemIndex);
-		ImGui::SameLine();
-		const auto emptySpace = ImGui::CalcTextSize(ICON_LC_PENCIL " Edit").x +
-			ImGui::CalcTextSize(ICON_LC_TRASH_2 " Delete").x + style.FramePadding.x * 4.f + style.ItemSpacing.x;
-
-		ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - emptySpace);
-		if (ui::Button(ICON_LC_PENCIL " Edit"))
-		{
-			editProjectView_->setProjectIndex(selectedItemIndex);
-			editProjectView_->open();
-		}
-		ImGui::SetItemTooltip("Edit Project Name");
-		ImGui::SameLine();
-
-		if (ui::Button(ICON_LC_TRASH_2 " Delete"))
-		{
-			deleteProjectView_->setProjectIndex(selectedItemIndex);
-			deleteProjectView_->open();
-		}
-		ImGui::SetItemTooltip("Delete Project");
-		ImGui::PopID();
-	}
+	ImGui::BeginChild("", panelSize, ImGuiChildFlags_Border | ImGuiChildFlags_FrameStyle);
 
 	auto pos = ImGui::GetCursorPos();
 	const auto widgetStartPosition = ImGui::GetCursorPos();
@@ -160,8 +102,7 @@ auto ProjectExplorerView::drawSelectableItemGridPanel(const char* panelId, int& 
 
 		const auto itemPosition = ImGui::GetCursorPos();
 
-		if (ui::Selectable("", selectedItemIndex == n,
-						   ImGuiSelectableFlags_DontClosePopups | ImGuiSelectableFlags_AllowOverlap, itemSize))
+		if (ui::ToggleButton(selectedItemIndex == n, "", itemSize))
 		{
 			selectedItemIndex = n;
 			projectSelected = true;
@@ -344,6 +285,68 @@ auto ProjectExplorerView::onDraw() -> void
 			},
 			ImVec2{ 100 * scaleFactor, 100 * scaleFactor });
 
+
+		const auto& style = ImGui::GetStyle();
+		const auto addButtonText = ICON_LC_FILE_UP " Add";
+		const auto addButtonTextSize = ImGui::CalcTextSize(addButtonText, NULL, true);
+		const auto addButtonSize = ImGui::CalcItemSize(Vector2{}, addButtonTextSize.x + style.FramePadding.x * 2.0f,
+													   addButtonTextSize.y + style.FramePadding.y * 2.0f);
+
+		if (not upload.valid())
+		{
+
+
+			ImGui::SetNextItemAllowOverlap();
+			if (ui::AccentButton(addButtonText, addButtonSize))
+			{
+				addNewProjectView_->open();
+			}
+			if (ImGui::BeginItemTooltip())
+			{
+				ImGui::Text("Create and Upload new dataset");
+				ImGui::EndTooltip();
+			}
+		}
+		else
+		{
+			const auto itemPosition = Vector2{ ImGui::GetCursorPos() };
+			ImGui::InvisibleButton("##uploading", addButtonSize);
+			ImGui::SetNextItemAllowOverlap();
+
+			ImGui::SetCursorPos(itemPosition);
+			ImGui::ProgressBar(uploadFeedback.progress / 100.0f, addButtonSize, "");
+			const auto bars = 12u;
+			ImGui::SetCursorPos(itemPosition + Vector2{ addButtonSize.x * 0.25f, 0 });
+			ImSpinner::SpinnerBarsScaleMiddle("uploading_new_file", ImGui::GetFontSize() * 0.5f / bars,
+											  ImSpinner::white, 2.8f, bars);
+		}
+
+		const auto isValidSelection = selectedProjectItemIndex_ >= 0;
+		ImGui::BeginDisabled(not isValidSelection);
+		{
+			ImGui::PushID(selectedProjectItemIndex_);
+			const auto emptySpace = ImGui::GetContentRegionAvail().x -
+				(ImGui::CalcTextSize(ICON_LC_PENCIL " Edit").x + ImGui::CalcTextSize(ICON_LC_TRASH_2 " Delete").x +
+				 style.FramePadding.x * 4.0f + addButtonSize.x + style.ItemSpacing.x);
+
+			ImGui::SameLine(0, emptySpace);
+			if (ui::Button(ICON_LC_PENCIL " Edit"))
+			{
+				editProjectView_->setProjectIndex(selectedProjectItemIndex_);
+				editProjectView_->open();
+			}
+			ImGui::SetItemTooltip("Edit Project Name");
+			ImGui::SameLine();
+
+			if (ui::Button(ICON_LC_TRASH_2 " Delete"))
+			{
+				deleteProjectView_->setProjectIndex(selectedProjectItemIndex_);
+				deleteProjectView_->open();
+			}
+			ImGui::SetItemTooltip("Delete Project");
+			ImGui::PopID();
+		}
+		ImGui::EndDisabled();
 
 		if (selectedProjectItemIndex_ >= 0)
 		{
