@@ -11,6 +11,7 @@
 #include <ProfilersWindow.h>
 
 #include "features/projectExplorer/ProjectExplorer.h"
+#include "features/serverConnect/ServerConnectSettingsView.h"
 #include "features/sofiaSearch/SoFiaSearch.h"
 #include "features/transferMapping/TransferMapping.h"
 #include "framework/ApplicationContext.h"
@@ -88,6 +89,7 @@ private:
 	std::unique_ptr<ProjectExplorer> projectExplorer_{};
 	std::unique_ptr<SoFiaSearch> soFiaSearch_{};
 	std::unique_ptr<MenuBar> mainMenu_{};
+	std::unique_ptr<ServerConnectSettingsView> serverConntect_{};
 	b3d::renderer::RenderingDataWrapper renderingData_{};
 
 	bool showProfiler_{ false };

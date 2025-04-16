@@ -101,11 +101,26 @@ struct StyleBrush
 
 	Color acrylicBackgroundFillColorBaseBrush;
 	Color acrylicBackgroundFillColorDefaultBrush;
+
+	Color systemFillColorSuccessBrush;
+	Color systemFillColorCautionBrush;
+	Color systemFillColorCriticalBrush;
+	Color systemFillColorSuccessBackgroundBrush;
+	Color systemFillColorCautionBackgroundBrush;
+	Color systemFillColorCriticalBackgroundBrush;
 };
 
 namespace ui
 {
+	enum class SignalState
+	{
+		success,
+		caution,
+		critical
+	};
+
 	auto Button(const char* label, const Vector2& size = Vector2{}) -> bool;
+	auto SignalButton(const SignalState signal, const char* label, const Vector2& size = Vector2{}) -> bool;
 	auto AccentButton(const char* label, const Vector2& size = Vector2{}) -> bool;
 	auto ToggleButton(const bool toogled, const char* label, const Vector2& size = Vector2{}) -> bool;
 	auto ToggleSwitch(const bool toogled, const char* label, const char* option1, const char* option2) -> bool;
@@ -114,7 +129,8 @@ namespace ui
 		-> bool;
 
 	auto InputText(const char* label, std::string* text, ImGuiInputTextFlags flags = {}) -> bool;
-	auto HeadedInputText(const std::string& header, const char* label, std::string* text, ImGuiInputTextFlags flags = {}) -> bool;
+	auto HeadedInputText(const std::string& header, const char* label, std::string* text,
+						 ImGuiInputTextFlags flags = {}) -> bool;
 } // namespace ui
 
 auto createDarkThemeBrush(const AccentColors& accentColors) -> StyleBrush;

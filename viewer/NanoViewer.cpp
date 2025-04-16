@@ -98,7 +98,7 @@ namespace
 		style.ScrollbarRounding = 4.0f;
 
 		style.WindowBorderSize = 0.0f;
-		style.FrameBorderSize = 1.0f;
+		style.FrameBorderSize = 2.0f;
 
 		style.WindowPadding = Vector2{ 12.0f, 12.0f };
 		style.FramePadding = Vector2{ 8.0f, 4.0f };
@@ -120,64 +120,31 @@ namespace
 
 		auto& styleColors = style.Colors;
 		styleColors[ImGuiCol_Text] = static_cast<ImVec4>(Color{ 0.95f, 0.95f, 0.95f, 1.00f });
-		styleColors[ImGuiCol_WindowBg] = static_cast<ImVec4>(Color{ 0.12f, 0.12f, 0.12f, 0.94f });
 		styleColors[ImGuiCol_ChildBg] = static_cast<ImVec4>(Color{ 0.15f, 0.15f, 0.15f, 0.85f });
-		styleColors[ImGuiCol_PopupBg] = static_cast<ImVec4>(Color{ 0.18f, 0.18f, 0.18f, 0.94f });
 		styleColors[ImGuiCol_Border] = static_cast<ImVec4>(Color{ 0.25f, 0.25f, 0.25f, 0.60f });
 
 		styleColors[ImGuiCol_FrameBg] = static_cast<ImVec4>(Color{ 0.22f, 0.22f, 0.22f, 1.00f });
 		styleColors[ImGuiCol_FrameBgHovered] = static_cast<ImVec4>(accentColorDark3);
 		styleColors[ImGuiCol_FrameBgActive] = static_cast<ImVec4>(Color{ 0.30f, 0.30f, 0.30f, 1.00f });
 
-		
-
-		/*styleColors[ImGuiCol_Button] = static_cast<ImVec4>(Color{ 0.24f, 0.24f, 0.24f, 1.00f });
-		styleColors[ImGuiCol_ButtonHovered] = static_cast<ImVec4>(accentColorDark3);
-		styleColors[ImGuiCol_ButtonActive] = static_cast<ImVec4>(Color{ 0.36f, 0.36f, 0.36f, 1.00f });*/
-
-		/*ACCENT TANS
-		styleColors[ImGuiCol_TitleBg] = static_cast<ImVec4>(brush.accentAcrylicBackgroundFillColorBaseBrush);
-		styleColors[ImGuiCol_TitleBgActive] = static_cast<ImVec4>(brush.accentAcrylicBackgroundFillColorBaseBrush);
-		styleColors[ImGuiCol_TitleBgCollapsed] = static_cast<ImVec4>(brush.accentAcrylicBackgroundFillColorBaseBrush);
-		styleColors[ImGuiCol_Tab] = static_cast<ImVec4>(brush.accentAcrylicBackgroundFillColorBaseBrush);
-		styleColors[ImGuiCol_TabHovered] = static_cast<ImVec4>(brush.accentAcrylicBackgroundFillColorDefaultBrush);
-		styleColors[ImGuiCol_TabActive] = static_cast<ImVec4>(brush.solidBackgroundFillColorBaseBrush);
-		styleColors[ImGuiCol_TabDimmed] = static_cast<ImVec4>(brush.accentAcrylicBackgroundFillColorBaseBrush);
-		styleColors[ImGuiCol_TabDimmedSelected] = static_cast<ImVec4>(brush.solidBackgroundFillColorBaseBrush);*/
 
 		styleColors[ImGuiCol_TitleBg] = static_cast<ImVec4>(brush.acrylicBackgroundFillColorBaseBrush);
 		styleColors[ImGuiCol_TitleBgActive] = static_cast<ImVec4>(brush.acrylicBackgroundFillColorBaseBrush);
 		styleColors[ImGuiCol_TitleBgCollapsed] = static_cast<ImVec4>(brush.acrylicBackgroundFillColorBaseBrush);
 		styleColors[ImGuiCol_Tab] = static_cast<ImVec4>(brush.acrylicBackgroundFillColorBaseBrush);
 		styleColors[ImGuiCol_TabDimmed] = static_cast<ImVec4>(brush.acrylicBackgroundFillColorBaseBrush);
-
 		styleColors[ImGuiCol_TabHovered] = static_cast<ImVec4>(brush.acrylicBackgroundFillColorDefaultBrush);
-
 		styleColors[ImGuiCol_TabActive] = static_cast<ImVec4>(brush.solidBackgroundFillColorTertiaryBrush);
 		styleColors[ImGuiCol_TabDimmedSelected] = static_cast<ImVec4>(brush.solidBackgroundFillColorTertiaryBrush);
-
 		styleColors[ImGuiCol_TabDimmedSelectedOverline] =
 			static_cast<ImVec4>(brush.textControlElevationBorderFocusedBrush);
 		styleColors[ImGuiCol_TabSelectedOverline] = static_cast<ImVec4>(brush.textControlElevationBorderFocusedBrush);
 
-		/*=====================================================================*/
 		styleColors[ImGuiCol_MenuBarBg] = static_cast<ImVec4>(brush.acrylicBackgroundFillColorBaseBrush);
 		styleColors[ImGuiCol_WindowBg] = static_cast<ImVec4>(brush.solidBackgroundFillColorTertiaryBrush);
-
 		styleColors[ImGuiCol_PopupBg] = static_cast<ImVec4>(brush.solidBackgroundFillColorTertiaryBrush);
 		styleColors[ImGuiCol_Header] = static_cast<ImVec4>(brush.solidBackgroundFillColorTertiaryBrush);
-
 		styleColors[ImGuiCol_HeaderHovered] = static_cast<ImVec4>(brush.controlFillColorSecondaryBrush);
-
-
-		/*styleColors[ImGuiCol_SliderGrab] = static_cast<ImVec4>(Color{ 0.38f, 0.50f, 0.94f, 1.00f });
-		styleColors[ImGuiCol_SliderGrabActive] = static_cast<ImVec4>(Color{ 0.26f, 0.40f, 0.85f, 1.00f });*/
-
-		/*styleColors[ImGuiCol_Header] = static_cast<ImVec4>(Color{ 0.20f, 0.20f, 0.20f, 1.00f });
-		styleColors[ImGuiCol_HeaderHovered] = static_cast<ImVec4>(accentColorDark3);
-		styleColors[ImGuiCol_HeaderActive] = static_cast<ImVec4>(Color{ 0.30f, 0.30f, 0.30f, 1.00f });
-		styleColors[ImGuiCol_DockingPreview] = static_cast<ImVec4>(Color{ 0.30f, 0.30f, 0.90f, 0.70f });
-		styleColors[ImGuiCol_NavHighlight] = static_cast<ImVec4>(Color{ 0.26f, 0.40f, 0.85f, 1.00f });*/
 
 		styleColors[ImGuiCol_ResizeGrip] = static_cast<ImVec4>(accentColorDark3);
 		styleColors[ImGuiCol_ResizeGripActive] = static_cast<ImVec4>(accentColor);
@@ -384,16 +351,13 @@ auto NanoViewer::draw() -> void
 		isRunning_ = false;
 	}
 
-	static auto connectView = ServerConnectSettingsView{ *applicationContext_, "Server Connect",
-														 [](ModalViewBase*) { std::println("submit!!!"); } };
-
 	ImGui::BeginMainMenuBar();
 	if (ImGui::BeginMenu("Program"))
 	{
 		if (ImGui::MenuItem(ICON_LC_UNPLUG " Server Connection...", nullptr, nullptr))
 		{
-			connectView.open();
-			connectView.reset();
+			serverConntect_->open();
+			serverConntect_->reset();
 		}
 
 		ImGui::EndMenu();
@@ -415,7 +379,7 @@ auto NanoViewer::draw() -> void
 
 	applicationContext_->getMainDockspace()->begin();
 
-	connectView.draw();
+	serverConntect_->draw();
 
 	for (const auto component : applicationContext_->updatableComponents_)
 	{
@@ -456,7 +420,7 @@ auto NanoViewer::draw() -> void
 			enableGridFloor = !enableGridFloor;
 			volumeView_->enableInfinitGridFloor(enableGridFloor);
 		}
-		
+
 		ImGui::End();
 	}
 
@@ -544,40 +508,35 @@ auto NanoViewer::run(const std::function<bool()>& keepgoing) -> void
 	projectExplorer_ = std::make_unique<ProjectExplorer>(*applicationContext_);
 
 	mainMenu_ = std::make_unique<MenuBar>(*applicationContext_);
+	serverConntect_ =
+		std::make_unique<ServerConnectSettingsView>(*applicationContext_, "Server Connect", [](ModalViewBase*) {});
 
 	applicationContext_->addMenuBarTray(
 		[&]()
 		{
 			auto icon = ICON_LC_SERVER;
+			auto signal = ui::SignalState::success;
 			if (applicationContext_->serverClient_.getLastServerStatusState().health ==
 				b3d::tools::project::ServerHealthState::ok)
 			{
-				ImGui::PushStyleColor(ImGuiCol_Button, Color{ 0.1f, 0.5f, 0.1f, 1.0f });
+				signal = ui::SignalState::success;
 			}
 			else if (applicationContext_->serverClient_.getLastServerStatusState().health ==
 					 b3d::tools::project::ServerHealthState::testing)
 			{
-				ImGui::PushStyleColor(ImGuiCol_Button, Color{ 1.0f, 0.65f, 0.0f, 1.0f });
+				signal = ui::SignalState::caution;
 			}
 			else
 			{
-				ImGui::PushStyleColor(ImGuiCol_Button, Color{ 0.5f, 0.1f, 0.1f, 1.0f });
+				signal = ui::SignalState::critical;
 				icon = ICON_LC_SERVER_OFF;
 			}
 
-			if (ImGui::Button(icon))
+			if (ui::SignalButton(signal, icon))
 			{
-				// TODO: Open Server Connection Dialog?
+				serverConntect_->open();
+				serverConntect_->reset();
 			}
-			// TODO: Hover to show Status Tooltip.
-
-			ImGui::PopStyleColor();
-
-			const auto sampleRequest = std::vector<std::string>{
-				"Ready: SoFiA search [10, 30, 50] [20, 40, 100]",
-				"Pending: SoFiA search [110, 130, 150] [120, 140, 1100]",
-				"Pending: SoFiA search [210, 230, 250] [220, 240, 2100]",
-			};
 
 			enum class RequestStatus
 			{
@@ -599,45 +558,25 @@ auto NanoViewer::run(const std::function<bool()>& keepgoing) -> void
 
 			ImGui::SameLine();
 			ImGui::SetNextItemAllowOverlap();
-			const auto pos = ImGui::GetCursorPos();
+			const auto pos = Vector2{ ImGui::GetCursorPos() };
 			const auto spinnerRadius = ImGui::GetFontSize() * 0.25f;
 			const auto itemWidth = ImGui::GetStyle().FramePadding.x * 2 + spinnerRadius * 4;
 
-			if (ImGui::Button("##requestQueue", ImVec2(itemWidth, 32)))
+			if (ui::Button("##requestQueue", Vector2{ itemWidth, 0.0f }))
 			{
 			}
 			if (ImGui::IsItemHovered())
 			{
-				if (ImGui::BeginTooltip())
-				{
-					ImGui::SetNextItemOpen(true);
-					if (hasPendingRequests)
-					{
-						if (ImGui::TreeNode("Request ongoing"))
-						{
-						}
-					}
-					else
-					{
-						if (ImGui::TreeNode("No pending requests"))
-						{
-						}
-					}
-					ImGui::TreePop();
-
-					ImGui::EndTooltip();
-				}
 			}
-
 			if (hasPendingRequests)
 			{
-				ImGui::SetCursorPos(pos + ImGui::GetStyle().FramePadding * 2);
+				ImGui::SetCursorPos(pos + Vector2{ ImGui::GetStyle().FramePadding } * 2);
 				ImSpinner::SpinnerRotateSegments("abs", spinnerRadius, 2.0f);
 			}
 			else
 			{
 				const auto offset = (itemWidth - ImGui::CalcTextSize(ICON_LC_CIRCLE_CHECK).x) * 0.5f;
-				ImGui::SetCursorPos(pos + ImVec2(offset, 0));
+				ImGui::SetCursorPos(pos + Vector2(offset, 0));
 				ImGui::Text(ICON_LC_CIRCLE_CHECK);
 			}
 		});

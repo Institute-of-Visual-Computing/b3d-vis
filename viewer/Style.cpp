@@ -11,6 +11,102 @@ enum class ItemState
 	disabled
 };
 
+auto ui::SignalButton(const SignalState signal, const char* label, const Vector2& size) -> bool
+{
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2.0f);
+
+	const auto& brush = ApplicationContext::getStyleBrush();
+	const auto itemId = ImGui::GetID(label);
+	const auto isHovered =
+		ImGui::GetHoveredID() == itemId or ImGui::GetCurrentContext()->HoveredIdPreviousFrame == itemId;
+	const auto isActive = ImGui::GetActiveID() == itemId;
+	const auto isDisabled = ImGui::GetCurrentContext()->CurrentItemFlags & ImGuiItemFlags_Disabled;
+
+	auto result = false;
+	auto state = ItemState::base;
+	if (isHovered)
+	{
+		state = ItemState::hovered;
+	}
+	if (isActive)
+	{
+		state = ItemState::pressed;
+	}
+	if (isDisabled)
+	{
+		state = ItemState::disabled;
+	}
+
+	auto backgroundColor = Color{};
+	auto forgroundColor = Color{};
+
+	switch (signal)
+	{
+	case SignalState::success:
+		backgroundColor = brush.systemFillColorSuccessBackgroundBrush;
+		forgroundColor = brush.systemFillColorSuccessBrush;
+		break;
+	case SignalState::caution:
+		backgroundColor = brush.systemFillColorCautionBackgroundBrush;
+		forgroundColor = brush.systemFillColorCautionBrush;
+		break;
+	case SignalState::critical:
+		backgroundColor = brush.systemFillColorCriticalBackgroundBrush;
+		forgroundColor = brush.systemFillColorCriticalBrush;
+		break;
+	}
+
+	switch (state)
+	{
+	default:
+	case ItemState::base:
+		ImGui::PushStyleColor(ImGuiCol_Button, backgroundColor);
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, brush.controlFillColorSecondaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_Border, brush.controlElevationBorderBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, forgroundColor);
+
+		result = ImGui::Button(label, size);
+
+		ImGui::PopStyleColor(4);
+		break;
+	case ItemState::hovered:
+		ImGui::PushStyleColor(ImGuiCol_Button, backgroundColor);
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, brush.controlFillColorTertiaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, brush.controlFillColorSecondaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_Border, brush.controlElevationBorderBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, forgroundColor);
+
+		result = ImGui::Button(label, size);
+
+		ImGui::PopStyleColor(5);
+		break;
+	case ItemState::pressed:
+		ImGui::PushStyleColor(ImGuiCol_Button, backgroundColor);
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, brush.controlFillColorTertiaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, brush.controlFillColorSecondaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_Border, brush.controlStrokeColorDefaultBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, forgroundColor);
+
+		result = ImGui::Button(label, size);
+
+		ImGui::PopStyleColor(5);
+		break;
+	case ItemState::disabled:
+		ImGui::PushStyleColor(ImGuiCol_Button, backgroundColor);
+		ImGui::PushStyleColor(ImGuiCol_Border, brush.controlStrokeColorDefaultBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, forgroundColor);
+
+		result = ImGui::Button(label, size);
+
+		ImGui::PopStyleColor(3);
+		break;
+	}
+
+	ImGui::PopStyleVar();
+
+	return result;
+}
+
 auto ui::Button(const char* label, const Vector2& size) -> bool
 {
 	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2.0f);
@@ -347,7 +443,6 @@ auto ui::Selectable(const char* label, bool selected, ImGuiSelectableFlags flags
 			const auto height = size.y == 0.0f ? ImGui::GetTextLineHeight() : size.y;
 			const auto position = Vector2{ ImGui::GetCursorScreenPos() };
 
-			
 
 			result = ImGui::Selectable(label, selected, flags, size);
 
@@ -519,6 +614,13 @@ auto createDarkThemeBrush(const AccentColors& accentColors) -> StyleBrush
 
 	brush.acrylicBackgroundFillColorBaseBrush = Color{ 0.13f, 0.13f, 0.13f, 1.0f };
 	brush.acrylicBackgroundFillColorDefaultBrush = Color{ 0.18f, 0.18f, 0.18f, 1.0f };
+
+	brush.systemFillColorSuccessBrush = Color{ 0.42f, 0.8f, 0.37f, 1.0f };
+	brush.systemFillColorCautionBrush = Color{ 0.99f, 0.88f, 0.0f, 1.0f };
+	brush.systemFillColorCriticalBrush = Color{ 1.0f, 0.6f, 0.64f, 1.0f };
+	brush.systemFillColorSuccessBackgroundBrush = Color{ 0.22f, 0.24f, 0.11f, 1.0f };
+	brush.systemFillColorCautionBackgroundBrush = Color{ 0.26f, 0.21f, 0.1f, 1.0f };
+	brush.systemFillColorCriticalBackgroundBrush = Color{ 0.27f, 0.15f, 0.15f, 1.0f };
 
 	return brush;
 }
