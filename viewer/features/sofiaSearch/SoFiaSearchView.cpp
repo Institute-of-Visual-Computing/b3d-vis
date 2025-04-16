@@ -165,8 +165,8 @@ auto SoFiaSearchView::onDraw() -> void
 	ImGui::PopFont();
 
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, Vector2{ 24.0f, 12.0f });
-	ImGui::TextWrapped("This tool use SiFiA 2 in the backend for searching for sources in a HI-Datacude dataset.");
-	ImGui::TextLinkOpenURL("About SoFiA 2", "www.google.com");
+	ImGui::TextWrapped("This tool utilizes SiFiA 2 in the backend to search for sources in a HI-Datacude dataset.");
+	ImGui::TextLinkOpenURL("About SoFiA 2", "https://gitlab.com/SoFiA-Admin/SoFiA-2");
 	ImGui::PopStyleVar();
 
 	if (disableInteraction)
@@ -179,8 +179,7 @@ auto SoFiaSearchView::onDraw() -> void
 		ImGui::Text(ICON_LC_MESSAGE_SQUARE_WARNING);
 		ImGui::PopStyleColor();
 		ImGui::SameLine();
-		ImGui::TextWrapped("No project is currently loaded! Please navigate to Project Explorer and select and/or "
-						   "create a project dataset.");
+		ImGui::TextWrapped("No project is currently loaded. Please select or add a new project dataset in the Project Explorer window.");
 		ImGui::EndChild();
 		ImGui::PopStyleColor();
 	}
