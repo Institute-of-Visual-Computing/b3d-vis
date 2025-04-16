@@ -144,21 +144,85 @@ auto SoFiaSearchView::getModel() -> Model&
 auto SoFiaSearchView::onDraw() -> void
 {
 	const auto disableInteraction = !model_.interactionEnabled;
-	const auto hasProject = applicationContext_->selectedProject_.has_value();
+
+	const auto& brush = ApplicationContext::getStyleBrush();
+	constexpr auto containerCornerRadius = 8.0f;
+	constexpr auto contentCornerRadius = 4.0f;
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, containerCornerRadius);
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, containerCornerRadius);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 2.0f);
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, Vector2{ 24.0f, 24.0f });
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, Vector2{ 24.0f, 24.0f });
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, contentCornerRadius);
+
+	ImGui::PushStyleColor(ImGuiCol_PopupBg, brush.cardBackgroundFillColorDefaultBrush);
+	ImGui::PushStyleColor(ImGuiCol_Border, brush.controlStrokeColorSecondaryBrush);
+
+	const auto font = applicationContext_->getFontCollection().getTitleFont();
+	ImGui::PushFont(font);
+	ImGui::Text("SoFiA Search");
+	ImGui::PopFont();
+
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, Vector2{ 24.0f, 12.0f });
+	ImGui::TextWrapped("This tool use SiFiA 2 in the backend for searching for sources in a HI-Datacude dataset.");
+	ImGui::TextLinkOpenURL("About SoFiA 2", "www.google.com");
+	ImGui::PopStyleVar();
+
+	if (disableInteraction)
+	{
+		ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.systemFillColorCautionBackgroundBrush);
+
+		ImGui::BeginChild("##project_not_selected_warning", Vector2{},
+						  ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_FrameStyle);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.systemFillColorCautionBrush);
+		ImGui::Text(ICON_LC_MESSAGE_SQUARE_WARNING);
+		ImGui::PopStyleColor();
+		ImGui::SameLine();
+		ImGui::TextWrapped("No project is currently loaded! Please navigate to Project Explorer and select and/or "
+						   "create a project dataset.");
+		ImGui::EndChild();
+		ImGui::PopStyleColor();
+	}
+
+	const auto& style = ImGui::GetStyle();
+
+	const auto footerHeight = ImGui::CalcTextSize("Submit SoFiA Search").y + style.FramePadding.y * 2.0f + 24.0f * 2.0f;
+	const auto availableSize = Vector2{ ImGui::GetContentRegionAvail() };
+
+	ImGui::BeginChild("sofia_search_filter_settings", Vector2{ 0.0f, availableSize.y - footerHeight },
+					  ImGuiChildFlags_FrameStyle);
+
+	drawFilterFormContent();
+	ImGui::EndChild();
+
+	const auto position = ImGui::GetCursorScreenPos();
+	const auto min = position - Vector2{ style.FramePadding.x + 6, 0 };
+	const auto max = position + Vector2{ style.FramePadding.x + 6, style.FramePadding.y + style.ItemSpacing.y } +
+		Vector2{ availableSize.x, footerHeight };
+	ImGui::GetWindowDrawList()->AddRectFilled(min, max, brush.solidBackgroundFillColorSecondaryBrush);
+
 
 	ImGui::BeginDisabled(disableInteraction);
-	
-	if (ui::AccentButton("Submit Search"))
+	ImGui::SetCursorPos(ImGui::GetCursorPos() + Vector2{ 0.0, 24.0f - style.FrameBorderSize });
+	if (ui::AccentButton("Submit SoFiA Search", Vector2{ availableSize.x, 0.0f }))
 	{
 		startSearchFunction_();
 		resetParams();
 		resetSelection();
 		resetSelection();
 	}
-	if (disableInteraction)
-	{
-		ImGui::SetItemTooltip("Dataset not loaded.");
-	}
+	ImGui::EndDisabled();
+	ImGui::PopStyleColor(2);
+	ImGui::PopStyleVar(6);
+}
+
+auto SoFiaSearchView::drawFilterFormContent() -> void
+{
+	const auto disableInteraction = !model_.interactionEnabled;
+	const auto hasProject = applicationContext_->selectedProject_.has_value();
+
+	ImGui::BeginDisabled(disableInteraction);
 
 	if (!disableInteraction && model_.showRoiGizmo)
 	{

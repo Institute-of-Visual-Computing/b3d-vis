@@ -26,11 +26,14 @@ DockableWindowViewBase::DockableWindowViewBase(ApplicationContext& appContext, c
 auto DockableWindowViewBase::draw() -> void
 {
 	assert(dockspace_->hasDrawn());
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 2.0f);
 	ImGui::SetNextWindowDockID(dockspace_->id(), ImGuiCond_FirstUseEver);
+	
 	beginDraw();
 	if (isOpen_ and drawContent_)
 	{
 		onDraw();
 	}
 	endDraw();
+	ImGui::PopStyleVar();
 }

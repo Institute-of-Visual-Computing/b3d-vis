@@ -339,9 +339,10 @@ auto ui::ToggleSwitch(const bool isOn, const char* label, const char* option1 = 
 	const auto& brush = ApplicationContext::getStyleBrush();
 
 	const auto types = std::array{ option1, option2 };
-
-	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2.0f);
-	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 14.0f);
+	constexpr auto borderSize = 2.0f;
+	constexpr auto roundingRadius = 14.0f;
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, borderSize);
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, roundingRadius);
 	ImGui::PushStyleVar(ImGuiStyleVar_GrabRounding, 12.0f);
 
 	if (isDisabled)
@@ -371,7 +372,8 @@ auto ui::ToggleSwitch(const bool isOn, const char* label, const char* option1 = 
 		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, brush.accentFillColorSecondaryBrush);
 		ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, brush.textFillColorSecondaryBrush);
 	}
-	static auto value = isOn ? 1 : 0;
+	auto value = isOn ? 1 : 0;
+	ImGui::SetNextItemWidth(roundingRadius * 4.0f + borderSize * 2.0f);
 	const auto isEdited = ImGui::SliderInt(label, &value, 0, 1, types[value], ImGuiSliderFlags_NoInput);
 	const auto result = ImGui::IsItemFocused() ? isEdited : ImGui::IsItemClicked(ImGuiMouseButton_Left);
 

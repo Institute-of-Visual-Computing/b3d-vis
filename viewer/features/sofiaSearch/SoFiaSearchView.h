@@ -208,6 +208,7 @@ public:
 
 private:
 	auto onDraw() -> void override;
+	auto drawFilterFormContent() -> void;
 
 	Model model_;
 	std::function<void()> startSearchFunction_;

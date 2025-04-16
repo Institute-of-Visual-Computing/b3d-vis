@@ -415,6 +415,7 @@ auto NanoViewer::draw() -> void
 		}
 
 		static bool enableGridFloor = true;
+		
 		if (ui::ToggleSwitch(enableGridFloor, "Enable Grid Floor", "", ""))
 		{
 			enableGridFloor = !enableGridFloor;

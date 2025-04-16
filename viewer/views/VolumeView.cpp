@@ -252,26 +252,11 @@ auto VolumeView::onDraw() -> void
 
 		auto cameraType = static_cast<int>(cameraControllerType_);
 		auto isOn = cameraType != 0;
-		// camera switch
+
+		if (ui::ToggleSwitch(isOn, "##cameraType", "orbit", "fly"))
 		{
-			/*static constexpr auto types = std::array{ "orbit", "fly" };
-			auto cameraType = static_cast<int>(cameraControllerType_);
-			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12.0f);
-			ImGui::PushStyleVar(ImGuiStyleVar_GrabRounding, 12.0f);
-			ImGui::SetNextItemWidth(40 * scale);
-			ImGui::SliderInt("##cameraType", &cameraType, 0, static_cast<int>(types.size() - 1), types[cameraType]);
-			if (ImGui::IsItemClicked(ImGuiMouseButton_Left))
-			{
-				cameraControllerType_ =
-					static_cast<CameraControllerType>((static_cast<int>(cameraControllerType_) + 1) % 2);
-			}
-			ImGui::PopStyleVar(2);*/
-			ImGui::SetNextItemWidth(40 * scale);
-			if (ui::ToggleSwitch(isOn, "##cameraType", "orbit", "fly"))
-			{
-				cameraControllerType_ =
-					static_cast<CameraControllerType>((static_cast<int>(cameraControllerType_) + 1) % 2);
-			}
+			cameraControllerType_ =
+				static_cast<CameraControllerType>((static_cast<int>(cameraControllerType_) + 1) % 2);
 		}
 	}
 
