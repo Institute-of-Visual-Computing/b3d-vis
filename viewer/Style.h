@@ -98,6 +98,9 @@ struct StyleBrush
 	Color controlStrongStrokeColorDisabledBrush;
 
 	Color layerFillColorDefaultBrush;
+
+	Color acrylicBackgroundFillColorBaseBrush;
+	Color acrylicBackgroundFillColorDefaultBrush;
 };
 
 namespace ui

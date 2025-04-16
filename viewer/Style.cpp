@@ -287,7 +287,7 @@ auto ui::ToggleSwitch(const bool isOn, const char* label, const char* option1 = 
 auto ui::Selectable(const char* label, bool selected, ImGuiSelectableFlags flags, const Vector2& size) -> bool
 {
 	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 2.0f);
-
+	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, Vector2{ 8.0f, 8.0f });
 	const auto& brush = ApplicationContext::getStyleBrush();
 	const auto itemId = ImGui::GetID(label);
 	const auto isHovered =
@@ -319,7 +319,7 @@ auto ui::Selectable(const char* label, bool selected, ImGuiSelectableFlags flags
 		ImGui::PushStyleColor(ImGuiCol_Border, brush.controlElevationBorderBrush);
 		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorPrimaryBrush);
 
-		
+
 		result = ImGui::Selectable(label, selected, flags, size);
 
 		ImGui::PopStyleColor(4);
@@ -336,15 +336,26 @@ auto ui::Selectable(const char* label, bool selected, ImGuiSelectableFlags flags
 		ImGui::PopStyleColor(5);
 		break;
 	case ItemState::pressed:
-		ImGui::PushStyleColor(ImGuiCol_Header, brush.controlFillColorDefaultBrush);
-		ImGui::PushStyleColor(ImGuiCol_HeaderActive, brush.controlFillColorTertiaryBrush);
-		ImGui::PushStyleColor(ImGuiCol_HeaderHovered, brush.controlFillColorSecondaryBrush);
-		ImGui::PushStyleColor(ImGuiCol_Border, brush.textControlElevationBorderFocusedBrush);
-		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorSecondaryBrush);
+		{
 
-		result = ImGui::Selectable(label, selected, flags, size);
+			ImGui::PushStyleColor(ImGuiCol_Header, brush.controlFillColorDefaultBrush);
+			ImGui::PushStyleColor(ImGuiCol_HeaderActive, brush.controlFillColorTertiaryBrush);
+			ImGui::PushStyleColor(ImGuiCol_HeaderHovered, brush.controlFillColorSecondaryBrush);
+			ImGui::PushStyleColor(ImGuiCol_Border, brush.textControlElevationBorderFocusedBrush);
+			ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorSecondaryBrush);
+			auto& drawList = *ImGui::GetWindowDrawList();
+			const auto height = size.y == 0.0f ? ImGui::GetTextLineHeight() : size.y;
+			const auto position = Vector2{ ImGui::GetCursorScreenPos() };
 
-		ImGui::PopStyleColor(5);
+			
+
+			result = ImGui::Selectable(label, selected, flags, size);
+
+			drawList.AddRectFilled(position + Vector2{ 0.0f, 0.0f }, position + Vector2{ 4.0f, height },
+								   brush.textControlElevationBorderFocusedBrush, 2.0f);
+
+			ImGui::PopStyleColor(5);
+		}
 		break;
 	case ItemState::disabled:
 		ImGui::PushStyleColor(ImGuiCol_Header, brush.controlFillColorDisabledBrush);
@@ -357,7 +368,7 @@ auto ui::Selectable(const char* label, bool selected, ImGuiSelectableFlags flags
 		break;
 	}
 
-	ImGui::PopStyleVar();
+	ImGui::PopStyleVar(2);
 
 	return result;
 }
@@ -505,6 +516,9 @@ auto createDarkThemeBrush(const AccentColors& accentColors) -> StyleBrush
 
 	brush.cardBackgroundFillColorDefaultBrush = Color{ 0.17f, 0.17f, 0.17f, 1.0f };
 	brush.layerFillColorDefaultBrush = Color{ 0.15f, 0.15f, 0.15f, 1.0f };
+
+	brush.acrylicBackgroundFillColorBaseBrush = Color{ 0.13f, 0.13f, 0.13f, 1.0f };
+	brush.acrylicBackgroundFillColorDefaultBrush = Color{ 0.18f, 0.18f, 0.18f, 1.0f };
 
 	return brush;
 }

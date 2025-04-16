@@ -1,6 +1,7 @@
 #include "DockableWindowViewBase.h"
 
 #include <format>
+#include <imgui_internal.h>
 
 
 DockableWindowViewBase::DockableWindowViewBase(ApplicationContext& appContext, const std::string_view name,
@@ -17,8 +18,9 @@ DockableWindowViewBase::DockableWindowViewBase(ApplicationContext& appContext, c
 
 	if ((flags_ & WindowFlagBits::noUndocking) == WindowFlagBits::noUndocking)
 	{
-		//windowClass_.DockNodeFlagsOverrideSet |= ImGuiDockNodeFlags_NoUndocking;
+		// windowClass_.DockNodeFlagsOverrideSet |= ImGuiDockNodeFlags_NoUndocking;
 	}
+	windowClass_.DockNodeFlagsOverrideSet |= ImGuiDockNodeFlags_NoCloseButton;
 }
 
 auto DockableWindowViewBase::draw() -> void

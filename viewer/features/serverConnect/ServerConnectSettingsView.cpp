@@ -14,14 +14,6 @@
 
 namespace
 {
-	/*struct ServerSelection
-	{
-		std::string name;
-	};
-	std::vector<ServerSelection> servers = { { "localhost" },
-											 { "192.168.0.1" },
-											 { "very long server name 192.168.0.1:9999" } };
-	*/
 	auto counter = 0;
 	auto startTestConnection = false;
 } // namespace

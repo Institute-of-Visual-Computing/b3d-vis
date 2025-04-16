@@ -51,7 +51,7 @@ namespace
 VolumeView::VolumeView(ApplicationContext& appContext, Dockspace* dockspace)
 	: DockableWindowViewBase(appContext, "Volume Viewport", dockspace,
 							 /*WindowFlagBits::noTitleBar | */ WindowFlagBits::noUndocking |
-								 WindowFlagBits::hideTabBar | WindowFlagBits::noCollapse | WindowFlagBits::noClose)
+								 /*WindowFlagBits::hideTabBar |*/ WindowFlagBits::noCollapse | WindowFlagBits::noClose)
 {
 	fullscreenTexturePass_ = std::make_unique<FullscreenTexturePass>();
 	infiniteGridPass_ = std::make_unique<InfiniteGridPass>();

@@ -89,27 +89,32 @@ namespace
 		const auto accentColorDark2 = Color{ 0.00854f, 0.05469f, 0.18164f };
 		const auto accentColorDark3 = Color{ 0.00275f, 0.01941f, 0.05469f };
 #endif
+		const auto& brush = ApplicationContext::getStyleBrush();
 		auto& style = ImGui::GetStyle();
 
 		style.WindowRounding = 8.0f;
 		style.FrameRounding = 4.0f;
 		style.GrabRounding = 4.0f;
 		style.ScrollbarRounding = 4.0f;
-		style.TabRounding = 4.0f;
 
 		style.WindowBorderSize = 0.0f;
 		style.FrameBorderSize = 1.0f;
-		style.PopupBorderSize = 1.0f;
 
-		style.WindowPadding = Vector2{ 16.0f, 16.0f };
-		style.FramePadding = Vector2{ 8, 4 };
-		style.ItemSpacing = Vector2{ 8, 12 };
-		style.ItemInnerSpacing = Vector2{ 8, 4 };
+		style.WindowPadding = Vector2{ 12.0f, 12.0f };
+		style.FramePadding = Vector2{ 8.0f, 4.0f };
+		style.ItemSpacing = Vector2{ 8.0f, 12.0f };
+		style.ItemInnerSpacing = Vector2{ 0.0f, 0.0f };
 		style.IndentSpacing = 20.0f;
 		style.ScrollbarSize = 12.0f;
 		style.GrabMinSize = 20.0f;
 
-		style.TabBarBorderSize = 2.0f;
+		style.TabRounding = 8.0f;
+		style.TabBorderSize = 2.0f;
+		style.TabBarBorderSize = 0.0f;
+		style.TabBarOverlineSize = 2.0f;
+
+		style.PopupRounding = 8.0f;
+		style.PopupBorderSize = 2.0f;
 
 		style.DisabledAlpha = 1.0f;
 
@@ -124,29 +129,55 @@ namespace
 		styleColors[ImGuiCol_FrameBgHovered] = static_cast<ImVec4>(accentColorDark3);
 		styleColors[ImGuiCol_FrameBgActive] = static_cast<ImVec4>(Color{ 0.30f, 0.30f, 0.30f, 1.00f });
 
-		styleColors[ImGuiCol_TitleBg] = static_cast<ImVec4>(Color{ 0.16f, 0.16f, 0.16f, 1.00f });
-		styleColors[ImGuiCol_TitleBgActive] = static_cast<ImVec4>(Color{ 0.18f, 0.18f, 0.18f, 1.00f });
-		styleColors[ImGuiCol_TitleBgCollapsed] = static_cast<ImVec4>(Color{ 0.10f, 0.10f, 0.10f, 0.75f });
+		
 
 		/*styleColors[ImGuiCol_Button] = static_cast<ImVec4>(Color{ 0.24f, 0.24f, 0.24f, 1.00f });
 		styleColors[ImGuiCol_ButtonHovered] = static_cast<ImVec4>(accentColorDark3);
 		styleColors[ImGuiCol_ButtonActive] = static_cast<ImVec4>(Color{ 0.36f, 0.36f, 0.36f, 1.00f });*/
 
-		styleColors[ImGuiCol_Tab] = static_cast<ImVec4>(Color{ 0.24f, 0.24f, 0.24f, 1.00f });
-		styleColors[ImGuiCol_TabHovered] = static_cast<ImVec4>(accentColorDark3);
-		styleColors[ImGuiCol_TabActive] = static_cast<ImVec4>(accentColor);
+		/*ACCENT TANS
+		styleColors[ImGuiCol_TitleBg] = static_cast<ImVec4>(brush.accentAcrylicBackgroundFillColorBaseBrush);
+		styleColors[ImGuiCol_TitleBgActive] = static_cast<ImVec4>(brush.accentAcrylicBackgroundFillColorBaseBrush);
+		styleColors[ImGuiCol_TitleBgCollapsed] = static_cast<ImVec4>(brush.accentAcrylicBackgroundFillColorBaseBrush);
+		styleColors[ImGuiCol_Tab] = static_cast<ImVec4>(brush.accentAcrylicBackgroundFillColorBaseBrush);
+		styleColors[ImGuiCol_TabHovered] = static_cast<ImVec4>(brush.accentAcrylicBackgroundFillColorDefaultBrush);
+		styleColors[ImGuiCol_TabActive] = static_cast<ImVec4>(brush.solidBackgroundFillColorBaseBrush);
+		styleColors[ImGuiCol_TabDimmed] = static_cast<ImVec4>(brush.accentAcrylicBackgroundFillColorBaseBrush);
+		styleColors[ImGuiCol_TabDimmedSelected] = static_cast<ImVec4>(brush.solidBackgroundFillColorBaseBrush);*/
 
-		styleColors[ImGuiCol_TabDimmed] = static_cast<ImVec4>(Color{ 0.24f, 0.24f, 0.24f, 1.00f });
-		styleColors[ImGuiCol_TabDimmedSelected] = static_cast<ImVec4>(accentColorDark1);
+		styleColors[ImGuiCol_TitleBg] = static_cast<ImVec4>(brush.acrylicBackgroundFillColorBaseBrush);
+		styleColors[ImGuiCol_TitleBgActive] = static_cast<ImVec4>(brush.acrylicBackgroundFillColorBaseBrush);
+		styleColors[ImGuiCol_TitleBgCollapsed] = static_cast<ImVec4>(brush.acrylicBackgroundFillColorBaseBrush);
+		styleColors[ImGuiCol_Tab] = static_cast<ImVec4>(brush.acrylicBackgroundFillColorBaseBrush);
+		styleColors[ImGuiCol_TabDimmed] = static_cast<ImVec4>(brush.acrylicBackgroundFillColorBaseBrush);
+
+		styleColors[ImGuiCol_TabHovered] = static_cast<ImVec4>(brush.acrylicBackgroundFillColorDefaultBrush);
+
+		styleColors[ImGuiCol_TabActive] = static_cast<ImVec4>(brush.solidBackgroundFillColorTertiaryBrush);
+		styleColors[ImGuiCol_TabDimmedSelected] = static_cast<ImVec4>(brush.solidBackgroundFillColorTertiaryBrush);
+
+		styleColors[ImGuiCol_TabDimmedSelectedOverline] =
+			static_cast<ImVec4>(brush.textControlElevationBorderFocusedBrush);
+		styleColors[ImGuiCol_TabSelectedOverline] = static_cast<ImVec4>(brush.textControlElevationBorderFocusedBrush);
+
+		/*=====================================================================*/
+		styleColors[ImGuiCol_MenuBarBg] = static_cast<ImVec4>(brush.acrylicBackgroundFillColorBaseBrush);
+		styleColors[ImGuiCol_WindowBg] = static_cast<ImVec4>(brush.solidBackgroundFillColorTertiaryBrush);
+
+		styleColors[ImGuiCol_PopupBg] = static_cast<ImVec4>(brush.solidBackgroundFillColorTertiaryBrush);
+		styleColors[ImGuiCol_Header] = static_cast<ImVec4>(brush.solidBackgroundFillColorTertiaryBrush);
+
+		styleColors[ImGuiCol_HeaderHovered] = static_cast<ImVec4>(brush.controlFillColorSecondaryBrush);
+
 
 		/*styleColors[ImGuiCol_SliderGrab] = static_cast<ImVec4>(Color{ 0.38f, 0.50f, 0.94f, 1.00f });
 		styleColors[ImGuiCol_SliderGrabActive] = static_cast<ImVec4>(Color{ 0.26f, 0.40f, 0.85f, 1.00f });*/
 
-		styleColors[ImGuiCol_Header] = static_cast<ImVec4>(Color{ 0.20f, 0.20f, 0.20f, 1.00f });
+		/*styleColors[ImGuiCol_Header] = static_cast<ImVec4>(Color{ 0.20f, 0.20f, 0.20f, 1.00f });
 		styleColors[ImGuiCol_HeaderHovered] = static_cast<ImVec4>(accentColorDark3);
 		styleColors[ImGuiCol_HeaderActive] = static_cast<ImVec4>(Color{ 0.30f, 0.30f, 0.30f, 1.00f });
 		styleColors[ImGuiCol_DockingPreview] = static_cast<ImVec4>(Color{ 0.30f, 0.30f, 0.90f, 0.70f });
-		styleColors[ImGuiCol_NavHighlight] = static_cast<ImVec4>(Color{ 0.26f, 0.40f, 0.85f, 1.00f });
+		styleColors[ImGuiCol_NavHighlight] = static_cast<ImVec4>(Color{ 0.26f, 0.40f, 0.85f, 1.00f });*/
 
 		styleColors[ImGuiCol_ResizeGrip] = static_cast<ImVec4>(accentColorDark3);
 		styleColors[ImGuiCol_ResizeGripActive] = static_cast<ImVec4>(accentColor);

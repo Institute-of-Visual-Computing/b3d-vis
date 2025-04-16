@@ -404,217 +404,126 @@ auto ProjectExplorerView::onDraw() -> void
 			}
 
 			static auto selectedRequest = defaultVolumeDataRequest;
-
-			if (ImGui::TreeNodeEx("Requests", ImGuiTreeNodeFlags_DefaultOpen))
+			ImGui::BeginChild("##requests", ImGui::GetContentRegionAvail(), ImGuiChildFlags_Border | ImGuiChildFlags_FrameStyle);
+			/*ImGui::GetForegroundDrawList()->PushClipRect(
+				ImGui::GetCursorPos(), Vector2{ ImGui::GetCursorPos() } + Vector2{ ImGui::GetContentRegionAvail() },
+				false);*/
+			for (auto i = 0; i < project.requests.size(); i++)
 			{
-				for (auto i = 0; i < project.requests.size(); i++)
+				ImGui::PushID(i);
+				const auto& request = project.requests[i];
+				ImGui::SetNextItemAllowOverlap();
+
+				if (loadAndShowFileFuturePerRequest[i].loadAndShowFileFuture.valid())
 				{
-					ImGui::PushID(i);
-					const auto& request = project.requests[i];
-					ImGui::SetNextItemAllowOverlap();
-
-					if (loadAndShowFileFuturePerRequest[i].loadAndShowFileFuture.valid())
+					loadAndShowFileFuturePerRequest[i].blocked = true;
+					if (loadAndShowFileFuturePerRequest[i].loadAndShowFileFuture.wait_for(std::chrono::seconds(0)) ==
+						std::future_status::ready)
 					{
-						loadAndShowFileFuturePerRequest[i].blocked = true;
-						if (loadAndShowFileFuturePerRequest[i].loadAndShowFileFuture.wait_for(
-								std::chrono::seconds(0)) == std::future_status::ready)
-						{
-							loadAndShowFileFuturePerRequest[i].loadAndShowFileFuture.get();
-							loadAndShowFileFuturePerRequest[i].blocked = false;
-						}
+						loadAndShowFileFuturePerRequest[i].loadAndShowFileFuture.get();
+						loadAndShowFileFuturePerRequest[i].blocked = false;
 					}
+				}
 
-					const auto isItemEnabled =
-						(request.result.wasSuccess() or loadAndShowFileFuturePerRequest[i].blocked) and
-						request.result.nanoResult.fileAvailable;
+				const auto isItemEnabled =
+					(request.result.wasSuccess() or loadAndShowFileFuturePerRequest[i].blocked) and
+					request.result.nanoResult.fileAvailable;
 
-					ImGui::BeginDisabled(!isItemEnabled);
-					if (ImGui::Selectable(request.uuid.c_str(), selectedRequest == i))
-					{
-						selectedRequest = i;
-						loadAndShowFileFuturePerRequest[i].loadAndShowFileFuture =
-							loadAndShowFunction_(request.result.nanoResult.resultFile);
-					}
-					if (ImGui::IsItemHovered())
-					{
-						const auto box = owl::common::box3f{ { static_cast<float>(request.subRegion.lower.x),
-															   static_cast<float>(request.subRegion.lower.y),
-															   static_cast<float>(request.subRegion.lower.z) },
+				ImGui::BeginDisabled(!isItemEnabled);
 
-															 { static_cast<float>(request.subRegion.upper.x),
-															   static_cast<float>(request.subRegion.upper.y),
-															   static_cast<float>(request.subRegion.upper.z) } };
+				const auto position = Vector2{ ImGui::GetCursorPos() };
+				if (ui::Selectable("", selectedRequest == i, 0, Vector2{ 0.0f, ImGui::GetTextLineHeight() * 2.0f }))
+				{
+					selectedRequest = i;
+					loadAndShowFileFuturePerRequest[i].loadAndShowFileFuture =
+						loadAndShowFunction_(request.result.nanoResult.resultFile);
+				}
+				const auto nextItem = ImGui::GetCursorPos();
+				if (ImGui::IsItemHovered())
+				{
+					const auto box = owl::common::box3f{
+						{ static_cast<float>(request.subRegion.lower.x), static_cast<float>(request.subRegion.lower.y),
+						  static_cast<float>(request.subRegion.lower.z) },
 
-
-						const auto originalBoxSize = owl::vec3f{
-							static_cast<float>(-(project.fitsOriginProperties.axisDimensions[0] - 1)),
-							static_cast<float>(-(project.fitsOriginProperties.axisDimensions[1] - 1)),
-							static_cast<float>(project.fitsOriginProperties.axisDimensions[2] - 1),
-						};
-
-						auto boxTranslate = box.size() / 2.0f;
-						boxTranslate.z *= -1.0f;
-						boxTranslate += owl::vec3f{ box.lower.x, box.lower.y, -box.lower.z };
+						{ static_cast<float>(request.subRegion.upper.x), static_cast<float>(request.subRegion.upper.y),
+						  static_cast<float>(request.subRegion.upper.z) }
+					};
 
 
-						constexpr auto blinkFrequency = 10.0f;
-						const auto blinkIntensity =
-							0.5f + 0.5f * glm::sin(ImGui::GetCurrentContext()->HoveredIdTimer * blinkFrequency);
-						applicationContext_->getDrawList()->drawBox(
-							volumeTransform_.p / 2, originalBoxSize / 2.0f + boxTranslate, box.size(),
-							{ 1.0, 0.0, 0.0,
-							  1.0f -
-								  blinkIntensity * blinkIntensity * blinkIntensity * blinkIntensity * blinkIntensity },
-							volumeTransform_.l);
-					}
-					if (!request.result.wasSuccess())
-					{
-						if (ImGui::BeginItemTooltip())
-						{
-							ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-							ImGui::TextWrapped(std::format("Failed with error code {} and message: {}",
-														   request.result.sofiaResult.returnCode,
-														   request.result.sofiaResult.message)
-												   .c_str());
-							ImGui::PopTextWrapPos();
-							ImGui::EndTooltip();
-						}
-					}
-					else if (!request.result.nanoResult.fileAvailable)
-					{
-						if (ImGui::BeginItemTooltip())
-						{
-							ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-							ImGui::TextWrapped(
-								"File couldn't be loaded! It might be corrupted or an error on server has occurred.");
-							ImGui::PopTextWrapPos();
-							ImGui::EndTooltip();
-						}
-					}
-					const auto selectableSize = ImGui::GetItemRectSize();
-					const auto av = ImGui::GetContentRegionAvail();
+					const auto originalBoxSize = owl::vec3f{
+						static_cast<float>(-(project.fitsOriginProperties.axisDimensions[0] - 1)),
+						static_cast<float>(-(project.fitsOriginProperties.axisDimensions[1] - 1)),
+						static_cast<float>(project.fitsOriginProperties.axisDimensions[2] - 1),
+					};
+
+					auto boxTranslate = box.size() / 2.0f;
+					boxTranslate.z *= -1.0f;
+					boxTranslate += owl::vec3f{ box.lower.x, box.lower.y, -box.lower.z };
 
 
-					const auto viewIconSize = ImGui::CalcTextSize(ICON_LC_VIEW).x;
-					const auto detailIconSize = ImGui::CalcTextSize(ICON_LC_VIEW).x;
-					constexpr auto spinnerThickness = 2.0f;
-					const auto spinnerRadius =
-						(selectableSize.y - spinnerThickness) / 2 - ImGui::GetStyle().FramePadding.y * 2;
-					const auto spinnerWidth = spinnerRadius * 2;
-
-					const auto framePadding = ImGui::GetStyle().FramePadding.x * 4;
-
-					if (loadAndShowFileFuturePerRequest[i].blocked)
-					{
-						ImGui::SameLine(selectableSize.x - spinnerWidth - framePadding - detailIconSize - framePadding -
-										viewIconSize - framePadding);
-						ImSpinner::SpinnerRotateSegments("request_loading_spinner", spinnerRadius, spinnerThickness);
-					}
-
-
-					// ImGui::SameLine(selectableSize.x - framePadding - detailIconSize - viewIconSize - framePadding);
-					//  if (ImGui::SmallButton(ICON_LC_VIEW))
-					//{
-					//	// applicationContext_.
-					//  }
-					//  if (ImGui::BeginItemTooltip())
-					//{
-					//	ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-					//	ImGui::TextWrapped("Move the camera view to the selected sub-volume.");
-					//	ImGui::PopTextWrapPos();
-					//	ImGui::EndTooltip();
-					//  }
-					//  ImGui::SameLine(selectableSize.x - framePadding - detailIconSize);
-					//  if (ImGui::SmallButton(ICON_LC_SCROLL_TEXT))
-					//{
-					//	// applicationContext_.
-					//	parameterSummaryView_->setSofiaParams(request.sofiaParameters);
-					//	parameterSummaryView_->open();
-					//  }
-					/*if (ImGui::BeginItemTooltip())
+					constexpr auto blinkFrequency = 10.0f;
+					const auto blinkIntensity =
+						0.5f + 0.5f * glm::sin(ImGui::GetCurrentContext()->HoveredIdTimer * blinkFrequency);
+					applicationContext_->getDrawList()->drawBox(
+						volumeTransform_.p / 2, originalBoxSize / 2.0f + boxTranslate, box.size(),
+						{ 1.0, 0.0, 0.0,
+						  1.0f - blinkIntensity * blinkIntensity * blinkIntensity * blinkIntensity * blinkIntensity },
+						volumeTransform_.l);
+				}
+				if (!request.result.wasSuccess())
+				{
+					if (ImGui::BeginItemTooltip())
 					{
 						ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-						ImGui::Text("Show SoFiA parameters applied for a given request.");
+						ImGui::TextWrapped(std::format("Failed with error code {} and message: {}",
+													   request.result.sofiaResult.returnCode,
+													   request.result.sofiaResult.message)
+											   .c_str());
 						ImGui::PopTextWrapPos();
 						ImGui::EndTooltip();
-					}*/
-
-					ImGui::EndDisabled();
-
-					ImGui::PopID();
+					}
 				}
-				ImGui::TreePop();
-			}
-
-			if (applicationContext_->isDevelopmentModeEnabled)
-			{
-				ImGui::BeginUnderDevelopmentScope();
-
-				constexpr auto tableFlags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-					ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingFixedFit;
-
-				// ID, Success, Cached, Load & Show
-				if (ImGui::BeginTable("RequestTable", 4, tableFlags))
+				else if (!request.result.nanoResult.fileAvailable)
 				{
-					ImGui::TableSetupColumn("ID");
-					ImGui::TableSetupColumn("Success");
-					ImGui::TableSetupColumn("Cached");
-					ImGui::TableSetupColumn("Load & Show");
-					ImGui::TableHeadersRow();
-
-					auto blockLoadGet = false;
-					if (loadAndShowFileFuture_.valid())
+					if (ImGui::BeginItemTooltip())
 					{
-						blockLoadGet = true;
-						if (loadAndShowFileFuture_.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
-						{
-							loadAndShowFileFuture_.get();
-							blockLoadGet = false;
-						}
+						ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+						ImGui::TextWrapped(
+							"File couldn't be loaded! It might be corrupted or an error on server has occurred.");
+						ImGui::PopTextWrapPos();
+						ImGui::EndTooltip();
 					}
-
-
-					for (const auto& request : project.requests)
-					{
-						const auto reqSucc = request.result.wasSuccess();
-
-						ImGui::TableNextRow();
-						ImGui::PushID(request.uuid.c_str());
-						ImGui::TableNextColumn();
-						ImGui::Text(request.uuid.c_str());
-
-						ImGui::TableNextColumn();
-						ImGui::Text(reqSucc ? "true" : "false");
-
-						ImGui::TableNextColumn();
-						if (reqSucc)
-						{
-							// Replace with icon?
-							ImGui::Text("false");
-						}
-						else
-						{
-							ImGui::Text("N/A");
-						}
-
-						ImGui::TableNextColumn();
-
-						const auto itemDisabled = !reqSucc || blockLoadGet;
-
-						ImGui::BeginDisabled(itemDisabled);
-
-						if (ui::Button("Load & Show"))
-						{
-							// Load & Show
-							loadAndShowFileFuture_ = loadAndShowFunction_(request.result.nanoResult.resultFile);
-						}
-						ImGui::EndDisabled();
-						ImGui::PopID();
-					}
-					ImGui::EndTable();
 				}
-				ImGui::EndUnderDevelopmentScope();
+				ImGui::SetCursorPos(position + Vector2{ 8.0f, 0.0f } +
+									Vector2{ 0.0f, ImGui::GetTextLineHeight() * 0.5f });
+				ImGui::Text(request.uuid.c_str());
+				ImGui::SetCursorPos(nextItem);
+				const auto selectableSize = ImGui::GetItemRectSize();
+				const auto av = ImGui::GetContentRegionAvail();
+
+				//TODO (Anton)
+				/*const auto viewIconSize = ImGui::CalcTextSize(ICON_LC_VIEW).x;
+				const auto detailIconSize = ImGui::CalcTextSize(ICON_LC_VIEW).x;
+				constexpr auto spinnerThickness = 2.0f;
+				const auto spinnerRadius =
+					(selectableSize.y - spinnerThickness) / 2 - ImGui::GetStyle().FramePadding.y * 2;
+				const auto spinnerWidth = spinnerRadius * 2;
+
+				const auto framePadding = ImGui::GetStyle().FramePadding.x * 4;*/
+
+				/*if (loadAndShowFileFuturePerRequest[i].blocked)
+				{
+					ImGui::SameLine(selectableSize.x - spinnerWidth - framePadding - detailIconSize - framePadding -
+									viewIconSize - framePadding);
+					ImSpinner::SpinnerRotateSegments("request_loading_spinner", spinnerRadius, spinnerThickness);
+				}*/
+
+				ImGui::EndDisabled();
+
+				ImGui::PopID();
 			}
+			//ImGui::GetForegroundDrawList()->PopClipRect();
+			ImGui::EndChild();
 		}
 	}
 	parameterSummaryView_->draw();
