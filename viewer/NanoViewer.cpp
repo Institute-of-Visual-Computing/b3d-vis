@@ -263,7 +263,6 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 	const auto hwnd = glfwGetWin32Window(mainWindowHandle);
 	BOOL value = TRUE;
 	DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(value));
-
 #endif
 
 
@@ -415,7 +414,7 @@ auto NanoViewer::draw() -> void
 		}
 
 		static bool enableGridFloor = true;
-		
+
 		if (ui::ToggleSwitch(enableGridFloor, "Enable Grid Floor", "", ""))
 		{
 			enableGridFloor = !enableGridFloor;

@@ -59,6 +59,10 @@ auto WindowViewBase::beginDraw() -> void
 			viewportSize_ = viewportSize;
 		}
 	}
+	if (needResize_)
+	{
+		onResize();
+	}
 }
 
 auto WindowViewBase::endDraw() -> void
@@ -66,10 +70,6 @@ auto WindowViewBase::endDraw() -> void
 	if (needEndScope_)
 	{
 		ImGui::End();
-	}
-	if (needResize_)
-	{
-		onResize();
 	}
 }
 

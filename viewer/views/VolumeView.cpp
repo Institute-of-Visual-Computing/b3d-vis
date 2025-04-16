@@ -160,7 +160,7 @@ auto VolumeView::onDraw() -> void
 	{
 		currentGizmoOperation_.flip(GizmoOperationFlagBits::rotate);
 	}
-
+	
 	const auto p = ImGui::GetCursorScreenPos();
 	ImGui::SetNextItemAllowOverlap();
 	ImGui::InvisibleButton("##volumeViewport", viewportSize_,
