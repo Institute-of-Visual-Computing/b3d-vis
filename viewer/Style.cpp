@@ -470,7 +470,7 @@ auto ui::Selectable(const char* label, bool selected, ImGuiSelectableFlags flags
 	return result;
 }
 
-auto ui::InputText(const char* label, std::string* text, ImGuiInputTextFlags flags) -> bool
+auto ui::InputText(const char* label, const char* hint, std::string* text, ImGuiInputTextFlags flags) -> bool
 {
 	const auto& brush = ApplicationContext::getStyleBrush();
 	const auto itemId = ImGui::GetID(label);
@@ -527,12 +527,84 @@ auto ui::InputText(const char* label, std::string* text, ImGuiInputTextFlags fla
 	}
 
 	const auto position = Vector2{ ImGui::GetCursorScreenPos() };
-	ImGui::PushItemWidth(-1);
-	const auto isEdited = ImGui::InputText(label, text, flags);
-	ImGui::PopItemWidth();
+	// ImGui::PushItemWidth(-1);
+	const auto isEdited = ImGui::InputTextWithHint(label, hint, text, flags);
+	// ImGui::PopItemWidth();
 	const auto inputBoxSize = Vector2{ ImGui::GetItemRectSize() };
 
-	auto& drawList = *ImGui::GetForegroundDrawList();
+	auto& drawList = *ImGui::GetWindowDrawList();
+	drawList.AddLine(
+		position + Vector2{ 0.0f, inputBoxSize.y - borderSize }, position + inputBoxSize - Vector2{ 0.0f, borderSize },
+		isActive ? brush.accentTextFillColorTertiaryBrush : brush.controlStrongStrokeColorDefaultBrush, borderSize);
+
+	ImGui::PopStyleColor(5);
+	ImGui::PopStyleVar(2);
+	return isEdited;
+}
+
+auto ui::InputText(const char* label, const char* hint, char* buf, size_t buf_size, ImGuiInputTextFlags flags) -> bool
+{
+	const auto& brush = ApplicationContext::getStyleBrush();
+	const auto itemId = ImGui::GetID(label);
+	const auto isHovered =
+		ImGui::GetHoveredID() == itemId or ImGui::GetCurrentContext()->HoveredIdPreviousFrame == itemId;
+	const auto isActive = ImGui::GetActiveID() == itemId;
+	const auto isDisabled = ImGui::GetCurrentContext()->CurrentItemFlags & ImGuiItemFlags_Disabled;
+
+	const auto borderSize = 2.0f;
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, borderSize);
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+	ImGui::PushStyleColor(ImGuiCol_Border, brush.controlStrokeColorSecondaryBrush);
+	ImGui::PushStyleColor(ImGuiCol_TextSelectedBg, brush.accentFillColorSelectedTextBackgroundBrush);
+
+	if (isDisabled)
+	{
+		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, brush.controlFillColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, brush.controlFillColorDisabledBrush);
+		if (isActive)
+		{
+			ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDisabledBrush);
+		}
+		else
+		{
+			if (isHovered)
+			{
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDisabledBrush);
+			}
+			else
+			{
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDisabledBrush);
+			}
+		}
+	}
+	else
+	{
+		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, brush.controlFillColorTertiaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, brush.controlFillColorSecondaryBrush);
+		if (isActive)
+		{
+			ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorTertiaryBrush);
+		}
+		else
+		{
+			if (isHovered)
+			{
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorSecondaryBrush);
+			}
+			else
+			{
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDefaultBrush);
+			}
+		}
+	}
+
+	const auto position = Vector2{ ImGui::GetCursorScreenPos() };
+	// ImGui::PushItemWidth(-1);
+	const auto isEdited = ImGui::InputTextWithHint(label, hint, buf, buf_size, flags);
+	// ImGui::PopItemWidth();
+	const auto inputBoxSize = Vector2{ ImGui::GetItemRectSize() };
+
+	auto& drawList = *ImGui::GetWindowDrawList();
 	drawList.AddLine(
 		position + Vector2{ 0.0f, inputBoxSize.y - borderSize }, position + inputBoxSize - Vector2{ 0.0f, borderSize },
 		isActive ? brush.accentTextFillColorTertiaryBrush : brush.controlStrongStrokeColorDefaultBrush, borderSize);
@@ -545,10 +617,191 @@ auto ui::InputText(const char* label, std::string* text, ImGuiInputTextFlags fla
 auto ui::HeadedInputText(const std::string& header, const char* label, std::string* text, ImGuiInputTextFlags flags)
 	-> bool
 {
+	HeadedTextOnly(header);
+	const auto result = ui::InputText(label, nullptr, text, flags);
+
+	return result;
+}
+
+auto ui::Combo(const char* label, int* current_item, const char* const items[], int items_count) -> bool
+{
+	const auto& brush = ApplicationContext::getStyleBrush();
+	const auto itemId = ImGui::GetID(label);
+	const auto isHovered =
+		ImGui::GetHoveredID() == itemId or ImGui::GetCurrentContext()->HoveredIdPreviousFrame == itemId;
+	const auto isActive = ImGui::GetActiveID() == itemId;
+	const auto isDisabled = ImGui::GetCurrentContext()->CurrentItemFlags & ImGuiItemFlags_Disabled;
+
+	const auto borderSize = 2.0f;
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, borderSize);
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+	ImGui::PushStyleColor(ImGuiCol_Border, brush.accentControlElevationBorderBrush);
+	ImGui::PushStyleColor(ImGuiCol_TextSelectedBg, brush.accentFillColorSelectedTextBackgroundBrush);
+
+	if (isDisabled)
+	{
+		ImGui::PushStyleColor(ImGuiCol_Button, brush.controlFillColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, brush.controlFillColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, brush.controlFillColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, brush.controlFillColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorDisabledBrush);
+		if (isActive)
+		{
+			ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDisabledBrush);
+		}
+		else
+		{
+			if (isHovered)
+			{
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDisabledBrush);
+			}
+			else
+			{
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDisabledBrush);
+			}
+		}
+	}
+	else
+	{
+		ImGui::PushStyleColor(ImGuiCol_Button, brush.accentFillColorTertiaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, brush.accentFillColorDefaultBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, brush.controlFillColorTertiaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, brush.controlFillColorSecondaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorPrimaryBrush);
+		if (isActive)
+		{
+			ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorTertiaryBrush);
+		}
+		else
+		{
+			if (isHovered)
+			{
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorSecondaryBrush);
+			}
+			else
+			{
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDefaultBrush);
+			}
+		}
+	}
+	const auto position = Vector2{ ImGui::GetCursorScreenPos() };
+
+	const auto isEdited = ImGui::Combo(label, current_item, items, items_count);
+
+	const auto inputBoxSize = Vector2{ ImGui::GetItemRectSize() };
+
+	if (not isDisabled)
+	{
+		auto& drawList = *ImGui::GetWindowDrawList();
+		drawList.AddLine(position + Vector2{ borderSize, -borderSize },
+						 position + Vector2{ inputBoxSize.x - borderSize, borderSize },
+						 isHovered ? brush.accentFillColorDefaultBrush : brush.accentFillColorTertiaryBrush,
+						 borderSize);
+	}
+	ImGui::PopStyleColor(8);
+	ImGui::PopStyleVar(2);
+	return isEdited;
+}
+
+auto ui::HeadedCombo(const std::string& header, const char* label, int* current_item, const char* const items[],
+					 int items_count) -> bool
+{
+	HeadedTextOnly(header);
+	const auto result = ui::Combo(label, current_item, items, items_count);
+	return result;
+}
+
+auto ui::HeadedTextOnly(const std::string& header) -> void
+{
+	const auto& brush = ApplicationContext::getStyleBrush();
+	const auto isDisabled = ImGui::GetCurrentContext()->CurrentItemFlags & ImGuiItemFlags_Disabled;
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, Vector2{ 12.0f, 8.0f });
+	if (isDisabled)
+	{
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorDisabledBrush);
+	}
+	else
+	{
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorPrimaryBrush);
+	}
 	ImGui::Text(header.c_str());
+	ImGui::PopStyleColor();
 	ImGui::PopStyleVar();
-	const auto result = ui::InputText(label, text, flags);
+}
+
+auto ui::DragFloat(const char* label, float* v, float v_speed, float v_min, float v_max, const char* format,
+				   ImGuiSliderFlags flags) -> bool
+{
+	const auto& brush = ApplicationContext::getStyleBrush();
+	const auto itemId = ImGui::GetID(label);
+	const auto isHovered =
+		ImGui::GetHoveredID() == itemId or ImGui::GetCurrentContext()->HoveredIdPreviousFrame == itemId;
+	const auto isActive = ImGui::GetActiveID() == itemId;
+	const auto isDisabled = ImGui::GetCurrentContext()->CurrentItemFlags & ImGuiItemFlags_Disabled;
+
+	const auto borderSize = 2.0f;
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, borderSize);
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+	ImGui::PushStyleColor(ImGuiCol_Border, brush.accentControlElevationBorderBrush);
+	ImGui::PushStyleColor(ImGuiCol_TextSelectedBg, brush.accentFillColorSelectedTextBackgroundBrush);
+
+	if (isDisabled)
+	{
+		ImGui::PushStyleColor(ImGuiCol_Button, brush.controlFillColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, brush.controlFillColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, brush.controlFillColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, brush.controlFillColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorDisabledBrush);
+		if (isActive)
+		{
+			ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDisabledBrush);
+		}
+		else
+		{
+			if (isHovered)
+			{
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDisabledBrush);
+			}
+			else
+			{
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDisabledBrush);
+			}
+		}
+	}
+	else
+	{
+		ImGui::PushStyleColor(ImGuiCol_Button, brush.accentFillColorTertiaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, brush.accentFillColorDefaultBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, brush.controlFillColorTertiaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, brush.controlFillColorSecondaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorPrimaryBrush);
+		if (isActive)
+		{
+			ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorTertiaryBrush);
+		}
+		else
+		{
+			if (isHovered)
+			{
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorSecondaryBrush);
+			}
+			else
+			{
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDefaultBrush);
+			}
+		}
+	}
+	const auto result = ImGui::DragFloat(label, v, v_speed, v_min, v_max, format, flags);
+	ImGui::PopStyleColor(8);
+	ImGui::PopStyleVar(2);
+	return result;
+}
+
+auto ui::HeadedDragFloat(const std::string& header, const char* label, float* v, float v_speed, float v_min,
+						 float v_max, const char* format, ImGuiSliderFlags flags) -> bool
+{
+	HeadedTextOnly(header);
+	const auto result = ui::DragFloat(label, v, v_speed, v_min, v_max, format, flags);
 
 	return result;
 }

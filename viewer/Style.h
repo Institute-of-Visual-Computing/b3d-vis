@@ -128,9 +128,22 @@ namespace ui
 	auto Selectable(const char* label, bool selected, ImGuiSelectableFlags flags = {}, const Vector2& size = Vector2{})
 		-> bool;
 
-	auto InputText(const char* label, std::string* text, ImGuiInputTextFlags flags = {}) -> bool;
+	auto InputText(const char* label, const char* hint, std::string* text, ImGuiInputTextFlags flags = {}) -> bool;
+	auto InputText(const char* label, const char* hint, char* buf, size_t buf_size, ImGuiInputTextFlags flags = {})
+		-> bool;
 	auto HeadedInputText(const std::string& header, const char* label, std::string* text,
 						 ImGuiInputTextFlags flags = {}) -> bool;
+
+	auto Combo(const char* label, int* current_item, const char* const items[], int items_count) -> bool;
+	auto HeadedCombo(const std::string& header, const char* label, int* current_item, const char* const items[],
+					 int items_count) -> bool;
+	auto HeadedTextOnly(const std::string& header) -> void;
+
+	auto DragFloat(const char* label, float* v, float v_speed, float v_min, float v_max, const char* format = "%.2f",
+				   ImGuiSliderFlags flags = 0) -> bool;
+	auto HeadedDragFloat(const std::string& header, const char* label, float* v, float v_speed, float v_min, float v_max,
+				   const char* format = "%.2f",
+				   ImGuiSliderFlags flags = 0) -> bool;
 } // namespace ui
 
 auto createDarkThemeBrush(const AccentColors& accentColors) -> StyleBrush;
