@@ -181,11 +181,77 @@ auto ProjectExplorerView::drawSelectableItemGridPanel(const char* panelId, int& 
 
 auto ProjectExplorerView::onDraw() -> void
 {
+	const auto isConnectedToAnyServer = applicationContext_->serverClient_.getLastServerStatusState().health ==
+		b3d::tools::project::ServerHealthState::ok;
+	const auto isAnyProjectAvailable = projectAvailable();
+
+	const auto& brush = ApplicationContext::getStyleBrush();
+	constexpr auto containerCornerRadius = 8.0f;
+	constexpr auto contentCornerRadius = 4.0f;
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, containerCornerRadius);
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, containerCornerRadius);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 2.0f);
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, Vector2{ 24.0f, 24.0f });
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, Vector2{ 24.0f, 24.0f });
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, contentCornerRadius);
+
+	ImGui::PushStyleColor(ImGuiCol_PopupBg, brush.cardBackgroundFillColorDefaultBrush);
+	ImGui::PushStyleColor(ImGuiCol_Border, brush.controlStrokeColorSecondaryBrush);
+
+	const auto font = applicationContext_->getFontCollection().getTitleFont();
+	ImGui::PushFont(font);
+	ImGui::Text("Project Explorer");
+	ImGui::PopFont();
+
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, Vector2{ 24.0f, 12.0f });
+	ImGui::TextWrapped(
+		"This tool lets you connect to the remote or local dataset repository and manage its data cubes.");
+	ImGui::TextLinkOpenURL("Learn more about the workflow", "https://github.com/Institute-of-Visual-Computing/b3d-vis");
+	ImGui::TextLinkOpenURL("Learn more about how to set up a data repository server",
+						   "https://github.com/Institute-of-Visual-Computing/b3d-vis");
+	ImGui::PopStyleVar();
+
+	if (not isConnectedToAnyServer)
+	{
+		ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.systemFillColorCautionBackgroundBrush);
+
+		ImGui::BeginChild("##is_not_connected_to_server_warning", Vector2{},
+						  ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_FrameStyle);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.systemFillColorCautionBrush);
+		ImGui::Text(ICON_LC_MESSAGE_SQUARE_WARNING);
+		ImGui::PopStyleColor();
+		ImGui::SameLine();
+		ImGui::TextWrapped("You are not currently connected to any data repository server !To set up the data server, "
+						   "navigate to File > Server Connection.");
+		ImGui::EndChild();
+		ImGui::PopStyleColor();
+	}
+
+	if (isConnectedToAnyServer and not isAnyProjectAvailable)
+	{
+		ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.systemFillColorSuccessBackgroundBrush);
+
+		ImGui::BeginChild("##empty_server_warning", Vector2{},
+						  ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_FrameStyle);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.systemFillColorSuccessBrush);
+		ImGui::Text(ICON_LC_MESSAGE_SQUARE_WARNING);
+		ImGui::PopStyleColor();
+		ImGui::SameLine();
+		ImGui::TextWrapped(
+			"You are connected to the data server, but its repository is empty! Add new dataset by clicking on Add and "
+			"select an HI-Datacube FITS file from you local storage and start the upload.");
+		ImGui::EndChild();
+		ImGui::PopStyleColor();
+	}
+
+	ImGui::PopStyleColor(2);
+	ImGui::PopStyleVar(6);
+
 	const auto availableWidth = ImGui::GetContentRegionAvail().x;
 
 	const auto scaleFactor = ImGui::GetWindowDpiScale();
-	const auto isConnectedToAnyServer = applicationContext_->serverClient_.getLastServerStatusState().health ==
-		b3d::tools::project::ServerHealthState::ok;
+
 	const auto serverNameText = std::format(
 		"Server: {}",
 		isConnectedToAnyServer ? applicationContext_->serverClient_.getConnectionInfo().name : "Disconnected!");
@@ -404,7 +470,8 @@ auto ProjectExplorerView::onDraw() -> void
 			}
 
 			static auto selectedRequest = defaultVolumeDataRequest;
-			ImGui::BeginChild("##requests", ImGui::GetContentRegionAvail(), ImGuiChildFlags_Border | ImGuiChildFlags_FrameStyle);
+			ImGui::BeginChild("##requests", ImGui::GetContentRegionAvail(),
+							  ImGuiChildFlags_Border | ImGuiChildFlags_FrameStyle);
 			/*ImGui::GetForegroundDrawList()->PushClipRect(
 				ImGui::GetCursorPos(), Vector2{ ImGui::GetCursorPos() } + Vector2{ ImGui::GetContentRegionAvail() },
 				false);*/
@@ -501,7 +568,7 @@ auto ProjectExplorerView::onDraw() -> void
 				const auto selectableSize = ImGui::GetItemRectSize();
 				const auto av = ImGui::GetContentRegionAvail();
 
-				//TODO (Anton)
+				// TODO (Anton)
 				/*const auto viewIconSize = ImGui::CalcTextSize(ICON_LC_VIEW).x;
 				const auto detailIconSize = ImGui::CalcTextSize(ICON_LC_VIEW).x;
 				constexpr auto spinnerThickness = 2.0f;
@@ -522,7 +589,7 @@ auto ProjectExplorerView::onDraw() -> void
 
 				ImGui::PopID();
 			}
-			//ImGui::GetForegroundDrawList()->PopClipRect();
+			// ImGui::GetForegroundDrawList()->PopClipRect();
 			ImGui::EndChild();
 		}
 	}
