@@ -13,8 +13,9 @@ EditProjectView::EditProjectView(ApplicationContext& appContext, const std::stri
 
 auto EditProjectView::onDraw() -> void
 {
+	ImGui::PushItemWidth(-1.0f);
 	ui::HeadedInputText("Name:", "##Project Name", &model_.projectName);
-
+	ImGui::PopItemWidth();
 	if (not model_.projectName.empty())
 	{
 		unblock();

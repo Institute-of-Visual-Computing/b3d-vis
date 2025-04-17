@@ -16,9 +16,10 @@ ServerAddEditView::ServerAddEditView(ApplicationContext& applicationContext, con
 
 auto ServerAddEditView::onDraw() -> void
 {
+	ImGui::PushItemWidth(-1.0f);
 	ui::HeadedInputText("Name:", "##name", &model_.name);
 	ui::HeadedInputText("IP Address:", "##ip_address", &model_.ipHost);
 	ui::HeadedInputText("Port:", "##port", &model_.port);
-
+	ImGui::PopItemWidth();
 	unblock();
 }

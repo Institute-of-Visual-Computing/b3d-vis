@@ -127,6 +127,7 @@ namespace
 		styleColors[ImGuiCol_FrameBgHovered] = static_cast<ImVec4>(accentColorDark3);
 		styleColors[ImGuiCol_FrameBgActive] = static_cast<ImVec4>(Color{ 0.30f, 0.30f, 0.30f, 1.00f });
 
+		styleColors[ImGuiCol_TextDisabled] = static_cast<ImVec4>(brush.textFillColorDisabledBrush);
 
 		styleColors[ImGuiCol_TitleBg] = static_cast<ImVec4>(brush.acrylicBackgroundFillColorBaseBrush);
 		styleColors[ImGuiCol_TitleBgActive] = static_cast<ImVec4>(brush.acrylicBackgroundFillColorBaseBrush);

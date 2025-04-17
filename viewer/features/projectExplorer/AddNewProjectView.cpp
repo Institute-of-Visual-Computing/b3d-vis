@@ -97,7 +97,9 @@ auto AddNewProjectView::onDraw() -> void
 	FitsFileInfoData fitsFileData;
 	fitsFileData.selectedFile = std::filesystem::path{ ImGuiFileDialog::Instance()->GetCurrentPath() } /
 		ImGuiFileDialog::Instance()->GetCurrentFileName();
+	ImGui::PushItemWidth(-1.0f);
 	ui::HeadedInputText("Source FITS File Path:", "##FITS File Path", &path);
+	ImGui::PopItemWidth();
 	if (ui::AccentButton(ICON_LC_SEARCH, Vector2{ ImGui::GetContentRegionAvail().x, 0.0f }))
 	{
 		IGFD::FileDialogConfig config;
