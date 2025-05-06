@@ -169,6 +169,7 @@ auto SoFiaSearchView::onDraw() -> void
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, Vector2{ 24.0f, 12.0f });
 	ImGui::TextWrapped("This tool utilizes SiFiA 2 in the backend to search for sources in a HI data cubes.");
 	ImGui::TextLinkOpenURL("Learn more about SoFiA 2", "https://gitlab.com/SoFiA-Admin/SoFiA-2");
+	ImGui::TextLinkOpenURL("Learn more about SoFiA 2 control parameters", "https://gitlab.com/SoFiA-Admin/SoFiA-2/-/wikis/SoFiA-2-Control-Parameters");
 	ImGui::PopStyleVar();
 
 	if (disableInteraction)
@@ -1612,7 +1613,9 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 
 		ImGui::EndChild();
 	}
-	/*
+
+	if (not isFilterEnabled_ or
+		paramsFilter_.PassFilter("linking linker keep negative max fill pixels size xy z min positivity radius"))
 	{
 		ImGui::BeginChild("##linking", Vector2{ 0.0f, 0.0f }, ImGuiChildFlags_FrameStyle | ImGuiChildFlags_AutoResizeY);
 		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
@@ -1641,13 +1644,346 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 		ImGui::PopStyleColor();
 
 		ImGui::BeginDisabled(!model_.params.linker.enable);
-		// TODO: content here
+
+
+		if (not isFilterEnabled_ or paramsFilter_.PassFilter("linking linker keep negative"))
+		{
+			ImGui::PushID("linker_keep_negative");
+			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+			ui::HeadedTextOnly("Keep Negative");
+			ImGui::Checkbox("##linker_keep_negative", &model_.params.linker.keepNegative);
+			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
+														ImGuiHoveredFlags_ForTooltip);
+			ImGui::PopItemWidth();
+			ImGui::SameLine(0.0f, 8.0f);
+			if (ui::Button(ICON_LC_UNDO_2))
+			{
+				model_.params.linker.keepNegative = false;
+			}
+			ImGui::SetItemTooltip("Reset to default 'false' value");
+
+			if (isHovered and ImGui::BeginTooltip())
+			{
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted(
+					"If set to true then the linker will not discard detections with negative flux. Reliability "
+					"filtering must be disabled for negative sources to be retained. Also note that negative sources "
+					"will not appear in moment 1 and 2 maps. This option should only ever be used for testing or "
+					"debugging purposes, but never in production mode.");
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+			ImGui::PopID();
+		}
+
+		if (not isFilterEnabled_ or paramsFilter_.PassFilter("linking linker min fill"))
+		{
+			ImGui::PushID("linker_min_fill");
+			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+			ui::HeadedDragFloat("Min Fill:", "##linker_min_fill", &model_.params.linker.minFill, 0.01f, 0.0f, 9999.0f);
+			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
+														ImGuiHoveredFlags_ForTooltip);
+			ImGui::PopItemWidth();
+			ImGui::SameLine(0.0f, 8.0f);
+			if (ui::Button(ICON_LC_UNDO_2))
+			{
+				model_.params.linker.minFill = 0.0f;
+			}
+			ImGui::SetItemTooltip("Reset to default '0.0' value");
+
+			if (isHovered and ImGui::BeginTooltip())
+			{
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted(
+					"Minimum allowed filling factor of a source within its rectangular bounding box, defined as the "
+					"number of spatial and spectral pixels that make up the source divided by the number of pixels in "
+					"the bounding box. The default value of 0.0 disables minimum filling factor filtering.");
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+			ImGui::PopID();
+		}
+
+		if (not isFilterEnabled_ or paramsFilter_.PassFilter("linking linker max fill"))
+		{
+			ImGui::PushID("linker_max_fill");
+			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+			ui::HeadedDragFloat("Max Fill:", "##linker_max_fill", &model_.params.linker.maxFill, 0.01f, 0.0f, 9999.0f);
+			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
+														ImGuiHoveredFlags_ForTooltip);
+			ImGui::PopItemWidth();
+			ImGui::SameLine(0.0f, 8.0f);
+			if (ui::Button(ICON_LC_UNDO_2))
+			{
+				model_.params.linker.maxFill = 0.0f;
+			}
+			ImGui::SetItemTooltip("Reset to default '0.0' value");
+
+			if (isHovered and ImGui::BeginTooltip())
+			{
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted(
+					"Maximum allowed filling factor of a source within its rectangular bounding box, defined as the "
+					"number of spatial and spectral pixels that make up the source divided by the number of pixels in "
+					"the bounding box. The default value of 0.0 disables maximum filling factor filtering.");
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+			ImGui::PopID();
+		}
+
+		if (not isFilterEnabled_ or paramsFilter_.PassFilter("linking linker min pixels"))
+		{
+			ImGui::PushID("linker_min_pixels");
+			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+			ui::HeadedDragInt("Min Pixels:", "##linker_min_pixels", &model_.params.linker.minPixels, 1.0f, 0,
+							  1000 * 1000);
+			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
+														ImGuiHoveredFlags_ForTooltip);
+			ImGui::PopItemWidth();
+			ImGui::SameLine(0.0f, 8.0f);
+			if (ui::Button(ICON_LC_UNDO_2))
+			{
+				model_.params.linker.minPixels = 0;
+			}
+			ImGui::SetItemTooltip("Reset to default '0' value");
+
+			if (isHovered and ImGui::BeginTooltip())
+			{
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted("Minimum allowed number of spatial and spectral pixels that a source must have. "
+									   "The default value of 0 disables minimum size filtering.");
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+			ImGui::PopID();
+		}
+
+		if (not isFilterEnabled_ or paramsFilter_.PassFilter("linking linker max pixels"))
+		{
+			ImGui::PushID("linker_max_pixels");
+			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+			ui::HeadedDragInt("Max Pixels:", "##linker_max_pixels", &model_.params.linker.maxPixels, 1.0f, 0,
+							  1000 * 1000);
+			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
+														ImGuiHoveredFlags_ForTooltip);
+			ImGui::PopItemWidth();
+			ImGui::SameLine(0.0f, 8.0f);
+			if (ui::Button(ICON_LC_UNDO_2))
+			{
+				model_.params.linker.maxPixels = 0;
+			}
+			ImGui::SetItemTooltip("Reset to default '0' value");
+
+			if (isHovered and ImGui::BeginTooltip())
+			{
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted("Maximum allowed number of spatial and spectral pixels that a source must not "
+									   "exceed. The default value of 0 disables maximum size filtering.");
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+			ImGui::PopID();
+		}
+
+		if (not isFilterEnabled_ or paramsFilter_.PassFilter("linking linker min size xy"))
+		{
+			ImGui::PushID("linker_min_size_xy");
+			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+			ui::HeadedDragInt("Min Size XY:", "##linker_min_size_xy", &model_.params.linker.minSizeXY, 1.0f, 0,
+							  1000 * 1000);
+			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
+														ImGuiHoveredFlags_ForTooltip);
+			ImGui::PopItemWidth();
+			ImGui::SameLine(0.0f, 8.0f);
+			if (ui::Button(ICON_LC_UNDO_2))
+			{
+				model_.params.linker.minSizeXY = 0;
+			}
+			ImGui::SetItemTooltip("Reset to default '0' value");
+
+			if (isHovered and ImGui::BeginTooltip())
+			{
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted("Minimum size of sources in the spatial dimension in pixels. Sources that fall "
+									   "below this limit will be discarded by the linker.");
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+			ImGui::PopID();
+		}
+
+		if (not isFilterEnabled_ or paramsFilter_.PassFilter("linking linker max size xy"))
+		{
+			ImGui::PushID("linker_max_size_xy");
+			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+			ui::HeadedDragInt("Max Size XY:", "##linker_max_size_xy", &model_.params.linker.maxSizeXY, 1.0f, 0,
+							  1000 * 1000);
+			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
+														ImGuiHoveredFlags_ForTooltip);
+			ImGui::PopItemWidth();
+			ImGui::SameLine(0.0f, 8.0f);
+			if (ui::Button(ICON_LC_UNDO_2))
+			{
+				model_.params.linker.maxSizeXY = 0;
+			}
+			ImGui::SetItemTooltip("Reset to default '0' value");
+
+			if (isHovered and ImGui::BeginTooltip())
+			{
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted(
+					"Maximum size of sources in the spatial dimension in pixels. Sources that exceed this limit will "
+					"be discarded by the linker. If the value is set to 0, maximum size filtering will be disabled.");
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+			ImGui::PopID();
+		}
+
+		if (not isFilterEnabled_ or paramsFilter_.PassFilter("linking linker min size z"))
+		{
+			ImGui::PushID("linker_min_size_z");
+			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+			ui::HeadedDragInt("Min Size Z:", "##linker_min_size_z", &model_.params.linker.minSizeZ, 1.0f, 1,
+							  1000 * 1000);
+			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
+														ImGuiHoveredFlags_ForTooltip);
+			ImGui::PopItemWidth();
+			ImGui::SameLine(0.0f, 8.0f);
+			if (ui::Button(ICON_LC_UNDO_2))
+			{
+				model_.params.linker.minSizeZ = 5;
+			}
+			ImGui::SetItemTooltip("Reset to default '5' value");
+
+			if (isHovered and ImGui::BeginTooltip())
+			{
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted("Minimum size of sources in the spectral dimension in pixels. Sources that fall "
+									   "below this limit will be discarded by the linker.");
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+			ImGui::PopID();
+		}
+
+		if (not isFilterEnabled_ or paramsFilter_.PassFilter("linking linker max size z"))
+		{
+			ImGui::PushID("linker_max_size_z");
+			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+			ui::HeadedDragInt("Max Size Z:", "##linker_max_size_z", &model_.params.linker.maxSizeZ, 1.0f, 0,
+							  1000 * 1000);
+			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
+														ImGuiHoveredFlags_ForTooltip);
+			ImGui::PopItemWidth();
+			ImGui::SameLine(0.0f, 8.0f);
+			if (ui::Button(ICON_LC_UNDO_2))
+			{
+				model_.params.linker.minSizeZ = 0;
+			}
+			ImGui::SetItemTooltip("Reset to default '0' value");
+
+			if (isHovered and ImGui::BeginTooltip())
+			{
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted(
+					"Maximum size of sources in the spectral dimension in pixels. Sources that exceed this limit will "
+					"be discarded by the linker. If the value is set to 0, maximum size filtering will be disabled.");
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+			ImGui::PopID();
+		}
+
+		if (not isFilterEnabled_ or paramsFilter_.PassFilter("linking linker positivity"))
+		{
+			ImGui::PushID("linker_positivity");
+			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+			ui::HeadedTextOnly("Positivity");
+			ImGui::Checkbox("##linker_positivity", &model_.params.linker.positivity);
+			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
+														ImGuiHoveredFlags_ForTooltip);
+			ImGui::PopItemWidth();
+			ImGui::SameLine(0.0f, 8.0f);
+			if (ui::Button(ICON_LC_UNDO_2))
+			{
+				model_.params.linker.positivity = false;
+			}
+			ImGui::SetItemTooltip("Reset to default 'false' value");
+
+			if (isHovered and ImGui::BeginTooltip())
+			{
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted(
+					"If set to true then the linker will only merge positive pixels and discard all negative pixels by "
+					"removing them from the mask. This option should be used with extreme caution and will render the "
+					"reliability filter useless. It can be useful, though, if there are significant negative artefacts "
+					"such as residual sidelobes in the data.");
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+			ImGui::PopID();
+		}
+
+		if (not isFilterEnabled_ or paramsFilter_.PassFilter("linking linker xy radius"))
+		{
+			ImGui::PushID("linker_radius_xy");
+			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+			ui::HeadedDragInt("Radius XY:", "##linker_radius_xy", &model_.params.linker.radiusXY, 1.0f, 1, 1000 * 1000);
+			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
+														ImGuiHoveredFlags_ForTooltip);
+			ImGui::PopItemWidth();
+			ImGui::SameLine(0.0f, 8.0f);
+			if (ui::Button(ICON_LC_UNDO_2))
+			{
+				model_.params.linker.radiusXY = 1;
+			}
+			ImGui::SetItemTooltip("Reset to default '1' value");
+
+			if (isHovered and ImGui::BeginTooltip())
+			{
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted("Maximum merging length in the spatial dimension. Pixels with a separation of "
+									   "up to this value will be merged into the same source.");
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+			ImGui::PopID();
+		}
+
+		if (not isFilterEnabled_ or paramsFilter_.PassFilter("linking linker z radius"))
+		{
+			ImGui::PushID("linker_radius_z");
+			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+			ui::HeadedDragInt("Radius Z:", "##linker_radius_z", &model_.params.linker.radiusZ, 1.0f, 1, 1000 * 1000);
+			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
+														ImGuiHoveredFlags_ForTooltip);
+			ImGui::PopItemWidth();
+			ImGui::SameLine(0.0f, 8.0f);
+			if (ui::Button(ICON_LC_UNDO_2))
+			{
+				model_.params.linker.radiusZ = 1;
+			}
+			ImGui::SetItemTooltip("Reset to default '1' value");
+
+			if (isHovered and ImGui::BeginTooltip())
+			{
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted("Maximum merging length in the spectral dimension. Pixels with a separation of "
+									   "up to this value will be merged into the same source.");
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+			ImGui::PopID();
+		}
+
 		ImGui::EndDisabled();
 		ImGui::PopStyleColor();
 		ImGui::PopStyleVar();
 		ImGui::EndChild();
 	}
-
+	/*
 	{
 		ImGui::BeginChild("##reliability", Vector2{ 0.0f, 0.0f },
 						  ImGuiChildFlags_FrameStyle | ImGuiChildFlags_AutoResizeY);
