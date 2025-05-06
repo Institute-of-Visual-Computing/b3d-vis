@@ -222,8 +222,8 @@ auto ProjectExplorerView::onDraw() -> void
 		ImGui::Text(ICON_LC_MESSAGE_SQUARE_WARNING);
 		ImGui::PopStyleColor();
 		ImGui::SameLine();
-		ImGui::TextWrapped("You are not currently connected to any data repository server !To set up the data server, "
-						   "navigate to File > Server Connection.");
+		ImGui::TextWrapped("You are not currently connected to any data repository server! To set up the data server, "
+						   "navigate to Program > Server Connection.");
 		ImGui::EndChild();
 		ImGui::PopStyleColor();
 	}
