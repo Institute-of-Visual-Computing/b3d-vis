@@ -155,6 +155,8 @@ namespace
 		styleColors[ImGuiCol_SliderGrabActive] = static_cast<ImVec4>(accentColorLight3);
 
 		styleColors[ImGuiCol_CheckMark] = static_cast<ImVec4>(accentColor);
+
+		styleColors[ImGuiCol_ScrollbarBg] = static_cast<ImVec4>(Color{ 0.0f, 0.0f, 0.0f, 0.0f });
 	}
 
 	[[nodiscard]] auto requestRequiredDpiScales() -> std::vector<float>
