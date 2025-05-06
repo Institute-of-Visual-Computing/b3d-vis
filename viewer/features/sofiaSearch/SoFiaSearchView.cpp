@@ -221,12 +221,12 @@ auto SoFiaSearchView::onDraw() -> void
 
 	const auto footerHeight = ImGui::CalcTextSize("Submit SoFiA Search").y + style.FramePadding.y * 2.0f + 24.0f * 2.0f;
 	const auto availableSize = Vector2{ ImGui::GetContentRegionAvail() };
-	ImGui::BeginChild("sofia_search_filter_settings", Vector2{ 0.0f, availableSize.y - footerHeight }/*,
-					  ImGuiChildFlags_FrameStyle*/);
-
-	drawFilterFormContent();
+	if (ImGui::BeginChild("sofia_search_filter_settings", Vector2{ 0.0f, availableSize.y - footerHeight }/*,
+					  ImGuiChildFlags_FrameStyle*/))
+	{
+		drawFilterFormContent();
+	}
 	ImGui::EndChild();
-
 	const auto position = ImGui::GetCursorScreenPos();
 	const auto min = position - Vector2{ style.FramePadding.x + 6, 0 };
 	const auto max = position + Vector2{ style.FramePadding.x + 6, style.FramePadding.y + style.ItemSpacing.y } +
@@ -246,10 +246,15 @@ auto SoFiaSearchView::onDraw() -> void
 	ImGui::EndDisabled();
 	ImGui::PopStyleColor(2);
 	ImGui::PopStyleVar(6);
+
+	/*ImGui::Begin("teststst");
+	drawFilterFormContentOld();
+	ImGui::End();*/
 }
 
 auto SoFiaSearchView::drawFilterFormContent() -> void
 {
+	const auto hasProject = applicationContext_->selectedProject_.has_value();
 
 	constexpr auto toggleSwitchWidth = 14.0f * 4.0f + 4.0f;
 	const auto disableInteraction = false;
@@ -261,465 +266,1353 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 		gizmoHelper_->drawBoundGizmo(model_.transform, model_.worldTransform, unityBoxSize);
 	}
 
+	const auto lowerPos = xfmPoint(model_.transform, lower) + upper;
+	const auto upperPos = xfmPoint(model_.transform, upper) + upper;
+	model_.selectedLocalRegion = intersection(owl::box3f{ lowerPos, upperPos }, unitBox);
+
+	model_.transform.p = model_.selectedLocalRegion.center() + lower;
+
+	const auto scale = model_.selectedLocalRegion.span();
+	model_.transform.l.vx.x = scale.x;
+	model_.transform.l.vy.y = scale.y;
+	model_.transform.l.vz.z = scale.z;
+
+	auto dimensions = owl::vec3i{ 0 };
+	if (hasProject)
+	{
+		const auto& dims = applicationContext_->selectedProject_.value().fitsOriginProperties.axisDimensions;
+		dimensions = { dims[0], dims[1], dims[2] };
+	}
+
+	model_.params.input.region.lower =
+		owl::vec3i{ static_cast<int>(model_.selectedLocalRegion.lower.x * dimensions[0]),
+					static_cast<int>(model_.selectedLocalRegion.lower.y * dimensions[1]),
+					static_cast<int>(dimensions[2] - model_.selectedLocalRegion.upper.z * dimensions[2]) };
+
+	model_.params.input.region.upper =
+		owl::vec3i{ static_cast<int>(model_.selectedLocalRegion.upper.x * dimensions[0]),
+					static_cast<int>(model_.selectedLocalRegion.upper.y * dimensions[1]),
+					static_cast<int>(dimensions[2] - model_.selectedLocalRegion.lower.z * dimensions[2]) };
+
+	model_.params.input.region.lower = owl::clamp(model_.params.input.region.lower, model_.params.input.region.upper);
+	model_.params.input.region.upper =
+		owl::clamp(model_.params.input.region.upper, model_.params.input.region.lower, dimensions);
+
 	const auto& brush = ApplicationContext::getStyleBrush();
-	const auto& style = ImGui::GetStyle();
+	[[maybe_unused]] const auto& style = ImGui::GetStyle();
 	const auto undoButtonDefaultSize = ImGui::CalcTextSize(ICON_LC_UNDO_2).x + ImGui::GetStyle().FramePadding.x * 2.0f;
 
 	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
 
+
+	if (not isFilterEnabled_ or paramsFilter_.PassFilter("region sub input min max"))
 	{
-		ImGui::BeginChild("##region_input", Vector2{ 0.0f, 0.0f },
-						  ImGuiChildFlags_FrameStyle | ImGuiChildFlags_AutoResizeY);
-		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
-		ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.solidBackgroundFillColorBaseBrush);
-
-		ImGui::PushFont(applicationContext_->getFontCollection().getTitleFont());
-		const auto titleWidth = ImGui::CalcTextSize("Region Input").x;
-		ImGui::TextWrapped("Region Input");
-		ImGui::PopFont();
-		ImGui::SameLine(0.0f, ImGui::GetContentRegionAvail().x - toggleSwitchWidth - titleWidth);
-		if (ui::ToggleSwitch(model_.showRoiGizmo, "##enable_reagion_input_settings", "off", "on"))
+		if (ImGui::BeginChild("##region_input", Vector2{ 0.0f, 0.0f },
+							  ImGuiChildFlags_FrameStyle | ImGuiChildFlags_AutoResizeY))
 		{
-			model_.showRoiGizmo = !model_.showRoiGizmo;
-		}
 
-		ImGui::TextWrapped(
-			"Region input confines the finder to a sub-data cube, which can lead to a faster computation.");
+			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+			ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.solidBackgroundFillColorBaseBrush);
 
-		ImGui::BeginDisabled(!model_.showRoiGizmo);
-		// TODO: content here
-		ImGui::EndDisabled();
-		ImGui::PopStyleColor();
-		ImGui::PopStyleVar();
-		ImGui::EndChild();
-	}
-
-	{
-		ImGui::BeginChild("##preconditioning_continuum_substraction", Vector2{ 0.0f, 0.0f },
-						  ImGuiChildFlags_FrameStyle | ImGuiChildFlags_AutoResizeY);
-		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
-		ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.solidBackgroundFillColorBaseBrush);
-
-		ImGui::PushFont(applicationContext_->getFontCollection().getTitleFont());
-		const auto wrapPosition = ImGui::GetContentRegionAvail().x - toggleSwitchWidth;
-		ImGui::PushTextWrapPos(wrapPosition);
-
-		const auto titleWidth = ImGui::CalcTextSize("Preconditioning Continuum Substraction", 0, true, wrapPosition).x;
-		ImGui::TextWrapped("Preconditioning Continuum Substraction");
-		ImGui::PopTextWrapPos();
-		ImGui::PopFont();
-		ImGui::SameLine(0.0f, wrapPosition - titleWidth);
-		if (ui::ToggleSwitch(model_.params.contsub.enable, "##enable_preconditioning_continuum_substraction", "off",
-							 "on"))
-		{
-			model_.params.contsub.enable = !model_.params.contsub.enable;
-		}
-
-		ImGui::TextWrapped(
-			"If enabled, SoFiA will try to subtract any residual continuum emission from the data cube prior to "
-			"source finding by fitting and subtracting a polynomial of order 0 (offset) or 1 (offset + slope). "
-			"The order of the polynomial is defined by contsub.order.");
-
-		ImGui::BeginDisabled(!model_.params.contsub.enable);
-		// TODO: content here
-		ImGui::EndDisabled();
-		ImGui::PopStyleColor();
-		ImGui::PopStyleVar();
-		ImGui::EndChild();
-	}
-
-	{
-		ImGui::BeginChild("##preconditioning_flagging", Vector2{ 0.0f, 0.0f },
-						  ImGuiChildFlags_FrameStyle | ImGuiChildFlags_AutoResizeY);
-		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
-		ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.solidBackgroundFillColorBaseBrush);
-
-		ImGui::PushFont(applicationContext_->getFontCollection().getTitleFont());
-		ImGui::TextWrapped("Preconditioning Flagging");
-		ImGui::PopFont();
-
-		// TODO: content here
-
-		ImGui::PopStyleColor();
-		ImGui::PopStyleVar();
-		ImGui::EndChild();
-	}
-
-	{
-		ImGui::BeginChild("##preconditioning_ripple_filter", Vector2{ 0.0f, 0.0f },
-						  ImGuiChildFlags_FrameStyle | ImGuiChildFlags_AutoResizeY);
-		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
-		ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.solidBackgroundFillColorBaseBrush);
-
-		ImGui::PushFont(applicationContext_->getFontCollection().getTitleFont());
-		const auto wrapPosition = ImGui::GetContentRegionAvail().x - toggleSwitchWidth;
-		ImGui::PushTextWrapPos(wrapPosition);
-
-		const auto titleWidth = ImGui::CalcTextSize("Preconditioning Ripple Filter", 0, true, wrapPosition).x;
-		ImGui::TextWrapped("Preconditioning Ripple Filter");
-		ImGui::PopTextWrapPos();
-		ImGui::PopFont();
-		ImGui::SameLine(0.0f, wrapPosition - titleWidth);
-		if (ui::ToggleSwitch(model_.params.ripple.enable, "##enable_preconditioning_ripple_filter", "off", "on"))
-		{
-			model_.params.ripple.enable = !model_.params.ripple.enable;
-		}
-
-		ImGui::TextWrapped(
-			"If enabled, the ripple filter will be applied to the data cube prior to source finding. "
-			"The filter works by measuring and subtracting either the mean or median across a running window. "
-			"This can be useful if a DC offset or spatial/spectral ripple is present in the data.");
-
-		ImGui::BeginDisabled(!model_.params.ripple.enable);
-		// TODO: content here
-		ImGui::EndDisabled();
-		ImGui::PopStyleColor();
-		ImGui::PopStyleVar();
-		ImGui::EndChild();
-	}
-
-	{
-		ImGui::BeginChild("##preconditioning_noise_scaling", Vector2{ 0.0f, 0.0f },
-						  ImGuiChildFlags_FrameStyle | ImGuiChildFlags_AutoResizeY);
-		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
-		ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.solidBackgroundFillColorBaseBrush);
-
-		ImGui::PushFont(applicationContext_->getFontCollection().getTitleFont());
-		const auto wrapPosition = ImGui::GetContentRegionAvail().x - toggleSwitchWidth;
-		ImGui::PushTextWrapPos(wrapPosition);
-
-		const auto titleWidth = ImGui::CalcTextSize("Preconditioning Noise Scaling", 0, true, wrapPosition).x;
-		ImGui::TextWrapped("Preconditioning Noise Scaling");
-		ImGui::PopTextWrapPos();
-		ImGui::PopFont();
-		ImGui::SameLine(0.0f, wrapPosition - titleWidth);
-		if (ui::ToggleSwitch(model_.params.scaleNoise.enable, "##enable_preconditioning_noise_scaling", "off", "on"))
-		{
-			model_.params.scaleNoise.enable = !model_.params.scaleNoise.enable;
-		}
-
-		ImGui::TextWrapped(
-			"If enabled, noise scaling will be enabled. The purpose of the noise scaling modules is to measure the "
-			"noise level in the input cube and then divide the input cube by the noise. This can be used to correct "
-			"for spatial or spectral noise variations across the input cube prior to running the source finder.");
-
-		ImGui::BeginDisabled(!model_.params.scaleNoise.enable);
-		// TODO: content here
-		ImGui::EndDisabled();
-		ImGui::PopStyleColor();
-		ImGui::PopStyleVar();
-		ImGui::EndChild();
-	}
-
-	{
-		ImGui::BeginChild("##source_finding_settings", Vector2{ 0.0f, 0.0f },
-						  ImGuiChildFlags_FrameStyle | ImGuiChildFlags_AutoResizeY);
-		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
-		ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.solidBackgroundFillColorBaseBrush);
-
-		ImGui::PushFont(applicationContext_->getFontCollection().getTitleFont());
-		const auto titleWidth = ImGui::CalcTextSize("Source Finding").x;
-		ImGui::TextWrapped("Source Finding");
-		ImGui::PopFont();
-		ImGui::SameLine(0.0f, ImGui::GetContentRegionAvail().x - toggleSwitchWidth - titleWidth);
-		if (ui::ToggleSwitch(model_.params.scfind.enable, "##enable_source_finding_settings", "off", "on"))
-		{
-			model_.params.scfind.enable = !model_.params.scfind.enable;
-		}
-
-		ImGui::TextWrapped(
-			"The S+C finder operates by "
-			"iteratively smoothing the data cube with a user-defined set of smoothing kernels, measuring the "
-			"noise level on each smoothing scale, and adding all pixels with an absolute flux above a "
-			"user-defined relative threshold to the source detection mask.");
-
-		ImGui::BeginDisabled(!model_.params.scfind.enable);
-
-		{
-			constexpr auto fluxRangeItems = std::array{ "negative", "positive", "full" };
-			static auto fluxRangeItem = 0;
-
-			ImGui::PushID("##flux_range");
-
-			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
-			if (ui::HeadedCombo("Flux Range:", "##flux_range", &fluxRangeItem, fluxRangeItems.data(),
-								static_cast<uint32_t>(fluxRangeItems.size())))
+			ImGui::PushFont(applicationContext_->getFontCollection().getTitleFont());
+			const auto titleWidth = ImGui::CalcTextSize("Region Input").x;
+			ImGui::TextWrapped("Region Input");
+			ImGui::PopFont();
+			ImGui::SameLine(0.0f, ImGui::GetContentRegionAvail().x - toggleSwitchWidth - titleWidth);
+			if (ui::ToggleSwitch(model_.showRoiGizmo, "##enable_region_input_settings", "off", "on"))
 			{
-				model_.params.scfind.fluxRange = fluxRangeItems[fluxRangeItem];
+				model_.showRoiGizmo = !model_.showRoiGizmo;
 			}
-			if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) and ImGui::BeginTooltip())
-			{
-				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-				ImGui::TextUnformatted(
-					"Flux range to be used in the noise measurement. If set to negative or positive, only pixels with "
-					"negative or positive flux will be used, respectively. This can be useful to prevent real emission "
-					"or artefacts from affecting the noise measurement. If set to full, all pixels will be used in the "
-					"noise measurement irrespective of their flux.");
-				ImGui::PopTextWrapPos();
-				ImGui::EndTooltip();
-			}
-			ImGui::PopItemWidth();
-			ImGui::SameLine(0.0f, 8.0f);
 
-			if (ui::Button(ICON_LC_UNDO_2))
-			{
-				fluxRangeItem = 0;
-				model_.params.scfind.fluxRange = fluxRangeItems[fluxRangeItem];
-			}
-			ImGui::SetItemTooltip("Reset to default 'negative' value");
-			ImGui::PopID();
-		}
+			ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorSecondaryBrush);
+			ImGui::TextWrapped(
+				"Region input confines the finder to a sub-data cube, which can lead to a faster computation.");
+			ImGui::PopStyleColor();
 
-		{
-			ImGui::PushID("ScFindKernelXY");
-			ui::HeadedTextOnly("XY Kernels:");
+			ImGui::BeginDisabled(!model_.showRoiGizmo);
 
-			const auto buttonHeight = style.FramePadding.y * 2.0f + ImGui::CalcTextSize("0").y;
-			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, Vector2{ 16.0f, 16.0f });
-			const auto itemHeight = style.FramePadding.y * 2.0f + buttonHeight + style.ScrollbarSize;
+			ui::HeadedDragInt3("Min", "##min", &model_.params.input.region.lower.x);
+			ui::HeadedDragInt3("Max", "##max", &model_.params.input.region.upper.x);
 
-			ImGui::BeginChild("##test",
-							  Vector2{ ImGui::GetContentRegionAvail().x - undoButtonDefaultSize - 8.0f, itemHeight },
-							  ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_FrameStyle,
-							  ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar);
+
+			ImGui::EndDisabled();
+			ImGui::PopStyleColor();
 			ImGui::PopStyleVar();
+		}
+		ImGui::EndChild();
+	}
 
-			for (auto i : model_.params.scfind.kernelsXY)
+	if (not isFilterEnabled_ or
+		paramsFilter_.PassFilter("preconditioning continuum substraction order padding shift threshhold"))
+	{
+		if (ImGui::BeginChild("##preconditioning_continuum_substraction", Vector2{ 0.0f, 0.0f },
+							  ImGuiChildFlags_FrameStyle | ImGuiChildFlags_AutoResizeY))
+		{
+
+			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+			ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.solidBackgroundFillColorBaseBrush);
+
+			ImGui::PushFont(applicationContext_->getFontCollection().getTitleFont());
+			const auto wrapPosition = ImGui::GetContentRegionAvail().x - toggleSwitchWidth;
+			ImGui::PushTextWrapPos(wrapPosition);
+
+			const auto titleWidth =
+				ImGui::CalcTextSize("Preconditioning Continuum Substraction", 0, true, wrapPosition).x;
+			ImGui::TextWrapped("Preconditioning Continuum Substraction");
+			ImGui::PopTextWrapPos();
+			ImGui::PopFont();
+			ImGui::SameLine(0.0f, wrapPosition - titleWidth);
+			if (ui::ToggleSwitch(model_.params.contsub.enable, "##enable_preconditioning_continuum_substraction", "off",
+								 "on"))
 			{
-				selectedKernelsXY_.insert(i);
+				model_.params.contsub.enable = !model_.params.contsub.enable;
 			}
-			static auto kernelsXY = 30;
-			for (auto i = 0; i < kernelsXY; i++)
+
+			ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorSecondaryBrush);
+			ImGui::TextWrapped(
+				"If enabled, SoFiA will try to subtract any residual continuum emission from the data cube prior to "
+				"source finding by fitting and subtracting a polynomial of order 0 (offset) or 1 (offset + slope). "
+				"The order of the polynomial is defined by contsub.order.");
+			ImGui::PopStyleColor();
+
+			ImGui::BeginDisabled(!model_.params.contsub.enable);
+
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning continuum substraction order"))
 			{
-				ImGui::PushID(i);
-				if (ui::ToggleButton(selectedKernelsXY_.contains(i), std::format("{}##b", i).c_str()))
+				static auto items = std::array{ "0", "1" };
+				ImGui::PushID("order");
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				ui::HeadedCombo("Order", "##order", &model_.params.contsub.order, items.data(),
+								static_cast<int>(items.size()));
+				const auto isHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_ForTooltip);
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2))
 				{
-					if (selectedKernelsXY_.contains(i))
-					{
-						selectedKernelsXY_.erase(i);
-						model_.params.scfind.kernelsXY.erase(
-							std::find(model_.params.scfind.kernelsXY.begin(), model_.params.scfind.kernelsXY.end(), i));
-					}
-					else
-					{
-						selectedKernelsXY_.insert(i);
-						model_.params.scfind.kernelsXY.push_back(i);
-					}
+					model_.params.contsub.order = 0;
+				}
+				ImGui::SetItemTooltip("Reset to default '0' value");
+
+				if (isHovered and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted("Order of the polynomial to be used in continuum subtraction if "
+										   "contsub.enable = true. Can either "
+										   "be 0 for a simple offset or 1 for an offset + slope. Higher orders are not "
+										   "currently supported.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
 				}
 				ImGui::PopID();
-				ImGui::SameLine();
 			}
-			if (ui::AccentButton("Add##add_more_filter"))
+
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning continuum substraction padding"))
 			{
-				kernelsXY++;
-				ImGui::SameLine(0.0f, style.FramePadding.x);
-				ImGui::Dummy(ImGui::GetItemRectSize());
-				ImGui::SetScrollHereX(0.0);
-			}
-			ImGui::EndChild();
-			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
-														ImGuiHoveredFlags_ForTooltip);
-
-			ImGui::SameLine(0.0f, 8.0f);
-			if (ui::Button(ICON_LC_UNDO_2))
-			{
-				model_.params.scfind.kernelsXY = { 0, 3, 6 };
-				selectedKernelsXY_.clear();
-			}
-			ImGui::SetItemTooltip("Reset to default XY kernel sizes '0, 3, 6'");
-
-			if (isHovered and ImGui::BeginTooltip())
-			{
-				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-				ImGui::TextUnformatted(
-					"Comma-separated list of spatial Gaussian kernel sizes to apply. The individual kernel sizes must "
-					"be "
-					"floating-point values and denote the full width at half maximum (FWHM) of the Gaussian used to "
-					"smooth "
-					"the "
-					"data in the spatial domain. A value of 0 means that no spatial smoothing will be applied.");
-				ImGui::PopTextWrapPos();
-				ImGui::EndTooltip();
-			}
-			ImGui::PopID();
-		}
-
-		{
-			ImGui::PushID("ScFindKernelZ");
-			ui::HeadedTextOnly("Z Kernels:");
-
-			const auto buttonHeight = style.FramePadding.y * 2.0f + ImGui::CalcTextSize("0").y;
-			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, Vector2{ 16.0f, 16.0f });
-			const auto itemHeight = style.FramePadding.y * 2.0f + buttonHeight + style.ScrollbarSize;
-
-			ImGui::BeginChild("##kernel_selection",
-							  Vector2{ ImGui::GetContentRegionAvail().x - undoButtonDefaultSize - 8.0f, itemHeight },
-							  ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_FrameStyle,
-							  ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar);
-			ImGui::PopStyleVar();
-
-			for (auto i : model_.params.scfind.kernelsZ)
-			{
-				selectedKernelsZ_.insert(i);
-			}
-			static auto kernelsZ = 60;
-			for (auto i = 0; i < kernelsZ; i += 2)
-			{
-				ImGui::PushID(i);
-				if (ui::ToggleButton(selectedKernelsZ_.contains(i), std::format("{}##b", i).c_str()))
+				ImGui::PushID("padding");
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				ui::HeadedDragInt("Padding", "##padding", &model_.params.contsub.padding, 1, 0, 1000 * 1000);
+				const auto isHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_ForTooltip);
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2))
 				{
-					if (selectedKernelsZ_.contains(i))
-					{
-						selectedKernelsZ_.erase(i);
-						model_.params.scfind.kernelsZ.erase(
-							std::find(model_.params.scfind.kernelsZ.begin(), model_.params.scfind.kernelsZ.end(), i));
-					}
-					else
-					{
-						selectedKernelsZ_.insert(i);
-						model_.params.scfind.kernelsZ.push_back(i);
-					}
+					model_.params.contsub.padding = 3;
+				}
+				ImGui::SetItemTooltip("Reset to default '3' value");
+
+				if (isHovered and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted(
+						"The amount of additional padding (in channels) applied to either side of channels "
+						"excluded from the fit.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
 				}
 				ImGui::PopID();
-				ImGui::SameLine();
-				if (i == 0)
+			}
+
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning continuum substraction shift"))
+			{
+				ImGui::PushID("shift");
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				ui::HeadedDragInt("Shift", "##shift", &model_.params.contsub.shift, 1, 1, 1000 * 1000);
+				const auto isHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_ForTooltip);
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2))
 				{
-					i++;
+					model_.params.contsub.shift = 4;
 				}
-			}
-			if (ui::AccentButton("Add##add_more_filter"))
-			{
-				kernelsZ += 2;
-				ImGui::SameLine(0.0f, style.FramePadding.x);
-				ImGui::Dummy(ImGui::GetItemRectSize());
-				ImGui::SetScrollHereX(0.0);
-			}
-			ImGui::EndChild();
-			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
-														ImGuiHoveredFlags_ForTooltip);
+				ImGui::SetItemTooltip("Reset to default '4' value");
 
-			ImGui::SameLine(0.0f, 8.0f);
-			if (ui::Button(ICON_LC_UNDO_2))
-			{
-				model_.params.scfind.kernelsZ = { 0, 3, 7, 15 };
-				selectedKernelsZ_.clear();
-			}
-			ImGui::SetItemTooltip("Reset to default Z kernel sizes '0, 3, 7, 15'");
-
-			if (isHovered and ImGui::BeginTooltip())
-			{
-				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-				ImGui::TextUnformatted(
-					"Comma-separated list of spectral Boxcar kernel sizes to apply. The individual kernel sizes must "
-					"be "
-					"odd integer values of 3 or greater and denote the full width of the Boxcar filter used to smooth "
-					"the data in the spectral domain. A value of 0 means that no spectral smoothing will be applied.");
-				ImGui::PopTextWrapPos();
-				ImGui::EndTooltip();
+				if (isHovered and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted(
+						"The number of channels by which the spectrum will be shifted (symmetrically in "
+						"both directions) before self-subtraction.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+				ImGui::PopID();
 			}
 
-			ImGui::PopID();
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning continuum substraction threshhold"))
+			{
+				ImGui::PushID("threshold");
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				ui::HeadedDragFloat("Threshold", "##threshold", &model_.params.contsub.threshold, 1, 0.0f,
+									1000.0f * 1000.0f);
+				const auto isHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_ForTooltip);
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2))
+				{
+					model_.params.contsub.threshold = 2.0f;
+				}
+				ImGui::SetItemTooltip("Reset to default '2.0f' value");
+
+				if (isHovered and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted("Relative clipping threshold. All channels with a flux density > "
+										   "contsub.threshold times the noise "
+										   "will be clipped and excluded from the polynomial fit.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+				ImGui::PopID();
+			}
+
+			ImGui::EndDisabled();
+			ImGui::PopStyleColor();
+			ImGui::PopStyleVar();
 		}
-
-		{
-			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
-			ui::HeadedDragFloat("Replacement:", "##replacement", &model_.params.scfind.replacement, 0.01f, -1.0f,
-								9999.0f);
-			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
-														ImGuiHoveredFlags_ForTooltip);
-			ImGui::PopItemWidth();
-			ImGui::SameLine(0.0f, 8.0f);
-			if (ui::Button(ICON_LC_UNDO_2))
-			{
-				model_.params.scfind.replacement = 2.0f;
-			}
-			ImGui::SetItemTooltip("Reset to default '2.0' value");
-
-			if (isHovered and ImGui::BeginTooltip())
-			{
-				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-				ImGui::TextUnformatted(
-					"Before smoothing the data cube during an S+C iteration, every pixel in the data cube that was "
-					"already "
-					"detected in a previous iteration will be replaced by this value multiplied by the original noise "
-					"level in "
-					"the non-smoothed data cube, while keeping the original sign of the data value. This feature can "
-					"be "
-					"disabled altogether by specifying a value of < 0.");
-				ImGui::PopTextWrapPos();
-				ImGui::EndTooltip();
-			}
-		}
-
-		{
-			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
-			ui::HeadedDragFloat("Threshold:", "##threshold", &model_.params.scfind.threshold, 0.01f, 0.0f, 100.0f);
-			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
-														ImGuiHoveredFlags_ForTooltip);
-			ImGui::PopItemWidth();
-			ImGui::SameLine(0.0f, 8.0f);
-			if (ui::Button(ICON_LC_UNDO_2 "##threshold"))
-			{
-				model_.params.scfind.threshold = 5.0f;
-			}
-			ImGui::SetItemTooltip("Reset to default '5.0' value");
-
-			if (isHovered and ImGui::BeginTooltip())
-			{
-				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-				ImGui::TextUnformatted(
-					"Flux threshold to be used by the S+C finder relative to the measured noise level in each "
-					"smoothing iteration. In practice, values in the range of about 3 to 5 have proven to be "
-					"useful in most situations, with lower values in that range requiring use of the "
-					"reliability filter to reduce the number of false detections.");
-				ImGui::PopTextWrapPos();
-				ImGui::EndTooltip();
-			}
-		}
-
-		{
-			constexpr auto scaleNoiseStatisticItems = std::array{ "std", "mad", "gauss" };
-			static auto scaleNoiseStatisticItem = 1;
-
-			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
-			if (ui::HeadedCombo("Statistic:", "##statistic", &scaleNoiseStatisticItem, scaleNoiseStatisticItems.data(),
-								static_cast<uint32_t>(scaleNoiseStatisticItems.size())))
-			{
-				model_.params.scfind.statistic = scaleNoiseStatisticItems[scaleNoiseStatisticItem];
-			}
-			if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) and ImGui::BeginTooltip())
-			{
-				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-				ImGui::TextUnformatted(
-					"Statistic to be used in the noise measurement process. Possible values are std, mad and gauss for "
-					"standard deviation, median absolute deviation and Gaussian fitting to the flux histogram, "
-					"respectively. "
-					"Standard deviation is by far the fastest algorithm, but it is also the least robust one with "
-					"respect "
-					"to "
-					"emission and artefacts in the data. Median absolute deviation and Gaussian fitting are far more "
-					"robust in "
-					"the presence of strong, extended emission or artefacts, but will usually take longer.");
-				ImGui::PopTextWrapPos();
-				ImGui::EndTooltip();
-			}
-			ImGui::PopItemWidth();
-			ImGui::SameLine(0.0f, 8.0f);
-			if (ui::Button(ICON_LC_UNDO_2 "##statistic"))
-			{
-				scaleNoiseStatisticItem = 1;
-				model_.params.scfind.statistic = scaleNoiseStatisticItems[scaleNoiseStatisticItem];
-			}
-			ImGui::SetItemTooltip("Reset to default 'mad' value");
-		}
-
-
-		ImGui::EndDisabled();
-		ImGui::PopStyleVar();
-		ImGui::PopStyleColor();
 		ImGui::EndChild();
 	}
 
+	if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning flagging auto channels pixels"))
+	{
+		if (ImGui::BeginChild("##preconditioning_flagging", Vector2{ 0.0f, 0.0f },
+							  ImGuiChildFlags_FrameStyle | ImGuiChildFlags_AutoResizeY))
+		{
+
+
+			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+			ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.solidBackgroundFillColorBaseBrush);
+
+			ImGui::PushFont(applicationContext_->getFontCollection().getTitleFont());
+			ImGui::TextWrapped("Preconditioning Flagging");
+			ImGui::PopFont();
+
+			{
+				const auto items = std::array{ "false", "true", "channels", "pixels" };
+				ImGui::PushID("auto");
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				static auto currentItem = 0;
+				if (ui::HeadedCombo("Auto", "##auto", &currentItem, items.data(), static_cast<int>(items.size())))
+				{
+					model_.params.flag.autoMode = items[currentItem];
+				}
+				const auto isHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_ForTooltip);
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2))
+				{
+					currentItem = 0;
+					model_.params.flag.autoMode = items[currentItem];
+				}
+				ImGui::SetItemTooltip("Reset to default 'false' value");
+
+				if (isHovered and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted(
+						"If set to true, SoFiA will attempt to automatically flag spectral channels and spatial pixels "
+						"affected by interference or artefacts based on their noise level. If set to channels, only "
+						"spectral channels will be flagged. If set to pixels, only spatial pixels will be flagged. If "
+						"set "
+						"to false, auto-flagging will be disabled. Please see the user manual for details.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+				ImGui::PopID();
+			}
+
+			ImGui::PopStyleColor();
+			ImGui::PopStyleVar();
+		}
+		ImGui::EndChild();
+	}
+
+
+	if (not isFilterEnabled_ or
+		paramsFilter_.PassFilter("preconditioning ripple filter grid xy z statistic window interpolate median mean"))
+	{
+		if (ImGui::BeginChild("##preconditioning_ripple_filter", Vector2{ 0.0f, 0.0f },
+							  ImGuiChildFlags_FrameStyle | ImGuiChildFlags_AutoResizeY))
+		{
+
+			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+			ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.solidBackgroundFillColorBaseBrush);
+
+			ImGui::PushFont(applicationContext_->getFontCollection().getTitleFont());
+			const auto wrapPosition = ImGui::GetContentRegionAvail().x - toggleSwitchWidth;
+			ImGui::PushTextWrapPos(wrapPosition);
+
+			const auto titleWidth = ImGui::CalcTextSize("Preconditioning Ripple Filter", 0, true, wrapPosition).x;
+			ImGui::TextWrapped("Preconditioning Ripple Filter");
+			ImGui::PopTextWrapPos();
+			ImGui::PopFont();
+			ImGui::SameLine(0.0f, wrapPosition - titleWidth);
+			if (ui::ToggleSwitch(model_.params.ripple.enable, "##enable_preconditioning_ripple_filter", "off", "on"))
+			{
+				model_.params.ripple.enable = !model_.params.ripple.enable;
+			}
+
+			ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorSecondaryBrush);
+			ImGui::TextWrapped(
+				"If enabled, the ripple filter will be applied to the data cube prior to source finding. "
+				"The filter works by measuring and subtracting either the mean or median across a running window. "
+				"This can be useful if a DC offset or spatial/spectral ripple is present in the data.");
+			ImGui::PopStyleColor();
+
+			ImGui::BeginDisabled(!model_.params.ripple.enable);
+
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning ripple filter grid xy"))
+			{
+				ImGui::PushID("grid xy");
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				if (ui::HeadedDragInt("Grid XY", "##grid xy", &model_.params.ripple.gridXY, 2, 0, 1000 * 1000 + 1))
+				{
+					if (model_.params.ripple.gridXY > 0 and model_.params.ripple.gridXY % 2 == 0)
+					{
+						model_.params.ripple.gridXY += 1;
+					}
+				}
+				const auto isHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_ForTooltip);
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2))
+				{
+					model_.params.ripple.gridXY = 0;
+				}
+				ImGui::SetItemTooltip("Reset to default '0' value");
+
+				if (isHovered and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted(
+						"Spatial grid separation in pixels for the running window used by the background subtraction "
+						"filter. The value must be an odd integer value and specifies the spatial step by which the "
+						"window "
+						"is moved. Alternatively, it can be set to 0 in which case it will default to half the spatial "
+						"window size (see rippleFilter.windowXY).");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+				ImGui::PopID();
+			}
+
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning ripple filter grid z"))
+			{
+				ImGui::PushID("grid z");
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				if (ui::HeadedDragInt("Grid Z", "##grid z", &model_.params.ripple.gridZ, 2, 0, 1000 * 1000 + 1))
+				{
+					if (model_.params.ripple.gridZ > 0 and model_.params.ripple.gridZ % 2 == 0)
+					{
+						model_.params.ripple.gridZ += 1;
+					}
+				}
+				const auto isHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_ForTooltip);
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2))
+				{
+					model_.params.ripple.gridZ = 0;
+				}
+				ImGui::SetItemTooltip("Reset to default '0' value");
+
+				if (isHovered and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted(
+						"Spectral grid separation in channels for the running window used by the background "
+						"subtraction "
+						"filter. The value must be an odd integer value and specifies the spectral step by which the "
+						"window is moved. Alternatively, it can be set to 0, in which case it will default to half the "
+						"spectral window size (see rippleFilter.windowZ).");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+				ImGui::PopID();
+			}
+
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning ripple filter interpolate"))
+			{
+				ImGui::PushID("interpolate");
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				ui::HeadedTextOnly("Interpolate");
+				ImGui::Checkbox("##interpolate", &model_.params.ripple.interpolate);
+				const auto isHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_ForTooltip);
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2))
+				{
+					model_.params.ripple.interpolate = false;
+				}
+				ImGui::SetItemTooltip("Reset to default 'false' value");
+
+				if (isHovered and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted(
+						"If set to true then the mean or median values measured across the running "
+						"window in the background subtraction filter will be linearly interpolated in "
+						"between grid points. If set to false then the mean or median will be "
+						"subtracted from the entire grid cell without interpolation.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+				ImGui::PopID();
+			}
+
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning ripple filter statistic median mean"))
+			{
+				const auto items = std::array{ "median", "mean" };
+				ImGui::PushID("statistic");
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				static auto currentItem = 0;
+				if (ui::HeadedCombo("Statistic", "##statistic", &currentItem, items.data(),
+									static_cast<int>(items.size())))
+				{
+					model_.params.ripple.statistic = items[currentItem];
+				}
+				const auto isHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_ForTooltip);
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2))
+				{
+					currentItem = 0;
+					model_.params.ripple.statistic = items[currentItem];
+				}
+				ImGui::SetItemTooltip("Reset to default 'median' value");
+
+				if (isHovered and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted(
+						"Controls whether the mean or median should be measured and subtracted in the "
+						"running window of the background subtraction filter. The median is strongly "
+						"recommended as it is more robust against real signal and artefacts.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+				ImGui::PopID();
+			}
+
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning ripple filter window xy"))
+			{
+				ImGui::PushID("window xy");
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				ui::HeadedDragInt("Window XY", "##window xy", &model_.params.ripple.windowXY, 2, 1, 1000 * 1000 + 1);
+				const auto isHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_ForTooltip);
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2))
+				{
+					model_.params.ripple.windowXY = 31;
+				}
+				ImGui::SetItemTooltip("Reset to default '31' value");
+
+				if (isHovered and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted("Spatial size in pixels of the running window used by the background "
+										   "subtraction filter. The size must be an odd integer number.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+				ImGui::PopID();
+			}
+
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning ripple filter window z"))
+			{
+				ImGui::PushID("window z");
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				ui::HeadedDragInt("Window Z", "##window z", &model_.params.ripple.windowZ, 2, 1, 1000 * 1000 + 1);
+				const auto isHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_ForTooltip);
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2))
+				{
+					model_.params.ripple.windowZ = 15;
+				}
+				ImGui::SetItemTooltip("Reset to default '15' value");
+
+				if (isHovered and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted("Spectral size in channels of the running window used by the background "
+										   "subtraction filter. The size must be an odd integer number.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+				ImGui::PopID();
+			}
+
+			ImGui::EndDisabled();
+			ImGui::PopStyleColor();
+			ImGui::PopStyleVar();
+		}
+		ImGui::EndChild();
+	}
+
+	if (not isFilterEnabled_ or
+		paramsFilter_.PassFilter("preconditioning noise scaling flux range positive negative full grid xy z "
+								 "interpolate mode spectral local scfind statistic std mad gauss window"))
+	{
+		if (ImGui::BeginChild("##preconditioning_noise_scaling", Vector2{ 0.0f, 0.0f },
+							  ImGuiChildFlags_FrameStyle | ImGuiChildFlags_AutoResizeY))
+		{
+
+			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+			ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.solidBackgroundFillColorBaseBrush);
+
+			ImGui::PushFont(applicationContext_->getFontCollection().getTitleFont());
+			const auto wrapPosition = ImGui::GetContentRegionAvail().x - toggleSwitchWidth;
+			ImGui::PushTextWrapPos(wrapPosition);
+
+			const auto titleWidth = ImGui::CalcTextSize("Preconditioning Noise Scaling", 0, true, wrapPosition).x;
+			ImGui::TextWrapped("Preconditioning Noise Scaling");
+			ImGui::PopTextWrapPos();
+			ImGui::PopFont();
+			ImGui::SameLine(0.0f, wrapPosition - titleWidth);
+			if (ui::ToggleSwitch(model_.params.scaleNoise.enable, "##enable_preconditioning_noise_scaling", "off",
+								 "on"))
+			{
+				model_.params.scaleNoise.enable = !model_.params.scaleNoise.enable;
+			}
+
+			ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorSecondaryBrush);
+			ImGui::TextWrapped(
+				"If enabled, noise scaling will be enabled. The purpose of the noise scaling modules is to measure the "
+				"noise level in the input cube and then divide the input cube by the noise. This can be used to "
+				"correct "
+				"for spatial or spectral noise variations across the input cube prior to running the source finder.");
+			ImGui::PopStyleColor();
+
+			ImGui::BeginDisabled(!model_.params.scaleNoise.enable);
+
+
+			if (not isFilterEnabled_ or
+				paramsFilter_.PassFilter("preconditioning noise scaling flux range positive negative full"))
+			{
+				const auto items = std::array{ "negative", "positive", "full" };
+				ImGui::PushID("flux_range");
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				static auto currentItem = 0;
+				if (ui::HeadedCombo("Flux Range", "##flux_range", &currentItem, items.data(),
+									static_cast<int>(items.size())))
+				{
+					model_.params.scaleNoise.fluxRange = items[currentItem];
+				}
+				const auto isHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_ForTooltip);
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2))
+				{
+					currentItem = 0;
+					model_.params.scaleNoise.fluxRange = items[currentItem];
+				}
+				ImGui::SetItemTooltip("Reset to default 'negative' value");
+
+				if (isHovered and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted(
+						"Flux density range to be used in the noise measurement. If set to negative or positive then "
+						"only pixels with negative or positive flux density will be used, respectively. This can be "
+						"helpful to prevent real emission or artefacts from affecting the noise measurement. If set to "
+						"full then all pixels will be used in the noise measurement irrespective of their flux "
+						"density.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+				ImGui::PopID();
+			}
+
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning noise scaling grid xy"))
+			{
+				ImGui::PushID("grid xy");
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				if (ui::HeadedDragInt("Grid XY", "##grid xy", &model_.params.scaleNoise.gridXY, 2, 0, 1000 * 1000 + 1))
+				{
+					if (model_.params.scaleNoise.gridXY > 0 and model_.params.scaleNoise.gridXY % 2 == 0)
+					{
+						model_.params.scaleNoise.gridXY += 1;
+					}
+				}
+				const auto isHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_ForTooltip);
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2))
+				{
+					model_.params.scaleNoise.gridXY = 0;
+				}
+				ImGui::SetItemTooltip("Reset to default '0' value");
+
+				if (isHovered and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted("Size of the spatial grid by which the noise measurement window is moved "
+										   "across the data cube. It must be an odd integer value. If set to 0 then "
+										   "the spatial grid size will default to half the spatial window size.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+				ImGui::PopID();
+			}
+
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning noise scaling grid z"))
+			{
+				ImGui::PushID("grid z");
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				if (ui::HeadedDragInt("Grid Z", "##grid z", &model_.params.scaleNoise.gridZ, 2, 0, 1000 * 1000 + 1))
+				{
+					if (model_.params.scaleNoise.gridZ > 0 and model_.params.scaleNoise.gridZ % 2 == 0)
+					{
+						model_.params.scaleNoise.gridZ += 1;
+					}
+				}
+				const auto isHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_ForTooltip);
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2))
+				{
+					model_.params.scaleNoise.gridZ = 0;
+				}
+				ImGui::SetItemTooltip("Reset to default '0' value");
+
+				if (isHovered and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted("Size of the spectral grid by which the noise measurement window is moved "
+										   "across the data cube. It must be an odd integer value. If set to 0 then "
+										   "the spectral grid size will default to half the spectral window size.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+				ImGui::PopID();
+			}
+
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning noise scaling interpolate"))
+			{
+				ImGui::PushID("interpolate");
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				ui::HeadedTextOnly("Interpolate");
+				ImGui::Checkbox("##interpolate", &model_.params.scaleNoise.interpolate);
+				const auto isHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_ForTooltip);
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2))
+				{
+					model_.params.scaleNoise.interpolate = false;
+				}
+				ImGui::SetItemTooltip("Reset to default 'false' value");
+
+				if (isHovered and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted(
+						"If set to true then linear interpolation will be used to interpolate the measured local noise "
+						"values in between grid points. If set to false then the entire grid cell will instead be "
+						"filled with the measured noise value.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+				ImGui::PopID();
+			}
+
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning noise scaling mode spectral local"))
+			{
+				const auto items = std::array{ "spectral", "local" };
+				ImGui::PushID("mode");
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				static auto currentItem = 0;
+				if (ui::HeadedCombo("Mode", "##mode", &currentItem, items.data(), static_cast<int>(items.size())))
+				{
+					model_.params.scaleNoise.mode = items[currentItem];
+				}
+				const auto isHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_ForTooltip);
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2))
+				{
+					currentItem = 0;
+					model_.params.scaleNoise.mode = items[currentItem];
+				}
+				ImGui::SetItemTooltip("Reset to default 'spectral' value");
+
+				if (isHovered and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted(
+						"Noise scaling mode. If set to spectral then the noise level will be determined in each "
+						"spectral channel by measuring the noise within each image plane. This is useful for data "
+						"cubes where the noise varies with frequency. If set to local then the noise level will be "
+						"measured locally in a window running across the entire data cube in all three dimensions. "
+						"This is useful for data cubes with more complex spatial and spectral noise variations, e.g. "
+						"interferometric data with primary-beam correction applied.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+				ImGui::PopID();
+			}
+
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning noise scaling scfind"))
+			{
+				ImGui::PushID("scfind");
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				ui::HeadedTextOnly("Scfind");
+				ImGui::Checkbox("##scfind", &model_.params.scaleNoise.scfind);
+				const auto isHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_ForTooltip);
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2))
+				{
+					model_.params.scaleNoise.scfind = false;
+				}
+				ImGui::SetItemTooltip("Reset to default 'false' value");
+
+				if (isHovered and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted(
+						"If true and global or local noise scaling is enabled then noise scaling will additionally be "
+						"applied after each smoothing operation in the S+C finder. This might be useful in certain "
+						"situations where large-scale artefacts are present in interferometric data. However, this "
+						"feature should be used with great caution as it has the potential to do more harm than good.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+				ImGui::PopID();
+			}
+
+			if (not isFilterEnabled_ or
+				paramsFilter_.PassFilter("preconditioning noise scaling statistic std mad gauss"))
+			{
+				const auto items = std::array{ "mad", "std", "gauss" };
+				ImGui::PushID("statistic");
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				static auto currentItem = 0;
+				if (ui::HeadedCombo("Statistic", "##statistic", &currentItem, items.data(),
+									static_cast<int>(items.size())))
+				{
+					model_.params.scaleNoise.statistic = items[currentItem];
+				}
+				const auto isHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_ForTooltip);
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2))
+				{
+					currentItem = 0;
+					model_.params.scaleNoise.statistic = items[currentItem];
+				}
+				ImGui::SetItemTooltip("Reset to default 'mad' value");
+
+				if (isHovered and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted(
+						"Statistic to be used in the noise measurement process. Possible values are std, mad and gauss "
+						"for standard deviation, median absolute deviation and fitting of a Gaussian function to the "
+						"flux histogram, respectively. Standard deviation is by far the fastest algorithm, but it is "
+						"also the least robust with respect to emission and artefacts in the data. Median absolute "
+						"deviation and Gaussian fitting are far more robust in the presence of strong, extended "
+						"emission and artefacts, but will take slightly more time.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+				ImGui::PopID();
+			}
+
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning noise scaling xy window"))
+			{
+				ImGui::PushID("window xy");
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				ui::HeadedDragInt("Window XY", "##window xy", &model_.params.ripple.windowXY, 2, 1, 1000 * 1000 + 1);
+				const auto isHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_ForTooltip);
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2))
+				{
+					model_.params.ripple.windowXY = 25;
+				}
+				ImGui::SetItemTooltip("Reset to default '25' value");
+
+				if (isHovered and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted(
+						"Spatial size of the window used in determining the local noise level. It must be an odd "
+						"integer value. If set to 0 then the pipeline will use the default value instead.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+				ImGui::PopID();
+			}
+
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning noise scaling z window"))
+			{
+				ImGui::PushID("window z");
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				ui::HeadedDragInt("Window Z", "##window z", &model_.params.ripple.windowZ, 2, 1, 1000 * 1000 + 1);
+				const auto isHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_ForTooltip);
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2))
+				{
+					model_.params.ripple.windowZ = 15;
+				}
+				ImGui::SetItemTooltip("Reset to default '15' value");
+
+				if (isHovered and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted(
+						"Spectral size of the window used in determining the local noise level. It must be an odd "
+						"integer value. If set to 0 then the pipeline will use the default value instead.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+				ImGui::PopID();
+			}
+
+			ImGui::EndDisabled();
+			ImGui::PopStyleColor();
+			ImGui::PopStyleVar();
+		}
+		ImGui::EndChild();
+	}
+
+	if (not isFilterEnabled_ or
+		paramsFilter_.PassFilter("source finding flux range positive negative full kernels xy z replacement statistic "
+								 "std mad gauss threshold mode relative absolute"))
+	{
+		if (ImGui::BeginChild("##source_finding_settings", Vector2{ 0.0f, 0.0f },
+							  ImGuiChildFlags_FrameStyle | ImGuiChildFlags_AutoResizeY))
+		{
+
+			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+			ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.solidBackgroundFillColorBaseBrush);
+
+			ImGui::PushFont(applicationContext_->getFontCollection().getTitleFont());
+			ImGui::TextWrapped("Source Finding");
+			ImGui::PopFont();
+
+			ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorSecondaryBrush);
+			ImGui::TextWrapped(
+				"The S+C finder operates by "
+				"iteratively smoothing the data cube with a user-defined set of smoothing kernels, measuring the "
+				"noise level on each smoothing scale, and adding all pixels with an absolute flux above a "
+				"user-defined relative threshold to the source detection mask.");
+			ImGui::PopStyleColor();
+
+			{
+				constexpr auto sourceFindingModeItems = std::array{ "S+C", "Threshold", "None" };
+				static auto sourceFindingItem = 0;
+
+				ImGui::PushID("##source_finding_mode");
+
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				if (ui::HeadedCombo("Source Finding Method:", "##source_finding_mode", &sourceFindingItem,
+									sourceFindingModeItems.data(),
+									static_cast<uint32_t>(sourceFindingModeItems.size())))
+				{
+					model_.params.scfind.enable = false;
+					model_.params.threshold.enable = false;
+					if (sourceFindingItem == 0)
+					{
+						model_.params.scfind.enable = true;
+					}
+					else if (sourceFindingItem == 1)
+					{
+						model_.params.threshold.enable = true;
+					}
+				}
+
+				ImGui::PopID();
+			}
+
+			ImGui::BeginDisabled(!model_.params.scfind.enable);
+
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("source finding flux range positive negative full"))
+			{
+				constexpr auto fluxRangeItems = std::array{ "negative", "positive", "full" };
+				static auto fluxRangeItem = 0;
+
+				ImGui::PushID("##scfind_flux_range");
+
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				if (ui::HeadedCombo("Flux Range:", "##scfind_flux_range", &fluxRangeItem, fluxRangeItems.data(),
+									static_cast<uint32_t>(fluxRangeItems.size())))
+				{
+					model_.params.scfind.fluxRange = fluxRangeItems[fluxRangeItem];
+				}
+				if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted(
+						"Flux range to be used in the S+C finder noise measurement. If set to negative or positive "
+						"then only pixels with negative or positive flux density will be used, respectively. This can "
+						"be useful to prevent real emission or artefacts from affecting the noise measurement. If set "
+						"to full then all pixels will be used in the noise measurement irrespective of their flux.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+
+				if (ui::Button(ICON_LC_UNDO_2))
+				{
+					fluxRangeItem = 0;
+					model_.params.scfind.fluxRange = fluxRangeItems[fluxRangeItem];
+				}
+				ImGui::SetItemTooltip("Reset to default 'negative' value");
+				ImGui::PopID();
+			}
+
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("source finding kernels xy"))
+			{
+				ImGui::PushID("scfind_kernels_xy");
+				ui::HeadedTextOnly("XY Kernels:");
+
+				const auto buttonHeight = style.FramePadding.y * 2.0f + ImGui::CalcTextSize("0").y;
+				ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, Vector2{ 16.0f, 16.0f });
+				const auto itemHeight = style.FramePadding.y * 2.0f + buttonHeight + style.ScrollbarSize;
+
+				ImGui::BeginChild(
+					"##kernel_selection_xy",
+					Vector2{ ImGui::GetContentRegionAvail().x - undoButtonDefaultSize - 8.0f, itemHeight },
+					ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_FrameStyle,
+					ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar);
+				ImGui::PopStyleVar();
+
+				for (auto i : model_.params.scfind.kernelsXY)
+				{
+					selectedKernelsXY_.insert(i);
+				}
+				static auto kernelsXY = 30;
+				for (auto i = 0; i < kernelsXY; i++)
+				{
+					ImGui::PushID(i);
+					if (ui::ToggleButton(selectedKernelsXY_.contains(i), std::format("{}##b", i).c_str()))
+					{
+						if (selectedKernelsXY_.contains(i))
+						{
+							selectedKernelsXY_.erase(i);
+							model_.params.scfind.kernelsXY.erase(std::find(model_.params.scfind.kernelsXY.begin(),
+																		   model_.params.scfind.kernelsXY.end(), i));
+						}
+						else
+						{
+							selectedKernelsXY_.insert(i);
+							model_.params.scfind.kernelsXY.push_back(i);
+						}
+					}
+					ImGui::PopID();
+					ImGui::SameLine();
+				}
+				if (ui::AccentButton("Add##add_more_filter"))
+				{
+					kernelsXY++;
+					ImGui::SameLine(0.0f, style.FramePadding.x);
+					ImGui::Dummy(ImGui::GetItemRectSize());
+					ImGui::SetScrollHereX(0.0);
+				}
+				ImGui::EndChild();
+				const auto isHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_ForTooltip);
+
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2))
+				{
+					model_.params.scfind.kernelsXY = { 0, 3, 6 };
+					selectedKernelsXY_.clear();
+				}
+				ImGui::SetItemTooltip("Reset to default XY kernel sizes '0, 3, 6'");
+
+				if (isHovered and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted(
+						"Comma-separated list of spatial Gaussian kernel sizes to apply. The individual kernel sizes "
+						"must "
+						"be "
+						"floating-point values and denote the full width at half maximum (FWHM) of the Gaussian used "
+						"to "
+						"smooth "
+						"the "
+						"data in the spatial domain. A value of 0 means that no spatial smoothing will be applied.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+				ImGui::PopID();
+			}
+
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("source finding kernels z"))
+			{
+				ImGui::PushID("scfind_kernels_z");
+				ui::HeadedTextOnly("Z Kernels:");
+
+				const auto buttonHeight = style.FramePadding.y * 2.0f + ImGui::CalcTextSize("0").y;
+				ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, Vector2{ 16.0f, 16.0f });
+				const auto itemHeight = style.FramePadding.y * 2.0f + buttonHeight + style.ScrollbarSize;
+
+				ImGui::BeginChild(
+					"##kernel_selection_z",
+					Vector2{ ImGui::GetContentRegionAvail().x - undoButtonDefaultSize - 8.0f, itemHeight },
+					ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_FrameStyle,
+					ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar);
+				ImGui::PopStyleVar();
+
+				for (auto i : model_.params.scfind.kernelsZ)
+				{
+					selectedKernelsZ_.insert(i);
+				}
+				static auto kernelsZ = 60;
+				for (auto i = 0; i < kernelsZ; i += 2)
+				{
+					ImGui::PushID(i);
+					if (ui::ToggleButton(selectedKernelsZ_.contains(i), std::format("{}##b", i).c_str()))
+					{
+						if (selectedKernelsZ_.contains(i))
+						{
+							selectedKernelsZ_.erase(i);
+							model_.params.scfind.kernelsZ.erase(std::find(model_.params.scfind.kernelsZ.begin(),
+																		  model_.params.scfind.kernelsZ.end(), i));
+						}
+						else
+						{
+							selectedKernelsZ_.insert(i);
+							model_.params.scfind.kernelsZ.push_back(i);
+						}
+					}
+					ImGui::PopID();
+					ImGui::SameLine();
+					if (i == 0)
+					{
+						i++;
+					}
+				}
+				if (ui::AccentButton("Add##add_more_filter"))
+				{
+					kernelsZ += 2;
+					ImGui::SameLine(0.0f, style.FramePadding.x);
+					ImGui::Dummy(ImGui::GetItemRectSize());
+					ImGui::SetScrollHereX(0.0);
+				}
+				ImGui::EndChild();
+				const auto isHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_ForTooltip);
+
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2))
+				{
+					model_.params.scfind.kernelsZ = { 0, 3, 7, 15 };
+					selectedKernelsZ_.clear();
+				}
+				ImGui::SetItemTooltip("Reset to default Z kernel sizes '0, 3, 7, 15'");
+
+				if (isHovered and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted("Comma-separated list of spectral Boxcar kernel sizes to apply. The "
+										   "individual kernel sizes must "
+										   "be "
+										   "odd integer values of 3 or greater and denote the full width of the Boxcar "
+										   "filter used to smooth "
+										   "the data in the spectral domain. A value of 0 means that no spectral "
+										   "smoothing will be applied.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+
+				ImGui::PopID();
+			}
+
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("source finding replacement"))
+			{
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				ui::HeadedDragFloat("Replacement:", "##scfind_replacement", &model_.params.scfind.replacement, 0.01f,
+									-1.0f, 9999.0f);
+				const auto isHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_ForTooltip);
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2))
+				{
+					model_.params.scfind.replacement = 2.0f;
+				}
+				ImGui::SetItemTooltip("Reset to default '2.0' value");
+
+				if (isHovered and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted(
+						"Before smoothing the data cube during an S+C iteration, every pixel in the data cube that was "
+						"already "
+						"detected in a previous iteration will be replaced by this value multiplied by the original "
+						"noise "
+						"level in "
+						"the non-smoothed data cube, while keeping the original sign of the data value. This feature "
+						"can "
+						"be "
+						"disabled altogether by specifying a value of < 0.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+			}
+
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("source finding statistic std mad gauss threshold"))
+			{
+				constexpr auto scaleNoiseStatisticItems = std::array{ "std", "mad", "gauss" };
+				static auto scaleNoiseStatisticItem = 1;
+
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				if (ui::HeadedCombo("Statistic:", "##scfind_statistic", &scaleNoiseStatisticItem,
+									scaleNoiseStatisticItems.data(),
+									static_cast<uint32_t>(scaleNoiseStatisticItems.size())))
+				{
+					model_.params.scfind.statistic = scaleNoiseStatisticItems[scaleNoiseStatisticItem];
+				}
+				if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted(
+						"Statistic to be used in the noise measurement process. Possible values are std, mad and gauss "
+						"for "
+						"standard deviation, median absolute deviation and Gaussian fitting to the flux histogram, "
+						"respectively. "
+						"Standard deviation is by far the fastest algorithm, but it is also the least robust one with "
+						"respect "
+						"to "
+						"emission and artefacts in the data. Median absolute deviation and Gaussian fitting are far "
+						"more "
+						"robust in "
+						"the presence of strong, extended emission or artefacts, but will usually take longer.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2 "##scfind_statistic"))
+				{
+					scaleNoiseStatisticItem = 1;
+					model_.params.scfind.statistic = scaleNoiseStatisticItems[scaleNoiseStatisticItem];
+				}
+				ImGui::SetItemTooltip("Reset to default 'mad' value");
+			}
+
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("source finding threshold"))
+			{
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				ui::HeadedDragFloat("Threshold:", "##scfind_threshold", &model_.params.scfind.threshold, 0.01f, 0.0f,
+									100.0f);
+				const auto isHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_ForTooltip);
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2 "##scfind_threshold"))
+				{
+					model_.params.scfind.threshold = 5.0f;
+				}
+				ImGui::SetItemTooltip("Reset to default '5.0' value");
+
+				if (isHovered and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted(
+						"Flux threshold to be used by the S+C finder relative to the measured noise level in each "
+						"smoothing iteration. In practice, values in the range of about 3 to 5 have proven to be "
+						"useful in most situations, with lower values in that range requiring use of the "
+						"reliability filter to reduce the number of false detections.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+			}
+			ImGui::EndDisabled();
+
+
+			ImGui::BeginDisabled(!model_.params.threshold.enable);
+
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("source finding flux range positive negative full"))
+			{
+				constexpr auto fluxRangeItems = std::array{ "negative", "positive", "full" };
+				static auto fluxRangeItem = 0;
+
+				ImGui::PushID("##threshold_flux_range");
+
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				if (ui::HeadedCombo("Flux Range:", "##threshold_flux_range", &fluxRangeItem, fluxRangeItems.data(),
+									static_cast<uint32_t>(fluxRangeItems.size())))
+				{
+					model_.params.scfind.fluxRange = fluxRangeItems[fluxRangeItem];
+				}
+				if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted(
+						"Flux range to be used in the threshold finder noise measurement. If set to negative or "
+						"positive "
+						"then only pixels with negative or positive flux density will be used, respectively. This can "
+						"be "
+						"helpful to prevent real emission or artefacts from affecting the noise measurement. If set to "
+						"full then all pixels will be used in the noise measurement irrespective of their flux.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+
+				if (ui::Button(ICON_LC_UNDO_2))
+				{
+					fluxRangeItem = 0;
+					model_.params.scfind.fluxRange = fluxRangeItems[fluxRangeItem];
+				}
+				ImGui::SetItemTooltip("Reset to default 'negative' value");
+				ImGui::PopID();
+			}
+
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("source finding threshold mode relative absolute"))
+			{
+				constexpr auto thresholdModes = std::array{ "relative", "absolute" };
+				static auto thresholdModeItem = 0;
+
+				ImGui::PushID("##threshold_mode");
+
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				if (ui::HeadedCombo("Mode:", "##threshold_mode", &thresholdModeItem, thresholdModes.data(),
+									static_cast<uint32_t>(thresholdModes.size())))
+				{
+					model_.params.threshold.mode = thresholdModes[thresholdModeItem];
+				}
+				if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted(
+						"If set to absolute then the flux threshold of the threshold finder will be interpreted as an "
+						"absolute flux density threshold in the native flux unit of the input data cube. If set to "
+						"relative then the threshold will be relative to the noise level in the input data cube.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+
+				if (ui::Button(ICON_LC_UNDO_2))
+				{
+					thresholdModeItem = 0;
+					model_.params.threshold.mode = thresholdModes[thresholdModeItem];
+				}
+				ImGui::SetItemTooltip("Reset to default 'relative' value");
+				ImGui::PopID();
+			}
+
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("source finding statistic std mad gauss threshold"))
+			{
+				constexpr auto statisticItems = std::array{ "std", "mad", "gauss" };
+				static auto statisticItem = 1;
+
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				if (ui::HeadedCombo("Statistic:", "##threshold_statistic", &statisticItem, statisticItems.data(),
+									static_cast<uint32_t>(statisticItems.size())))
+				{
+					model_.params.threshold.statistic = statisticItems[statisticItem];
+				}
+				if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal) and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted(
+						"Statistic to be used in the noise measurement process if threshold.mode is set to relative. "
+						"Possible values are std, mad and gauss for standard deviation, median absolute deviation and "
+						"fitting of a Gaussian function to the flux histogram, respectively. Standard deviation is by "
+						"far "
+						"the fastest algorithm, but it is also the least robust with respect to emission and artefacts "
+						"in "
+						"the data. Median absolute deviation and Gaussian fitting are far more robust in the presence "
+						"of "
+						"strong, extended emission or artefacts, but will usually take slightly more time.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2 "##threshold_statistic"))
+				{
+					statisticItem = 1;
+					model_.params.threshold.statistic = statisticItems[statisticItem];
+				}
+				ImGui::SetItemTooltip("Reset to default 'mad' value");
+			}
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("source finding threshold"))
+			{
+				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+				ui::HeadedDragFloat("Threshold:", "##threshold_threshold", &model_.params.threshold.threshold, 0.01f,
+									0.0f, 100.0f);
+				const auto isHovered = ImGui::IsItemHovered(
+					ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_ForTooltip);
+				ImGui::PopItemWidth();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button(ICON_LC_UNDO_2 "##threshold_threshold"))
+				{
+					model_.params.threshold.threshold = 5.0f;
+				}
+				ImGui::SetItemTooltip("Reset to default '5.0' value");
+
+				if (isHovered and ImGui::BeginTooltip())
+				{
+					ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+					ImGui::TextUnformatted("Flux threshold to be applied by the threshold finder. Depending on the "
+										   "threshold.mode parameter, this can either be absolute (in native flux "
+										   "units of the input data cube) or relative to the noise level of the cube.");
+					ImGui::PopTextWrapPos();
+					ImGui::EndTooltip();
+				}
+			}
+
+			ImGui::EndDisabled();
+			ImGui::PopStyleVar();
+			ImGui::PopStyleColor();
+		}
+
+
+		ImGui::EndChild();
+	}
+	/*
 	{
 		ImGui::BeginChild("##linking", Vector2{ 0.0f, 0.0f }, ImGuiChildFlags_FrameStyle | ImGuiChildFlags_AutoResizeY);
 		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
@@ -739,11 +1632,13 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 			model_.params.linker.enable = !model_.params.linker.enable;
 		}
 
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorSecondaryBrush);
 		ImGui::TextWrapped(
 			"If enabled, then the linker will be run to merge the pixels detected by the source finder into "
 			"coherent detections that can then be parameterised and catalogued. If false, the pipeline will be "
 			"terminated after source finding, and no catalogue or source products will be created. Disabling "
 			"the linker can be useful if only the raw mask from the source finder is needed.");
+		ImGui::PopStyleColor();
 
 		ImGui::BeginDisabled(!model_.params.linker.enable);
 		// TODO: content here
@@ -773,6 +1668,7 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 			model_.params.reliability.enable = !model_.params.reliability.enable;
 		}
 
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorSecondaryBrush);
 		ImGui::TextWrapped(
 			"If enabled, reliability calculation and filtering will be enabled. This will determine the "
 			"reliability of each detection with positive total flux by comparing the density of positive and "
@@ -780,6 +1676,7 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 			"reliability threshold will then be discarded. Note that this will require a sufficient number of "
 			"negative detections, which can usually be achieved by setting the source finding threshold to "
 			"somewhere around 3 to 4 times the noise level.");
+		ImGui::PopStyleColor();
 
 		ImGui::BeginDisabled(!model_.params.reliability.enable);
 		// TODO: content here
@@ -809,10 +1706,12 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 			model_.params.dilation.enable = !model_.params.dilation.enable;
 		}
 
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorSecondaryBrush);
 		ImGui::TextWrapped(
 			"Set to true to enable source mask dilation whereby the mask of each source will be grown outwards "
 			"until the resulting increase in integrated flux drops below a given threshold or the maximum "
 			"number of iterations is reached.");
+		ImGui::PopStyleColor();
 
 		ImGui::BeginDisabled(!model_.params.dilation.enable);
 		// TODO: content here
@@ -842,12 +1741,14 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 			model_.params.parameter.enable = !model_.params.parameter.enable;
 		}
 
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorSecondaryBrush);
 		ImGui::TextWrapped(
 			"If enabled, SoFiA will attempt to convert relevant parameters to physical units. This involves "
 			"conversion of channel widths to frequency/velocity units and division of flux-based parameters by "
 			"the solid angle of the beam. For this to work, the relevant header parameters, including CTYPE3, "
 			"CDELT3, BMAJ and BMIN, must have been correctly set. It is further assumed that the beam does not "
 			"vary with frequency or position.");
+		ImGui::PopStyleColor();
 
 		ImGui::BeginDisabled(!model_.params.parameter.enable);
 		// TODO: content here
@@ -856,7 +1757,7 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 		ImGui::PopStyleVar();
 		ImGui::EndChild();
 	}
-
+	*/
 	ImGui::PopStyleVar();
 
 	ImGui::EndDisabled();
