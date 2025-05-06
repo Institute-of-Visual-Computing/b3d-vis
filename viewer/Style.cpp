@@ -797,6 +797,83 @@ auto ui::DragFloat(const char* label, float* v, float v_speed, float v_min, floa
 	return result;
 }
 
+auto ui::DragInt(const char* label, int* v, float v_speed, int v_min, int v_max, const char* format,
+				 ImGuiSliderFlags flags) -> bool
+{
+	const auto& brush = ApplicationContext::getStyleBrush();
+	const auto itemId = ImGui::GetID(label);
+	const auto isHovered =
+		ImGui::GetHoveredID() == itemId or ImGui::GetCurrentContext()->HoveredIdPreviousFrame == itemId;
+	const auto isActive = ImGui::GetActiveID() == itemId;
+	const auto isDisabled = ImGui::GetCurrentContext()->CurrentItemFlags & ImGuiItemFlags_Disabled;
+
+	const auto borderSize = 2.0f;
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, borderSize);
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+	ImGui::PushStyleColor(ImGuiCol_Border, brush.accentControlElevationBorderBrush);
+	ImGui::PushStyleColor(ImGuiCol_TextSelectedBg, brush.accentFillColorSelectedTextBackgroundBrush);
+
+	if (isDisabled)
+	{
+		ImGui::PushStyleColor(ImGuiCol_Button, brush.controlFillColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, brush.controlFillColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, brush.controlFillColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, brush.controlFillColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorDisabledBrush);
+		if (isActive)
+		{
+			ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDisabledBrush);
+		}
+		else
+		{
+			if (isHovered)
+			{
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDisabledBrush);
+			}
+			else
+			{
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDisabledBrush);
+			}
+		}
+	}
+	else
+	{
+		ImGui::PushStyleColor(ImGuiCol_Button, brush.accentFillColorTertiaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, brush.accentFillColorDefaultBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, brush.controlFillColorTertiaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, brush.controlFillColorSecondaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorPrimaryBrush);
+		if (isActive)
+		{
+			ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorTertiaryBrush);
+		}
+		else
+		{
+			if (isHovered)
+			{
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorSecondaryBrush);
+			}
+			else
+			{
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDefaultBrush);
+			}
+		}
+	}
+	const auto result = ImGui::DragInt(label, v, v_speed, v_min, v_max, format, flags);
+	ImGui::PopStyleColor(8);
+	ImGui::PopStyleVar(2);
+	return result;
+}
+
+auto ui::HeadedDragInt(const std::string& header, const char* label, int* v, float v_speed, int v_min, int v_max,
+					   const char* format, ImGuiSliderFlags flags) -> bool
+{
+	HeadedTextOnly(header);
+	const auto result = ui::DragInt(label, v, v_speed, v_min, v_max, format, flags);
+
+	return result;
+}
+
 auto ui::HeadedDragFloat(const std::string& header, const char* label, float* v, float v_speed, float v_min,
 						 float v_max, const char* format, ImGuiSliderFlags flags) -> bool
 {
@@ -804,6 +881,160 @@ auto ui::HeadedDragFloat(const std::string& header, const char* label, float* v,
 	const auto result = ui::DragFloat(label, v, v_speed, v_min, v_max, format, flags);
 
 	return result;
+}
+
+auto ui::HeadedDragInt3(const std::string& header, const char* label, int v[3], float v_speed, int v_min, int v_max,
+						const char* format, ImGuiSliderFlags flags) -> bool
+{
+	HeadedTextOnly(header);
+	const auto result = ui::DragInt3(label, v, v_speed, v_min, v_max, format, flags);
+
+	return result;
+}
+
+auto ui::DragInt3(const char* label, int v[3], float v_speed, int v_min, int v_max, const char* format,
+				  ImGuiSliderFlags flags) -> bool
+{
+	const auto& brush = ApplicationContext::getStyleBrush();
+	const auto itemId = ImGui::GetID(label);
+	const auto isHovered =
+		ImGui::GetHoveredID() == itemId or ImGui::GetCurrentContext()->HoveredIdPreviousFrame == itemId;
+	const auto isActive = ImGui::GetActiveID() == itemId;
+	const auto isDisabled = ImGui::GetCurrentContext()->CurrentItemFlags & ImGuiItemFlags_Disabled;
+
+	const auto borderSize = 2.0f;
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, borderSize);
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+	ImGui::PushStyleColor(ImGuiCol_Border, brush.accentControlElevationBorderBrush);
+	ImGui::PushStyleColor(ImGuiCol_TextSelectedBg, brush.accentFillColorSelectedTextBackgroundBrush);
+
+	if (isDisabled)
+	{
+		ImGui::PushStyleColor(ImGuiCol_Button, brush.controlFillColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, brush.controlFillColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, brush.controlFillColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, brush.controlFillColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorDisabledBrush);
+		if (isActive)
+		{
+			ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDisabledBrush);
+		}
+		else
+		{
+			if (isHovered)
+			{
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDisabledBrush);
+			}
+			else
+			{
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDisabledBrush);
+			}
+		}
+	}
+	else
+	{
+		ImGui::PushStyleColor(ImGuiCol_Button, brush.accentFillColorTertiaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, brush.accentFillColorDefaultBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, brush.controlFillColorTertiaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, brush.controlFillColorSecondaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorPrimaryBrush);
+		if (isActive)
+		{
+			ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorTertiaryBrush);
+		}
+		else
+		{
+			if (isHovered)
+			{
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorSecondaryBrush);
+			}
+			else
+			{
+				ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.controlFillColorDefaultBrush);
+			}
+		}
+	}
+
+	ImGuiWindow* window = ImGui::GetCurrentWindow();
+	if (window->SkipItems)
+		return false;
+	const auto components = 3;
+
+	auto& drawList = *ImGui::GetWindowDrawList();
+	const auto red = isDisabled ? brush.controlFillColorDisabledBrush : Color{ 0.84f, 0.16f, 0.16f };
+	const auto green = isDisabled ? brush.controlFillColorDisabledBrush : Color{ .31f, 0.47f, 0.18f };
+	const auto blue = isDisabled ? brush.controlFillColorDisabledBrush : Color{ 0.26f, 0.38f, 0.93f };
+
+	bool value_changed = false;
+	ImGui::BeginGroup();
+	ImGui::PushID(label);
+	ImGui::PushMultiItemsWidths(components, ImGui::CalcItemWidth());
+
+	{
+		ImGui::PushID(0);
+		ImGui::PushStyleColor(ImGuiCol_Border, red);
+		value_changed |= ImGui::DragScalar("", ImGuiDataType_S32, &v[0], v_speed, &v_min, &v_max, format, flags);
+		ImGui::PopStyleColor();
+		ImGui::SameLine(0, 0);
+
+		const auto min = Vector2{ ImGui::GetItemRectMax().x - 4, ImGui::GetItemRectMin().y };
+		const auto max =
+			Vector2{ ImGui::GetItemRectMax().x + ImGui::CalcTextSize("X").x + 4.0f, ImGui::GetItemRectMax().y };
+
+
+		drawList.AddRectFilled(min, max, red, 4,
+							   ImDrawFlags_RoundCornersTopRight | ImDrawFlags_RoundCornersBottomRight);
+
+		ImGui::Text("X");
+		ImGui::PopID();
+		ImGui::PopItemWidth();
+	}
+	ImGui::SameLine();
+	{
+		ImGui::PushID(1);
+		ImGui::PushStyleColor(ImGuiCol_Border, green);
+		value_changed |= ImGui::DragScalar("", ImGuiDataType_S32, &v[1], v_speed, &v_min, &v_max, format, flags);
+		ImGui::PopStyleColor();
+		ImGui::SameLine(0, 0);
+
+		const auto min = Vector2{ ImGui::GetItemRectMax().x - 4, ImGui::GetItemRectMin().y };
+		const auto max =
+			Vector2{ ImGui::GetItemRectMax().x + ImGui::CalcTextSize("Y").x + 4.0f, ImGui::GetItemRectMax().y };
+
+
+		drawList.AddRectFilled(min, max, green, 4,
+							   ImDrawFlags_RoundCornersTopRight | ImDrawFlags_RoundCornersBottomRight);
+		ImGui::Text("Y");
+		ImGui::PopID();
+		ImGui::PopItemWidth();
+	}
+	ImGui::SameLine();
+	{
+		ImGui::PushID(2);
+		ImGui::PushStyleColor(ImGuiCol_Border, blue);
+		value_changed |= ImGui::DragScalar("", ImGuiDataType_S32, &v[2], v_speed, &v_min, &v_max, format, flags);
+		ImGui::PopStyleColor();
+		ImGui::SameLine(0, 0);
+
+		const auto min = Vector2{ ImGui::GetItemRectMax().x - 4, ImGui::GetItemRectMin().y };
+		const auto max =
+			Vector2{ ImGui::GetItemRectMax().x + ImGui::CalcTextSize("Z").x + 4.0f, ImGui::GetItemRectMax().y };
+
+
+		drawList.AddRectFilled(min, max, blue, 4,
+							   ImDrawFlags_RoundCornersTopRight | ImDrawFlags_RoundCornersBottomRight);
+		ImGui::Text("Z");
+		ImGui::PopID();
+		ImGui::PopItemWidth();
+	}
+
+	ImGui::PopID();
+
+	ImGui::EndGroup();
+
+	ImGui::PopStyleColor(8);
+	ImGui::PopStyleVar(2);
+	return value_changed;
 }
 
 auto createDarkThemeBrush(const AccentColors& accentColors) -> StyleBrush

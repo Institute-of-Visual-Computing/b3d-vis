@@ -141,9 +141,19 @@ namespace ui
 
 	auto DragFloat(const char* label, float* v, float v_speed, float v_min, float v_max, const char* format = "%.2f",
 				   ImGuiSliderFlags flags = 0) -> bool;
-	auto HeadedDragFloat(const std::string& header, const char* label, float* v, float v_speed, float v_min, float v_max,
-				   const char* format = "%.2f",
-				   ImGuiSliderFlags flags = 0) -> bool;
+
+	auto DragInt(const char* label, int* v, float v_speed = 1.0f, int v_min = 0, int v_max = 0,
+				 const char* format = "%d", ImGuiSliderFlags flags = 0) -> bool;
+
+	auto HeadedDragInt(const std::string& header, const char* label, int* v, float v_speed = 1.0f, int v_min = 0,
+					   int v_max = 0, const char* format = "%d", ImGuiSliderFlags flags = 0) -> bool;
+
+	auto HeadedDragFloat(const std::string& header, const char* label, float* v, float v_speed, float v_min,
+						 float v_max, const char* format = "%.2f", ImGuiSliderFlags flags = 0) -> bool;
+	auto HeadedDragInt3(const std::string& header, const char* label, int v[3], float v_speed = 1.0f, int v_min = 0,
+						int v_max = 0, const char* format = "%d", ImGuiSliderFlags flags = 0) -> bool;
+	auto DragInt3(const char* label, int v[3], float v_speed = 1.0f, int v_min = 0, int v_max = 0,
+				  const char* format = "%d", ImGuiSliderFlags flags = 0) -> bool;
 } // namespace ui
 
 auto createDarkThemeBrush(const AccentColors& accentColors) -> StyleBrush;
