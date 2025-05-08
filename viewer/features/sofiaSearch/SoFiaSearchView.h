@@ -208,7 +208,6 @@ public:
 
 private:
 	auto onDraw() -> void override;
-	auto drawFilterFormContentOld() -> void;
 	auto drawFilterFormContent() -> void;
 
 	Model model_;
