@@ -1899,7 +1899,7 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 		{
 			ImGui::PushID("linker_positivity");
 			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
-			ui::HeadedTextOnly("Positivity");
+			ui::HeadedTextOnly("Positivity:");
 			ImGui::Checkbox("##linker_positivity", &model_.params.linker.positivity);
 			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
 														ImGuiHoveredFlags_ForTooltip);
@@ -2025,7 +2025,7 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 		{
 			ImGui::PushID("auto_kernel");
 			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
-			ui::HeadedTextOnly("Auto Kernel");
+			ui::HeadedTextOnly("Auto Kernel:");
 			ImGui::Checkbox("##auto_kernel", &model_.params.reliability.autoKernel);
 			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
 														ImGuiHoveredFlags_ForTooltip);
@@ -2056,7 +2056,7 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 		{
 			ImGui::PushID("reliability_iterations");
 			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
-			ui::HeadedDragInt("Iterations", "##reliability_iterations", &model_.params.reliability.iterations, 1, 1,
+			ui::HeadedDragInt("Iterations:", "##reliability_iterations", &model_.params.reliability.iterations, 1, 1,
 							  1000 * 1000);
 			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
 														ImGuiHoveredFlags_ForTooltip);
@@ -2084,7 +2084,7 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 		{
 			ImGui::PushID("reliability_min_pixels");
 			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
-			ui::HeadedDragInt("Min Pixels", "##reliability_min_pixels", &model_.params.reliability.minPixels, 1, 0,
+			ui::HeadedDragInt("Min Pixels:", "##reliability_min_pixels", &model_.params.reliability.minPixels, 1, 0,
 							  1000 * 1000);
 			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
 														ImGuiHoveredFlags_ForTooltip);
@@ -2112,7 +2112,7 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 		{
 			ImGui::PushID("reliability_min_snr");
 			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
-			ui::HeadedDragFloat("Min SNR", "##reliability_min_snr", &model_.params.reliability.minSNR, 1, 0,
+			ui::HeadedDragFloat("Min SNR:", "##reliability_min_snr", &model_.params.reliability.minSNR, 1, 0,
 								1000 * 1000);
 			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
 														ImGuiHoveredFlags_ForTooltip);
@@ -2220,7 +2220,7 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 		{
 			ImGui::PushID("reliability_scale_kernel");
 			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
-			ui::HeadedDragFloat("Scale Kernel", "##reliability_scale_kernel", &model_.params.reliability.scaleKernel,
+			ui::HeadedDragFloat("Scale Kernel:", "##reliability_scale_kernel", &model_.params.reliability.scaleKernel,
 								0.001f, 0, 1000 * 1000);
 			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
 														ImGuiHoveredFlags_ForTooltip);
@@ -2250,7 +2250,7 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 		{
 			ImGui::PushID("reliability_threshold");
 			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
-			ui::HeadedDragFloat("Threshold", "##reliability_threshold", &model_.params.reliability.threshold, 0.001f,
+			ui::HeadedDragFloat("Threshold:", "##reliability_threshold", &model_.params.reliability.threshold, 0.001f,
 								0.0f, 1.0f);
 			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
 														ImGuiHoveredFlags_ForTooltip);
@@ -2277,7 +2277,7 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 		{
 			ImGui::PushID("reliability_tolerance");
 			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
-			ui::HeadedDragFloat("Tolerance", "##reliability_tolerance", &model_.params.reliability.tolerance, 0.001f,
+			ui::HeadedDragFloat("Tolerance:", "##reliability_tolerance", &model_.params.reliability.tolerance, 0.001f,
 								0.0f, 1000.0f * 1000.0f);
 			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
 														ImGuiHoveredFlags_ForTooltip);
@@ -2319,7 +2319,7 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 		ImGui::PushTextWrapPos(wrapPosition);
 
 		const auto titleWidth = ImGui::CalcTextSize("Mask Dilation", 0, true, wrapPosition).x;
-		ImGui::TextWrapped("Mask Dilation");
+		ImGui::TextWrapped("Mask Dilation:");
 		ImGui::PopTextWrapPos();
 		ImGui::PopFont();
 		ImGui::SameLine(0.0f, wrapPosition - titleWidth);
@@ -2343,7 +2343,7 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 		{
 			ImGui::PushID("dilation_iterations_xy");
 			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
-			ui::HeadedDragInt("Iterations XY", "##dilation_iterations_xy", &model_.params.dilation.iterationsXY, 1, 1,
+			ui::HeadedDragInt("Iterations XY:", "##dilation_iterations_xy", &model_.params.dilation.iterationsXY, 1, 1,
 							  1000 * 1000);
 			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
 														ImGuiHoveredFlags_ForTooltip);
@@ -2372,7 +2372,7 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 		{
 			ImGui::PushID("dilation_iterations_z");
 			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
-			ui::HeadedDragInt("Iterations Z", "##dilation_iterations_z", &model_.params.dilation.iterationsZ, 1, 1,
+			ui::HeadedDragInt("Iterations Z:", "##dilation_iterations_z", &model_.params.dilation.iterationsZ, 1, 1,
 							  1000 * 1000);
 			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
 														ImGuiHoveredFlags_ForTooltip);
@@ -2401,8 +2401,8 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 		{
 			ImGui::PushID("dilation_threshold");
 			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
-			ui::HeadedDragFloat("Threshold", "##dilation_threshold", &model_.params.dilation.threshold, 0.0001f, 0.0f,
-							  1000.0f * 1000.0f);
+			ui::HeadedDragFloat("Threshold:", "##dilation_threshold", &model_.params.dilation.threshold, 0.0001f, 0.0f,
+								1000.0f * 1000.0f);
 			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
 														ImGuiHoveredFlags_ForTooltip);
 			ImGui::PopItemWidth();
@@ -2427,7 +2427,6 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 			}
 			ImGui::PopID();
 		}
-
 
 		ImGui::EndDisabled();
 		ImGui::PopStyleColor();
