@@ -28,7 +28,6 @@ public:
 
 	auto update() -> void override;
 
-	auto setProjects(std::vector<b3d::tools::project::Project>* projects) -> void;
 	auto initializeResources() -> void override{};
 	auto deinitializeResources() -> void override{};
 	auto updateRenderingData(b3d::renderer::RenderingDataWrapper& renderingData) -> void override;

@@ -42,6 +42,7 @@ auto ProjectExplorerController::setProjects(std::vector<b3d::tools::project::Pro
 	projects_ = projects;
 	projectExplorerView_->setModel(ProjectExplorerView::Model{ projects_ });
 }
+
 auto ProjectExplorerController::updateRenderingData(b3d::renderer::RenderingDataWrapper& renderingData) -> void
 {
 	renderingData_ = &renderingData;
@@ -81,6 +82,6 @@ auto ProjectExplorerController::update() -> void
 
 	if (not isConnectedToAnyServer)
 	{
-		// setProjects(nullptr);
+		projects_->clear();
 	}
 }
