@@ -29,19 +29,13 @@ ProjectExplorerController::ProjectExplorerController(ApplicationContext& applica
 		applicationContext, applicationContext.getMainDockspace(), [&] { }, [&] {},
 		[&](const std::string& fileUUID) { return projectExplorer_->loadAndShowFile(fileUUID); },
 		[&]() { return projectExplorer_->refreshProjects(); });
-
+	projectExplorerView_->setModel({ projects_ });
 	applicationContext.addMenuToggleAction(
 		showExplorerWindow_, [&](const bool isOn)
 		{ isOn ? projectExplorerView_->open() : projectExplorerView_->close(); }, "Tools", "Projects");
 }
 
 ProjectExplorerController::~ProjectExplorerController() = default;
-
-auto ProjectExplorerController::setProjects(std::vector<b3d::tools::project::Project>* projects) -> void
-{
-	projects_ = projects;
-	projectExplorerView_->setModel(ProjectExplorerView::Model{ projects_ });
-}
 
 auto ProjectExplorerController::updateRenderingData(b3d::renderer::RenderingDataWrapper& renderingData) -> void
 {

@@ -268,7 +268,7 @@ auto ProjectExplorerView::onDraw() -> void
 
 	const auto positionForLoadingPlaceholder = ImGui::GetCursorPos();
 	const auto middleSpace = availableWidth - textSize.x;
-
+	/*
 	if (isConnectedToAnyServer)
 	{
 		static auto timer = 0.0f;
@@ -280,6 +280,7 @@ auto ProjectExplorerView::onDraw() -> void
 		}
 		timer -= ImGui::GetIO().DeltaTime;
 	}
+	*/
 
 	auto isStillRefreshing = false;
 	if (refreshProjectsFuture_.valid() and
