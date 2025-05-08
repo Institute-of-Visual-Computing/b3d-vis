@@ -58,16 +58,18 @@ auto ModalViewBase::draw() -> void
 		ImGui::PopStyleVar();
 		const auto& style = ImGui::GetStyle();
 
-		const auto position = ImGui::GetCursorScreenPos();
+		const auto position = Vector2{ ImGui::GetCursorScreenPos() };
+		const auto remindedSize = ImGui::GetContentRegionAvail();
 		ImGui::SetCursorPos(ImGui::GetCursorPos() + Vector2{ 0, style.ItemSpacing.y });
 
-		const auto min = position - Vector2{ style.FramePadding.x + 6, 0 };
+		const auto min = position - Vector2{ style.FramePadding.x + style.FrameBorderSize + style.WindowBorderSize, 0 };
 		const auto max = position +
-			Vector2{ style.FramePadding.x + 6, style.FramePadding.y + 10 + style.ItemSpacing.y } +
-			ImGui::GetContentRegionAvail();
-		ImGui::GetWindowDrawList()->AddRectFilled(
-			min, max, brush.solidBackgroundFillColorSecondaryBrush, containerCornerRadius,
-			ImDrawFlags_RoundCornersBottomLeft | ImDrawFlags_RoundCornersBottomRight);
+			Vector2{ style.FramePadding.x + style.FrameBorderSize + style.WindowBorderSize,
+					 style.FramePadding.y * 2.0f + style.FrameBorderSize + style.WindowBorderSize } +
+			Vector2{ remindedSize };
+		ImGui::GetWindowDrawList()->AddRectFilled(min, max, brush.solidBackgroundFillColorSecondaryBrush,
+												  containerCornerRadius,
+												  ImDrawFlags_RoundCornersBottom);
 		switch (modalType_)
 		{
 		case ModalType::ok:
