@@ -353,6 +353,7 @@ auto ui::ToggleSwitch(const bool isOn, const char* label, const char* option1 = 
 		ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, brush.controlFillColorDefaultBrush);
 		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, brush.controlFillColorDefaultBrush);
 		ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, brush.controlStrongStrokeColorDisabledBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorDisabledBrush);
 	}
 	else
 	{
@@ -371,13 +372,14 @@ auto ui::ToggleSwitch(const bool isOn, const char* label, const char* option1 = 
 		ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, brush.accentFillColorSecondaryBrush);
 		ImGui::PushStyleColor(ImGuiCol_FrameBgActive, brush.accentFillColorSecondaryBrush);
 		ImGui::PushStyleColor(ImGuiCol_SliderGrabActive, brush.textFillColorSecondaryBrush);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorPrimaryBrush);
 	}
 	auto value = isOn ? 1 : 0;
 	ImGui::SetNextItemWidth(roundingRadius * 4.0f + borderSize * 2.0f);
 	const auto isEdited = ImGui::SliderInt(label, &value, 0, 1, types[value], ImGuiSliderFlags_NoInput);
 	const auto result = ImGui::IsItemFocused() ? isEdited : ImGui::IsItemClicked(ImGuiMouseButton_Left);
 
-	ImGui::PopStyleColor(6);
+	ImGui::PopStyleColor(7);
 	ImGui::PopStyleVar(3);
 	return result;
 }
