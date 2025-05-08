@@ -35,7 +35,16 @@
 
 #pragma warning(push, 0)
 #include <ImGuiFileDialog.h>
-#pragma warning (pop)
+#pragma warning(pop)
+
+#include "Color.h"
+#include "Mathematics.h"
+
+#ifdef WIN32
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
+#include <dwmapi.h>
+#endif
 
 using namespace owl;
 
@@ -48,6 +57,107 @@ namespace
 									legit::Colors::alizarin,  legit::Colors::pomegranate, legit::Colors::clouds,
 									legit::Colors::silver };
 
+
+	auto setupGuiStyle() -> void
+	{
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+		ImGui::GetStyle().WindowMenuButtonPosition = ImGuiDir_None;
+
+#ifdef WIN32
+		winrt::Windows::UI::ViewManagement::UISettings const ui_settings{};
+		const auto accentColor =
+			Color{ ui_settings.GetColorValue(winrt::Windows::UI::ViewManagement::UIColorType::Accent) };
+		const auto accentColorLight1 =
+			Color{ ui_settings.GetColorValue(winrt::Windows::UI::ViewManagement::UIColorType::AccentLight1) };
+		const auto accentColorLight2 =
+			Color{ ui_settings.GetColorValue(winrt::Windows::UI::ViewManagement::UIColorType::AccentLight2) };
+		const auto accentColorLight3 =
+			Color{ ui_settings.GetColorValue(winrt::Windows::UI::ViewManagement::UIColorType::AccentLight3) };
+		const auto accentColorDark1 =
+			Color{ ui_settings.GetColorValue(winrt::Windows::UI::ViewManagement::UIColorType::AccentDark1) };
+		const auto accentColorDark2 =
+			Color{ ui_settings.GetColorValue(winrt::Windows::UI::ViewManagement::UIColorType::AccentDark2) };
+		const auto accentColorDark3 =
+			Color{ ui_settings.GetColorValue(winrt::Windows::UI::ViewManagement::UIColorType::AccentDark3) };
+#else
+		const auto accentColor = Color{ 0.0332f, 0.19141f, 0.69531f };
+		const auto accentColorLight1 = Color{ 0.09082f, 0.33203f, 0.77734f };
+		const auto accentColorLight2 = Color{ 0.21582f, 0.48438f, 0.85547f };
+		const auto accentColorLight3 = Color{ 0.41797f, 0.6875f, 1.0f };
+		const auto accentColorDark1 = Color{ 0.01685f, 0.10205f, 0.34766f };
+		const auto accentColorDark2 = Color{ 0.00854f, 0.05469f, 0.18164f };
+		const auto accentColorDark3 = Color{ 0.00275f, 0.01941f, 0.05469f };
+#endif
+		const auto& brush = ApplicationContext::getStyleBrush();
+		auto& style = ImGui::GetStyle();
+
+		style.WindowRounding = 8.0f;
+		style.FrameRounding = 4.0f;
+		style.GrabRounding = 4.0f;
+		style.ScrollbarRounding = 4.0f;
+
+		style.WindowBorderSize = 0.0f;
+		style.FrameBorderSize = 2.0f;
+
+		style.WindowPadding = Vector2{ 12.0f, 12.0f };
+		style.FramePadding = Vector2{ 8.0f, 4.0f };
+		style.ItemSpacing = Vector2{ 8.0f, 12.0f };
+		style.ItemInnerSpacing = Vector2{ 0.0f, 0.0f };
+		style.IndentSpacing = 20.0f;
+		style.ScrollbarSize = 12.0f;
+		style.GrabMinSize = 20.0f;
+
+		style.TabRounding = 8.0f;
+		style.TabBorderSize = 2.0f;
+		style.TabBarBorderSize = 0.0f;
+		style.TabBarOverlineSize = 2.0f;
+
+		style.PopupRounding = 8.0f;
+		style.PopupBorderSize = 2.0f;
+
+		style.DisabledAlpha = 1.0f;
+
+		auto& styleColors = style.Colors;
+		styleColors[ImGuiCol_Text] = static_cast<ImVec4>(Color{ 0.95f, 0.95f, 0.95f, 1.00f });
+		styleColors[ImGuiCol_ChildBg] = static_cast<ImVec4>(Color{ 0.15f, 0.15f, 0.15f, 0.85f });
+		styleColors[ImGuiCol_Border] = static_cast<ImVec4>(Color{ 0.25f, 0.25f, 0.25f, 0.60f });
+
+		styleColors[ImGuiCol_FrameBg] = static_cast<ImVec4>(Color{ 0.22f, 0.22f, 0.22f, 1.00f });
+		styleColors[ImGuiCol_FrameBgHovered] = static_cast<ImVec4>(accentColorDark3);
+		styleColors[ImGuiCol_FrameBgActive] = static_cast<ImVec4>(Color{ 0.30f, 0.30f, 0.30f, 1.00f });
+
+		styleColors[ImGuiCol_TextDisabled] = static_cast<ImVec4>(brush.textFillColorDisabledBrush);
+
+		styleColors[ImGuiCol_TitleBg] = static_cast<ImVec4>(brush.acrylicBackgroundFillColorBaseBrush);
+		styleColors[ImGuiCol_TitleBgActive] = static_cast<ImVec4>(brush.acrylicBackgroundFillColorBaseBrush);
+		styleColors[ImGuiCol_TitleBgCollapsed] = static_cast<ImVec4>(brush.acrylicBackgroundFillColorBaseBrush);
+		styleColors[ImGuiCol_Tab] = static_cast<ImVec4>(brush.acrylicBackgroundFillColorBaseBrush);
+		styleColors[ImGuiCol_TabDimmed] = static_cast<ImVec4>(brush.acrylicBackgroundFillColorBaseBrush);
+		styleColors[ImGuiCol_TabHovered] = static_cast<ImVec4>(brush.acrylicBackgroundFillColorDefaultBrush);
+		styleColors[ImGuiCol_TabActive] = static_cast<ImVec4>(brush.solidBackgroundFillColorTertiaryBrush);
+		styleColors[ImGuiCol_TabDimmedSelected] = static_cast<ImVec4>(brush.solidBackgroundFillColorTertiaryBrush);
+		styleColors[ImGuiCol_TabDimmedSelectedOverline] =
+			static_cast<ImVec4>(brush.textControlElevationBorderFocusedBrush);
+		styleColors[ImGuiCol_TabSelectedOverline] = static_cast<ImVec4>(brush.textControlElevationBorderFocusedBrush);
+
+		styleColors[ImGuiCol_MenuBarBg] = static_cast<ImVec4>(brush.acrylicBackgroundFillColorBaseBrush);
+		styleColors[ImGuiCol_WindowBg] = static_cast<ImVec4>(brush.solidBackgroundFillColorTertiaryBrush);
+		styleColors[ImGuiCol_PopupBg] = static_cast<ImVec4>(brush.solidBackgroundFillColorTertiaryBrush);
+		styleColors[ImGuiCol_Header] = static_cast<ImVec4>(brush.solidBackgroundFillColorTertiaryBrush);
+		styleColors[ImGuiCol_HeaderHovered] = static_cast<ImVec4>(brush.controlFillColorSecondaryBrush);
+
+		styleColors[ImGuiCol_ResizeGrip] = static_cast<ImVec4>(accentColorDark3);
+		styleColors[ImGuiCol_ResizeGripActive] = static_cast<ImVec4>(accentColor);
+		styleColors[ImGuiCol_ResizeGripHovered] = static_cast<ImVec4>(accentColorLight3);
+
+		styleColors[ImGuiCol_SliderGrab] = static_cast<ImVec4>(accentColor);
+		styleColors[ImGuiCol_SliderGrabActive] = static_cast<ImVec4>(accentColorLight3);
+
+		styleColors[ImGuiCol_CheckMark] = static_cast<ImVec4>(accentColor);
+
+		styleColors[ImGuiCol_ScrollbarBg] = static_cast<ImVec4>(Color{ 0.0f, 0.0f, 0.0f, 0.0f });
+	}
 
 	[[nodiscard]] auto requestRequiredDpiScales() -> std::vector<float>
 	{
@@ -70,7 +180,6 @@ namespace
 		return requiredDpiScales;
 	}
 
-
 	auto windowContentScaleCallback([[maybe_unused]] GLFWwindow* window, [[maybe_unused]] const float scaleX,
 									[[maybe_unused]] float scaleY)
 	{
@@ -86,7 +195,6 @@ namespace
 		b3d::renderer::log(std::format("Error: {}\n", description), b3d::renderer::LogLevel::error);
 	}
 
-
 	auto initializeGui(GLFWwindow* window, ApplicationContext* applicationContext) -> void
 	{
 		IMGUI_CHECKVERSION();
@@ -95,8 +203,8 @@ namespace
 		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 		ImGuizmo::AllowAxisFlip(false);
 		auto& io = ImGui::GetIO();
-		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
-		io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad; // Enable Gamepad Controls
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+		io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 
 		ImGui::StyleColorsDark();
 
@@ -106,6 +214,7 @@ namespace
 
 		ImGui_ImplGlfw_InitForOpenGL(window, true);
 		ImGui_ImplOpenGL3_Init();
+		setupGuiStyle();
 	}
 
 	auto deinitializeGui() -> void
@@ -150,6 +259,15 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 		exit(EXIT_FAILURE);
 	}
 
+#ifdef WIN32
+#ifndef DWMWA_USE_IMMERSIVE_DARK_MODE
+#define DWMWA_USE_IMMERSIVE_DARK_MODE 20
+#endif
+	const auto hwnd = glfwGetWin32Window(mainWindowHandle);
+	BOOL value = TRUE;
+	DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, &value, sizeof(value));
+#endif
+
 
 	glfwSetWindowUserPointer(mainWindowHandle, this);
 	glfwMakeContextCurrent(mainWindowHandle);
@@ -163,6 +281,8 @@ NanoViewer::NanoViewer(const std::string& title, const int initWindowWidth, cons
 
 	applicationContext_ = std::make_unique<ApplicationContext>();
 	applicationContext_->mainWindowHandle_ = mainWindowHandle;
+
+	applicationContext_->setStyleBrush(createDarkThemeBrush(AccentColors{}));
 
 	applicationContext_->setExternalDrawLists(debugDrawList_, gizmoHelper_);
 
@@ -220,7 +340,6 @@ auto NanoViewer::draw() -> void
 	onFrameBegin();
 	glClear(GL_COLOR_BUFFER_BIT);
 
-
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 
@@ -234,19 +353,13 @@ auto NanoViewer::draw() -> void
 		isRunning_ = false;
 	}
 
-	static auto connectView = ServerConnectSettingsView{ *applicationContext_, "Server Connect",
-														 [](ModalViewBase*) { std::println("submit!!!"); } };
-
 	ImGui::BeginMainMenuBar();
 	if (ImGui::BeginMenu("Program"))
 	{
-		if (ImGui::MenuItem(ICON_LC_UNPLUG " Data Service..", nullptr, nullptr))
+		if (ImGui::MenuItem(ICON_LC_UNPLUG " Server Connection...", nullptr, nullptr))
 		{
-		}
-		if (ImGui::MenuItem("Server Connection...", nullptr, nullptr))
-		{
-			connectView.open();
-			connectView.reset();
+			serverConntect_->open();
+			serverConntect_->reset();
 		}
 
 		ImGui::EndMenu();
@@ -255,9 +368,10 @@ auto NanoViewer::draw() -> void
 
 	if (ImGui::BeginMenu("Tools"))
 	{
-		if (ImGui::MenuItem(ICON_LC_BAR_CHART_3 " Histogram", nullptr, nullptr))
+		// TODO: feature request for histogram
+		/*if (ImGui::MenuItem(ICON_LC_BAR_CHART_3 " Histogram", nullptr, nullptr))
 		{
-		}
+		}*/
 
 		ImGui::EndMenu();
 	}
@@ -267,7 +381,7 @@ auto NanoViewer::draw() -> void
 
 	applicationContext_->getMainDockspace()->begin();
 
-	connectView.draw();
+	serverConntect_->draw();
 
 	for (const auto component : applicationContext_->updatableComponents_)
 	{
@@ -285,6 +399,32 @@ auto NanoViewer::draw() -> void
 	if (showImGuiDemo_)
 	{
 		ImGui::ShowDemoWindow(&showImGuiDemo_);
+	}
+
+	if (showDebugOptions_)
+	{
+		ImGui::Begin("Debug Options", &showDebugOptions_, ImGuiWindowFlags_AlwaysAutoResize);
+
+		auto scale = volumeView_->getInternalRenderingResolutionScale();
+		if (ImGui::SliderFloat("Internal Resolution Scale", &scale, 0.1f, 1.0f))
+		{
+			volumeView_->setInternalRenderingResolutionScale(scale);
+		}
+
+		if (ui::Button("Restore Default Layout", Vector2{ ImGui::GetContentRegionAvail().x, 0.0f }))
+		{
+			applicationContext_->settings_.restoreDefaultLayoutSettings();
+		}
+
+		static bool enableGridFloor = true;
+
+		if (ui::ToggleSwitch(enableGridFloor, "Enable Grid Floor", "", ""))
+		{
+			enableGridFloor = !enableGridFloor;
+			volumeView_->enableInfinitGridFloor(enableGridFloor);
+		}
+
+		ImGui::End();
 	}
 
 	const auto currentFrameTime = 1.0f / ImGui::GetIO().Framerate;
@@ -345,7 +485,6 @@ auto NanoViewer::run(const std::function<bool()>& keepgoing) -> void
 	int width, height;
 	glfwGetFramebufferSize(applicationContext_->mainWindowHandle_, &width, &height);
 
-
 	glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE);
 	glfwSetFramebufferSizeCallback(applicationContext_->mainWindowHandle_,
 								   [](GLFWwindow* window, int, int)
@@ -372,40 +511,35 @@ auto NanoViewer::run(const std::function<bool()>& keepgoing) -> void
 	projectExplorer_ = std::make_unique<ProjectExplorer>(*applicationContext_);
 
 	mainMenu_ = std::make_unique<MenuBar>(*applicationContext_);
+	serverConntect_ =
+		std::make_unique<ServerConnectSettingsView>(*applicationContext_, "Server Connect", [](ModalViewBase*) {});
 
 	applicationContext_->addMenuBarTray(
 		[&]()
 		{
 			auto icon = ICON_LC_SERVER;
+			auto signal = ui::SignalState::success;
 			if (applicationContext_->serverClient_.getLastServerStatusState().health ==
 				b3d::tools::project::ServerHealthState::ok)
 			{
-				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.1f, 0.5f, 0.1f, 1.0f });
+				signal = ui::SignalState::success;
 			}
 			else if (applicationContext_->serverClient_.getLastServerStatusState().health ==
 					 b3d::tools::project::ServerHealthState::testing)
 			{
-				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 1.0f, 0.65f, 0.0f, 1.0f });
+				signal = ui::SignalState::caution;
 			}
 			else
 			{
-				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.5f, 0.1f, 0.1f, 1.0f });
+				signal = ui::SignalState::critical;
 				icon = ICON_LC_SERVER_OFF;
 			}
 
-			if (ImGui::Button(icon))
+			if (ui::SignalButton(signal, icon))
 			{
-				// TODO: Open Server Connection Dialog?
+				serverConntect_->open();
+				serverConntect_->reset();
 			}
-			// TODO: Hover to show Status Tooltip.
-
-			ImGui::PopStyleColor();
-
-			const auto sampleRequest = std::vector<std::string>{
-				"Ready: SoFiA search [10, 30, 50] [20, 40, 100]",
-				"Pending: SoFiA search [110, 130, 150] [120, 140, 1100]",
-				"Pending: SoFiA search [210, 230, 250] [220, 240, 2100]",
-			};
 
 			enum class RequestStatus
 			{
@@ -427,45 +561,25 @@ auto NanoViewer::run(const std::function<bool()>& keepgoing) -> void
 
 			ImGui::SameLine();
 			ImGui::SetNextItemAllowOverlap();
-			const auto pos = ImGui::GetCursorPos();
+			const auto pos = Vector2{ ImGui::GetCursorPos() };
 			const auto spinnerRadius = ImGui::GetFontSize() * 0.25f;
 			const auto itemWidth = ImGui::GetStyle().FramePadding.x * 2 + spinnerRadius * 4;
 
-			if (ImGui::Button("##requestQueue", ImVec2(itemWidth, 32)))
+			if (ui::Button("##requestQueue", Vector2{ itemWidth, 0.0f }))
 			{
 			}
 			if (ImGui::IsItemHovered())
 			{
-				if (ImGui::BeginTooltip())
-				{
-					ImGui::SetNextItemOpen(true);
-					if (hasPendingRequests)
-					{
-						if (ImGui::TreeNode("Request ongoing"))
-						{
-						}
-					}
-					else
-					{
-						if (ImGui::TreeNode("No pending requests"))
-						{
-						}
-					}
-					ImGui::TreePop();
-
-					ImGui::EndTooltip();
-				}
 			}
-
 			if (hasPendingRequests)
 			{
-				ImGui::SetCursorPos(pos + ImGui::GetStyle().FramePadding * 2);
+				ImGui::SetCursorPos(pos + Vector2{ ImGui::GetStyle().FramePadding } * 2);
 				ImSpinner::SpinnerRotateSegments("abs", spinnerRadius, 2.0f);
 			}
 			else
 			{
 				const auto offset = (itemWidth - ImGui::CalcTextSize(ICON_LC_CIRCLE_CHECK).x) * 0.5f;
-				ImGui::SetCursorPos(pos + ImVec2(offset, 0));
+				ImGui::SetCursorPos(pos + Vector2(offset, 0));
 				ImGui::Text(ICON_LC_CIRCLE_CHECK);
 			}
 		});
@@ -500,10 +614,7 @@ auto NanoViewer::run(const std::function<bool()>& keepgoing) -> void
 
 
 	applicationContext_->addMenuToggleAction(showAboutWindow_, [](bool) {}, "Help", "About");
-
 	applicationContext_->addMenuAction([&]() { isRunning_ = false; }, "Program", "Quit", "Alt+F4", std::nullopt, 100);
-	applicationContext_->addMenuAction([&]() { applicationContext_->settings_.restoreDefaultLayoutSettings(); },
-									   "Program", "Restore Layout", "", std::nullopt, 10);
 
 	glfwMakeContextCurrent(applicationContext_->mainWindowHandle_);
 
@@ -515,6 +626,7 @@ auto NanoViewer::run(const std::function<bool()>& keepgoing) -> void
 	}
 
 	deinitializeGui();
+	volumeView_.reset(); // TODO: unify and maybe also provide initialize/deinitialize
 	currentRenderer_->deinitialize();
 	glfwDestroyWindow(applicationContext_->mainWindowHandle_);
 	glfwTerminate();

@@ -1,11 +1,12 @@
 #pragma once
 
-#include "IUnityInterface.h"
+#include <IUnityInterface.h>
 #pragma once
 
-#include "PluginHandler.h"
-// 	TODO: Only required if we're an action which is using RendererBase. Introduce RenderAction and leave this Action as generic as possible.
-#include "RendererBase.h"
+#include <PluginHandler.h>
+// 	TODO: Only required if we're an action which is using RendererBase. Introduce RenderAction and leave this Action as
+// generic as possible.
+#include <RendererBase.h>
 
 extern b3d::unity_cuda_interop::PluginHandler sPluginHandler;
 
@@ -18,7 +19,7 @@ namespace b3d::unity_cuda_interop
 	using UnityColoringMode = renderer::ColoringMode;
 	using UnityColoringInfo = renderer::ColoringInfo;
 	using UnityColorRGBA = renderer::ColorRGBA;
-	
+
 	struct UnityTexture
 	{
 		void* texturePointer;
@@ -60,8 +61,10 @@ namespace b3d::unity_cuda_interop
 		UnityTexture transferFunctionTexture;
 		UnityNanoVdbLoading nanovdbData;
 	};
-
-	static const renderer::SchemaData unityDataSchema { {
+#pragma warning(push, 0)
+#define SCHEMA_ENTRY(keyValue, memberName, parentStruct) { keyValue, offsetof(parentStruct, memberName) }
+	static const renderer::SchemaData unityDataSchema{
+		{
 			SCHEMA_ENTRY("renderTargets", renderTargets, UnityRenderingData),
 			SCHEMA_ENTRY("view", view, UnityRenderingData),
 			SCHEMA_ENTRY("volumeTransform", volumeTransform, UnityRenderingData),
@@ -69,11 +72,12 @@ namespace b3d::unity_cuda_interop
 			SCHEMA_ENTRY("coloringInfo", coloringInfo, UnityRenderingData),
 			SCHEMA_ENTRY("transferFunctionTexture", transferFunctionTexture, UnityRenderingData),
 			SCHEMA_ENTRY("nanovdbData", nanovdbData, UnityRenderingData),
-			
-										  },
+
+		},
 		sizeof(UnityRenderingData)
 	};
-
+#undef SCHEMA_ENTRY
+#pragma warning(pop)
 	class PluginLogger;
 
 	class Action
@@ -108,7 +112,7 @@ namespace b3d::unity_cuda_interop
 			{
 				return;
 			}
-			
+
 			renderEventIDOffset_ = renderEventIdOffset;
 			logger_ = logger;
 			renderAPI_ = renderAPI;
@@ -141,7 +145,7 @@ namespace b3d::unity_cuda_interop
 
 	protected:
 		virtual auto customRenderEvent(int eventId, void* data) -> void = 0;
-		
+
 		PluginLogger* logger_{ nullptr };
 		RenderAPI* renderAPI_{ nullptr };
 
@@ -160,9 +164,11 @@ extern "C"
 
 	UNITY_INTERFACE_EXPORT auto UNITY_INTERFACE_API destroyAction(b3d::unity_cuda_interop::Action* action) -> void;
 
-	UNITY_INTERFACE_EXPORT auto UNITY_INTERFACE_API initializeAction(b3d::unity_cuda_interop::Action* action, void* data) -> void;
+	UNITY_INTERFACE_EXPORT auto UNITY_INTERFACE_API initializeAction(b3d::unity_cuda_interop::Action* action,
+																	 void* data) -> void;
 
 	UNITY_INTERFACE_EXPORT auto UNITY_INTERFACE_API teardownAction(b3d::unity_cuda_interop::Action* action) -> void;
 
-	UNITY_INTERFACE_EXPORT auto UNITY_INTERFACE_API getRenderEventIDOffset(const b3d::unity_cuda_interop::Action* action) -> int;
+	UNITY_INTERFACE_EXPORT auto UNITY_INTERFACE_API
+	getRenderEventIDOffset(const b3d::unity_cuda_interop::Action* action) -> int;
 }

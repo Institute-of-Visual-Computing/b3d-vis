@@ -55,7 +55,7 @@ public:
 		isOpen_ = false;
 	}
 
-	[[nodiscard]] auto isOpen() const noexcept  -> bool
+	[[nodiscard]] auto isOpen() const noexcept -> bool
 	{
 		return isOpen_;
 	}
@@ -81,6 +81,7 @@ protected:
 
 	bool isOpen_{ true };
 	bool drawContent_{ true };
+	bool needEndScope_{ false };
 
 private:
 	bool needResize_{ false };

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ServerAddEditView.h"
+#include "ServerRemoveView.h"
 #include "framework/ModalViewBase.h"
 
 #include <memory>
@@ -20,6 +21,7 @@ public:
 private:
 	std::unique_ptr<ServerAddEditView> addServerView_;
 	std::unique_ptr<ServerAddEditView> editServerView_;
+	std::unique_ptr<ServerRemoveView> removeServerView_;
 
 	int selectedItem_{ -1 };
 

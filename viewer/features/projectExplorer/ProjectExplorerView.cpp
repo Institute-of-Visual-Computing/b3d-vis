@@ -5,11 +5,13 @@
 
 #include "ProjectExplorerView.h"
 
+#include <imspinner.h>
+
 #include "DebugDrawList.h"
 #include "IconsLucide.h"
 #include "IdGenerator.h"
 #include "ImGuiExtension.h"
-#include <imspinner.h>
+#include "Style.h"
 
 namespace
 {
@@ -28,14 +30,13 @@ ProjectExplorerView::ProjectExplorerView(
 	  loadAndShowFunction_(std::move(loadAndShowFunction)), refreshProjectsFunction_(std::move(refreshProjectsFunction))
 {
 	parameterSummaryView_ = std::make_unique<SofiaParameterSummaryView>(appContext);
-	addNewProjectView_ =
-		std::make_unique<AddNewProjectView>(appContext, "Add New Project",
-											[&](ModalViewBase* self)
-											{
-												const auto model = reinterpret_cast<AddNewProjectView*>(self)->model();
-												upload = applicationContext_->serverClient_.uploadFileAsync(
-													model.sourcePath, uploadFeedback);
-											});
+	addNewProjectView_ = std::make_unique<AddNewProjectView>(
+		appContext, "Add New Project",
+		[&](ModalViewBase* self)
+		{
+			const auto model = reinterpret_cast<AddNewProjectView*>(self)->model();
+			upload = applicationContext_->serverClient_.uploadFileAsync(model.sourcePath, uploadFeedback);
+		});
 	editProjectView_ = std::make_unique<EditProjectView>(
 		appContext, "Edit Project",
 		[&](ModalViewBase* self)
@@ -90,175 +91,84 @@ auto ProjectExplorerView::drawSelectableItemGridPanel(const char* panelId, int& 
 	const auto& style = ImGui::GetStyle();
 	const auto windowVisibleX2 = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
 	ImGui::PushID(panelId);
-	ImGui::BeginChild("", panelSize, ImGuiChildFlags_Border, ImGuiWindowFlags_AlwaysVerticalScrollbar);
+	ImGui::BeginChild("", panelSize, ImGuiChildFlags_Border | ImGuiChildFlags_FrameStyle);
+
 	auto pos = ImGui::GetCursorPos();
 	const auto widgetStartPosition = ImGui::GetCursorPos();
-	const auto itemsCount = items + 1; // add button as last item
-
+	const auto itemsCount = items;
 	for (auto n = 0; n < itemsCount; n++)
 	{
-		const auto lastItem = n == items;
-
 		constexpr auto padding = 10;
+
 		ImGui::PushID(n);
 		ImGui::SetNextItemAllowOverlap();
-		ImGui::SetCursorPos(ImVec2(pos.x + padding, pos.y + padding));
-		ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 4.0f);
-		ImGui::BeginChild("", ImVec2{ 0, 0 },
-						  ImGuiChildFlags_Border | ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeX |
-							  ImGuiChildFlags_AutoResizeY);
-
-		auto alignment = ImVec2(0.5f, 0.0f);
+		ImGui::SetCursorPos(Vector2(pos.x + padding, pos.y + padding));
+		ImGui::BeginChild("", Vector2{ 0, 0 },
+						  ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeX | ImGuiChildFlags_AutoResizeY);
+		auto alignment = Vector2(0.5f, 0.0f);
 		ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, alignment);
-
 		ImGui::PushID(n);
-		if (lastItem)
+
+		const auto itemPosition = ImGui::GetCursorPos();
+
+		if (ui::ToggleButton(selectedItemIndex == n, "", itemSize))
 		{
-			static auto isUploadButton = true;
+			selectedItemIndex = n;
+			projectSelected = true;
+		}
 
-			if (not upload.valid())
-			{
+		if (ImGui::BeginItemTooltip())
+		{
+			popup(n);
+			ImGui::EndTooltip();
+		}
 
-				ImGui::PushStyleColor(ImGuiCol_Button,
-									  ImGui::ColorConvertFloat4ToU32(ImVec4{ 0.1f, 0.7f, 0.1f, 1.0f }));
-				ImGui::SetNextItemAllowOverlap();
-				ImGui::PushFont(iconFont);
-				if (ImGui::Button(ICON_LC_FILE_UP, itemSize))
-				{
-					addNewProjectView_->open();
-				}
-				ImGui::PopFont();
-				ImGui::PopStyleColor();
-			}
-			else
-			{
-				const auto itemPosition = ImGui::GetCursorPos();
-				ImGui::InvisibleButton("##uploading", itemSize);
-				const auto textSize = ImGui::CalcTextSize("Uploading");
-				ImGui::PushFont(iconFont);
-				ImGui::SetNextItemAllowOverlap();
-				const auto iconSize = ImGui::CalcTextSize(ICON_LC_FILE_UP);
+		const auto textSize = ImGui::CalcTextSize(name(n));
+		auto approximatedTextSize = textSize;
+		const auto dotsTextSize = ImGui::CalcTextSize("...");
+		ImGui::PushFont(iconFont);
+		// ImGui::SetNextItemAllowOverlap();
+		const auto iconSize = ImGui::CalcTextSize(icon);
 
-				const auto height = textSize.y + iconSize.y + ImGui::GetStyle().FramePadding.y;
+		const auto height = textSize.y + iconSize.y + ImGui::GetStyle().FramePadding.y;
 
-				ImGui::SetCursorPos(itemPosition +
-									ImVec2{ (itemSize.x - iconSize.x) * 0.5f, (itemSize.y - height) * 0.5f });
-				ImGui::Text(ICON_LC_FILE_UP);
-				ImGui::PopFont();
+		ImGui::SetCursorPos(itemPosition + ImVec2{ (itemSize.x - iconSize.x) * 0.5f, (itemSize.y - height) * 0.5f });
+		ImGui::Text(icon);
+		ImGui::PopFont();
 
-				const auto text = std::string{ "Uploading" };
-				auto approximatedTextSize = textSize;
 
-				ImGui::SetCursorPos(
-					itemPosition +
-					ImVec2{ (itemSize.x - approximatedTextSize.x) * 0.5f,
-							(itemSize.y - height) * 0.5f + iconSize.y + ImGui::GetStyle().FramePadding.y });
-				ImGui::Text(text.c_str());
-				ImGui::ProgressBar(uploadFeedback.progress / 100.0f);
-			}
+		if (textSize.x - ImGui::GetStyle().FramePadding.x < itemSize.x)
+		{
+			ImGui::SetCursorPos(itemPosition +
+								ImVec2{ (itemSize.x - textSize.x) * 0.5f,
+										(itemSize.y - height) * 0.5f + iconSize.y + ImGui::GetStyle().FramePadding.y });
+			ImGui::Text(name(n));
 		}
 		else
 		{
+			const auto nameText = std::string{ name(n) };
+			auto approximatedLength = nameText.size();
 
-			const auto itemPosition = ImGui::GetCursorPos();
-
-
-			if (ImGui::Selectable("", selectedItemIndex == n,
-								  ImGuiSelectableFlags_DontClosePopups | ImGuiSelectableFlags_AllowOverlap, itemSize))
+			while ((approximatedTextSize.x - ImGui::GetStyle().FramePadding.x) >= itemSize.x)
 			{
-				selectedItemIndex = n;
-				projectSelected = true;
-			}
-			const auto isItemHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenOverlappedByItem);
-			if (ImGui::BeginItemTooltip())
-			{
-				popup(n);
-				ImGui::EndTooltip();
+				approximatedLength /= 2;
+				approximatedTextSize =
+					ImGui::CalcTextSize(nameText.substr(0, approximatedLength).c_str()) + dotsTextSize;
 			}
 
-			const auto textSize = ImGui::CalcTextSize(name(n));
-			auto approximatedTextSize = textSize;
-			const auto dotsTextSize = ImGui::CalcTextSize("...");
-			ImGui::PushFont(iconFont);
-			// ImGui::SetNextItemAllowOverlap();
-			const auto iconSize = ImGui::CalcTextSize(icon);
-
-			const auto height = textSize.y + iconSize.y + ImGui::GetStyle().FramePadding.y;
+			const auto text = std::format("{}{}", nameText.substr(0, approximatedLength), "...");
+			;
 
 			ImGui::SetCursorPos(itemPosition +
-								ImVec2{ (itemSize.x - iconSize.x) * 0.5f, (itemSize.y - height) * 0.5f });
-			ImGui::Text(icon);
-			ImGui::PopFont();
-
-
-			if (textSize.x - ImGui::GetStyle().FramePadding.x < itemSize.x)
-			{
-				ImGui::SetCursorPos(
-					itemPosition +
-					ImVec2{ (itemSize.x - textSize.x) * 0.5f,
-							(itemSize.y - height) * 0.5f + iconSize.y + ImGui::GetStyle().FramePadding.y });
-				ImGui::Text(name(n));
-			}
-			else
-			{
-				const auto nameText = std::string{ name(n) };
-				auto approximatedLength = nameText.size();
-
-				while ((approximatedTextSize.x - ImGui::GetStyle().FramePadding.x) >= itemSize.x)
-				{
-					approximatedLength /= 2;
-					approximatedTextSize =
-						ImGui::CalcTextSize(nameText.substr(0, approximatedLength).c_str()) + dotsTextSize;
-				}
-
-				const auto text = std::format("{}{}", nameText.substr(0, approximatedLength), "...");
-				;
-
-				ImGui::SetCursorPos(
-					itemPosition +
-					ImVec2{ (itemSize.x - approximatedTextSize.x) * 0.5f,
-							(itemSize.y - height) * 0.5f + iconSize.y + ImGui::GetStyle().FramePadding.y });
-				ImGui::Text(text.c_str());
-			}
-			if (isItemHovered)
-			{
-				ImGui::SetCursorPos(itemPosition +
-									ImVec2{ (itemSize.x) * 0.5f - iconSize.x - ImGui::GetStyle().FramePadding.x * 2 -
-												ImGui::GetStyle().ItemSpacing.x * 0.5f,
-											(itemSize.y - height) * 0.5f + iconSize.y + dotsTextSize.y +
-												ImGui::GetStyle().FramePadding.y });
-				ImGui::PushFont(iconFont);
-				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.7f, 0.7f, 0.3f, 1.0f });
-				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.4f, 0.4f, 0.2f, 1.0f });
-				ImGui::PushID(n);
-				ImGui::SetNextItemAllowOverlap();
-				if (ImGui::Button(ICON_LC_PENCIL) || ImGui::IsItemClicked())
-				{
-					editProjectView_->setProjectIndex(n);
-					editProjectView_->open();
-				}
-				ImGui::PopStyleColor(2);
-				ImGui::PopFont();
-				ImGui::SetItemTooltip("Edit Project Name");
-				ImGui::SameLine();
-				ImGui::PushFont(iconFont);
-				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{ 0.8f, 0.1f, 0.1f, 1.0f });
-				ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{ 0.4f, 0.1f, 0.1f, 1.0f });
-				if (ImGui::Button(ICON_LC_TRASH_2) || ImGui::IsItemClicked())
-				{
-					deleteProjectView_->setProjectIndex(n);
-					deleteProjectView_->open();
-				}
-				ImGui::PopID();
-				ImGui::PopFont();
-				ImGui::SetItemTooltip("Delete Project");
-				ImGui::PopStyleColor(2);
-			}
+								ImVec2{ (itemSize.x - approximatedTextSize.x) * 0.5f,
+										(itemSize.y - height) * 0.5f + iconSize.y + ImGui::GetStyle().FramePadding.y });
+			ImGui::Text(text.c_str());
 		}
+
 		ImGui::PopID();
 		ImGui::PopStyleVar();
 		ImGui::EndChild();
-		ImGui::PopStyleVar();
+
 		const auto lastButtonX2 = ImGui::GetItemRectMax().x;
 		const auto nextButtonX2 = lastButtonX2 + style.ItemSpacing.x + itemSize.x;
 		if (n + 1 < itemsCount && nextButtonX2 < windowVisibleX2)
@@ -280,67 +190,142 @@ auto ProjectExplorerView::drawSelectableItemGridPanel(const char* panelId, int& 
 
 auto ProjectExplorerView::onDraw() -> void
 {
+	const auto isConnectedToAnyServer = applicationContext_->serverClient_.getLastServerStatusState().health ==
+		b3d::tools::project::ServerHealthState::ok;
+	const auto isAnyProjectAvailable = projectAvailable();
+
+	const auto& brush = ApplicationContext::getStyleBrush();
+	constexpr auto containerCornerRadius = 8.0f;
+	constexpr auto contentCornerRadius = 4.0f;
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, containerCornerRadius);
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, containerCornerRadius);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 2.0f);
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, Vector2{ 24.0f, 24.0f });
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, Vector2{ 24.0f, 24.0f });
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, contentCornerRadius);
+
+	ImGui::PushStyleColor(ImGuiCol_PopupBg, brush.cardBackgroundFillColorDefaultBrush);
+	ImGui::PushStyleColor(ImGuiCol_Border, brush.controlStrokeColorSecondaryBrush);
+
+	const auto font = applicationContext_->getFontCollection().getTitleFont();
+	ImGui::PushFont(font);
+	ImGui::Text("Project Explorer");
+	ImGui::PopFont();
+
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, Vector2{ 24.0f, 12.0f });
+	ImGui::TextWrapped(
+		"This tool lets you connect to the remote or local dataset repository and manage its data cubes.");
+	ImGui::TextLinkOpenURL("Learn more about the workflow", "https://github.com/Institute-of-Visual-Computing/b3d-vis");
+	ImGui::TextLinkOpenURL("Learn more about how to set up a data repository server",
+						   "https://github.com/Institute-of-Visual-Computing/b3d-vis");
+	ImGui::PopStyleVar();
+
+	if (not isConnectedToAnyServer)
+	{
+		ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.systemFillColorCautionBackgroundBrush);
+
+		ImGui::BeginChild("##is_not_connected_to_server_warning", Vector2{},
+						  ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_FrameStyle);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.systemFillColorCautionBrush);
+		ImGui::Text(ICON_LC_MESSAGE_SQUARE_WARNING);
+		ImGui::PopStyleColor();
+		ImGui::SameLine();
+		ImGui::TextWrapped("You are not currently connected to any data repository server! To set up the data server, "
+						   "navigate to Program > Server Connection.");
+		ImGui::EndChild();
+		ImGui::PopStyleColor();
+	}
+
+	if (isConnectedToAnyServer and not isAnyProjectAvailable)
+	{
+		ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.systemFillColorSuccessBackgroundBrush);
+
+		ImGui::BeginChild("##empty_server_warning", Vector2{},
+						  ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_FrameStyle);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.systemFillColorSuccessBrush);
+		ImGui::Text(ICON_LC_MESSAGE_SQUARE_WARNING);
+		ImGui::PopStyleColor();
+		ImGui::SameLine();
+		ImGui::TextWrapped(
+			"You are connected to the data server, but its repository is empty! Add new dataset by clicking on Add and "
+			"select an HI-Datacube FITS file from you local storage and start the upload.");
+		ImGui::EndChild();
+		ImGui::PopStyleColor();
+	}
+
+	ImGui::PopStyleColor(2);
+	ImGui::PopStyleVar(6);
+
 	const auto availableWidth = ImGui::GetContentRegionAvail().x;
 
 	const auto scaleFactor = ImGui::GetWindowDpiScale();
-	const auto isConnectedToAnyServer = applicationContext_->serverClient_.getLastServerStatusState().health ==
-		b3d::tools::project::ServerHealthState::ok;
+
 	const auto serverNameText = std::format(
 		"Server: {}",
 		isConnectedToAnyServer ? applicationContext_->serverClient_.getConnectionInfo().name : "Disconnected!");
 	const auto textSize = ImGui::CalcTextSize(serverNameText.c_str());
 
+	const auto positionForLoadingPlaceholder = ImGui::GetCursorPos();
+	const auto middleSpace = availableWidth - textSize.x;
 
-	const auto refreshedPressed = ImGui::Button(ICON_LC_REFRESH_CW);
-	const auto buttonWidth = ImGui::CalcTextSize(ICON_LC_REFRESH_CW).x;
-	const auto middleSpace = availableWidth - textSize.x - 2 * buttonWidth;
-
-	ImGui::SetItemTooltip("Refresh");
-	ImGui::SameLine(middleSpace);
-	ImGui::Text(serverNameText.c_str());
-	ImGui::SameLine();
-	[[maybe_unused]] const auto switchServerPressed = ImGui::Button(ICON_LC_ARROW_RIGHT_LEFT);
-	ImGui::SetItemTooltip("Switch Server");
-
-	if (applicationContext_->isDevelopmentModeEnabled)
-	{
-		ImGui::BeginUnderDevelopmentScope();
-		if (ImGui::Button("Load .nvdb manually"))
-		{
-			showNvdbSelectionModal_();
-		}
-		ImGui::EndUnderDevelopmentScope();
-	}
-	if (isConnectedToAnyServer and not projectAvailable())
+	if (isConnectedToAnyServer)
 	{
 		static auto timer = 0.0f;
 
 		if (timer <= 0.0f)
 		{
 			refreshProjectsFuture_ = refreshProjectsFunction_();
-			timer = 5.0f;
+			timer = 30.0f;
 		}
 		timer -= ImGui::GetIO().DeltaTime;
 	}
 
-	if (refreshedPressed)
-	{
-		refreshProjectsFuture_ = refreshProjectsFunction_();
-	}
+	auto isStillRefreshing = false;
 	if (refreshProjectsFuture_.valid() and
 		(isConnectedToAnyServer or
 		 applicationContext_->serverClient_.getLastServerStatusState().health ==
 			 b3d::tools::project::ServerHealthState::testing))
 	{
-		if (refreshProjectsFuture_.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
-		{
-			ImSpinner::SpinnerRotateSegments("project_loading_spinner", ImGui::GetFontSize() * 0.5f, 2.0f);
-			ImGui::Text("Loading");
-		}
-		else
+		isStillRefreshing = true;
+		if (not(refreshProjectsFuture_.wait_for(std::chrono::seconds(0)) != std::future_status::ready))
 		{
 			refreshProjectsFuture_ = {};
 		}
+	}
+
+	if (isStillRefreshing)
+	{
+		ImSpinner::SpinnerRotateSegments("project_loading_spinner", ImGui::GetFontSize() * 0.5f, 2.0f);
+		ImGui::SameLine();
+		ImGui::Text("Loading");
+	}
+	else
+	{
+		if (ui::Button(ICON_LC_REFRESH_CW))
+		{
+			refreshProjectsFuture_ = refreshProjectsFunction_();
+		}
+	}
+
+	ImGui::SetItemTooltip("Refresh");
+	ImGui::SameLine(middleSpace);
+	ImGui::Text(serverNameText.c_str());
+	// TODO: Do we really need this button?
+	/*ImGui::SameLine();
+	if (ui::Button(ICON_LC_ARROW_RIGHT_LEFT))
+	{
+	}
+	ImGui::SetItemTooltip("Switch Server");*/
+
+	if (applicationContext_->isDevelopmentModeEnabled)
+	{
+		ImGui::BeginUnderDevelopmentScope();
+		if (ui::Button("Load .nvdb manually"))
+		{
+			showNvdbSelectionModal_();
+		}
+		ImGui::EndUnderDevelopmentScope();
 	}
 
 	if (model_.projects)
@@ -375,6 +360,67 @@ auto ProjectExplorerView::onDraw() -> void
 			},
 			ImVec2{ 100 * scaleFactor, 100 * scaleFactor });
 
+		const auto& style = ImGui::GetStyle();
+		const auto addButtonText = ICON_LC_FILE_UP " Add";
+		const auto addButtonTextSize = ImGui::CalcTextSize(addButtonText, NULL, true);
+		const auto addButtonSize = ImGui::CalcItemSize(Vector2{}, addButtonTextSize.x + style.FramePadding.x * 2.0f,
+													   addButtonTextSize.y + style.FramePadding.y * 2.0f);
+
+		if (not upload.valid())
+		{
+
+
+			ImGui::SetNextItemAllowOverlap();
+			if (ui::AccentButton(addButtonText, addButtonSize))
+			{
+				addNewProjectView_->open();
+			}
+			if (ImGui::BeginItemTooltip())
+			{
+				ImGui::Text("Create and Upload new dataset");
+				ImGui::EndTooltip();
+			}
+		}
+		else
+		{
+			const auto itemPosition = Vector2{ ImGui::GetCursorPos() };
+			ImGui::InvisibleButton("##uploading", addButtonSize);
+			ImGui::SetNextItemAllowOverlap();
+
+			ImGui::SetCursorPos(itemPosition);
+			ImGui::ProgressBar(uploadFeedback.progress / 100.0f, addButtonSize, "");
+			const auto bars = 12u;
+			ImGui::SetCursorPos(itemPosition + Vector2{ addButtonSize.x * 0.25f, 0 });
+			ImSpinner::SpinnerBarsScaleMiddle("uploading_new_file", ImGui::GetFontSize() * 0.5f / bars,
+											  ImSpinner::white, 2.8f, bars);
+		}
+
+		const auto isValidSelection = selectedProjectItemIndex_ >= 0;
+		ImGui::BeginDisabled(not isValidSelection);
+		{
+			ImGui::PushID(selectedProjectItemIndex_);
+			const auto emptySpace = ImGui::GetContentRegionAvail().x -
+				(ImGui::CalcTextSize(ICON_LC_PENCIL " Edit").x + ImGui::CalcTextSize(ICON_LC_TRASH_2 " Delete").x +
+				 style.FramePadding.x * 4.0f + addButtonSize.x + style.ItemSpacing.x);
+
+			ImGui::SameLine(0, emptySpace);
+			if (ui::Button(ICON_LC_PENCIL " Edit"))
+			{
+				editProjectView_->setProjectIndex(selectedProjectItemIndex_);
+				editProjectView_->open();
+			}
+			ImGui::SetItemTooltip("Edit Project Name");
+			ImGui::SameLine();
+
+			if (ui::Button(ICON_LC_TRASH_2 " Delete"))
+			{
+				deleteProjectView_->setProjectIndex(selectedProjectItemIndex_);
+				deleteProjectView_->open();
+			}
+			ImGui::SetItemTooltip("Delete Project");
+			ImGui::PopID();
+		}
+		ImGui::EndDisabled();
 
 		if (selectedProjectItemIndex_ >= 0 && !model_.projects->empty())
 		{
@@ -432,221 +478,127 @@ auto ProjectExplorerView::onDraw() -> void
 			}
 
 			static auto selectedRequest = defaultVolumeDataRequest;
-
-			if (ImGui::TreeNodeEx("Requests", ImGuiTreeNodeFlags_DefaultOpen))
+			ImGui::BeginChild("##requests", ImGui::GetContentRegionAvail(),
+							  ImGuiChildFlags_Border | ImGuiChildFlags_FrameStyle);
+			/*ImGui::GetForegroundDrawList()->PushClipRect(
+				ImGui::GetCursorPos(), Vector2{ ImGui::GetCursorPos() } + Vector2{ ImGui::GetContentRegionAvail() },
+				false);*/
+			for (auto i = 0; i < project.requests.size(); i++)
 			{
+				ImGui::PushID(i);
+				const auto& request = project.requests[i];
+				ImGui::SetNextItemAllowOverlap();
 
-
-				for (auto i = 0; i < project.requests.size(); i++)
+				if (loadAndShowFileFuturePerRequest[i].loadAndShowFileFuture.valid())
 				{
-					ImGui::PushID(i);
-					const auto& request = project.requests[i];
-					ImGui::SetNextItemAllowOverlap();
-
-					if (loadAndShowFileFuturePerRequest[i].loadAndShowFileFuture.valid())
+					loadAndShowFileFuturePerRequest[i].blocked = true;
+					if (loadAndShowFileFuturePerRequest[i].loadAndShowFileFuture.wait_for(std::chrono::seconds(0)) ==
+						std::future_status::ready)
 					{
-						loadAndShowFileFuturePerRequest[i].blocked = true;
-						if (loadAndShowFileFuturePerRequest[i].loadAndShowFileFuture.wait_for(
-								std::chrono::seconds(0)) == std::future_status::ready)
-						{
-							loadAndShowFileFuturePerRequest[i].loadAndShowFileFuture.get();
-							loadAndShowFileFuturePerRequest[i].blocked = false;
-						}
+						loadAndShowFileFuturePerRequest[i].loadAndShowFileFuture.get();
+						loadAndShowFileFuturePerRequest[i].blocked = false;
 					}
+				}
 
-					const auto isItemEnabled =
-						(request.result.wasSuccess() or loadAndShowFileFuturePerRequest[i].blocked) and
-						request.result.nanoResult.fileAvailable;
+				const auto isItemEnabled =
+					(request.result.wasSuccess() or loadAndShowFileFuturePerRequest[i].blocked) and
+					request.result.nanoResult.fileAvailable;
 
-					ImGui::BeginDisabled(!isItemEnabled);
-					if (ImGui::Selectable(request.uuid.c_str(), selectedRequest == i))
+				ImGui::BeginDisabled(!isItemEnabled);
+
+				const auto position = Vector2{ ImGui::GetCursorPos() };
+				if (ui::Selectable("", selectedRequest == i, 0, Vector2{ 0.0f, ImGui::GetTextLineHeight() * 2.0f }))
+				{
+					selectedRequest = i;
+					loadAndShowFileFuturePerRequest[i].loadAndShowFileFuture =
+						loadAndShowFunction_(request.result.nanoResult.resultFile);
+				}
+				const auto nextItem = ImGui::GetCursorPos();
+				if (ImGui::IsItemHovered())
+				{
+					const auto box = owl::common::box3f{
+						{ static_cast<float>(request.subRegion.lower.x), static_cast<float>(request.subRegion.lower.y),
+						  static_cast<float>(request.subRegion.lower.z) },
+
+						{ static_cast<float>(request.subRegion.upper.x), static_cast<float>(request.subRegion.upper.y),
+						  static_cast<float>(request.subRegion.upper.z) }
+					};
+
+
+					const auto originalBoxSize = owl::vec3f{
+						static_cast<float>(-(project.fitsOriginProperties.axisDimensions[0] - 1)),
+						static_cast<float>(-(project.fitsOriginProperties.axisDimensions[1] - 1)),
+						static_cast<float>(project.fitsOriginProperties.axisDimensions[2] - 1),
+					};
+
+					auto boxTranslate = box.size() / 2.0f;
+					boxTranslate.z *= -1.0f;
+					boxTranslate += owl::vec3f{ box.lower.x, box.lower.y, -box.lower.z };
+
+
+					constexpr auto blinkFrequency = 10.0f;
+					const auto blinkIntensity =
+						0.5f + 0.5f * glm::sin(ImGui::GetCurrentContext()->HoveredIdTimer * blinkFrequency);
+					applicationContext_->getDrawList()->drawBox(
+						volumeTransform_.p / 2, originalBoxSize / 2.0f + boxTranslate, box.size(),
+						{ 1.0, 0.0, 0.0,
+						  1.0f - blinkIntensity * blinkIntensity * blinkIntensity * blinkIntensity * blinkIntensity },
+						volumeTransform_.l);
+				}
+				if (!request.result.wasSuccess())
+				{
+					if (ImGui::BeginItemTooltip())
 					{
-						selectedRequest = i;
-						loadAndShowFileFuturePerRequest[i].loadAndShowFileFuture =
-							loadAndShowFunction_(request.result.nanoResult.resultFile);
+						ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+						ImGui::TextWrapped(std::format("Failed with error code {} and message: {}",
+													   request.result.sofiaResult.returnCode,
+													   request.result.sofiaResult.message)
+											   .c_str());
+						ImGui::PopTextWrapPos();
+						ImGui::EndTooltip();
 					}
-					if (ImGui::IsItemHovered())
+				}
+				else if (!request.result.nanoResult.fileAvailable)
+				{
+					if (ImGui::BeginItemTooltip())
 					{
-						const auto box = owl::common::box3f{ { static_cast<float>(request.subRegion.lower.x),
-															   static_cast<float>(request.subRegion.lower.y),
-															   static_cast<float>(request.subRegion.lower.z) },
-
-															 { static_cast<float>(request.subRegion.upper.x),
-															   static_cast<float>(request.subRegion.upper.y),
-															   static_cast<float>(request.subRegion.upper.z) } };
-
-
-						const auto originalBoxSize = owl::vec3f{
-							static_cast<float>(-(project.fitsOriginProperties.axisDimensions[0] - 1)),
-							static_cast<float>(-(project.fitsOriginProperties.axisDimensions[1] - 1)),
-							static_cast<float>(project.fitsOriginProperties.axisDimensions[2] - 1),
-						};
-
-						auto boxTranslate = box.size() / 2.0f;
-						boxTranslate.z *= -1.0f;
-						boxTranslate += owl::vec3f{ box.lower.x, box.lower.y, -box.lower.z };
-
-
-						constexpr auto blinkFrequency = 10.0f;
-						const auto blinkIntensity =
-							0.5f + 0.5f * glm::sin(ImGui::GetCurrentContext()->HoveredIdTimer * blinkFrequency);
-						applicationContext_->getDrawList()->drawBox(
-							volumeTransform_.p / 2, originalBoxSize / 2.0f + boxTranslate, box.size(),
-							{ 1.0, 0.0, 0.0,
-							  1.0f -
-								  blinkIntensity * blinkIntensity * blinkIntensity * blinkIntensity * blinkIntensity },
-							volumeTransform_.l);
+						ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+						ImGui::TextWrapped(
+							"File couldn't be loaded! It might be corrupted or an error on server has occurred.");
+						ImGui::PopTextWrapPos();
+						ImGui::EndTooltip();
 					}
-					if (!request.result.wasSuccess())
-					{
-						if (ImGui::BeginItemTooltip())
-						{
-							ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-							ImGui::TextWrapped(std::format("Failed with error code {} and message: {}",
-														   request.result.sofiaResult.returnCode,
-														   request.result.sofiaResult.message)
-												   .c_str());
-							ImGui::PopTextWrapPos();
-							ImGui::EndTooltip();
-						}
-					}
-					else if (!request.result.nanoResult.fileAvailable)
-					{
-						if (ImGui::BeginItemTooltip())
-						{
-							ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-							ImGui::TextWrapped(
-								"File couldn't be loaded! It might be corrupted or an error on server has occured.");
-							ImGui::PopTextWrapPos();
-							ImGui::EndTooltip();
-						}
-					}
-					const auto selectableSize = ImGui::GetItemRectSize();
-					const auto av = ImGui::GetContentRegionAvail();
+				}
+				ImGui::SetCursorPos(position + Vector2{ 8.0f, 0.0f } +
+									Vector2{ 0.0f, ImGui::GetTextLineHeight() * 0.5f });
+				ImGui::Text(request.uuid.c_str());
+				ImGui::SetCursorPos(nextItem);
+				const auto selectableSize = ImGui::GetItemRectSize();
+				const auto av = ImGui::GetContentRegionAvail();
 
+				// TODO (Anton)
+				/*const auto viewIconSize = ImGui::CalcTextSize(ICON_LC_VIEW).x;
+				const auto detailIconSize = ImGui::CalcTextSize(ICON_LC_VIEW).x;
+				constexpr auto spinnerThickness = 2.0f;
+				const auto spinnerRadius =
+					(selectableSize.y - spinnerThickness) / 2 - ImGui::GetStyle().FramePadding.y * 2;
+				const auto spinnerWidth = spinnerRadius * 2;
 
-					const auto viewIconSize = ImGui::CalcTextSize(ICON_LC_VIEW).x;
-					const auto detailIconSize = ImGui::CalcTextSize(ICON_LC_VIEW).x;
-					constexpr auto spinnerThickness = 2.0f;
-					const auto spinnerRadius =
-						(selectableSize.y - spinnerThickness) / 2 - ImGui::GetStyle().FramePadding.y;
-					const auto spinnerWidth = spinnerRadius * 2;
+				const auto framePadding = ImGui::GetStyle().FramePadding.x * 4;*/
 
-					const auto framePadding = ImGui::GetStyle().FramePadding.x * 4;
+				/*if (loadAndShowFileFuturePerRequest[i].blocked)
+				{
 					ImGui::SameLine(selectableSize.x - spinnerWidth - framePadding - detailIconSize - framePadding -
 									viewIconSize - framePadding);
-					if (loadAndShowFileFuturePerRequest[i].blocked)
-					{
-						ImSpinner::SpinnerRotateSegments("request_loading_spinner", spinnerRadius, spinnerThickness);
-					}
+					ImSpinner::SpinnerRotateSegments("request_loading_spinner", spinnerRadius, spinnerThickness);
+				}*/
 
+				ImGui::EndDisabled();
 
-					ImGui::SameLine(selectableSize.x - framePadding - detailIconSize - viewIconSize - framePadding);
-					if (ImGui::SmallButton(ICON_LC_VIEW))
-					{
-						// applicationContext_.
-					}
-					if (ImGui::BeginItemTooltip())
-					{
-						ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-						ImGui::TextWrapped("Move the camera view to the selected sub-volume.");
-						ImGui::PopTextWrapPos();
-						ImGui::EndTooltip();
-					}
-					ImGui::SameLine(selectableSize.x - framePadding - detailIconSize);
-					if (ImGui::SmallButton(ICON_LC_SCROLL_TEXT))
-					{
-						// applicationContext_.
-						parameterSummaryView_->setSofiaParams(request.sofiaParameters);
-						parameterSummaryView_->open();
-					}
-					if (ImGui::BeginItemTooltip())
-					{
-						ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-						ImGui::Text("Show SoFiA parameters applied for a given request.");
-						ImGui::PopTextWrapPos();
-						ImGui::EndTooltip();
-					}
-
-					ImGui::EndDisabled();
-
-					ImGui::PopID();
-				}
-				ImGui::TreePop();
+				ImGui::PopID();
 			}
-
-			if (applicationContext_->isDevelopmentModeEnabled)
-			{
-				ImGui::BeginUnderDevelopmentScope();
-
-				constexpr auto tableFlags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-					ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingFixedFit;
-
-				// ID, Success, Cached, Load & Show
-				if (ImGui::BeginTable("RequestTable", 4, tableFlags))
-				{
-					ImGui::TableSetupColumn("ID");
-					ImGui::TableSetupColumn("Success");
-					ImGui::TableSetupColumn("Cached");
-					ImGui::TableSetupColumn("Load & Show");
-					ImGui::TableHeadersRow();
-
-					auto blockLoadGet = false;
-					if (loadAndShowFileFuture_.valid())
-					{
-						blockLoadGet = true;
-						if (loadAndShowFileFuture_.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
-						{
-							loadAndShowFileFuture_.get();
-							blockLoadGet = false;
-						}
-					}
-
-
-					for (const auto& request : project.requests)
-					{
-						const auto reqSucc = request.result.wasSuccess();
-
-						ImGui::TableNextRow();
-						ImGui::PushID(request.uuid.c_str());
-						ImGui::TableNextColumn();
-						ImGui::Text(request.uuid.c_str());
-
-						ImGui::TableNextColumn();
-						ImGui::Text(reqSucc ? "true" : "false");
-
-						ImGui::TableNextColumn();
-						if (reqSucc)
-						{
-							// Replace with icon?
-							ImGui::Text("false");
-						}
-						else
-						{
-							ImGui::Text("N/A");
-						}
-
-						ImGui::TableNextColumn();
-						if (!reqSucc || blockLoadGet)
-						{
-							ImGui::BeginDisabled(true);
-						}
-
-						if (ImGui::Button("Load & Show"))
-						{
-							// Load & Show
-							loadAndShowFileFuture_ = loadAndShowFunction_(request.result.nanoResult.resultFile);
-						}
-						if (!reqSucc || blockLoadGet)
-						{
-							ImGui::EndDisabled();
-						}
-						ImGui::PopID();
-					}
-					ImGui::EndTable();
-				}
-				ImGui::EndUnderDevelopmentScope();
-			}
+			// ImGui::GetForegroundDrawList()->PopClipRect();
+			ImGui::EndChild();
 		}
 	}
 	parameterSummaryView_->draw();

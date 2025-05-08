@@ -5,6 +5,11 @@
 
 #include <algorithm>
 
+namespace
+{
+	StyleBrush style{};
+}
+
 ApplicationContext::ApplicationContext()
 {
 	mainDockspace_ = std::make_unique<Dockspace>();
@@ -72,6 +77,16 @@ auto ApplicationContext::addMenuToggleAction(bool& toggleValue, const ToggleActi
 auto ApplicationContext::addMenuBarTray(const Action& trayDrawCallback) -> void
 {
 	trayCallbacks_.push_back(trayDrawCallback);
+}
+
+auto ApplicationContext::getStyleBrush() -> StyleBrush&
+{
+	return style;
+}
+
+auto ApplicationContext::setStyleBrush(const StyleBrush& styleBrush) -> void
+{
+	style = styleBrush;
 }
 
 auto ApplicationContext::MenuItemEntry::addItem(const std::string_view group, const MenuItemEntryAction& actionEntry)

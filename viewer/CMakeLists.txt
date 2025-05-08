@@ -12,6 +12,8 @@ add_executable(${viewerTargetName})
 
 IF (WIN32)
 	target_sources(${viewerTargetName} PRIVATE App.rc)
+	target_link_options(${viewerTargetName} PRIVATE /SUBSYSTEM:WINDOWS /ENTRY:mainCRTStartup /VERBOSE)
+	target_link_libraries(${viewerTargetName} PRIVATE Dwmapi.lib)
 ENDIF()
 
 target_sources(${viewerTargetName} PRIVATE
@@ -79,14 +81,12 @@ target_sources(${viewerTargetName} PRIVATE
 	features/transferMapping/TransferMappingView.cpp
 	features/projectExplorer/ProjectExplorer.h
 	features/projectExplorer/ProjectExplorer.cpp
-	features/projectExplorer/ProjectSelectionView.h
-	features/projectExplorer/ProjectSelectionView.cpp
-	features/serverConnect/ServerConnectView.h
-	features/serverConnect/ServerConnectView.cpp
 	features/serverConnect/ServerConnectSettingsView.h
 	features/serverConnect/ServerConnectSettingsView.cpp
 	features/serverConnect/ServerAddEditView.h
 	features/serverConnect/ServerAddEditView.cpp
+	features/serverConnect/ServerRemoveView.h
+	features/serverConnect/ServerRemoveView.cpp	
 	features/projectExplorer/ProjectExplorerView.h
 	features/projectExplorer/ProjectExplorerView.cpp
 	features/projectExplorer/ProjectExplorerController.cpp
@@ -104,6 +104,10 @@ target_sources(${viewerTargetName} PRIVATE
 	features/sofiaSearch/SoFiaSearchView.h
 	features/sofiaSearch/SoFiaSearchView.cpp
 	features/sofiaSearch/ParamsSerializer.h
+	Color.h
+	Mathematics.h
+	Style.h
+	Style.cpp
 )
 
 target_include_directories(${viewerTargetName} PUBLIC /)

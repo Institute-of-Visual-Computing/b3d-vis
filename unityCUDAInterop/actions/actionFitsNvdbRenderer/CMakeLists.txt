@@ -1,5 +1,9 @@
 set(MODULE_NAME "ActionFitsNvdbRenderer")
-add_library(${MODULE_NAME} SHARED
+add_library(${MODULE_NAME} SHARED)
+
+target_sources(
+	${MODULE_NAME}
+PRIVATE
 	src/ActionFitsNvdbRenderer.cpp
 )
 
@@ -17,6 +21,7 @@ target_link_libraries(${MODULE_NAME}
 set_target_properties(${MODULE_NAME} PROPERTIES CXX_STANDARD 20)
 
 set_property(TARGET ${MODULE_NAME} PROPERTY FOLDER "UnityCudaInterop/Actions")
+target_compile_options(${MODULE_NAME} PRIVATE /W4 /WX /external:W0 /external:anglebrackets)
 
 # Unity Actions directory
 if(UNITY_PROJECT_ROOT_DIR)

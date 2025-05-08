@@ -3,7 +3,7 @@
 class Pass
 {
 public:
-	virtual auto execute() const -> void = 0;
+	virtual auto execute() -> void = 0;
 	virtual ~Pass()
 	{
 	}

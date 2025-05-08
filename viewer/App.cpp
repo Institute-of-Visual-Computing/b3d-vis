@@ -91,7 +91,7 @@ auto Application::run() -> void
 	}
 	std::cout << registry.front().name << std::endl;
 	using namespace std::string_literals;
-	auto viewer = NanoViewer{ "Default Viewer"s, 1980, 1080, !disableVsync, rendererIndex };
+	auto viewer = NanoViewer{ "B3D HI-Datacube Inspector"s, 1980, 1080, !disableVsync, rendererIndex };
 
 	viewer.enableDevelopmentMode(enableDevMode);
 	viewer.run();

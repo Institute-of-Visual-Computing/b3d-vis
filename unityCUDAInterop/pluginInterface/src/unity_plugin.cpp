@@ -1,14 +1,14 @@
 
-#include "IUnityGraphics.h"
-#include "IUnityInterface.h"
+#include <IUnityGraphics.h>
+#include <IUnityInterface.h>
 
 // Don't remove
-#include "PluginLogger.h"
-#include "RenderAPI.h"
+#include <PluginLogger.h>
+#include <RenderAPI.h>
 
-#include "Action.h"
+#include <Action.h>
 
-#include "PluginHandler.h"
+#include <PluginHandler.h>
 
 b3d::unity_cuda_interop::PluginHandler sPluginHandler;
 
@@ -45,7 +45,7 @@ extern "C"
 	}
 
 	// ReSharper disable once CppInconsistentNaming
-	UNITY_INTERFACE_EXPORT auto UNITY_INTERFACE_API GetRenderEventAndDataFunc(b3d::unity_cuda_interop::Action* action) -> UnityRenderingEventAndData
+	UNITY_INTERFACE_EXPORT auto UNITY_INTERFACE_API GetRenderEventAndDataFunc([[maybe_unused]] b3d::unity_cuda_interop::Action* action) -> UnityRenderingEventAndData
 	{
 		return onRenderEventAndData;
 	}

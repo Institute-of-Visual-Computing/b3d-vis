@@ -5,7 +5,9 @@
 #include "Texture.h"
 #include "SyncPrimitive.h"
 
+#pragma warning (push, 0)
 enum UnityGfxRenderer : int;
+#pragma warning (pop)
 struct IUnityInterfaces;
 
 

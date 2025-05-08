@@ -47,14 +47,30 @@ public:
 	{
 		viewerSettings_.enableFrameGraph = enable;
 	}
-	auto setRenderVolume(b3d::renderer::RendererBase* renderer,
-						 b3d::renderer::RenderingDataWrapper* renderingData) -> void;
+
+	auto enableInfinitGridFloor(const bool enable) -> void
+	{
+		viewerSettings_.enableGridFloor = enable;
+	}
+	auto setRenderVolume(b3d::renderer::RendererBase* renderer, b3d::renderer::RenderingDataWrapper* renderingData)
+		-> void;
+
+	auto setInternalRenderingResolutionScale(const float scale = 1.0f) -> void;
+	auto getInternalRenderingResolutionScale() const -> float
+	{
+		return internalResolutionScale_;
+	}
 
 private:
-	auto drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec2& position,
-					const glm::vec2& size) const -> void;
+	auto drawGizmos(const CameraMatrices& cameraMatrices, const glm::vec2& position, const glm::vec2& size) const
+		-> void;
 	auto initializeGraphicsResources() -> void;
 	auto deinitializeGraphicsResources() -> void;
+
+	auto initializeViewGraphicsResources() -> void;
+	auto deinitializeViewGraphicsResources() -> void;
+	auto initializeInternalGraphicsResources() -> void;
+	auto deinitializeInternalGraphicsResources() -> void;
 
 	auto renderVolume() -> void;
 
@@ -119,21 +135,31 @@ private:
 
 	struct GraphicsResources
 	{
-		GLuint framebuffer;
-		GLuint framebufferTexture{ 0 };
-
-
-		cudaGraphicsResource_t cuFramebufferTexture{ 0 };
-		uint32_t* framebufferPointer{ nullptr };
-		glm::vec2 framebufferSize{ 0 };
+		GLuint internalVolumeTexture{ 0 };
+		cudaGraphicsResource_t cuInternalVolumeTexture{ 0 };
+		uint32_t* volumeTexturePointer{ nullptr };
+		glm::vec2 internalVolumeTextureSize{ 0 };
 	};
 
+	float internalResolutionScale_{ 1.0f };
 
-	GraphicsResources graphicsResources_{};
+	GraphicsResources internalGraphicsResources_{};
+
+	struct Framebuffer
+	{
+		GLuint nativeHandle{ 0 };
+		GLuint colorAttachment{};
+	};
+
+	struct ViewportGraphicsResources
+	{
+		Framebuffer viewFbo{};
+	};
+	ViewportGraphicsResources viewGraphicsResources_{};
 
 	GizmoOperationFlags currentGizmoOperation_{ GizmoOperationFlagBits::none };
 
 	std::unique_ptr<FullscreenTexturePass> fullscreenTexturePass_{};
-	std::unique_ptr<InfinitGridPass> infinitGridPass_{};
+	std::unique_ptr<InfiniteGridPass> infiniteGridPass_{};
 	std::unique_ptr<DebugDrawPass> debugDrawPass_{};
 };

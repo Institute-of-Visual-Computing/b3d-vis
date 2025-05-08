@@ -3,7 +3,7 @@ set(MODULE_NAME UnityCUDAInteropPluginInterface)
 add_library(${MODULE_NAME} INTERFACE)
 
 
-target_include_directories(${MODULE_NAME} INTERFACE "INCLUDE")
+target_include_directories(${MODULE_NAME} INTERFACE "include")
 
 target_sources(${MODULE_NAME}
 	INTERFACE

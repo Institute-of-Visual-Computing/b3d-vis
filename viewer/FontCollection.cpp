@@ -12,22 +12,20 @@ auto FontCollection::rebuildFont(const std::vector<float>& dpiList) -> void
 	loadedFonts_.clear();
 
 	constexpr auto baseFontSize = 16.0f;
-
-	ImFontConfig config;
+	constexpr auto titleFontSize = 24.0f;
+	auto config = ImFontConfig{};
 
 	config.OversampleH = 8;
 	config.OversampleV = 8;
 
 	for (auto dpi : dpiList)
 	{
-		const auto dpiScale = dpi;
-
-		config.SizePixels = dpiScale * baseFontSize;
-
-		if (!dpiToFont_.contains(dpiScale))
+		if (!dpiToFont_.contains(dpi))
 		{
-			auto font =
-				io.Fonts->AddFontFromFileTTF("resources/fonts/Roboto-Medium.ttf", dpiScale * baseFontSize, &config);
+			config.SizePixels = titleFontSize * dpi;
+			auto fontBold = io.Fonts->AddFontFromFileTTF("resources/fonts/Roboto-Bold.ttf", config.SizePixels, &config);
+			config.SizePixels = dpi * baseFontSize;
+			auto font = io.Fonts->AddFontFromFileTTF("resources/fonts/Roboto-Medium.ttf", config.SizePixels, &config);
 
 
 			static auto iconRangesLucide = ImVector<ImWchar>{};
@@ -35,11 +33,14 @@ auto FontCollection::rebuildFont(const std::vector<float>& dpiList) -> void
 			builder.AddText(
 				ICON_LC_ROTATE_3D ICON_LC_MOVE_3D ICON_LC_SCALE_3D ICON_LC_BAR_CHART_3 ICON_LC_UNPLUG ICON_LC_LOG_OUT
 					ICON_LC_CIRCLE_GAUGE ICON_LC_BUG ICON_LC_SERVER ICON_LC_SERVER_COG ICON_LC_SERVER_CRASH
-						ICON_LC_SERVER_OFF ICON_LC_CIRCLE_CHECK ICON_LC_HARD_DRIVE ICON_LC_TRIANGLE_ALERT ICON_LC_ARROW_RIGHT_LEFT ICON_LC_REFRESH_CW ICON_LC_BOX
-					ICON_LC_VIEW ICON_LC_SCROLL_TEXT /*ICON_LC_EYE*/ ICON_LC_X ICON_LC_UNDO_2 ICON_LC_FILE_UP ICON_LC_TRASH_2 ICON_LC_PENCIL ICON_LC_FOLDER ICON_LC_ROTATE_CCW ICON_LC_SEARCH);
+						ICON_LC_SERVER_OFF ICON_LC_CIRCLE_CHECK ICON_LC_HARD_DRIVE ICON_LC_TRIANGLE_ALERT
+							ICON_LC_ARROW_RIGHT_LEFT ICON_LC_REFRESH_CW ICON_LC_BOX ICON_LC_VIEW
+								ICON_LC_SCROLL_TEXT /*ICON_LC_EYE*/ ICON_LC_X ICON_LC_UNDO_2 ICON_LC_FILE_UP
+									ICON_LC_TRASH_2 ICON_LC_PENCIL ICON_LC_FOLDER ICON_LC_ROTATE_CCW ICON_LC_SEARCH
+										ICON_LC_MESSAGE_SQUARE_WARNING ICON_LC_FILTER ICON_LC_FILTER_X);
 			builder.BuildRanges(&iconRangesLucide);
 
-			const auto iconFontSize = dpiScale * baseFontSize * 2.0f / 3.0f;
+			const auto iconFontSize = dpi * baseFontSize * 2.0f / 3.0f;
 			config.MergeMode = true;
 			config.PixelSnapH = true;
 			config.GlyphMinAdvanceX = iconFontSize;
@@ -65,6 +66,7 @@ auto FontCollection::rebuildFont(const std::vector<float>& dpiList) -> void
 			const auto fontIndex = loadedFonts_.size();
 			loadedFonts_.push_back(font);
 			loadedFonts_.push_back(fontBig);
+			loadedFonts_.push_back(fontBold);
 			dpiToFont_[dpi] = static_cast<int>(fontIndex);
 		}
 	}
@@ -78,9 +80,9 @@ auto FontCollection::rebuildFont(const std::vector<float>& dpiList) -> void
 		builder.AddText("GCPU");
 		builder.BuildRanges(&gpuCpuText);
 
-		
-		gpuCpuExtraBigTextFont_ = io.Fonts->AddFontFromFileTTF("resources/fonts/Roboto-Medium.ttf", config.SizePixels, &config,
-												 gpuCpuText.Data);
+
+		gpuCpuExtraBigTextFont_ = io.Fonts->AddFontFromFileTTF("resources/fonts/Roboto-Medium.ttf", config.SizePixels,
+															   &config, gpuCpuText.Data);
 	}
 }
 
@@ -93,6 +95,12 @@ auto FontCollection::getDefaultFont() const noexcept -> ImFont*
 {
 	assert(loadedFonts_.size() > 0);
 	return loadedFonts_[currentFontIndex_];
+}
+
+auto FontCollection::getTitleFont() const noexcept -> ImFont*
+{
+	assert(loadedFonts_.size() > (currentFontIndex_ + 2));
+	return loadedFonts_[currentFontIndex_ + 2];
 }
 
 auto FontCollection::getBigIconsFont() const noexcept -> ImFont*

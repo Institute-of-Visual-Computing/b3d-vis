@@ -6,12 +6,13 @@
 
 #include "framework/DockableWindowViewBase.h"
 
+#include <set>
+
 class GizmoHelper;
 
-class SoFiaSearchView  final : public DockableWindowViewBase
+class SoFiaSearchView final : public DockableWindowViewBase
 {
 public:
-
 	struct SofiaParamsTyped
 	{
 		struct PipelineParams
@@ -188,11 +189,10 @@ public:
 		auto buildSoFiaParams() -> b3d::tools::sofia::SofiaParams;
 	};
 
-	
 
 	struct Model
 	{
-		SofiaParamsTyped params {};
+		SofiaParamsTyped params{};
 		owl::AffineSpace3f transform{};
 		owl::AffineSpace3f worldTransform{};
 		owl::box3f selectedLocalRegion{};
@@ -202,12 +202,13 @@ public:
 
 	SoFiaSearchView(ApplicationContext& appContext, Dockspace* dockspace, std::function<void()> startSearchFunction);
 	~SoFiaSearchView() override;
-	
+
 	auto setModel(Model model) -> void;
 	auto getModel() -> Model&;
 
 private:
 	auto onDraw() -> void override;
+	auto drawFilterFormContent() -> void;
 
 	Model model_;
 	std::function<void()> startSearchFunction_;
@@ -215,6 +216,12 @@ private:
 
 	auto resetSelection() -> void;
 	auto resetParams() -> void;
+
+	auto isUsingSubcube() -> bool;
+
+	ImGuiTextFilter paramsFilter_;
+	bool isFilterEnabled_{ true };
+
+	std::set<int> selectedKernelsXY_{};
+	std::set<int> selectedKernelsZ_{};
 };
-
-

@@ -18,9 +18,11 @@
 #include "ImGuiProfilerRenderer.h"
 #include "Profiler.h"
 
-#include <SharedRenderingStructs.h>
+#include "Style.h"
+
 #include <RuntimeDataset.h>
 #include <ServerClient.h>
+#include <SharedRenderingStructs.h>
 
 struct GLFWwindow;
 class DebugDrawList;
@@ -57,8 +59,7 @@ public:
 	}
 
 	auto setExternalDrawLists(const std::shared_ptr<DebugDrawList>& debugDrawList,
-							  const std::shared_ptr<GizmoHelper>& gizmoHelper)
-		-> void;
+							  const std::shared_ptr<GizmoHelper>& gizmoHelper) -> void;
 
 	[[nodiscard]] auto getGizmoHelper() const -> std::shared_ptr<GizmoHelper>;
 	[[nodiscard]] auto getDrawList() const -> std::shared_ptr<DebugDrawList>;
@@ -107,7 +108,7 @@ public:
 	std::vector<Action> trayCallbacks_;
 
 	ApplicationSettings settings_{};
-	bool isDevelopmentModeEnabled{false};
+	bool isDevelopmentModeEnabled{ false };
 
 private:
 	FontCollection fonts_{};
@@ -122,10 +123,13 @@ public:
 	std::vector<RendererExtensionBase*> rendererExtensions_{};
 	std::unique_ptr<Dockspace> mainDockspace_{ nullptr };
 	std::unique_ptr<b3d::profiler::Profiler> profiler_{};
-	ImGuiUtils::ProfilerGraph gpuGraph_{300};
+	ImGuiUtils::ProfilerGraph gpuGraph_{ 300 };
 
 	b3d::tools::renderer::nvdb::RuntimeDataset runtimeDataset_{};
 	std::optional<b3d::tools::project::Project> selectedProject_{};
 
 	b3d::tools::project::ServerClient serverClient_{};
+
+	static auto getStyleBrush() -> StyleBrush&;
+	static auto setStyleBrush(const StyleBrush& styleBrush) -> void;
 };

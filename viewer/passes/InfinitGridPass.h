@@ -5,14 +5,14 @@
 
 #include "Pass.h"
 
-class InfinitGridPass final : public Pass
+class InfiniteGridPass final : public Pass
 {
 public:
-	InfinitGridPass();
+	InfiniteGridPass();
 
-	~InfinitGridPass() override;
+	~InfiniteGridPass() override;
 
-	auto execute() const -> void override;
+	auto execute() -> void override;
 
 	auto setGridColor(const glm::vec3& color) -> void;
 	auto setViewport(const int width, const int height) -> void;

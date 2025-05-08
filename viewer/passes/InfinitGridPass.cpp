@@ -4,67 +4,66 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-InfinitGridPass::InfinitGridPass() : viewProjection_{}
+InfiniteGridPass::InfiniteGridPass() : viewProjection_{}
 {
-	using namespace std::string_literals;
-	const auto vertexShader =
-		"#version 400\n"
-		"uniform mat4 viewProjection;\n"
-		"out vec2 uv;\n"
-		"void main()\n"
-		"{\n"
-		"    vec3 vertices[4]=vec3[4](vec3(-200, 0, -200), vec3(200,0, -200), vec3(200,0,200), vec3(-200,0, 200));\n"
-		"    vec2 vertices_coord[4]=vec2[4](vec2(0, 0), vec2(1, 0),  vec2(1,1),vec2(0, 1) );\n"
-		"    gl_Position = viewProjection * vec4(vertices[gl_VertexID], 1.0f);\n"
-		"    uv = vertices_coord[gl_VertexID];\n"
-		"}\n"s;
+	const auto vertexShader = std::string{ R"(
+#version 400
+uniform mat4 viewProjection;
+out vec2 uv;
+void main()
+{
+	vec3 vertices[4] = vec3[4](vec3(-200.0f, 0.0f, -200.0f), vec3(200.0f, 0.0f, -200.0f), vec3(200.0f, 0.0f, 200.0f), vec3(-200.0f, 0.0f, 200.0f));
+	vec2 vertices_coord[4] = vec2[4](vec2(0.0f, 0.0f), vec2(1.0f, 0.0f), vec2(1.0f, 1.0f), vec2(0.0f, 1.0f) );
+	gl_Position = viewProjection * vec4(vertices[gl_VertexID], 1.0f);
+	uv = vertices_coord[gl_VertexID];
+}
+)" };
 
-	const auto fragmentShader =
-		"#version 400\n"
-		"in vec2 uv;\n"
-		"uniform vec3 gridColor;\n"
-		"layout (location = 0) out vec4 outColor;\n"
-		"const float gridRatio = 32.0f;\n"
-		"//https://www.shadertoy.com/view/mdVfWw\n"
-		"float pristineGrid( in vec2 uv, in vec2 ddx, in vec2 ddy, vec2 lineWidth)\n"
-		"{\n"
-		"	vec2 uvDeriv = vec2(length(vec2(ddx.x, ddy.x)), length(vec2(ddx.y, ddy.y)));\n"
-		"	bvec2 invertLine = bvec2(lineWidth.x > 0.5, lineWidth.y > 0.5);\n"
-		"	vec2 targetWidth = vec2(\n"
-		"	invertLine.x ? 1.0 - lineWidth.x : lineWidth.x,\n"
-		"	invertLine.y ? 1.0 - lineWidth.y : lineWidth.y\n"
-		"	);\n"
-		"	vec2 drawWidth = clamp(targetWidth, uvDeriv, vec2(0.5));\n"
-		"	vec2 lineAA = uvDeriv * 1.5;\n"
-		"	vec2 gridUV = abs(fract(uv) * 2.0 - 1.0);\n"
-		"	gridUV.x = invertLine.x ? gridUV.x : 1.0 - gridUV.x;\n"
-		"	gridUV.y = invertLine.y ? gridUV.y : 1.0 - gridUV.y;\n"
-		"	vec2 grid2 = smoothstep(drawWidth + lineAA, drawWidth - lineAA, gridUV);\n"
-		"	\n"
-		"	grid2 *= clamp(targetWidth / drawWidth, 0.0, 1.0);\n"
-		"	grid2 = mix(grid2, targetWidth, clamp(uvDeriv * 2.0 - 1.0, 0.0, 1.0));\n"
-		"	grid2.x = invertLine.x ? 1.0 - grid2.x : grid2.x;\n"
-		"	grid2.y = invertLine.y ? 1.0 - grid2.y : grid2.y;\n"
-		"	return mix(grid2.x, 1.0, grid2.y);\n"
-		"	}\n"
-		"float gridTextureGradBox( in vec2 p, in vec2 ddx, in vec2 ddy )\n"
-		"{\n"
-		"	vec2 w = max(abs(ddx), abs(ddy)) + 0.01;\n"
-		"   vec2 a = p + 0.5*w;                        \n"
-		"   vec2 b = p - 0.5*w;           \n"
-		"   vec2 i = (floor(a)+min(fract(a)*gridRatio,1.0)-\n"
-		"             floor(b)-min(fract(b)*gridRatio,1.0))/(gridRatio*w);\n"
-		"   return (1.0-i.x)*(1.0-i.y);\n"
-		"}\n"
-		"void main()\n"
-		"{\n"
-		"	vec2 uvw = uv*4000.0f;\n"
-		"	vec2 ddx_uvw = dFdx( uvw );\n" 
-        "	vec2 ddy_uvw = dFdy( uvw );\n" 
-		"   float alpha = pristineGrid(uvw, ddx_uvw, ddy_uvw, vec2(1.0/gridRatio));\n"
-		"   alpha = 1.0f - gridTextureGradBox(uvw, ddx_uvw, ddy_uvw);\n"
-		"   outColor = vec4(gridColor, alpha);\n"
-		"}\n"s;
+	const auto fragmentShader = std::string{ R"(
+#version 400
+in vec2 uv;
+uniform vec3 gridColor;
+layout (location = 0) out vec4 outColor;
+const float gridRatio = 32.0f;
+//https://www.shadertoy.com/view/mdVfWw
+float pristineGrid( in vec2 uv, in vec2 ddx, in vec2 ddy, vec2 lineWidth)
+{
+	vec2 uvDeriv = vec2(length(vec2(ddx.x, ddy.x)), length(vec2(ddx.y, ddy.y)));
+	bvec2 invertLine = bvec2(lineWidth.x > 0.5f, lineWidth.y > 0.5f);
+	vec2 targetWidth = vec2( invertLine.x ? 1.0f - lineWidth.x : lineWidth.x, invertLine.y ? 1.0f - lineWidth.y : lineWidth.y);
+	vec2 drawWidth = clamp(targetWidth, uvDeriv, vec2(0.5f));
+	vec2 lineAA = uvDeriv * 1.5f;
+	vec2 gridUV = abs(fract(uv) * 2.0f - 1.0f);
+	gridUV.x = invertLine.x ? gridUV.x : 1.0f - gridUV.x;
+	gridUV.y = invertLine.y ? gridUV.y : 1.0f - gridUV.y;
+	vec2 grid2 = smoothstep(drawWidth + lineAA, drawWidth - lineAA, gridUV);
+	
+	grid2 *= clamp(targetWidth / drawWidth, 0.0f, 1.0f);
+	grid2 = mix(grid2, targetWidth, clamp(uvDeriv * 2.0f - 1.0f, 0.0f, 1.0f));
+	grid2.x = invertLine.x ? 1.0f - grid2.x : grid2.x;
+	grid2.y = invertLine.y ? 1.0f - grid2.y : grid2.y;
+	return mix(grid2.x, 1.0f, grid2.y);
+}
+
+float gridTextureGradBox( in vec2 p, in vec2 ddx, in vec2 ddy )
+{
+	vec2 w = max(abs(ddx), abs(ddy)) + 0.01f;
+	vec2 a = p + 0.5f * w;                        
+	vec2 b = p - 0.5f * w;           
+	vec2 i = (floor(a) + min(fract(a) * gridRatio, 1.0f) - floor(b) -min(fract(b) * gridRatio, 1.0f))/(gridRatio * w);
+    return (1.0f- i.x) * (1.0f - i.y);
+}
+
+void main()
+{
+	vec2 uvw = uv * 4000.0f;
+	vec2 ddx_uvw = dFdx(uvw);
+	vec2 ddy_uvw = dFdy(uvw);
+	float alpha = pristineGrid(uvw, ddx_uvw, ddy_uvw, vec2(1.0f / gridRatio));
+	alpha = 1.0f - gridTextureGradBox(uvw, ddx_uvw, ddy_uvw);
+	outColor = vec4(gridColor, alpha);
+}
+)" };
 
 	const auto vertexShaderHandle = glCreateShader(GL_VERTEX_SHADER);
 	auto length = vertexShader.length();
@@ -93,11 +92,11 @@ InfinitGridPass::InfinitGridPass() : viewProjection_{}
 	viewProjectionUniformLocation_ = glGetUniformLocation(program_, "viewProjection");
 	gridColorUniformLocation_ = glGetUniformLocation(program_, "gridColor");
 }
-InfinitGridPass::~InfinitGridPass()
+InfiniteGridPass::~InfiniteGridPass()
 {
 	glDeleteProgram(program_);
 }
-auto InfinitGridPass::execute() const -> void
+auto InfiniteGridPass::execute() -> void
 {
 	const auto lastIsEnabledDepthTest = glIsEnabled(GL_DEPTH_TEST);
 	glDisable(GL_DEPTH_TEST);
@@ -114,16 +113,16 @@ auto InfinitGridPass::execute() const -> void
 		glEnable(GL_DEPTH_TEST);
 	}
 }
-auto InfinitGridPass::setGridColor(const glm::vec3& color) -> void
+auto InfiniteGridPass::setGridColor(const glm::vec3& color) -> void
 {
 	gridColor_ = color;
 }
-auto InfinitGridPass::setViewport(const int width, const int height) -> void
+auto InfiniteGridPass::setViewport(const int width, const int height) -> void
 {
 	width_ = width;
 	height_ = height;
 }
-auto InfinitGridPass::setViewProjectionMatrix(const glm::mat4& viewProjectionMatrix) -> void
+auto InfiniteGridPass::setViewProjectionMatrix(const glm::mat4& viewProjectionMatrix) -> void
 {
 	viewProjection_ = viewProjectionMatrix;
 }

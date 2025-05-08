@@ -1,13 +1,16 @@
 #include "ModalViewBase.h"
 
+#include "ApplicationContext.h"
+#include "Color.h"
 #include "IdGenerator.h"
+#include "Mathematics.h"
 
 #include <format>
 
 ModalViewBase::ModalViewBase(ApplicationContext& applicationContext, const std::string_view name,
 							 const ModalType modalType, const ImVec2& minSize)
 	: applicationContext_{ &applicationContext }, modalType_{ modalType },
-	  id_{ std::format("{}###modal{}", name, IdGenerator::next()) }, minSize_{ minSize }
+	  id_{ std::format("{}###modal{}", name, IdGenerator::next()) }, name_{ name }, minSize_{ minSize }
 {
 }
 
@@ -27,46 +30,88 @@ auto ModalViewBase::draw() -> void
 		ImGui::OpenPopup(id_.c_str(), ImGuiPopupFlags_AnyPopup);
 		isOpenRequested_ = false;
 	}
-	const auto center = ImGui::GetMainViewport()->GetCenter();
-	ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-	ImGui::SetNextWindowSizeConstraints(ImVec2{ -1.0, -1.0 }, ImVec2{ -1.0, -1.0 });
-	// ImGui::OpenPopup(id_.c_str());
-	if (ImGui::BeginPopupModal(id_.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-	{
-		onDraw();
+	const auto& brush = applicationContext_->getStyleBrush();
 
+	const auto center = ImGui::GetMainViewport()->GetCenter();
+	ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, Vector2(0.5f, 0.5f));
+	ImGui::SetNextWindowSizeConstraints(Vector2{ 400.0f, -1.0f }, Vector2{ 800.0f, -1.0f });
+	constexpr auto containerCornerRadius = 8.0f;
+	constexpr auto contentCornerRadius = 4.0f;
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, containerCornerRadius);
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, containerCornerRadius);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 2.0f);
+	ImGui::PushStyleColor(ImGuiCol_PopupBg, brush.cardBackgroundFillColorDefaultBrush);
+	ImGui::PushStyleColor(ImGuiCol_Border, brush.controlStrokeColorSecondaryBrush);
+	if (ImGui::BeginPopupModal(id_.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar))
+	{
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, Vector2{ 24.0f, 24.0f });
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, Vector2{ 24.0f, 24.0f });
+		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, contentCornerRadius);
+
+		ImGui::SetCursorPos(ImGui::GetCursorPos() + Vector2{ 0, 8.0f });
+		ImGui::PushFont(applicationContext_->getFontCollection().getTitleFont());
+		ImGui::Text(name_.c_str());
+		ImGui::PopFont();
+
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, Vector2{ 16.0f, 24.0f });
+		onDraw();
+		ImGui::PopStyleVar();
+		const auto& style = ImGui::GetStyle();
+
+		const auto position = Vector2{ ImGui::GetCursorScreenPos() };
+		const auto remindedSize = ImGui::GetContentRegionAvail();
+		ImGui::SetCursorPos(ImGui::GetCursorPos() + Vector2{ 0, style.ItemSpacing.y });
+
+		const auto min = position - Vector2{ style.FramePadding.x + style.FrameBorderSize + style.WindowBorderSize, 0 };
+		const auto max = position +
+			Vector2{ style.FramePadding.x + style.FrameBorderSize + style.WindowBorderSize,
+					 style.FramePadding.y * 2.0f + style.FrameBorderSize + style.WindowBorderSize } +
+			Vector2{ remindedSize };
+		ImGui::GetWindowDrawList()->AddRectFilled(min, max, brush.solidBackgroundFillColorSecondaryBrush,
+												  containerCornerRadius,
+												  ImDrawFlags_RoundCornersBottom);
 		switch (modalType_)
 		{
 		case ModalType::ok:
-			ImGui::BeginDisabled(isBlocked());
-			if (ImGui::Button("Ok"))
 			{
-				submit();
-				ImGui::CloseCurrentPopup();
+				ImGui::BeginDisabled(isBlocked());
+				const auto width = ImGui::GetContentRegionAvail().x;
+				if (ui::AccentButton("Ok", Vector2{ width, 0.0f }))
+				{
+					submit();
+					ImGui::CloseCurrentPopup();
+				}
+				ImGui::EndDisabled();
 			}
-			ImGui::EndDisabled();
 			break;
 		case ModalType::okCancel:
-			ImGui::BeginDisabled(isBlocked());
-			if (ImGui::Button("Ok"))
 			{
-				submit();
-				ImGui::CloseCurrentPopup();
+				ImGui::BeginDisabled(isBlocked());
+				ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, Vector2{ 8.0f, 8.0f });
+				const auto width = (ImGui::GetContentRegionAvail().x - style.ItemSpacing.x) * 0.5f;
+
+				if (ui::AccentButton("Ok", Vector2{ width, 0.0f }))
+				{
+					submit();
+					ImGui::CloseCurrentPopup();
+				}
+				ImGui::EndDisabled();
+				ImGui::SetItemDefaultFocus();
+				ImGui::SameLine(0.0f, 8.0f);
+				if (ui::Button("Cancel", Vector2{ width, 0.0f }))
+				{
+					ImGui::CloseCurrentPopup();
+				}
+				ImGui::PopStyleVar();
 			}
-			ImGui::EndDisabled();
-			ImGui::SetItemDefaultFocus();
-			ImGui::SameLine();
-			if (ImGui::Button("Cancel"))
-			{
-				ImGui::CloseCurrentPopup();
-			}
-			break;
-		default:
 			break;
 		}
 
+		ImGui::PopStyleVar(3);
 		ImGui::EndPopup();
 	}
+	ImGui::PopStyleColor(2);
+	ImGui::PopStyleVar(3);
 }
 
 auto ModalViewBase::reset() -> void

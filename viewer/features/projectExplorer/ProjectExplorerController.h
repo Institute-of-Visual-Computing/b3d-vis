@@ -37,7 +37,6 @@ private:
 
 	ProjectExplorer* projectExplorer_;
 	std::unique_ptr<ProjectExplorerView> projectExplorerView_;
-	std::unique_ptr<ProjectSelectionView> projectSelectionView_;
 
 	bool showExplorerWindow_{ true };
 

@@ -23,7 +23,8 @@ WindowViewBase::WindowViewBase(ApplicationContext& appContext, const std::string
 	}
 	if ((flags_ & WindowFlagBits::noDocking) == WindowFlagBits::noDocking)
 	{
-		windowClass_.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoDockingSplitOther | ImGuiDockNodeFlags_NoDocking;
+		windowClass_.DockNodeFlagsOverrideSet =
+			/*ImGuiDockNodeFlags_NoDockingSplitOther |*/ ImGuiDockNodeFlags_NoDocking;
 	}
 	if ((flags_ & WindowFlagBits::autoResize) == WindowFlagBits::autoResize)
 	{
@@ -34,10 +35,14 @@ WindowViewBase::WindowViewBase(ApplicationContext& appContext, const std::string
 auto WindowViewBase::beginDraw() -> void
 {
 	ImGui::SetNextWindowClass(&windowClass_);
+	
 	drawContent_ = false;
+	needEndScope_ = false;
 	if (isOpen_)
 	{
+		needEndScope_ = true;
 		auto hasCloseButton = (flags_ & WindowFlagBits::noClose) != WindowFlagBits::noClose;
+
 		drawContent_ = ImGui::Begin(windowId_.c_str(), hasCloseButton ? &isOpen_ : nullptr, imGuiWindowFlags_);
 
 		if (drawContent_)
@@ -54,17 +59,17 @@ auto WindowViewBase::beginDraw() -> void
 			viewportSize_ = viewportSize;
 		}
 	}
+	if (needResize_)
+	{
+		onResize();
+	}
 }
 
 auto WindowViewBase::endDraw() -> void
 {
-	if (isOpen_ or drawContent_)
+	if (needEndScope_)
 	{
 		ImGui::End();
-	}
-	if (needResize_)
-	{
-		onResize();
 	}
 }
 
