@@ -218,6 +218,8 @@ private:
 	auto resetSelection() -> void;
 	auto resetParams() -> void;
 
+	auto isUsingSubcube() -> bool;
+
 	ImGuiTextFilter paramsFilter_;
 	bool isFilterEnabled_{ true };
 

@@ -169,7 +169,8 @@ auto SoFiaSearchView::onDraw() -> void
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, Vector2{ 24.0f, 12.0f });
 	ImGui::TextWrapped("This tool utilizes SiFiA 2 in the backend to search for sources in a HI data cubes.");
 	ImGui::TextLinkOpenURL("Learn more about SoFiA 2", "https://gitlab.com/SoFiA-Admin/SoFiA-2");
-	ImGui::TextLinkOpenURL("Learn more about SoFiA 2 control parameters", "https://gitlab.com/SoFiA-Admin/SoFiA-2/-/wikis/SoFiA-2-Control-Parameters");
+	ImGui::TextLinkOpenURL("Learn more about SoFiA 2 control parameters",
+						   "https://gitlab.com/SoFiA-Admin/SoFiA-2/-/wikis/SoFiA-2-Control-Parameters");
 	ImGui::PopStyleVar();
 
 	if (disableInteraction)
@@ -196,7 +197,7 @@ auto SoFiaSearchView::onDraw() -> void
 							4.0f * style.FramePadding.x - ImGui::CalcTextSize(ICON_LC_FILTER_X).x -
 							2.0f * style.ItemSpacing.x);
 	ImGui::BeginDisabled(not isFilterEnabled_);
-	const auto filterChanged = ui::InputText("##sofia_params_filter", "SoFiA Parameters Filter", paramsFilter_.InputBuf,
+	const auto filterChanged = ui::InputText("##sofia_params_filter", "SoFiA Parameter Filter", paramsFilter_.InputBuf,
 											 IM_ARRAYSIZE(paramsFilter_.InputBuf));
 	if (filterChanged)
 	{
@@ -247,10 +248,6 @@ auto SoFiaSearchView::onDraw() -> void
 	ImGui::EndDisabled();
 	ImGui::PopStyleColor(2);
 	ImGui::PopStyleVar(6);
-
-	/*ImGui::Begin("teststst");
-	drawFilterFormContentOld();
-	ImGui::End();*/
 }
 
 auto SoFiaSearchView::drawFilterFormContent() -> void
@@ -258,7 +255,7 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 	const auto hasProject = applicationContext_->selectedProject_.has_value();
 
 	constexpr auto toggleSwitchWidth = 14.0f * 4.0f + 4.0f;
-	const auto disableInteraction = false;
+	const auto disableInteraction = !hasProject;
 
 	ImGui::BeginDisabled(disableInteraction);
 
@@ -344,9 +341,9 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 	}
 
 	if (not isFilterEnabled_ or
-		paramsFilter_.PassFilter("preconditioning continuum substraction order padding shift threshhold"))
+		paramsFilter_.PassFilter("preconditioning continuum subtraction order padding shift threshold"))
 	{
-		if (ImGui::BeginChild("##preconditioning_continuum_substraction", Vector2{ 0.0f, 0.0f },
+		if (ImGui::BeginChild("##preconditioning_continuum_subtraction", Vector2{ 0.0f, 0.0f },
 							  ImGuiChildFlags_FrameStyle | ImGuiChildFlags_AutoResizeY))
 		{
 
@@ -358,12 +355,12 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 			ImGui::PushTextWrapPos(wrapPosition);
 
 			const auto titleWidth =
-				ImGui::CalcTextSize("Preconditioning Continuum Substraction", 0, true, wrapPosition).x;
-			ImGui::TextWrapped("Preconditioning Continuum Substraction");
+				ImGui::CalcTextSize("Preconditioning Continuum Subtraction", 0, true, wrapPosition).x;
+			ImGui::TextWrapped("Preconditioning Continuum Subtraction");
 			ImGui::PopTextWrapPos();
 			ImGui::PopFont();
 			ImGui::SameLine(0.0f, wrapPosition - titleWidth);
-			if (ui::ToggleSwitch(model_.params.contsub.enable, "##enable_preconditioning_continuum_substraction", "off",
+			if (ui::ToggleSwitch(model_.params.contsub.enable, "##enable_preconditioning_continuum_subtraction", "off",
 								 "on"))
 			{
 				model_.params.contsub.enable = !model_.params.contsub.enable;
@@ -378,7 +375,7 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 
 			ImGui::BeginDisabled(!model_.params.contsub.enable);
 
-			if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning continuum substraction order"))
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning continuum subtraction order"))
 			{
 				static auto items = std::array{ "0", "1" };
 				ImGui::PushID("order");
@@ -408,7 +405,7 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 				ImGui::PopID();
 			}
 
-			if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning continuum substraction padding"))
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning continuum subtraction padding"))
 			{
 				ImGui::PushID("padding");
 				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
@@ -435,7 +432,7 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 				ImGui::PopID();
 			}
 
-			if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning continuum substraction shift"))
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning continuum subtraction shift"))
 			{
 				ImGui::PushID("shift");
 				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
@@ -462,7 +459,7 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 				ImGui::PopID();
 			}
 
-			if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning continuum substraction threshhold"))
+			if (not isFilterEnabled_ or paramsFilter_.PassFilter("preconditioning continuum subtraction threshold"))
 			{
 				ImGui::PushID("threshold");
 				ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
@@ -1643,8 +1640,10 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 			"the linker can be useful if only the raw mask from the source finder is needed.");
 		ImGui::PopStyleColor();
 
-		ImGui::BeginDisabled(!model_.params.linker.enable);
 
+		const auto isSubcube = isUsingSubcube();
+
+		ImGui::BeginDisabled(!model_.params.linker.enable or isSubcube);
 
 		if (not isFilterEnabled_ or paramsFilter_.PassFilter("linking linker keep negative"))
 		{
@@ -1983,7 +1982,10 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 		ImGui::PopStyleVar();
 		ImGui::EndChild();
 	}
-	/*
+
+	if (not isFilterEnabled_ or
+		paramsFilter_.PassFilter("reliability auto kernel catalog debug iterations min pixels min snr parameters peak "
+								 "sum mean chan pix fill std skew kurt plot extra scale kernel threshold tolerance"))
 	{
 		ImGui::BeginChild("##reliability", Vector2{ 0.0f, 0.0f },
 						  ImGuiChildFlags_FrameStyle | ImGuiChildFlags_AutoResizeY);
@@ -2014,14 +2016,298 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 			"somewhere around 3 to 4 times the noise level.");
 		ImGui::PopStyleColor();
 
-		ImGui::BeginDisabled(!model_.params.reliability.enable);
-		// TODO: content here
+		const auto isSubcube = isUsingSubcube();
+
+		ImGui::BeginDisabled(!model_.params.reliability.enable or isSubcube);
+
+
+		if (not isFilterEnabled_ or paramsFilter_.PassFilter("reliability auto kernel"))
+		{
+			ImGui::PushID("auto_kernel");
+			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+			ui::HeadedTextOnly("Auto Kernel");
+			ImGui::Checkbox("##auto_kernel", &model_.params.reliability.autoKernel);
+			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
+														ImGuiHoveredFlags_ForTooltip);
+			ImGui::PopItemWidth();
+			ImGui::SameLine(0.0f, 8.0f);
+			if (ui::Button(ICON_LC_UNDO_2))
+			{
+				model_.params.reliability.autoKernel = false;
+			}
+			ImGui::SetItemTooltip("Reset to default 'false' value");
+
+			if (isHovered and ImGui::BeginTooltip())
+			{
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted(
+					"If set to true then SoFiA will try to automatically determine the optimal reliability kernel "
+					"scale factor by iteratively increasing the kernel size until the absolute value of the median of "
+					"the Skellam distribution decreases below reliability.tolerance. If the algorithm fails to "
+					"converge after reliability.iterations steps then the default value of reliability.scaleKernel "
+					"will be used instead.");
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+			ImGui::PopID();
+		}
+
+		if (not isFilterEnabled_ or paramsFilter_.PassFilter("reliability iterations"))
+		{
+			ImGui::PushID("reliability_iterations");
+			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+			ui::HeadedDragInt("Iterations", "##reliability_iterations", &model_.params.reliability.iterations, 1, 1,
+							  1000 * 1000);
+			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
+														ImGuiHoveredFlags_ForTooltip);
+			ImGui::PopItemWidth();
+			ImGui::SameLine(0.0f, 8.0f);
+			if (ui::Button(ICON_LC_UNDO_2))
+			{
+				model_.params.reliability.iterations = 30;
+			}
+			ImGui::SetItemTooltip("Reset to default '30' value");
+
+			if (isHovered and ImGui::BeginTooltip())
+			{
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted("Maximum number of iterations of the reliability kernel auto-scaling algorithm. "
+									   "If convergence is not achieved within this number of iterations then a scaling "
+									   "factor of reliability.scaleKernel will instead be applied.");
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+			ImGui::PopID();
+		}
+
+		if (not isFilterEnabled_ or paramsFilter_.PassFilter("reliability min pixels"))
+		{
+			ImGui::PushID("reliability_min_pixels");
+			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+			ui::HeadedDragInt("Min Pixels", "##reliability_min_pixels", &model_.params.reliability.minPixels, 1, 0,
+							  1000 * 1000);
+			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
+														ImGuiHoveredFlags_ForTooltip);
+			ImGui::PopItemWidth();
+			ImGui::SameLine(0.0f, 8.0f);
+			if (ui::Button(ICON_LC_UNDO_2))
+			{
+				model_.params.reliability.minPixels = 0;
+			}
+			ImGui::SetItemTooltip("Reset to default '0' value");
+
+			if (isHovered and ImGui::BeginTooltip())
+			{
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted("Minimum total number of spatial and spectral pixels within the source mask for "
+									   "detections to be considered reliable. The reliability of any detection with "
+									   "fewer pixels will be set to zero by default.");
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+			ImGui::PopID();
+		}
+
+		if (not isFilterEnabled_ or paramsFilter_.PassFilter("reliability min snr"))
+		{
+			ImGui::PushID("reliability_min_snr");
+			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+			ui::HeadedDragFloat("Min SNR", "##reliability_min_snr", &model_.params.reliability.minSNR, 1, 0,
+								1000 * 1000);
+			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
+														ImGuiHoveredFlags_ForTooltip);
+			ImGui::PopItemWidth();
+			ImGui::SameLine(0.0f, 8.0f);
+			if (ui::Button(ICON_LC_UNDO_2))
+			{
+				model_.params.reliability.minSNR = 3.0f;
+			}
+			ImGui::SetItemTooltip("Reset to default '3.0' value");
+
+			if (isHovered and ImGui::BeginTooltip())
+			{
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted(
+					"Lower signal-to-noise limit for reliable sources. Detections that fall below this threshold will "
+					"be deemed unreliable and assigned a reliability of 0. The value denotes the integrated "
+					"signal-to-noise ratio, SNR = F_sum / [RMS * sqrt(N * Omega)], of the source, where Omega is the "
+					"solid angle (in pixels) of the point spread function of the data, N is the number of spatial and "
+					"spectral pixels of the source, F_sum is the summed flux density and RMS is the local RMS noise "
+					"level (assumed to be constant). Note that the spectral resolution is assumed to be equal to the "
+					"channel width. If BMAJ and BMIN are not defined in the input FITS file header then Omega will be "
+					"set to 1 by default, thus assuming a beam size of 1 pixel.");
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+			ImGui::PopID();
+		}
+
+		if (not isFilterEnabled_ or
+			paramsFilter_.PassFilter("reliability parameters peak sum mean chan pix fill std skew kurt"))
+		{
+			const auto parameters = std::array{ "peak", "sum", "mean", "chan", "pix", "fill", "std", "skew", "kurt" };
+			ImGui::PushID("reliability_parameters");
+			ui::HeadedTextOnly("Parameters:");
+
+			const auto buttonHeight = style.FramePadding.y * 2.0f + ImGui::CalcTextSize("0").y;
+			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, Vector2{ 16.0f, 16.0f });
+			const auto itemHeight = style.FramePadding.y * 2.0f + buttonHeight + style.ScrollbarSize;
+
+			ImGui::BeginChild("##reliability_parameters",
+							  Vector2{ ImGui::GetContentRegionAvail().x - undoButtonDefaultSize - 8.0f, itemHeight },
+							  ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_FrameStyle,
+							  ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_AlwaysHorizontalScrollbar);
+			ImGui::PopStyleVar();
+
+
+			for (auto i = 0; i < parameters.size(); i++)
+			{
+				ImGui::PushID(i);
+
+				const auto isSelected =
+					std::find(model_.params.reliability.parameters.begin(), model_.params.reliability.parameters.end(),
+							  parameters[i]) != model_.params.reliability.parameters.end();
+				if (ui::ToggleButton(isSelected, std::format("{}##b", parameters[i]).c_str()))
+				{
+					if (isSelected)
+					{
+						model_.params.reliability.parameters.erase(
+							std::find(model_.params.reliability.parameters.begin(),
+									  model_.params.reliability.parameters.end(), parameters[i]));
+					}
+					else
+					{
+						model_.params.reliability.parameters.push_back(parameters[i]);
+					}
+				}
+				ImGui::PopID();
+				ImGui::SameLine();
+			}
+
+			ImGui::EndChild();
+			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
+														ImGuiHoveredFlags_ForTooltip);
+
+			ImGui::SameLine(0.0f, 8.0f);
+			if (ui::Button(ICON_LC_UNDO_2))
+			{
+				model_.params.reliability.parameters.clear();
+				model_.params.reliability.parameters.push_back("peak");
+				model_.params.reliability.parameters.push_back("sum");
+				model_.params.reliability.parameters.push_back("mean");
+			}
+			ImGui::SetItemTooltip("Reset to default parameters: peak, sum, mean");
+
+			if (isHovered and ImGui::BeginTooltip())
+			{
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted(
+					"Parameter space to be used in deriving the reliability of detections. This must be a list of "
+					"parameters the number of which defines the dimensionality of the parameter space. Possible values "
+					"are peak for the peak flux density, sum for the summed flux density, mean for mean flux density, "
+					"chan for the number of spectral channels, pix for the total number of spatial and spectral "
+					"pixels, fill for the filling factor, std for the standard deviation, skew for the skewness and "
+					"kurt for the kurtosis across the source mask. Flux densities will be divided by the global noise "
+					"level. peak, sum, mean, pix and fill will be logarithmic, all other parameters linear.");
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+
+			ImGui::PopID();
+		}
+
+		if (not isFilterEnabled_ or paramsFilter_.PassFilter("reliability scale kernel"))
+		{
+			ImGui::PushID("reliability_scale_kernel");
+			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+			ui::HeadedDragFloat("Scale Kernel", "##reliability_scale_kernel", &model_.params.reliability.scaleKernel,
+								0.001f, 0, 1000 * 1000);
+			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
+														ImGuiHoveredFlags_ForTooltip);
+			ImGui::PopItemWidth();
+			ImGui::SameLine(0.0f, 8.0f);
+			if (ui::Button(ICON_LC_UNDO_2))
+			{
+				model_.params.reliability.scaleKernel = 0.4f;
+			}
+			ImGui::SetItemTooltip("Reset to default '0.4' value");
+
+			if (isHovered and ImGui::BeginTooltip())
+			{
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted(
+					"When estimating the density of positive and negative detections in parameter space, the size of "
+					"the Gaussian kernel used in this process is determined from the covariance of the distribution of "
+					"negative detections in parameter space. This parameter setting can be used to scale that kernel "
+					"size by a constant factor.");
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+			ImGui::PopID();
+		}
+
+		if (not isFilterEnabled_ or paramsFilter_.PassFilter("reliability threshold"))
+		{
+			ImGui::PushID("reliability_threshold");
+			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+			ui::HeadedDragFloat("Threshold", "##reliability_threshold", &model_.params.reliability.threshold, 0.001f,
+								0.0f, 1.0f);
+			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
+														ImGuiHoveredFlags_ForTooltip);
+			ImGui::PopItemWidth();
+			ImGui::SameLine(0.0f, 8.0f);
+			if (ui::Button(ICON_LC_UNDO_2))
+			{
+				model_.params.reliability.threshold = 0.9f;
+			}
+			ImGui::SetItemTooltip("Reset to default '0.9' value");
+
+			if (isHovered and ImGui::BeginTooltip())
+			{
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted("Reliability threshold in the range of 0 to 1. Sources with a reliability below "
+									   "this threshold will be discarded.");
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+			ImGui::PopID();
+		}
+
+		if (not isFilterEnabled_ or paramsFilter_.PassFilter("reliability tolerance"))
+		{
+			ImGui::PushID("reliability_tolerance");
+			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+			ui::HeadedDragFloat("Tolerance", "##reliability_tolerance", &model_.params.reliability.tolerance, 0.001f,
+								0.0f, 1000.0f * 1000.0f);
+			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
+														ImGuiHoveredFlags_ForTooltip);
+			ImGui::PopItemWidth();
+			ImGui::SameLine(0.0f, 8.0f);
+			if (ui::Button(ICON_LC_UNDO_2))
+			{
+				model_.params.reliability.tolerance = 0.05f;
+			}
+			ImGui::SetItemTooltip("Reset to default '0.05' value");
+
+			if (isHovered and ImGui::BeginTooltip())
+			{
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted(
+					"Convergence tolerance for the reliability kernel auto-scaling algorithm. Convergence is achieved "
+					"when the absolute value of the median of the Skellam distribution drops below this tolerance.");
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+			ImGui::PopID();
+		}
+
 		ImGui::EndDisabled();
 		ImGui::PopStyleColor();
 		ImGui::PopStyleVar();
 		ImGui::EndChild();
 	}
 
+	if (not isFilterEnabled_ or paramsFilter_.PassFilter("mask dilation iterations xy z threshold"))
 	{
 		ImGui::BeginChild("##mask_dilation", Vector2{ 0.0f, 0.0f },
 						  ImGuiChildFlags_FrameStyle | ImGuiChildFlags_AutoResizeY);
@@ -2049,51 +2335,106 @@ auto SoFiaSearchView::drawFilterFormContent() -> void
 			"number of iterations is reached.");
 		ImGui::PopStyleColor();
 
-		ImGui::BeginDisabled(!model_.params.dilation.enable);
-		// TODO: content here
-		ImGui::EndDisabled();
-		ImGui::PopStyleColor();
-		ImGui::PopStyleVar();
-		ImGui::EndChild();
-	}
+		const auto isSubcube = isUsingSubcube();
 
-	{
-		ImGui::BeginChild("##parametrisation", Vector2{ 0.0f, 0.0f },
-						  ImGuiChildFlags_FrameStyle | ImGuiChildFlags_AutoResizeY);
-		ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
-		ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.solidBackgroundFillColorBaseBrush);
+		ImGui::BeginDisabled(!model_.params.dilation.enable or isSubcube);
 
-		ImGui::PushFont(applicationContext_->getFontCollection().getTitleFont());
-		const auto wrapPosition = ImGui::GetContentRegionAvail().x - toggleSwitchWidth;
-		ImGui::PushTextWrapPos(wrapPosition);
-
-		const auto titleWidth = ImGui::CalcTextSize("Parametrisation", 0, true, wrapPosition).x;
-		ImGui::TextWrapped("Parametrisation");
-		ImGui::PopTextWrapPos();
-		ImGui::PopFont();
-		ImGui::SameLine(0.0f, wrapPosition - titleWidth);
-		if (ui::ToggleSwitch(model_.params.parameter.enable, "##enable_parametrisation", "off", "on"))
+		if (not isFilterEnabled_ or paramsFilter_.PassFilter("mask dilation iterations xy"))
 		{
-			model_.params.parameter.enable = !model_.params.parameter.enable;
+			ImGui::PushID("dilation_iterations_xy");
+			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+			ui::HeadedDragInt("Iterations XY", "##dilation_iterations_xy", &model_.params.dilation.iterationsXY, 1, 1,
+							  1000 * 1000);
+			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
+														ImGuiHoveredFlags_ForTooltip);
+			ImGui::PopItemWidth();
+			ImGui::SameLine(0.0f, 8.0f);
+			if (ui::Button(ICON_LC_UNDO_2))
+			{
+				model_.params.dilation.iterationsXY = 10;
+			}
+			ImGui::SetItemTooltip("Reset to default '10' value");
+
+			if (isHovered and ImGui::BeginTooltip())
+			{
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted(
+					"Sets the maximum number of spatial iterations for the mask dilation algorithm. Once this number "
+					"of iterations has been reached, mask dilation in the spatial plane will stop even if the flux "
+					"increase still exceeds the threshold set by dilation.threshold.");
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+			ImGui::PopID();
 		}
 
-		ImGui::PushStyleColor(ImGuiCol_Text, brush.textFillColorSecondaryBrush);
-		ImGui::TextWrapped(
-			"If enabled, SoFiA will attempt to convert relevant parameters to physical units. This involves "
-			"conversion of channel widths to frequency/velocity units and division of flux-based parameters by "
-			"the solid angle of the beam. For this to work, the relevant header parameters, including CTYPE3, "
-			"CDELT3, BMAJ and BMIN, must have been correctly set. It is further assumed that the beam does not "
-			"vary with frequency or position.");
-		ImGui::PopStyleColor();
+		if (not isFilterEnabled_ or paramsFilter_.PassFilter("mask dilation iterations z"))
+		{
+			ImGui::PushID("dilation_iterations_z");
+			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+			ui::HeadedDragInt("Iterations Z", "##dilation_iterations_z", &model_.params.dilation.iterationsZ, 1, 1,
+							  1000 * 1000);
+			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
+														ImGuiHoveredFlags_ForTooltip);
+			ImGui::PopItemWidth();
+			ImGui::SameLine(0.0f, 8.0f);
+			if (ui::Button(ICON_LC_UNDO_2))
+			{
+				model_.params.dilation.iterationsZ = 5;
+			}
+			ImGui::SetItemTooltip("Reset to default '5' value");
 
-		ImGui::BeginDisabled(!model_.params.parameter.enable);
-		// TODO: content here
+			if (isHovered and ImGui::BeginTooltip())
+			{
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted(
+					"Sets the maximum number of spectral iterations for the mask dilation algorithm. Once this number "
+					"of iterations has been reached, mask dilation along the spectral axis will stop even if the flux "
+					"increase still exceeds the threshold set by dilation.threshold.");
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+			ImGui::PopID();
+		}
+
+		if (not isFilterEnabled_ or paramsFilter_.PassFilter("mask dilation threshold"))
+		{
+			ImGui::PushID("dilation_threshold");
+			ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 8.0f - undoButtonDefaultSize);
+			ui::HeadedDragFloat("Threshold", "##dilation_threshold", &model_.params.dilation.threshold, 0.0001f, 0.0f,
+							  1000.0f * 1000.0f);
+			const auto isHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_Stationary |
+														ImGuiHoveredFlags_ForTooltip);
+			ImGui::PopItemWidth();
+			ImGui::SameLine(0.0f, 8.0f);
+			if (ui::Button(ICON_LC_UNDO_2))
+			{
+				model_.params.dilation.threshold = 0.001f;
+			}
+			ImGui::SetItemTooltip("Reset to default '0.001' value");
+
+			if (isHovered and ImGui::BeginTooltip())
+			{
+				ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+				ImGui::TextUnformatted(
+					"If a positive value is provided, mask dilation will end when the increment in the integrated flux "
+					"during a single iteration drops below this value times the total integrated flux (from the "
+					"previous iteration), or when the maximum number of iterations has been reached. Specifying a "
+					"negative threshold will disable flux checking altogether and always carry out the maximum number "
+					"of iterations.");
+				ImGui::PopTextWrapPos();
+				ImGui::EndTooltip();
+			}
+			ImGui::PopID();
+		}
+
+
 		ImGui::EndDisabled();
 		ImGui::PopStyleColor();
 		ImGui::PopStyleVar();
 		ImGui::EndChild();
 	}
-	*/
+
 	ImGui::PopStyleVar();
 
 	ImGui::EndDisabled();
@@ -2172,7 +2513,7 @@ auto SoFiaSearchView::drawFilterFormContentOld() -> void
 		ImGui::PopID();
 	}
 
-	if (ImGui::CollapsingHeader("Preconditioning Continuum Substraction", ImGuiTreeNodeFlags_None))
+	if (ImGui::CollapsingHeader("Preconditioning Continuum Subtraction", ImGuiTreeNodeFlags_None))
 	{
 
 		ImGui::PushID("PreconditioningContinuumSettings");
@@ -2890,4 +3231,54 @@ auto SoFiaSearchView::resetParams() -> void
 {
 	model_.transform = owl::AffineSpace3f{};
 	model_.selectedLocalRegion = owl::box3f{};
+}
+
+auto SoFiaSearchView::isUsingSubcube() -> bool
+{
+	const auto& brush = ApplicationContext::getStyleBrush();
+	const auto hasProject = applicationContext_->selectedProject_.has_value();
+
+	auto dimensions = owl::vec3i{ 0 };
+	if (hasProject)
+	{
+		const auto& dims = applicationContext_->selectedProject_.value().fitsOriginProperties.axisDimensions;
+		dimensions = { dims[0], dims[1], dims[2] };
+	}
+
+	auto isSubcube = model_.showRoiGizmo or model_.params.input.region.lower.x != 0 or
+		model_.params.input.region.lower.y != 0 or model_.params.input.region.lower.z != 0 or
+		model_.params.input.region.upper.x != dimensions[0] or model_.params.input.region.upper.y != dimensions[1] or
+		model_.params.input.region.upper.z != dimensions[2];
+
+	if (isSubcube)
+	{
+		ImGui::PushStyleColor(ImGuiCol_FrameBg, brush.systemFillColorCautionBackgroundBrush);
+
+		ImGui::BeginChild("##project_not_selected_warning", Vector2{},
+						  ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeY | ImGuiChildFlags_FrameStyle);
+		ImGui::PushStyleColor(ImGuiCol_Text, brush.systemFillColorCautionBrush);
+		ImGui::Text(ICON_LC_MESSAGE_SQUARE_WARNING);
+		ImGui::PopStyleColor();
+		ImGui::SameLine();
+		if (ui::Button("Resolve##reset_region"))
+		{
+			model_.showRoiGizmo = false;
+			model_.transform = {};
+			model_.params.input.region.lower.x = 0;
+			model_.params.input.region.lower.y = 0;
+			model_.params.input.region.lower.z = 0;
+			model_.params.input.region.upper.x = dimensions[0];
+			model_.params.input.region.upper.y = dimensions[1];
+			model_.params.input.region.upper.z = dimensions[2];
+		}
+		ImGui::SetItemTooltip("Disables sub region input!");
+		ImGui::SameLine();
+		const auto text = "This stage will be skipped by SoFiA because of the sub region selection. Consider "
+						  "reseting or disabling the sub region to the original size!";
+		ImGui::TextWrapped(text);
+		ImGui::EndChild();
+		ImGui::PopStyleColor();
+	}
+
+	return hasProject and isSubcube;
 }
