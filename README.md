@@ -16,6 +16,8 @@ The following diagram visualize the software architectural overview:
 This showcase demo video tease the source search workflow on a desktop viewer application.
 [![Viewer Showcase Video](https://img.youtube.com/vi/FwjPuBjKzdI/0.jpg)](https://www.youtube.com/watch?v=FwjPuBjKzdI "Viewer Showcase Video")
 
+Unfortunately, the source finding feature in the application is not usable due to several errors on the server. 
+
 # Quick start
 
 Download executables from releases section and run it.
